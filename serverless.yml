@@ -16,7 +16,7 @@ provider:
         - dynamodb:PutItem
         - dynamodb:DeleteItem
         - dynamodb:UpdateItem
-      Resource: "arn:aws:dynamodb:us-west-2:794095399241:table/usersTable"
+      Resource: "arn:aws:dynamodb:us-west-2:794095399241:table/biztechUsers"
 
 
 functions:
@@ -35,16 +35,16 @@ functions:
 
 resources:
   Resources:
-    usersTable:
+    biztechUsers:
         Type: 'AWS::DynamoDB::Table'
         DeletionPolicy: Retain
         Properties:
-          TableName: usersTable
+          TableName: biztechUsers
           AttributeDefinitions:
-            - AttributeName: studentID
-              AttributeType: S
+            - AttributeName: id
+              AttributeType: N
           KeySchema:
-            - AttributeName: studentID
+            - AttributeName: id
               KeyType: HASH
           ProvisionedThroughput:
             ReadCapacityUnits: 1

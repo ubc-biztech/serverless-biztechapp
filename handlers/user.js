@@ -7,17 +7,13 @@ module.exports.create = async (event, ctx, callback) => {
 
   const timestamp = new Date().getTime();
 
-  // var studentID = parseInt(event.studentID, 10);
-
   var obj = JSON.parse(event.body);
-  // var obj = event;
-  // console.log(event);
-  // console.log(obj);
-  console.log(obj.studentID);
+
+  var studentID = parseInt(obj.studentID, 10);
 
   var params = {
       Item: {
-          studentID: obj.studentID,
+          id: studentID,
           fname: obj.fname,
           lname: obj.lname,
           email: obj.email,
@@ -28,7 +24,7 @@ module.exports.create = async (event, ctx, callback) => {
           createdAt: timestamp,
           updatedAt: timestamp
       },
-      TableName: 'usersTable'
+      TableName: 'biztechUsers'
   };
 
   console.log(params)
