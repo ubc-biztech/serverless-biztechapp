@@ -3,25 +3,18 @@
 const AWS = require('aws-sdk');
 const docClient = new AWS.DynamoDB.DocumentClient();
 
-module.exports.hello = async (event) => {
-  return {
-    statusCode: 200,
-    body: JSON.stringify({
-      message: 'Yeet!'
-    }, null, 2),
-  }; 
-};
-
-module.exports.userCreate = async (event, ctx, callback) => {
+module.exports.create = async (event, ctx, callback) => {
 
   const timestamp = new Date().getTime();
-    
+
   // var studentID = parseInt(event.studentID, 10);
 
   var obj = JSON.parse(event.body);
-  console.log(obj);
+  // var obj = event;
+  // console.log(event);
+  // console.log(obj);
   console.log(obj.studentID);
-    
+
   var params = {
       Item: {
           studentID: obj.studentID,
@@ -48,6 +41,6 @@ module.exports.userCreate = async (event, ctx, callback) => {
       message: 'Created!',
       params: params
     }, null, 2),
-  }; 
+  };
 
 };

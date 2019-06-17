@@ -1,4 +1,4 @@
-service: biztechApp 
+service: biztechApp
 tenant: ianmh
 app: biztechapp
 
@@ -8,7 +8,7 @@ provider:
   region: us-west-2
   iamRoleStatements:
     - Effect: Allow
-      Action: 
+      Action:
         - dynamodb:DescribeTable
         - dynamodb:Query
         - dynamodb:Scan
@@ -21,19 +21,17 @@ provider:
 
 functions:
   hello:
-    handler: handler.hello
+    handler: handlers/default.hello
     events:
       - http:
           path: /
           method: get
-          cors: true
   userCreate:
-    handler: handler.userCreate
+    handler: handlers/user.create
     events:
       - http:
           path: users/create
           method: post
-          cors: true
 
 resources:
   Resources:
