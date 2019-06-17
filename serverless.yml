@@ -32,6 +32,12 @@ functions:
       - http:
           path: users/create
           method: post
+  userGet:
+    handler: handlers/user.get
+    events:
+      - http:
+          path: users/{id}
+          method: get
 
 resources:
   Resources:

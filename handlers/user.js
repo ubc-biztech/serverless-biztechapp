@@ -9,11 +9,11 @@ module.exports.create = async (event, ctx, callback) => {
 
   var obj = JSON.parse(event.body);
 
-  var studentID = parseInt(obj.studentID, 10);
+  var id = parseInt(obj.id, 10);
 
   var params = {
       Item: {
-          id: studentID,
+          id: id,
           fname: obj.fname,
           lname: obj.lname,
           email: obj.email,
@@ -38,5 +38,49 @@ module.exports.create = async (event, ctx, callback) => {
       params: params
     }, null, 2),
   };
+
+};
+
+
+module.exports.get = async (event, ctx, callback) => {
+
+  var id = parseInt(event.pathParameters.id, 10);
+
+  var params = {
+      Key: {
+        id: id,
+      },
+      TableName: 'biztechUsers'
+  };
+
+  console.log(params);
+
+  await docClient.get(params).promise()
+    .then(result => {
+      if (result.Item == null){
+
+        console.log('User not found');
+        const response = {
+          statusCode: 404,
+          body: JSON.stringify('User not found')
+        };
+        callback(null, response);
+
+      } else {
+
+        console.log('User found');
+        const response = {
+          statusCode: 200,
+          body: JSON.stringify(result.Item)
+        };
+        callback(null, response);
+
+      }
+    })
+    .catch(error => {
+      console.error(error);
+      callback(new Error('Couldn\'t fetch user.'));
+      return;
+    });
 
 };
