@@ -1,0 +1,53 @@
+service: biztechApp 
+tenant: ianmh
+app: biztechapp
+
+provider:
+  name: aws
+  runtime: nodejs10.x
+  region: us-west-2
+  iamRoleStatements:
+    - Effect: Allow
+      Action: 
+        - dynamodb:DescribeTable
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:DeleteItem
+        - dynamodb:UpdateItem
+      Resource: "arn:aws:dynamodb:us-west-2:794095399241:table/usersTable"
+
+
+functions:
+  hello:
+    handler: handler.hello
+    events:
+      - http:
+          path: /
+          method: get
+          cors: true
+  userCreate:
+    handler: handler.userCreate
+    events:
+      - http:
+          path: users/create
+          method: post
+          cors: true
+
+resources:
+  Resources:
+    usersTable:
+        Type: 'AWS::DynamoDB::Table'
+        DeletionPolicy: Retain
+        Properties:
+          TableName: usersTable
+          AttributeDefinitions:
+            - AttributeName: studentID
+              AttributeType: S
+          KeySchema:
+            - AttributeName: studentID
+              KeyType: HASH
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
