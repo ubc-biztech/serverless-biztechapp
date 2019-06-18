@@ -48,7 +48,7 @@ module.exports.get = async (event, ctx, callback) => {
 
   var params = {
       Key: {
-        id: id,
+        id
       },
       TableName: 'biztechUsers'
   };
@@ -91,16 +91,31 @@ module.exports.update = async (event, ctx, callback) => {
   const timestamp = new Date().getTime();
   const id = parseInt(event.queryStringParameters.id, 10);
 
+  var updateExpression = 'set ';
+  var expressionAttributeValues = {};
+
+  for (var key in data){
+    if(data.hasOwnProperty(key)) {
+      if (key != 'id'){
+        updateExpression += key + '\= :' + key + ',';
+        expressionAttributeValues[':' + key] = data[key];
+      }
+    }
+  }
+
+  updateExpression += "updatedAt = :updatedAt";
+  expressionAttributeValues[':updatedAt'] = timestamp;
+
+  //remove trailing comma
+  // updateExpression = updateExpression.slice(0, -1);
+
   var params = {
       Key: {
-        id: id,
+        id
       },
       TableName: 'biztechUsers',
-      ExpressionAttributeValues:{
-        ':fname': data.fname,
-        ':updatedAt': timestamp
-      },
-      UpdateExpression: 'SET fname = :fname, updatedAt = :updatedAt',
+      ExpressionAttributeValues: expressionAttributeValues,
+      UpdateExpression: updateExpression,
       ReturnValues:"UPDATED_NEW"
   };
 
