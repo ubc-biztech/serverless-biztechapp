@@ -36,8 +36,22 @@ functions:
     handler: handlers/user.get
     events:
       - http:
-          path: users/{id}
+          path: users/get
           method: get
+          request:
+            parameters:
+              querystrings:
+                id: true
+  userUpdate:
+    handler: handlers/user.update
+    events:
+      - http:
+          path: users/update
+          method: post
+          request:
+            parameters:
+              querystrings:
+                id: true
 
 resources:
   Resources:

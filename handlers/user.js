@@ -44,7 +44,7 @@ module.exports.create = async (event, ctx, callback) => {
 
 module.exports.get = async (event, ctx, callback) => {
 
-  var id = parseInt(event.pathParameters.id, 10);
+  var id = parseInt(event.queryStringParameters.id, 10);
 
   var params = {
       Key: {
@@ -80,6 +80,43 @@ module.exports.get = async (event, ctx, callback) => {
     .catch(error => {
       console.error(error);
       callback(new Error('Couldn\'t fetch user.'));
+      return;
+    });
+
+};
+
+module.exports.update = async (event, ctx, callback) => {
+
+  const data = JSON.parse(event.body);
+  const timestamp = new Date().getTime();
+  const id = parseInt(event.queryStringParameters.id, 10);
+
+  var params = {
+      Key: {
+        id: id,
+      },
+      TableName: 'biztechUsers',
+      ExpressionAttributeValues:{
+        ':fname': data.fname,
+        ':updatedAt': timestamp
+      },
+      UpdateExpression: 'SET fname = :fname, updatedAt = :updatedAt',
+      ReturnValues:"UPDATED_NEW"
+  };
+
+  console.log(params);
+
+  await docClient.update(params).promise()
+    .then(result => {
+        const response = {
+          statusCode: 200,
+          body: JSON.stringify('Update succeeded')
+        };
+        callback(null, response);
+    })
+    .catch(error => {
+      console.error(error);
+      callback(new Error('Unable to update user.'));
       return;
     });
 
