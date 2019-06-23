@@ -102,12 +102,9 @@ module.exports.update = async (event, ctx, callback) => {
       }
     }
   }
-
+  
   updateExpression += "updatedAt = :updatedAt";
   expressionAttributeValues[':updatedAt'] = timestamp;
-
-  //remove trailing comma
-  // updateExpression = updateExpression.slice(0, -1);
 
   var params = {
       Key: {
