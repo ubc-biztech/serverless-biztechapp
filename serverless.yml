@@ -16,7 +16,9 @@ provider:
         - dynamodb:PutItem
         - dynamodb:DeleteItem
         - dynamodb:UpdateItem
-      Resource: "arn:aws:dynamodb:us-west-2:794095399241:table/biztechUsers"
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:${ssm:serverlessarn}:table/biztechUsers"
+        - "arn:aws:dynamodb:us-west-2:${ssm:serverlessarn}:table/biztechEvents"
 
 
 functions:
@@ -24,7 +26,7 @@ functions:
     handler: handlers/default.hello
     events:
       - http:
-          path: /
+          path: /hello
           method: get
   userCreate:
     handler: handlers/user.create
@@ -52,6 +54,18 @@ functions:
             parameters:
               querystrings:
                 id: true
+  eventCreate:
+    handler: handlers/event.create
+    events:
+      - http:
+          path: events/create
+          method: post
+  eventGet:
+    handler: handlers/event.get
+    events:
+      - http:
+          path: events/get
+          method: get
 
 resources:
   Resources:
@@ -63,6 +77,20 @@ resources:
           AttributeDefinitions:
             - AttributeName: id
               AttributeType: N
+          KeySchema:
+            - AttributeName: id
+              KeyType: HASH
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
+    biztechEvents:
+        Type: 'AWS::DynamoDB::Table'
+        DeletionPolicy: Retain
+        Properties:
+          TableName: biztechEvents
+          AttributeDefinitions:
+            - AttributeName: id
+              AttributeType: S
           KeySchema:
             - AttributeName: id
               KeyType: HASH

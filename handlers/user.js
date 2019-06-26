@@ -6,28 +6,24 @@ const docClient = new AWS.DynamoDB.DocumentClient();
 module.exports.create = async (event, ctx, callback) => {
 
   const timestamp = new Date().getTime();
-
-  var obj = JSON.parse(event.body);
-
-  var id = parseInt(obj.id, 10);
+  const data = JSON.parse(event.body);
+  const id = parseInt(data.id, 10);
 
   var params = {
       Item: {
-          id: id,
-          fname: obj.fname,
-          lname: obj.lname,
-          email: obj.email,
-          faculty: obj.faculty,
-          year: obj.year,
-          gender: obj.gender,
-          diet: obj.diet,
+          id,
+          fname: data.fname,
+          lname: data.lname,
+          email: data.email,
+          faculty: data.faculty,
+          year: data.year,
+          gender: data.gender,
+          diet: data.diet,
           createdAt: timestamp,
           updatedAt: timestamp
       },
       TableName: 'biztechUsers'
   };
-
-  console.log(params)
 
   await docClient.put(params).promise()
 
@@ -41,7 +37,6 @@ module.exports.create = async (event, ctx, callback) => {
 
 };
 
-
 module.exports.get = async (event, ctx, callback) => {
 
   var id = parseInt(event.queryStringParameters.id, 10);
@@ -52,8 +47,6 @@ module.exports.get = async (event, ctx, callback) => {
       },
       TableName: 'biztechUsers'
   };
-
-  console.log(params);
 
   await docClient.get(params).promise()
     .then(result => {
@@ -94,6 +87,8 @@ module.exports.update = async (event, ctx, callback) => {
   var updateExpression = 'set ';
   var expressionAttributeValues = {};
 
+  // loop through keys and create updateExpression string and
+  // expressionAttributeValues object
   for (var key in data){
     if(data.hasOwnProperty(key)) {
       if (key != 'id'){
@@ -102,7 +97,8 @@ module.exports.update = async (event, ctx, callback) => {
       }
     }
   }
-  
+
+  // update timestamp
   updateExpression += "updatedAt = :updatedAt";
   expressionAttributeValues[':updatedAt'] = timestamp;
 
@@ -116,8 +112,7 @@ module.exports.update = async (event, ctx, callback) => {
       ReturnValues:"UPDATED_NEW"
   };
 
-  console.log(params);
-
+  // call dynamoDb
   await docClient.update(params).promise()
     .then(result => {
         const response = {
