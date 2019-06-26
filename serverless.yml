@@ -66,6 +66,16 @@ functions:
       - http:
           path: events/get
           method: get
+  eventUpdate:
+    handler: handlers/event.update
+    events:
+      - http:
+          path: events/update
+          method: post
+          request:
+            parameters:
+              querystrings:
+                id: true
 
 resources:
   Resources:
