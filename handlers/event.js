@@ -127,3 +127,36 @@ module.exports.update = async (event, ctx, callback) => {
       });
 
 };
+
+module.exports.scan = async (event, ctx, callback) => {
+
+  const code = event.queryStringParameters.code;
+
+  const params = {
+    TableName: 'biztechEvents',
+    FilterExpression: '#code = :query',
+    ExpressionAttributeNames:{
+      '#code': 'code'
+    },
+    ExpressionAttributeValues: {
+      ':query': code
+    }
+  };
+
+  await docClient.scan(params).promise()
+    .then(result => {
+      console.log('Scan success.');
+      var data = result.Items;
+      var response = {
+        statusCode: 200,
+        body: JSON.stringify(data)
+      };
+      callback(null, response);
+    })
+    .catch(error => {
+      console.error(error);
+      callback(new Error('Unable to scan events.'));
+      return;
+    });
+
+};
