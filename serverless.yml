@@ -76,6 +76,16 @@ functions:
             parameters:
               querystrings:
                 id: true
+  eventScan:
+    handler: handlers/event.scan
+    events:
+      - http:
+          path: events/scan
+          method: get
+          request:
+            parameters:
+              querystrings:
+                code: true
 
 resources:
   Resources:
