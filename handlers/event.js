@@ -138,23 +138,23 @@ module.exports.userUpdate = async (event, ctx, callback) => {
   let number = '';
   switch(data.status) {
     case 'R':
-      number = 'RegNum';
+      number = 'regNum';
       break;
     case 'C':
-      number = 'CheckedNum';
+      number = 'checkedNum';
       break;
     case 'Can':
       number = 'CANCEL';
       break;
     case 'W':
-      number = 'WaitNum';
+      number = 'waitNum';
       break;
     default:
   }
 
   if (number.length > 0) {
     if (number == 'CANCEL') {
-      updateExpression += 'RegNum \= RegNum - :incr,';
+      updateExpression += 'regNum \= regNum - :incr,';
     } else {
       updateExpression += number + ' \= ' + number + ' \+ :incr,';
     }
