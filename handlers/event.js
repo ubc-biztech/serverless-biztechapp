@@ -128,6 +128,78 @@ module.exports.update = async (event, ctx, callback) => {
 
 };
 
+module.exports.userUpdate = async (event, ctx, callback) => {
+  const data = JSON.parse(event.body);
+  const timestamp = new Date().getTime();
+
+  let updateExpression = 'set #usr.#userID = :status,';
+  let expressionAttributeValues = {':status' : data.status};
+
+  let number = '';
+  switch(data.status) {
+    case 'R':
+      number = 'RegNum';
+      break;
+    case 'C':
+      number = 'CheckedNum';
+      break;
+    case 'Can':
+      number = 'CANCEL';
+      break;
+    case 'W':
+      number = 'WaitNum';
+      break;
+    default:
+  }
+
+  if (number.length > 0) {
+    if (number == 'CANCEL') {
+      updateExpression += 'RegNum \= RegNum - :incr,';
+    } else {
+      updateExpression += number + ' \= ' + number + ' \+ :incr,';
+    }
+  }
+  expressionAttributeValues[':incr'] = 1;
+
+  // update timestamp
+  updateExpression += "updatedAt = :updatedAt";
+  expressionAttributeValues[':updatedAt'] = timestamp;
+
+  console.log(updateExpression);
+
+  const params = {
+    Key: {
+      id: data.id
+    },
+    TableName: 'biztechEvents',
+    ExpressionAttributeNames: {
+      "#userID" : data.userID,
+      "#usr" : "users"
+    },
+    ExpressionAttributeValues: expressionAttributeValues,
+    UpdateExpression: updateExpression,
+    ReturnValues:"UPDATED_NEW"
+  };
+
+  await docClient.update(params).promise()
+    .then(result => {
+        const response = {
+          statusCode: 200,
+          body: JSON.stringify('Update succeeded')
+        };
+        callback(null, response);
+    })
+    .catch(error => {
+      console.error(error);
+      const response = {
+        statusCode: 500,
+        body: error
+      };
+      callback(null, response);
+      return;
+    });
+}
+
 module.exports.scan = async (event, ctx, callback) => {
 
   const code = event.queryStringParameters.code;

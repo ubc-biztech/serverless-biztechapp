@@ -76,6 +76,16 @@ functions:
             parameters:
               querystrings:
                 id: true
+  eventUserUpdate:
+    handler: handlers/event.userUpdate
+    events:
+      - http:
+          path: events/userupdate
+          method: post
+          request:
+            parameters:
+              querystrings:
+                id: true
   eventScan:
     handler: handlers/event.scan
     events:
