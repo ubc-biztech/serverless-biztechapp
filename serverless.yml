@@ -28,12 +28,14 @@ functions:
       - http:
           path: /hello
           method: get
+          cors: true
   userCreate:
     handler: handlers/user.create
     events:
       - http:
           path: users/create
           method: post
+          cors: true
   userGet:
     handler: handlers/user.get
     events:
@@ -44,6 +46,7 @@ functions:
             parameters:
               querystrings:
                 id: true
+          cors: true
   userUpdate:
     handler: handlers/user.update
     events:
@@ -54,18 +57,21 @@ functions:
             parameters:
               querystrings:
                 id: true
+          cors: true
   eventCreate:
     handler: handlers/event.create
     events:
       - http:
           path: events/create
           method: post
+          cors: true
   eventGet:
     handler: handlers/event.get
     events:
       - http:
           path: events/get
           method: get
+          cors: true
   eventUpdate:
     handler: handlers/event.update
     events:
@@ -76,6 +82,7 @@ functions:
             parameters:
               querystrings:
                 id: true
+          cors: true
   eventUserUpdate:
     handler: handlers/event.userUpdate
     events:
@@ -86,6 +93,7 @@ functions:
             parameters:
               querystrings:
                 id: true
+          cors: true
   eventScan:
     handler: handlers/event.scan
     events:
@@ -96,6 +104,7 @@ functions:
             parameters:
               querystrings:
                 code: true
+          cors: true
 
 resources:
   Resources:

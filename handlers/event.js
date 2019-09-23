@@ -62,6 +62,10 @@ module.exports.get = async (event, ctx, callback) => {
       var events = result.Items
       const response = {
         statusCode: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Credentials': true,
+        },
         body: JSON.stringify(events),
       };
       callback(null, response);
