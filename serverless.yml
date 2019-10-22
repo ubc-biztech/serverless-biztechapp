@@ -6,6 +6,7 @@ provider:
   name: aws
   runtime: nodejs10.x
   region: us-west-2
+  cfLogs: true
   iamRoleStatements:
     - Effect: Allow
       Action:
@@ -19,7 +20,7 @@ provider:
       Resource:
         - "arn:aws:dynamodb:us-west-2:${ssm:serverlessarn}:table/biztechUsers"
         - "arn:aws:dynamodb:us-west-2:${ssm:serverlessarn}:table/biztechEvents"
-
+        - "arn:aws:dynamodb:us-west-2:${ssm:serverlessarn}:table/biztechRegistration"
 
 functions:
   hello:
@@ -96,34 +97,9 @@ functions:
             parameters:
               querystrings:
                 code: true
-
-resources:
-  Resources:
-    biztechUsers:
-        Type: 'AWS::DynamoDB::Table'
-        DeletionPolicy: Retain
-        Properties:
-          TableName: biztechUsers
-          AttributeDefinitions:
-            - AttributeName: id
-              AttributeType: N
-          KeySchema:
-            - AttributeName: id
-              KeyType: HASH
-          ProvisionedThroughput:
-            ReadCapacityUnits: 1
-            WriteCapacityUnits: 1
-    biztechEvents:
-        Type: 'AWS::DynamoDB::Table'
-        DeletionPolicy: Retain
-        Properties:
-          TableName: biztechEvents
-          AttributeDefinitions:
-            - AttributeName: id
-              AttributeType: S
-          KeySchema:
-            - AttributeName: id
-              KeyType: HASH
-          ProvisionedThroughput:
-            ReadCapacityUnits: 1
-            WriteCapacityUnits: 1
+  regCreate:
+    handler: handlers/reg.create
+    events:
+      - http:
+          path: reg/create
+          method: post
