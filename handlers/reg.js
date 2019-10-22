@@ -85,4 +85,63 @@ module.exports.create = async (event, ctx, callback) => {
   });
   
 };
-  
+
+// Find entries by studentID
+module.exports.queryStudent = async (event, ctx, callback) => {
+
+  const id = parseInt(event.queryStringParameters.id, 10);
+
+  const params = {
+    TableName: 'biztechRegistration',
+    KeyConditionExpression: 'studentID = :query',
+    ExpressionAttributeValues: {
+      ':query': id
+    }
+  };
+
+  await docClient.query(params).promise()
+    .then(result => {
+      console.log('Query success');
+      var data = result.Items;
+      var response = {
+        statusCode: 200,
+        body: JSON.stringify(data)
+      };
+      callback(null, response);
+    })
+    .catch(error => {
+      console.error(error);
+      callback(new Error('Unable to query registration table'));
+      return;
+    });
+}
+
+// Find entries by eventID
+module.exports.scanEvent = async (event, ctx, callback) => {
+
+  const eventID = event.queryStringParameters.eventID;
+
+  const params = {
+    TableName: 'biztechRegistration',
+    FilterExpression: 'eventID = :query',
+    ExpressionAttributeValues: {
+      ':query': eventID
+    }
+  };
+
+  await docClient.scan(params).promise()
+  .then(result => {
+    console.log('Scan success.');
+    var data = result.Items;
+    var response = {
+      statusCode: 200,
+      body: JSON.stringify(data)
+    };
+    callback(null, response);
+  })
+  .catch(error => {
+    console.error(error);
+    callback(new Error('Unable to scan registration table'));
+    return;
+  });
+}

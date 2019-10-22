@@ -103,3 +103,23 @@ functions:
       - http:
           path: reg/create
           method: post
+  regQueryStudent:
+    handler: handlers/reg.queryStudent
+    events:
+      - http:
+          path: reg/queryStudent
+          method: get
+          request:
+            parameters:
+              querystrings:
+                id: true
+  regScanEvent:
+    handler: handlers/reg.scanEvent
+    events:
+      - http:
+          path: reg/scanEvent
+          method: get
+          request:
+            parameters:
+              querystrings:
+                eventID: true
