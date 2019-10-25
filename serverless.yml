@@ -106,30 +106,32 @@ functions:
               querystrings:
                 code: true
           cors: true
-  regCreate:
-    handler: handlers/reg.create
+  registrationCreate:
+    handler: handlers/registration.create
     events:
       - http:
-          path: reg/create
+          path: registration/create
           method: post
           cors: true
-  regQueryStudent:
-    handler: handlers/reg.queryStudent
+  registrationQueryStudent:
+    handler: handlers/registration.queryStudent
     events:
       - http:
-          path: reg/queryStudent
+          path: registration/queryStudent
           method: get
           request:
             parameters:
               querystrings:
                 id: true
-  regScanEvent:
-    handler: handlers/reg.scanEvent
+          cors: true
+  registrationScanEvent:
+    handler: handlers/registration.scanEvent
     events:
       - http:
-          path: reg/scanEvent
+          path: registration/scanEvent
           method: get
           request:
             parameters:
               querystrings:
                 eventID: true
+          cors: true

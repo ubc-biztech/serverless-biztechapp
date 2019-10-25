@@ -23,37 +23,22 @@ module.exports.create = async (event, ctx, callback) => {
   await docClient.put(params).promise()
 
   // Update Event count
-  let number = '';
   let updateExpression = 'set ';
-  switch(data.status) {
-    case 'R':
-      number = 'regNum';
-      break;
-    case 'C':
-      number = 'checkedNum';
-      break;
-    case 'Can':
-      number = 'CANCEL';
-      break;
-    case 'W':
-      number = 'waitNum';
-      break;
-    default:
+
+  if (data.status == 'cancelled') {
+      updateExpression += 'registeredNum \= registeredNum - :incr,';
+  } else {
+      const num = data.status + 'Num';
+      updateExpression +=  num + ' \= ' + num + ' \+ :incr,';
   }
 
-  if (number.length > 0) {
-    if (number == 'CANCEL') {
-      updateExpression += 'regNum \= regNum - :incr,';
-    } else {
-      updateExpression += number + ' \= ' + number + ' \+ :incr,';
-    }
-  }
   let expressionAttributeValues = {':incr': 1};
 
   // Update timestamp
   updateExpression += "updatedAt = :updatedAt";
   expressionAttributeValues[':updatedAt'] = timestamp;
 
+  // Log the update expression
   console.log(updateExpression);
 
   const eventParams = {
@@ -70,6 +55,10 @@ module.exports.create = async (event, ctx, callback) => {
   .then(result => {
       const response = {
         statusCode: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Credentials': true,
+        },
         body: JSON.stringify('Update succeeded')
       };
       callback(null, response);
@@ -86,7 +75,7 @@ module.exports.create = async (event, ctx, callback) => {
   
 };
 
-// Find entries by studentID
+// Return list of entries with the matching studentID
 module.exports.queryStudent = async (event, ctx, callback) => {
 
   const id = parseInt(event.queryStringParameters.id, 10);
@@ -105,6 +94,10 @@ module.exports.queryStudent = async (event, ctx, callback) => {
       var data = result.Items;
       var response = {
         statusCode: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Credentials': true,
+        },
         body: JSON.stringify(data)
       };
       callback(null, response);
@@ -116,7 +109,7 @@ module.exports.queryStudent = async (event, ctx, callback) => {
     });
 }
 
-// Find entries by eventID
+// Return list of entries with the matching eventID
 module.exports.scanEvent = async (event, ctx, callback) => {
 
   const eventID = event.queryStringParameters.eventID;
@@ -135,6 +128,10 @@ module.exports.scanEvent = async (event, ctx, callback) => {
     var data = result.Items;
     var response = {
       statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Credentials': true,
+      },
       body: JSON.stringify(data)
     };
     callback(null, response);
