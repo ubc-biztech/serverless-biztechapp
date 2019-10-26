@@ -17,7 +17,7 @@ module.exports.create = async (event, ctx, callback) => {
           createdAt: timestamp,
           updatedAt: timestamp
       },
-      TableName: 'biztechRegistration'
+      TableName: 'biztechRegistration' + process.env.ENVIRONMENT
   };
 
   await docClient.put(params).promise()
@@ -45,7 +45,7 @@ module.exports.create = async (event, ctx, callback) => {
     Key: {
       id: data.eventID
     },
-    TableName: 'biztechEvents',
+    TableName: 'biztechEvents' + process.env.ENVIRONMENT,
     ExpressionAttributeValues: expressionAttributeValues,
     UpdateExpression: updateExpression,
     ReturnValues:"UPDATED_NEW"
@@ -81,7 +81,7 @@ module.exports.queryStudent = async (event, ctx, callback) => {
   const id = parseInt(event.queryStringParameters.id, 10);
 
   const params = {
-    TableName: 'biztechRegistration',
+    TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
     KeyConditionExpression: 'studentID = :query',
     ExpressionAttributeValues: {
       ':query': id
@@ -115,7 +115,7 @@ module.exports.scanEvent = async (event, ctx, callback) => {
   const eventID = event.queryStringParameters.eventID;
 
   const params = {
-    TableName: 'biztechRegistration',
+    TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
     FilterExpression: 'eventID = :query',
     ExpressionAttributeValues: {
       ':query': eventID

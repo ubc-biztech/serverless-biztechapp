@@ -4,6 +4,9 @@ app: biztechapp
 
 provider:
   name: aws
+  stage: ${opt:stage, 'dev'}
+  apiKeys:
+    - ${opt:stage, 'dev'}-key
   runtime: nodejs10.x
   region: us-west-2
   iamRoleStatements:
