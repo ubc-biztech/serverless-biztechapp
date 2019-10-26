@@ -1,3 +1,4 @@
 {
-    "ENVIRONMENT": ""
+    "ENVIRONMENT": "",
+    "REQUIRE_API_KEY": false
 }

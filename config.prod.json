@@ -1,3 +1,4 @@
 {
-    "ENVIRONMENT": "PROD"
+    "ENVIRONMENT": "PROD",
+    "REQUIRE_API_KEY": true
 }
