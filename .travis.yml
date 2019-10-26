@@ -5,12 +5,12 @@ notifications:
   email: false
 cache:
   directories:
-  - $(npm config get prefix)/lib/node_modules
+  - node_modules
 jobs:
   include:
     - stage: "Install and run integration tests"
       script:
-        - npm install -g serverless
+        - npm install serverless
         - sls test
     - stage: "Deploy to Staging"
       script: sls deploy
