@@ -6,7 +6,6 @@ cache:
   - node_modules
 script:
 - npm install -g serverless
-- serverless
 - sls config credentials --provider aws -k $AWS_ACCESS_KEY_ID -s $AWS_SECRET_ACCESS_KEY -o
 - sls test
 env:
