@@ -4,9 +4,14 @@ app: biztechapp
 
 provider:
   name: aws
+  stage: ${opt:stage, 'dev'}
+  apiKeys:
+    - ${opt:stage, 'dev'}-key
   runtime: nodejs10.x
   region: us-west-2
   cfLogs: true
+  environment:
+    ENVIRONMENT: ${file(./config.${self:provider.stage}.json):ENVIRONMENT}
   iamRoleStatements:
     - Effect: Allow
       Action:
@@ -18,9 +23,9 @@ provider:
         - dynamodb:DeleteItem
         - dynamodb:UpdateItem
       Resource:
-        - "arn:aws:dynamodb:us-west-2:${ssm:serverlessarn}:table/biztechUsers"
-        - "arn:aws:dynamodb:us-west-2:${ssm:serverlessarn}:table/biztechEvents"
-        - "arn:aws:dynamodb:us-west-2:${ssm:serverlessarn}:table/biztechRegistration"
+        - "arn:aws:dynamodb:us-west-2:${ssm:serverlessarn}:table/biztechUsers${file(./config.${self:provider.stage}.json):ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:${ssm:serverlessarn}:table/biztechEvents${file(./config.${self:provider.stage}.json):ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:${ssm:serverlessarn}:table/biztechRegistration${file(./config.${self:provider.stage}.json):ENVIRONMENT}"
 
 functions:
   hello:
