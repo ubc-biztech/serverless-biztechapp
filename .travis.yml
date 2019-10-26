@@ -20,4 +20,5 @@ stages:
   - "Integration Tests"
   - name: "Deploy to Staging"
     if: branch = dev
+  - name: "Deploy to Production"
     if: branch = master
