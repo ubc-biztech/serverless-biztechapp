@@ -10,16 +10,14 @@ cache:
   - node_modules
 jobs:
   include:
-    - stage: Test
+    - stage: "Integration Tests"
       script: sls test
-    - stage: Staging
+    - stage: "Deploy to Staging"
       script: sls deploy
-    - stage: Production
-      script: sls deploy --stage prod
+    - stage: "Deploy to Production"
+      script: sls deploy
 stages:
-  - "Deploy to Staging"
-  - name: Staging
+  - "Integration Tests"
+  - name: "Deploy to Staging"
     if: branch = dev
-  - "Deploy to Production"
-  - name: Production
     if: branch = master
