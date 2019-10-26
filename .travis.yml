@@ -3,13 +3,13 @@ node_js:
 - node
 notifications:
   email: false
-install:
-- npm install -g serverless
 cache:
   directories:
   - node_modules
 jobs:
   include:
+    - stage: "Install"
+      script: npm install -g serverless
     - stage: "Integration Tests"
       script: sls test
     - stage: "Deploy to Staging"
@@ -17,6 +17,7 @@ jobs:
     - stage: "Deploy to Production"
       script: sls deploy
 stages:
+  - "Install"
   - "Integration Tests"
   - name: "Deploy to Staging"
     if: branch = dev
