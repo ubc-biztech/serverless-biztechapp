@@ -1,9 +1,25 @@
 language: node_js
 node_js:
 - node
+notifications:
+  email: false
+install:
+- npm install -g serverless
 cache:
   directories:
   - node_modules
-script:
-- npm install -g serverless
-- sls test
+jobs:
+  include:
+    - stage: Test
+      script: sls test
+    - stage: Staging
+      script: sls deploy
+    - stage: Production
+      script: sls deploy --stage prod
+stages:
+  - "Deploy to Staging"
+  - name: Staging
+    if: branch = dev
+  - "Deploy to Production"
+  - name: Production
+    if: branch = master
