@@ -32,6 +32,7 @@ functions:
           path: /hello
           method: get
           cors: true
+          private: true
   userCreate:
     handler: handlers/user.create
     events:
@@ -39,6 +40,7 @@ functions:
           path: users/create
           method: post
           cors: true
+          private: true
   userGet:
     handler: handlers/user.get
     events:
@@ -50,6 +52,7 @@ functions:
               querystrings:
                 id: true
           cors: true
+          private: true
   userUpdate:
     handler: handlers/user.update
     events:
@@ -61,6 +64,7 @@ functions:
               querystrings:
                 id: true
           cors: true
+          private: true
   eventCreate:
     handler: handlers/event.create
     events:
@@ -68,6 +72,7 @@ functions:
           path: events/create
           method: post
           cors: true
+          private: true
   eventGet:
     handler: handlers/event.get
     events:
@@ -75,6 +80,7 @@ functions:
           path: events/get
           method: get
           cors: true
+          private: true
   eventUpdate:
     handler: handlers/event.update
     events:
@@ -86,6 +92,7 @@ functions:
               querystrings:
                 id: true
           cors: true
+          private: true
   eventUserUpdate:
     handler: handlers/event.userUpdate
     events:
@@ -97,6 +104,7 @@ functions:
               querystrings:
                 id: true
           cors: true
+          private: true
   eventScan:
     handler: handlers/event.scan
     events:
@@ -108,6 +116,7 @@ functions:
               querystrings:
                 code: true
           cors: true
+          private: true
   registrationCreate:
     handler: handlers/registration.create
     events:
@@ -115,6 +124,7 @@ functions:
           path: registration/create
           method: post
           cors: true
+          private: true
   registrationQueryStudent:
     handler: handlers/registration.queryStudent
     events:
@@ -126,6 +136,7 @@ functions:
               querystrings:
                 id: true
           cors: true
+          private: true
   registrationScanEvent:
     handler: handlers/registration.scanEvent
     events:
@@ -137,3 +148,4 @@ functions:
               querystrings:
                 eventID: true
           cors: true
+          private: true
