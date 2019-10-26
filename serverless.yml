@@ -18,9 +18,9 @@ provider:
         - dynamodb:DeleteItem
         - dynamodb:UpdateItem
       Resource:
-        - "arn:aws:dynamodb:us-west-2:${env:ARNCODE}:table/biztechUsers"
-        - "arn:aws:dynamodb:us-west-2:${env:ARNCODE}:table/biztechEvents"
-        - "arn:aws:dynamodb:us-west-2:${env:ARNCODE}:table/biztechRegistration"
+        - "arn:aws:dynamodb:us-west-2:$432714361962:table/biztechUsers"
+        - "arn:aws:dynamodb:us-west-2:$432714361962:table/biztechEvents"
+        - "arn:aws:dynamodb:us-west-2:$432714361962:table/biztechRegistration"
 
 functions:
   hello:
