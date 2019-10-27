@@ -4,9 +4,11 @@ app: biztechapp
 
 provider:
   name: aws
+  stage: ${opt:stage, 'dev'}
+  apiKeys:
+    - ${opt:stage, 'dev'}-key
   runtime: nodejs10.x
   region: us-west-2
-  cfLogs: true
   iamRoleStatements:
     - Effect: Allow
       Action:
@@ -18,9 +20,9 @@ provider:
         - dynamodb:DeleteItem
         - dynamodb:UpdateItem
       Resource:
-        - "arn:aws:dynamodb:us-west-2:${ssm:serverlessarn}:table/biztechUsers"
-        - "arn:aws:dynamodb:us-west-2:${ssm:serverlessarn}:table/biztechEvents"
-        - "arn:aws:dynamodb:us-west-2:${ssm:serverlessarn}:table/biztechRegistration"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechUsers"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechEvents"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechRegistration"
 
 functions:
   hello:
@@ -30,6 +32,7 @@ functions:
           path: /hello
           method: get
           cors: true
+          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
   userCreate:
     handler: handlers/user.create
     events:
@@ -37,6 +40,7 @@ functions:
           path: users/create
           method: post
           cors: true
+          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
   userGet:
     handler: handlers/user.get
     events:
@@ -48,6 +52,7 @@ functions:
               querystrings:
                 id: true
           cors: true
+          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
   userUpdate:
     handler: handlers/user.update
     events:
@@ -59,6 +64,7 @@ functions:
               querystrings:
                 id: true
           cors: true
+          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
   eventCreate:
     handler: handlers/event.create
     events:
@@ -66,6 +72,7 @@ functions:
           path: events/create
           method: post
           cors: true
+          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
   eventGet:
     handler: handlers/event.get
     events:
@@ -73,6 +80,7 @@ functions:
           path: events/get
           method: get
           cors: true
+          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
   eventUpdate:
     handler: handlers/event.update
     events:
@@ -84,6 +92,7 @@ functions:
               querystrings:
                 id: true
           cors: true
+          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
   eventUserUpdate:
     handler: handlers/event.userUpdate
     events:
@@ -95,6 +104,7 @@ functions:
               querystrings:
                 id: true
           cors: true
+          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
   eventScan:
     handler: handlers/event.scan
     events:
@@ -106,6 +116,7 @@ functions:
               querystrings:
                 code: true
           cors: true
+          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
   registrationCreate:
     handler: handlers/registration.create
     events:
@@ -113,6 +124,7 @@ functions:
           path: registration/create
           method: post
           cors: true
+          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
   registrationQueryStudent:
     handler: handlers/registration.queryStudent
     events:
@@ -124,6 +136,7 @@ functions:
               querystrings:
                 id: true
           cors: true
+          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
   registrationScanEvent:
     handler: handlers/registration.scanEvent
     events:
@@ -135,3 +148,4 @@ functions:
               querystrings:
                 eventID: true
           cors: true
+          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}

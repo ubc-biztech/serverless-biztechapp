@@ -22,7 +22,7 @@ module.exports.create = async (event, ctx, callback) => {
           createdAt: timestamp,
           updatedAt: timestamp
       },
-      TableName: 'biztechUsers'
+      TableName: 'biztechUsers' + process.env.ENVIRONMENT
   };
 
   await docClient.put(params).promise()
@@ -45,7 +45,7 @@ module.exports.get = async (event, ctx, callback) => {
       Key: {
         id
       },
-      TableName: 'biztechUsers'
+      TableName: 'biztechUsers' + process.env.ENVIRONMENT
   };
 
   await docClient.get(params).promise()
@@ -106,7 +106,7 @@ module.exports.update = async (event, ctx, callback) => {
       Key: {
         id
       },
-      TableName: 'biztechUsers',
+      TableName: 'biztechUsers' + process.env.ENVIRONMENT,
       ExpressionAttributeValues: expressionAttributeValues,
       UpdateExpression: updateExpression,
       ReturnValues:"UPDATED_NEW"

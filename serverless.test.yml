@@ -1,0 +1,6 @@
+- name: responds with 200 and Yeet
+  endpoint: {function: hello}
+  response:
+    status: 200
+    body: 
+      message: "Yeet!"
