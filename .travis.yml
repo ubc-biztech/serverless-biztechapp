@@ -1,0 +1,24 @@
+language: node_js
+node_js:
+- node
+notifications:
+  email: false
+cache:
+  directories:
+  - node_modules
+jobs:
+  include:
+    - stage: "Install and run integration tests"
+      script:
+        - npm install serverless
+        - sls test
+    - stage: "Deploy to Staging"
+      script: sls deploy
+    - stage: "Deploy to Production"
+      script: sls deploy
+stages:
+  - "Install and run integration tests"
+  - name: "Deploy to Staging"
+    if: branch = dev
+  - name: "Deploy to Production"
+    if: branch = master
