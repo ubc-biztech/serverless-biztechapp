@@ -15,10 +15,10 @@ jobs:
     - stage: "Deploy to Staging"
       script: sls deploy
     - stage: "Deploy to Production"
-      script: sls deploy
+      script: sls deploy --stage prod
 stages:
   - "Install and run integration tests"
   - name: "Deploy to Staging"
     if: branch = dev
   - name: "Deploy to Production"
-    if: branch = master
+    if: (branch = master) AND (type = push)
