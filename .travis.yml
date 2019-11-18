@@ -13,7 +13,7 @@ jobs:
         - npm install serverless
         - sls test
     - stage: "Deploy to Staging"
-      script: sls deploy
+      script: sls deploy --conceal
     - stage: "Deploy to Production"
       script: sls deploy --stage prod
 stages:
