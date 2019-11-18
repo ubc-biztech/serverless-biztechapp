@@ -9,6 +9,9 @@ provider:
     - ${opt:stage, 'dev'}-key
   runtime: nodejs10.x
   region: us-west-2
+  cfLogs: true
+  environment:
+    ENVIRONMENT: ${file(./config.${self:provider.stage}.json):ENVIRONMENT}
   iamRoleStatements:
     - Effect: Allow
       Action:
