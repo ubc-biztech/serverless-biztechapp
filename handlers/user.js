@@ -89,52 +89,56 @@ module.exports.update = async (event, ctx, callback) => {
     TableName: 'biztechUsers' + process.env.ENVIRONMENT,
   };
 
-  await docClient.get(params).promise()
-    .then(result => {
-      const timestamp = new Date().getTime();
-      const id = parseInt(event.queryStringParameters.id, 10);
-      var updateExpression = 'set ';
-      var expressionAttributeValues = {};
+  async const updateDB = () => {
+    const timestamp = new Date().getTime();
+    const id = parseInt(event.queryStringParameters.id, 10);
+    var updateExpression = 'set ';
+    var expressionAttributeValues = {};
 
-      // loop through keys and create updateExpression string and
-      // expressionAttributeValues object
-      for (var key in data){
-        if(data.hasOwnProperty(key)) {
-          if (key != 'id'){
-            updateExpression += key + '\= :' + key + ',';
-            expressionAttributeValues[':' + key] = data[key];
-          }
+    // loop through keys and create updateExpression string and
+    // expressionAttributeValues object
+    for (var key in data){
+      if(data.hasOwnProperty(key)) {
+        if (key != 'id'){
+          updateExpression += key + '\= :' + key + ',';
+          expressionAttributeValues[':' + key] = data[key];
         }
       }
+    }
 
-      // update timestamp
-      updateExpression += "updatedAt = :updatedAt";
-      expressionAttributeValues[':updatedAt'] = timestamp;
+    // update timestamp
+    updateExpression += "updatedAt = :updatedAt";
+    expressionAttributeValues[':updatedAt'] = timestamp;
 
-      var params = {
-          Key: {
-            id
-          },
-          TableName: 'biztechUsers' + process.env.ENVIRONMENT,
-          ExpressionAttributeValues: expressionAttributeValues,
-          UpdateExpression: updateExpression,
-          ReturnValues:"UPDATED_NEW"
-      };
+    var params = {
+        Key: {
+          id
+        },
+        TableName: 'biztechUsers' + process.env.ENVIRONMENT,
+        ExpressionAttributeValues: expressionAttributeValues,
+        UpdateExpression: updateExpression,
+        ReturnValues:"UPDATED_NEW"
+    };
 
-      // call dynamoDb
-      await docClient.update(params).promise()
-        .then(result => {
-            const response = {
-              statusCode: 200,
-              body: JSON.stringify('Update succeeded')
-            };
-            callback(null, response);
-        })
-        .catch(error => {
-          console.error(error);
-          callback(new Error('Unable to update user.'));
-          return;
-        });
+    // call dynamoDb
+    await docClient.update(params).promise()
+      .then(result => {
+          const response = {
+            statusCode: 200,
+            body: JSON.stringify('Update succeeded')
+          };
+          callback(null, response);
+      })
+      .catch(error => {
+        console.error(error);
+        callback(new Error('Unable to update user.'));
+        return;
+      });
+  }
+
+  await docClient.get(params).promise()
+    .then(result => {
+        updateDB()
       })
       .catch(error => {
         console.error(error);
