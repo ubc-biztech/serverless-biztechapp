@@ -89,7 +89,7 @@ module.exports.update = async (event, ctx, callback) => {
     TableName: 'biztechEvents' + process.env.ENVIRONMENT,
   };
 
-  async const updateDB = () => {
+  async function updateDB() {
     const timestamp = new Date().getTime();
     var updateExpression = 'set ';
     var expressionAttributeValues = {};
