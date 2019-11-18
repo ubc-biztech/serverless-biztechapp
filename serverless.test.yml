@@ -1,6 +1,91 @@
-- name: responds with 200 and Yeet
+- name: default responds with 200 and Yeet
   endpoint: {function: hello}
   response:
     status: 200
     body: 
-      message: "Yeet!"
+      message: 'Yeet!'
+
+- name: user create returns created
+  endpoint:
+    method: POST
+    path: users/create
+  request:
+    body:
+      id: 144444
+      fname: test
+      lname: dude
+      faculty: Science
+  response:
+    status: 200
+    body:
+      message: 'Created!'
+
+- name: user create no ID returns 400
+  endpoint:
+    method: POST
+    path: users/create
+  request:
+    body:
+      fname: foo
+      lname: bar
+      email: foo
+      faculty: bar
+  response:
+    status: 400
+    body: "\"User ID not specified.\""
+
+- name: user get no ID returns 400
+  endpoint:
+    method: GET
+    path: users/get
+  response:
+    status: 400
+    body: "\"User ID not specified.\""
+
+- name: user get found returns 200
+  endpoint:
+    method: GET
+    path: users/get
+  request:
+    form:
+      id: 144444
+  response:
+    status: 200
+
+- name: user get not found returns 404
+  endpoint:
+    method: GET
+    path: users/get
+  request:
+    form:
+      id: 0
+  response:
+    status: 404
+    body: "\"User not found.\""
+
+- name: user update returns 200
+  endpoint:
+    method: POST
+    path: users/update
+  request:
+    body:
+      id: 144444
+      fname: updateTest
+      lname: dudeGotUpdated
+      faculty: Sauder
+  response:
+    status: 200
+    body: "\"Update succeeded.\""
+
+- name: user update no ID returns 400
+  endpoint:
+    method: POST
+    path: users/update
+  request:
+    body:
+      fname: badUpdateTest
+      lname: dudeNotUpdated
+      faculty: LFS
+  response:
+    status: 400
+    body: "\"User ID not specified.\""

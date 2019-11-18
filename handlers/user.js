@@ -7,6 +7,13 @@ module.exports.create = async (event, ctx, callback) => {
 
   const timestamp = new Date().getTime();
   const data = JSON.parse(event.body);
+
+  if (data.id == undefined) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify('User ID not specified.'),
+    };
+  }
   const id = parseInt(data.id, 10);
 
   var params = {
@@ -38,8 +45,15 @@ module.exports.create = async (event, ctx, callback) => {
 };
 
 module.exports.get = async (event, ctx, callback) => {
+  var queryString = event.queryStringParameters;
+  if (queryString == null || queryString.id == undefined) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify('User ID not specified.'),
+    };
+  }
 
-  var id = parseInt(event.queryStringParameters.id, 10);
+  var id = parseInt(queryString.id, 10);
 
   var params = {
       Key: {
@@ -55,7 +69,7 @@ module.exports.get = async (event, ctx, callback) => {
         console.log('User not found');
         const response = {
           statusCode: 404,
-          body: JSON.stringify('User not found')
+          body: JSON.stringify('User not found.')
         };
         callback(null, response);
 
@@ -81,7 +95,13 @@ module.exports.get = async (event, ctx, callback) => {
 module.exports.update = async (event, ctx, callback) => {
 
   const data = JSON.parse(event.body);
-  const id = parseInt(event.queryStringParameters.id, 10);
+  if (data.id == undefined) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify('User ID not specified.'),
+    };
+  }
+  const id = parseInt(data.id, 10);
 
   const params = {
     Key: { id },
