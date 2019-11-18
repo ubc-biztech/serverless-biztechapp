@@ -11,7 +11,7 @@ module.exports.create = async (event, ctx, callback) => {
       const response = {
         statusCode: 406,
         body: JSON.stringify({
-          message: 'Capac invalid, please provide valid number',
+          message: 'Capacity invalid, please provide valid number',
           params: params
         }, null, 2),
       };
@@ -23,7 +23,7 @@ module.exports.create = async (event, ctx, callback) => {
           id: data.id,
           ename: data.ename,
           date: data.date,
-          capac: data.capac,
+          capacity: data.capac,
           img: data.img,
           createdAt: timestamp,
           updatedAt: timestamp
@@ -81,54 +81,68 @@ module.exports.get = async (event, ctx, callback) => {
 module.exports.update = async (event, ctx, callback) => {
 
   const data = JSON.parse(event.body);
-  const timestamp = new Date().getTime();
 
-    var updateExpression = 'set ';
-    var expressionAttributeValues = {};
+  const params = {
+    Key: {
+      id: data.id
+    },
+    TableName: 'biztechEvents' + process.env.ENVIRONMENT,
+  };
 
-    // loop through keys and create updateExpression string and
-    // expressionAttributeValues object
-    for (var key in data){
-      if(data.hasOwnProperty(key)) {
-        if (key != 'id'){
-          updateExpression += key + '\= :' + key + ',';
-          expressionAttributeValues[':' + key] = data[key];
+  await docClient.get(params).promise()
+    .then(result => {
+      const timestamp = new Date().getTime();
+      var updateExpression = 'set ';
+      var expressionAttributeValues = {};
+
+      // loop through keys and create updateExpression string and
+      // expressionAttributeValues object
+      for (var key in data){
+        if(data.hasOwnProperty(key)) {
+          if (key != 'id'){
+            updateExpression += key + '\= :' + key + ',';
+            expressionAttributeValues[':' + key] = data[key];
+          }
         }
       }
-    }
 
-    // update timestamp
-    updateExpression += "updatedAt = :updatedAt";
-    expressionAttributeValues[':updatedAt'] = timestamp;
+      // update timestamp
+      updateExpression += "updatedAt = :updatedAt";
+      expressionAttributeValues[':updatedAt'] = timestamp;
 
-    var params = {
-        Key: {
-          id: data.id
-        },
-        TableName: 'biztechEvents' + process.env.ENVIRONMENT,
-        ExpressionAttributeValues: expressionAttributeValues,
-        UpdateExpression: updateExpression,
-        ReturnValues:"UPDATED_NEW"
-    };
+      var params = {
+          Key: {
+            id: data.id
+          },
+          TableName: 'biztechEvents' + process.env.ENVIRONMENT,
+          ExpressionAttributeValues: expressionAttributeValues,
+          UpdateExpression: updateExpression,
+          ReturnValues:"UPDATED_NEW"
+      };
 
-    // call dynamoDb
-    await docClient.update(params).promise()
-      .then(result => {
+      // call dynamoDb
+      await docClient.update(params).promise()
+        .then(result => {
+            const response = {
+              statusCode: 200,
+              body: JSON.stringify('Update succeeded')
+            };
+            callback(null, response);
+        })
+        .catch(error => {
+          console.error(error);
           const response = {
-            statusCode: 200,
-            body: JSON.stringify('Update succeeded')
+            statusCode: 500,
+            body: error
           };
           callback(null, response);
-      })
-      .catch(error => {
-        console.error(error);
-        const response = {
-          statusCode: 500,
-          body: error
-        };
-        callback(null, response);
-        return;
-      });
+          return;
+        });
+    })
+    .catch(error => {
+      console.error(error);
+      callback(new Error('Error getting event from database'));
+    })
 
 };
 
