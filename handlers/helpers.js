@@ -17,7 +17,7 @@ module.exports = {
         // loop through keys and create updateExpression string and
         // expressionAttributeValues object
         for (var key in obj){
-            if(data.hasOwnProperty(key)) {
+            if(obj.hasOwnProperty(key)) {
                 if (key != 'id'){
                     updateExpression += key + '\= :' + key + ',';
                     expressionAttributeValues[':' + key] = obj[key];
