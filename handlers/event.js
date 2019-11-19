@@ -82,67 +82,17 @@ module.exports.get = async (event, ctx, callback) => {
 module.exports.update = async (event, ctx, callback) => {
 
   const data = JSON.parse(event.body);
+  const id = event.queryStringParameters.id;
 
   const params = {
-    Key: {
-      id: event.queryStringParameters.id
-    },
+    Key: { id },
     TableName: 'biztechEvents' + process.env.ENVIRONMENT,
   };
-
-  async function updateDB() {
-    const timestamp = new Date().getTime();
-    var updateExpression = 'set ';
-    var expressionAttributeValues = {};
-
-    // loop through keys and create updateExpression string and
-    // expressionAttributeValues object
-    for (var key in data){
-      if(data.hasOwnProperty(key)) {
-        if (key != 'id'){
-          updateExpression += key + '\= :' + key + ',';
-          expressionAttributeValues[':' + key] = data[key];
-        }
-      }
-    }
-
-    // update timestamp
-    updateExpression += "updatedAt = :updatedAt";
-    expressionAttributeValues[':updatedAt'] = timestamp;
-
-    var params = {
-        Key: {
-          id: event.queryStringParameters.id
-        },
-        TableName: 'biztechEvents' + process.env.ENVIRONMENT,
-        ExpressionAttributeValues: expressionAttributeValues,
-        UpdateExpression: updateExpression,
-        ReturnValues:"UPDATED_NEW"
-    };
-
-    // call dynamoDb
-    return await docClient.update(params).promise()
-      .then(result => {
-          const response = {
-            statusCode: 200,
-            body: JSON.stringify('Update succeeded')
-          };
-          return response;
-      })
-      .catch(error => {
-        console.error(error);
-        const response = {
-          statusCode: 500,
-          body: error
-        };
-        return response;
-      });
-  }
 
   await docClient.get(params).promise()
     .then(async(result) => {
       if (!helpers.isEmpty(result))
-        return callback(null, await updateDB());
+        return callback(null, await helpers.updateDB(id, data, 'biztechEvents'));
       else {
         const response = {
           statusCode: 404,

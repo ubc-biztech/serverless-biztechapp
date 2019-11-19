@@ -84,65 +84,14 @@ module.exports.update = async (event, ctx, callback) => {
   const id = parseInt(event.queryStringParameters.id, 10);
 
   const params = {
-    Key: {
-      id
-    },
+    Key: { id },
     TableName: 'biztechUsers' + process.env.ENVIRONMENT,
   };
-
-  async function updateDB() {
-    const timestamp = new Date().getTime();
-    var updateExpression = 'set ';
-    var expressionAttributeValues = {};
-
-    // loop through keys and create updateExpression string and
-    // expressionAttributeValues object
-    for (var key in data){
-      if(data.hasOwnProperty(key)) {
-        if (key != 'id'){
-          updateExpression += key + '\= :' + key + ',';
-          expressionAttributeValues[':' + key] = data[key];
-        }
-      }
-    }
-
-    // update timestamp
-    updateExpression += "updatedAt = :updatedAt";
-    expressionAttributeValues[':updatedAt'] = timestamp;
-
-    var params = {
-        Key: {
-          id
-        },
-        TableName: 'biztechUsers' + process.env.ENVIRONMENT,
-        ExpressionAttributeValues: expressionAttributeValues,
-        UpdateExpression: updateExpression,
-        ReturnValues:"UPDATED_NEW"
-    };
-
-    // call dynamoDb
-    return await docClient.update(params).promise()
-      .then(result => {
-          const response = {
-            statusCode: 200,
-            body: JSON.stringify('Update succeeded')
-          };
-          return response;
-      })
-      .catch(error => {
-        console.error(error);
-        const response = {
-          statusCode: 500,
-          body: error
-        };
-        return response;
-      });
-  }
 
   await docClient.get(params).promise()
     .then(async(result) => {
       if (!helpers.isEmpty(result))
-        return callback(null, await updateDB());
+        return callback(null, await helpers.updateDB(id, data, 'biztechUsers'));
       else {
         const response = {
           statusCode: 404,
