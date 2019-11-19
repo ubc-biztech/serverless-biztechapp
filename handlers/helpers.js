@@ -1,3 +1,6 @@
+const AWS = require('aws-sdk');
+const docClient = new AWS.DynamoDB.DocumentClient();
+
 module.exports = {    
     isEmpty: function(obj) {
         return Object.keys(obj).length === 0;
