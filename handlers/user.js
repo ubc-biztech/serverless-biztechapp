@@ -1,7 +1,7 @@
 'use strict';
-
 const AWS = require('aws-sdk');
 const docClient = new AWS.DynamoDB.DocumentClient();
+const helpers = require('./helpers')
 
 module.exports.create = async (event, ctx, callback) => {
 
@@ -81,17 +81,17 @@ module.exports.get = async (event, ctx, callback) => {
 module.exports.update = async (event, ctx, callback) => {
 
   const data = JSON.parse(event.body);
+  const id = parseInt(event.queryStringParameters.id, 10);
 
   const params = {
     Key: {
-      id: data.id
+      id
     },
     TableName: 'biztechUsers' + process.env.ENVIRONMENT,
   };
 
   async function updateDB() {
     const timestamp = new Date().getTime();
-    const id = parseInt(event.queryStringParameters.id, 10);
     var updateExpression = 'set ';
     var expressionAttributeValues = {};
 
@@ -121,28 +121,39 @@ module.exports.update = async (event, ctx, callback) => {
     };
 
     // call dynamoDb
-    await docClient.update(params).promise()
+    return await docClient.update(params).promise()
       .then(result => {
           const response = {
             statusCode: 200,
             body: JSON.stringify('Update succeeded')
           };
-          callback(null, response);
+          return response;
       })
       .catch(error => {
         console.error(error);
-        callback(new Error('Unable to update user.'));
-        return;
+        const response = {
+          statusCode: 500,
+          body: error
+        };
+        return response;
       });
   }
 
   await docClient.get(params).promise()
-    .then(result => {
-        updateDB()
-      })
-      .catch(error => {
-        console.error(error);
-        callback(new Error('Error getting user from database'));
-      })
+    .then(async(result) => {
+      if (!helpers.isEmpty(result))
+        return callback(null, await updateDB());
+      else {
+        const response = {
+          statusCode: 404,
+          body: JSON.stringify('User not found')
+        };
+        callback(null, response);
+      }
+    })
+    .catch(error => {
+      console.error(error);
+      callback(new Error('Could not get user from database'));
+    })
 
 };

@@ -1,6 +1,7 @@
 'use strict';
 const AWS = require('aws-sdk');
 const docClient = new AWS.DynamoDB.DocumentClient();
+const helpers = require('./helpers')
 
 module.exports.create = async (event, ctx, callback) => {
 
@@ -84,7 +85,7 @@ module.exports.update = async (event, ctx, callback) => {
 
   const params = {
     Key: {
-      id: data.id
+      id: event.queryStringParameters.id
     },
     TableName: 'biztechEvents' + process.env.ENVIRONMENT,
   };
@@ -111,7 +112,7 @@ module.exports.update = async (event, ctx, callback) => {
 
     var params = {
         Key: {
-          id: data.id
+          id: event.queryStringParameters.id
         },
         TableName: 'biztechEvents' + process.env.ENVIRONMENT,
         ExpressionAttributeValues: expressionAttributeValues,
@@ -120,13 +121,13 @@ module.exports.update = async (event, ctx, callback) => {
     };
 
     // call dynamoDb
-    await docClient.update(params).promise()
+    return await docClient.update(params).promise()
       .then(result => {
           const response = {
             statusCode: 200,
             body: JSON.stringify('Update succeeded')
           };
-          callback(null, response);
+          return response;
       })
       .catch(error => {
         console.error(error);
@@ -134,18 +135,25 @@ module.exports.update = async (event, ctx, callback) => {
           statusCode: 500,
           body: error
         };
-        callback(null, response);
-        return;
+        return response;
       });
   }
 
   await docClient.get(params).promise()
-    .then(result => {
-      updateDB()
+    .then(async(result) => {
+      if (!helpers.isEmpty(result))
+        return callback(null, await updateDB());
+      else {
+        const response = {
+          statusCode: 404,
+          body: JSON.stringify('Event not found')
+        };
+        callback(null, response);
+      }
     })
     .catch(error => {
       console.error(error);
-      callback(new Error('Error getting event from database'));
+      callback(new Error('Could not get event from database'));
     })
 
 };
