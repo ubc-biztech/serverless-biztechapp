@@ -1,6 +1,7 @@
 'use strict';
 const AWS = require('aws-sdk');
 const docClient = new AWS.DynamoDB.DocumentClient();
+const helpers = require('./helpers')
 
 module.exports.create = async (event, ctx, callback) => {
 
@@ -11,7 +12,7 @@ module.exports.create = async (event, ctx, callback) => {
       const response = {
         statusCode: 406,
         body: JSON.stringify({
-          message: 'Capac invalid, please provide valid number',
+          message: 'Capacity invalid, please provide valid number',
           params: params
         }, null, 2),
       };
@@ -23,7 +24,7 @@ module.exports.create = async (event, ctx, callback) => {
           id: data.id,
           ename: data.ename,
           date: data.date,
-          capac: data.capac,
+          capacity: data.capac,
           img: data.img,
           createdAt: timestamp,
           updatedAt: timestamp
@@ -81,54 +82,29 @@ module.exports.get = async (event, ctx, callback) => {
 module.exports.update = async (event, ctx, callback) => {
 
   const data = JSON.parse(event.body);
-  const timestamp = new Date().getTime();
+  const id = event.queryStringParameters.id;
 
-    var updateExpression = 'set ';
-    var expressionAttributeValues = {};
+  const params = {
+    Key: { id },
+    TableName: 'biztechEvents' + process.env.ENVIRONMENT,
+  };
 
-    // loop through keys and create updateExpression string and
-    // expressionAttributeValues object
-    for (var key in data){
-      if(data.hasOwnProperty(key)) {
-        if (key != 'id'){
-          updateExpression += key + '\= :' + key + ',';
-          expressionAttributeValues[':' + key] = data[key];
-        }
-      }
-    }
-
-    // update timestamp
-    updateExpression += "updatedAt = :updatedAt";
-    expressionAttributeValues[':updatedAt'] = timestamp;
-
-    var params = {
-        Key: {
-          id: data.id
-        },
-        TableName: 'biztechEvents' + process.env.ENVIRONMENT,
-        ExpressionAttributeValues: expressionAttributeValues,
-        UpdateExpression: updateExpression,
-        ReturnValues:"UPDATED_NEW"
-    };
-
-    // call dynamoDb
-    await docClient.update(params).promise()
-      .then(result => {
-          const response = {
-            statusCode: 200,
-            body: JSON.stringify('Update succeeded')
-          };
-          callback(null, response);
-      })
-      .catch(error => {
-        console.error(error);
+  await docClient.get(params).promise()
+    .then(async(result) => {
+      if (!helpers.isEmpty(result))
+        return callback(null, await helpers.updateDB(id, data, 'biztechEvents'));
+      else {
         const response = {
-          statusCode: 500,
-          body: error
+          statusCode: 404,
+          body: JSON.stringify('Event not found')
         };
         callback(null, response);
-        return;
-      });
+      }
+    })
+    .catch(error => {
+      console.error(error);
+      callback(new Error('Could not get event from database'));
+    })
 
 };
 
