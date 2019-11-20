@@ -6,10 +6,13 @@ module.exports = {
         return Object.keys(obj).length === 0;
     },
 
-    idError: function(type) {
+    idError: function(type, data) {
         return {
-            statusCode: 400,
-            body: JSON.stringify(type + ' ID not specified.'),
+            statusCode: 406,
+            body: JSON.stringify({
+               message: type + ' ID not specified.',
+               data: data
+            }, null, 2),
           };
     },
 

@@ -5,7 +5,7 @@
     body: 
       message: 'Yeet!'
 
-- name: user create returns created
+- name: user create returns 200
   endpoint:
     method: POST
     path: users/create
@@ -20,7 +20,7 @@
     body:
       message: 'Created!'
 
-- name: user create no ID returns 400
+- name: user create no ID returns 406
   endpoint:
     method: POST
     path: users/create
@@ -31,16 +31,24 @@
       email: foo
       faculty: bar
   response:
-    status: 400
-    body: "\"User ID not specified.\""
+    status: 406
+    body:
+      message: "User ID not specified."
+      data:
+        fname: foo
+        lname: bar
+        email: foo
+        faculty: bar
 
-- name: user get no ID returns 400
+- name: user get no ID returns 406
   endpoint:
     method: GET
     path: users/get
   response:
-    status: 400
-    body: "\"User ID not specified.\""
+    status: 406
+    body:
+      message: "User ID not specified."
+      data: null
 
 - name: user get found returns 200
   endpoint:
@@ -51,6 +59,11 @@
       id: 144444
   response:
     status: 200
+    body:
+      id: 144444
+      fname: test
+      lname: dude
+      faculty: Science
 
 - name: user get not found returns 404
   endpoint:
@@ -77,7 +90,22 @@
     status: 200
     body: "\"Update succeeded.\""
 
-- name: user update no ID returns 400
+- name: user get update info returns 200
+  endpoint:
+    method: GET
+    path: users/get
+  request:
+    form:
+      id: 144444
+  response:
+    status: 200
+    body:
+      id: 144444
+      fname: updateTest
+      lname: dudeGotUpdated
+      faculty: Sauder
+
+- name: user update no ID returns 406
   endpoint:
     method: POST
     path: users/update
@@ -87,8 +115,9 @@
       lname: dudeNotUpdated
       faculty: LFS
   response:
-    status: 400
-    body: "\"User ID not specified.\""
+    status: 406
+    body:
+      message: "User ID not specified."
 
 - name: user update not found returns 404
   endpoint:
@@ -102,3 +131,129 @@
   response:
     status: 404
     body: "\"User not found.\""
+
+- name: event create returns 200
+  endpoint:
+    method: POST
+    path: events/create
+  request:
+    body:
+      id: testevent
+      ename: test
+      capac: 2000000
+      img: yup
+      code: ripp
+  response:
+    status: 200
+    body:
+      message: 'Event Created!'
+
+- name: event create no ID returns 406
+  endpoint:
+    method: POST
+    path: events/create
+  request:
+    body:
+      ename: test
+      capac: 2000000
+      img: yup
+  response:
+    status: 406
+    body:
+      message: 'Event ID not specified.'
+      data:
+        ename: test
+        capac: 2000000
+        img: yup
+
+- name: event create no capac returns 406
+  endpoint:
+    method: POST
+    path: events/create
+  request:
+    body:
+      id: testevent
+      ename: test
+      img: yup
+      code: test
+  response:
+    status: 406
+    body:
+      message: 'Capacity invalid, please provide valid number.'
+      data:
+        id: testevent
+        ename: test
+        img: yup
+
+- name: event get returns 200
+  endpoint:
+    method: GET
+    path: events/get
+  response:
+    status: 200
+
+- name: event update returns 200
+  endpoint:
+    method: POST
+    path: events/update
+  request:
+    body:
+      id: testevent
+      ename: testUpdated
+      capac: 7
+      img: nope
+      code: test
+  response:
+    status: 200
+    body: "\"Update succeeded.\""
+
+- name: event update not found returns 404
+  endpoint:
+    method: POST
+    path: events/update
+  request:
+    body:
+      id: nonexistanttestidwoo
+      ename: testUpdated
+      capac: 7
+      img: nope
+      code: test
+  response:
+    status: 404
+    body: "\"Event not found.\""
+
+- name: event update no ID returns 406
+  endpoint:
+    method: POST
+    path: events/update
+  request:
+    body:
+      ename: testUpdated
+  response:
+    status: 406
+    body:
+      message: 'Event ID not specified.'
+
+- name: event scan match returns 200
+  endpoint:
+    method: GET
+    path: events/scan
+  request:
+    form:
+      code: test
+  response:
+    status: 200
+    body:
+      size: 1
+
+- name: event scan no match returns 200
+  endpoint:
+    method: GET
+    path: events/scan
+  request:
+    form:
+      code: -1
+  response:
+    status: 200
+    body:
+      size: 0

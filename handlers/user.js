@@ -8,8 +8,9 @@ module.exports.create = async (event, ctx, callback) => {
   const timestamp = new Date().getTime();
   const data = JSON.parse(event.body);
 
-  if (data.id == undefined) {
-    return helpers.idError('User');
+  if (!data.hasOwnProperty('id')) {
+    callback(null, helpers.idError('User', data));
+    return;
   }
   const id = parseInt(data.id, 10);
 
@@ -43,8 +44,9 @@ module.exports.create = async (event, ctx, callback) => {
 
 module.exports.get = async (event, ctx, callback) => {
   var queryString = event.queryStringParameters;
-  if (queryString == null || queryString.id == undefined) {
-    return helpers.idError('User');
+  if (queryString == null || !queryString.hasOwnProperty('id')) {
+    callback(null, helpers.idError('User', queryString));
+    return;
   }
 
   var id = parseInt(queryString.id, 10);
@@ -89,8 +91,9 @@ module.exports.get = async (event, ctx, callback) => {
 module.exports.update = async (event, ctx, callback) => {
 
   const data = JSON.parse(event.body);
-  if (data.id == undefined) {
-    return helpers.idError('User');
+  if (!data.hasOwnProperty('id')) {
+    callback(null, helpers.idError('User', data));
+    return;
   }
   const id = parseInt(data.id, 10);
 
@@ -113,7 +116,7 @@ module.exports.update = async (event, ctx, callback) => {
     })
     .catch(error => {
       console.error(error);
-      callback(new Error('Could not get user from database'));
+      callback(new Error('Could not get user from database.'));
     })
 
 };
