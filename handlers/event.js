@@ -51,7 +51,6 @@ module.exports.create = async (event, ctx, callback) => {
 
 };
 
-
 module.exports.get = async (event, ctx, callback) => {
 
   var params = {
