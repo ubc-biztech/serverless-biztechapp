@@ -6,6 +6,13 @@ module.exports = {
         return Object.keys(obj).length === 0;
     },
 
+    idError: function(type) {
+        return {
+            statusCode: 400,
+            body: JSON.stringify(type + ' ID not specified.'),
+          };
+    },
+
     /**
      * 
      * @param {*} id - String or Integer item ID
@@ -45,7 +52,7 @@ module.exports = {
         .then(result => {
             const response = {
                 statusCode: 200,
-                body: JSON.stringify('Update succeeded')
+                body: JSON.stringify('Update succeeded.')
             };
             return response;
         })

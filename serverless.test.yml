@@ -89,3 +89,16 @@
   response:
     status: 400
     body: "\"User ID not specified.\""
+
+- name: user update not found returns 404
+  endpoint:
+    method: POST
+    path: users/update
+  request:
+    body:
+      id: -20
+      fname: badUpdateTest
+      lname: dudeNotUpdated
+  response:
+    status: 404
+    body: "\"User not found.\""

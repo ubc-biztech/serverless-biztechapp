@@ -9,10 +9,7 @@ module.exports.create = async (event, ctx, callback) => {
   const data = JSON.parse(event.body);
 
   if (data.id == undefined) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify('User ID not specified.'),
-    };
+    return helpers.idError('User');
   }
   const id = parseInt(data.id, 10);
 
@@ -47,10 +44,7 @@ module.exports.create = async (event, ctx, callback) => {
 module.exports.get = async (event, ctx, callback) => {
   var queryString = event.queryStringParameters;
   if (queryString == null || queryString.id == undefined) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify('User ID not specified.'),
-    };
+    return helpers.idError('User');
   }
 
   var id = parseInt(queryString.id, 10);
@@ -96,10 +90,7 @@ module.exports.update = async (event, ctx, callback) => {
 
   const data = JSON.parse(event.body);
   if (data.id == undefined) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify('User ID not specified.'),
-    };
+    return helpers.idError('User');
   }
   const id = parseInt(data.id, 10);
 
@@ -115,7 +106,7 @@ module.exports.update = async (event, ctx, callback) => {
       else {
         const response = {
           statusCode: 404,
-          body: JSON.stringify('User not found')
+          body: JSON.stringify('User not found.')
         };
         callback(null, response);
       }
