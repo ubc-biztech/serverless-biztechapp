@@ -257,3 +257,124 @@
     status: 200
     body:
       size: 0
+
+- name: registration create returns 200
+  endpoint:
+    method: POST
+    path: registration/create
+  request:
+    body:
+      eventID: testevent
+      studentID: 144444
+      status: registered
+  response:
+    status: 200
+    body:
+      message: 'Update succeeded.'
+
+- name: registration create no studentID returns 406
+  endpoint:
+    method: POST
+    path: registration/create
+  request:
+    body:
+      eventID: testevent
+      status: registered
+  response:
+    status: 406
+    body:
+      message: 'Registration student ID not specified.'
+
+- name: registration create no eventID returns 406
+  endpoint:
+    method: POST
+    path: registration/create
+  request:
+    body:
+      studentID: 144444
+      status: registered
+  response:
+    status: 406
+    body:
+      message: 'Registration event ID not specified.'
+
+- name: registration create no status returns 406
+  endpoint:
+    method: POST
+    path: registration/create
+  request:
+    body:
+      eventID: testevent
+      studentID: 144444
+  response:
+    status: 406
+    body:
+      message: 'Status not specified.'
+
+- name: registration queryStudent returns 200
+  endpoint:
+    method: GET
+    path: registration/queryStudent
+  request:
+    form:
+      id: 144444
+  response:
+    status: 200
+    body:
+      size: 1
+
+- name: registration queryStudent no match returns 200
+  endpoint:
+    method: GET
+    path: registration/queryStudent
+  request:
+    form:
+      id: -1
+  response:
+    status: 200
+    body:
+      size: 0
+
+- name: registration queryStudent no ID returns 406
+  endpoint:
+    method: GET
+    path: registration/queryStudent
+  request:
+    form:
+  response:
+    status: 406
+    message: 'Student ID not specified.'
+
+- name: registration scanEvent returns 200
+  endpoint:
+    method: GET
+    path: registration/scanEvent
+  request:
+    form:
+      eventID: testevent
+  response:
+    status: 200
+    body:
+      size: 1
+
+- name: registration scanEvent no match returns 200
+  endpoint:
+    method: GET
+    path: registration/scanEvent
+  request:
+    form:
+      eventID: nonexistanttestidwoo
+  response:
+    status: 200
+    body:
+      size: 0
+
+- name: registration scanEvent no ID returns 406
+  endpoint:
+    method: GET
+    path: registration/scanEvent
+  request:
+    form:
+  response:
+    status: 406
+    message: 'Event ID not specified.'

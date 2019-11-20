@@ -25,7 +25,7 @@ module.exports.create = async (event, ctx, callback) => {
       return;
   }
 
-  var params = {
+  const params = {
       Item: {
           id: data.id,
           ename: data.ename,
@@ -61,13 +61,13 @@ module.exports.create = async (event, ctx, callback) => {
 
 module.exports.get = async (event, ctx, callback) => {
 
-  var params = {
+  const params = {
       TableName: 'biztechEvents' + process.env.ENVIRONMENT
   };
 
   await docClient.scan(params).promise()
     .then(result => {
-      var events = result.Items
+      const events = result.Items
       const response = {
         statusCode: 200,
         headers: {
@@ -138,8 +138,8 @@ module.exports.scan = async (event, ctx, callback) => {
   await docClient.scan(params).promise()
     .then(result => {
       console.log('Scan success.');
-      var data = result.Items;
-      var response = {
+      const data = result.Items;
+      const response = {
         statusCode: 200,
         body: JSON.stringify({
           size: data.length,

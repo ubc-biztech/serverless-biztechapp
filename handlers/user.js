@@ -14,7 +14,7 @@ module.exports.create = async (event, ctx, callback) => {
   }
   const id = parseInt(data.id, 10);
 
-  var params = {
+  const params = {
       Item: {
           id,
           fname: data.fname,
@@ -43,15 +43,15 @@ module.exports.create = async (event, ctx, callback) => {
 };
 
 module.exports.get = async (event, ctx, callback) => {
-  var queryString = event.queryStringParameters;
+  const queryString = event.queryStringParameters;
   if (queryString == null || !queryString.hasOwnProperty('id')) {
     callback(null, helpers.idError('User', queryString));
     return;
   }
 
-  var id = parseInt(queryString.id, 10);
+  const id = parseInt(queryString.id, 10);
 
-  var params = {
+  const params = {
       Key: {
         id
       },
