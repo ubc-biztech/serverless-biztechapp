@@ -1,5 +1,4 @@
 'use strict';
-
 const AWS = require('aws-sdk');
 const docClient = new AWS.DynamoDB.DocumentClient();
 
@@ -22,34 +21,9 @@ module.exports.create = async (event, ctx, callback) => {
 
   await docClient.put(params).promise()
 
-  // Update Event count
-  let updateExpression = 'set ';
-
-  if (data.status == 'cancelled') {
-      updateExpression += 'registeredNum \= registeredNum - :incr,';
-  } else {
-      const num = data.status + 'Num';
-      updateExpression +=  num + ' \= ' + num + ' \+ :incr,';
-  }
-
-  let expressionAttributeValues = {':incr': 1};
-
   // Update timestamp
   updateExpression += "updatedAt = :updatedAt";
   expressionAttributeValues[':updatedAt'] = timestamp;
-
-  // Log the update expression
-  console.log(updateExpression);
-
-  const eventParams = {
-    Key: {
-      id: data.eventID
-    },
-    TableName: 'biztechEvents' + process.env.ENVIRONMENT,
-    ExpressionAttributeValues: expressionAttributeValues,
-    UpdateExpression: updateExpression,
-    ReturnValues:"UPDATED_NEW"
-  };
 
   await docClient.update(eventParams).promise()
   .then(result => {
