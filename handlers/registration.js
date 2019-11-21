@@ -7,7 +7,7 @@ module.exports.create = async (event, ctx, callback) => {
 
   const timestamp = new Date().getTime();
   const data = JSON.parse(event.body);
-  const studentID = parseInt(data.studentID, 10);
+  const id = parseInt(event.queryStringParameters.id, 10);
   const eventID = data.eventID;
   let registrationStatus = data.registrationStatus;
 
@@ -36,7 +36,7 @@ module.exports.create = async (event, ctx, callback) => {
 
     var params = {
       Key: {
-        id: studentID,
+        id,
         eventID
       },
       TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
