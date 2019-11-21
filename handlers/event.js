@@ -81,6 +81,20 @@ module.exports.get = async (event, ctx, callback) => {
 
 };
 
+module.exports.count = async (event, ctx, callback) => {
+
+  const id = event.queryStringParameters.id;
+  const counts = await helpers.getEventCounts(id)
+
+  const response = {
+    statusCode: 200,
+    body: JSON.stringify(counts)
+  };
+
+  callback(null, response);
+
+}
+
 module.exports.update = async (event, ctx, callback) => {
 
   const data = JSON.parse(event.body);

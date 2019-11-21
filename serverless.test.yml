@@ -4,3 +4,12 @@
     status: 200
     body: 
       message: "Yeet!"
+      
+      
+- name: event count with 200
+  endpoint: {function: eventCount}
+  request:
+    form:
+      id: bp
+  response:
+    status: 200

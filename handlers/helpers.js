@@ -93,7 +93,7 @@ module.exports = {
                 }
 
                 result.Items.forEach(item => {
-                    switch(item.status){
+                    switch(item.registrationStatus){
                         case 'registered':
                             counts.registeredCount++
                             break
