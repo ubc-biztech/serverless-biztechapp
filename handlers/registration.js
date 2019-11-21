@@ -1,51 +1,70 @@
 'use strict';
 const AWS = require('aws-sdk');
 const docClient = new AWS.DynamoDB.DocumentClient();
+const helpers = require('./helpers')
 
 module.exports.create = async (event, ctx, callback) => {
 
   const timestamp = new Date().getTime();
   const data = JSON.parse(event.body);
   const studentID = parseInt(data.studentID, 10);
+  const eventID = data.eventID;
+  let registrationStatus = data.registrationStatus;
 
-  const params = {
-      Item: {
-          studentID,
-          eventID: data.eventID,
-          status: data.status,
-          createdAt: timestamp,
-          updatedAt: timestamp
-      },
-      TableName: 'biztechRegistration' + process.env.ENVIRONMENT
-  };
+  const eventParams = {
+    Key: { id: eventID },
+    TableName: 'biztechEvents' + process.env.ENVIRONMENT
+  }
 
-  await docClient.put(params).promise()
-
-  // Update timestamp
-  updateExpression += "updatedAt = :updatedAt";
-  expressionAttributeValues[':updatedAt'] = timestamp;
-
-  await docClient.update(eventParams).promise()
-  .then(result => {
-      const response = {
-        statusCode: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Credentials': true,
-        },
-        body: JSON.stringify('Update succeeded')
-      };
-      callback(null, response);
-  })
-  .catch(error => {
-    console.error(error);
-    const response = {
-      statusCode: 500,
-      body: error
+  await docClient.get(eventParams).promise()
+    .then(async(event) => {
+      const counts = await helpers.getEventCounts(eventID)
+      if (counts.registeredCount >= event.capac){
+        registrationStatus = 'waitlist'
+      }
+    })
+    
+    const updateObject = {
+      registrationStatus,
+      createdAt: timestamp
     };
-    callback(null, response);
-    return;
-  });
+
+    const {
+      updateExpression,
+      expressionAttributeValues
+    } = helpers.createUpdateExpression(updateObject)
+
+    var params = {
+      Key: {
+        id: studentID,
+        eventID
+      },
+      TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
+      ExpressionAttributeValues: expressionAttributeValues,
+      UpdateExpression: updateExpression,
+      ReturnValues:"UPDATED_NEW"
+    };
+
+    // call dynamoDb
+    await docClient.update(params).promise()
+      .then(result => {
+        const response = {
+          statusCode: 200,
+          body: JSON.stringify({
+            message: 'Update succeeded',
+            registrationStatus
+            })
+        };
+        callback(null, response)
+      })
+      .catch(error => {
+        console.error(error);
+        const response = {
+        statusCode: 500,
+        body: error
+        };
+        callback(null, response)
+      });
   
 };
 

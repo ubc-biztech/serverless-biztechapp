@@ -6,22 +6,16 @@ module.exports = {
         return Object.keys(obj).length === 0;
     },
 
-    /**
-     * 
-     * @param {*} id - String or Integer item ID
-     * @param {Object} obj - object containing key value paris
-     * @param {String} table - name of table, ie 'biztechUsers'
-     */
-    updateDB: async function(id, obj, table) {        
-        var updateExpression = 'set ';
-        var expressionAttributeValues = {};
-
-        // TODO: Add a filter for valid object keys
+    createUpdateExpression: function(obj) {
+        let updateExpression = 'set ';
+        let expressionAttributeValues = {};
+        
         // loop through keys and create updateExpression string and
         // expressionAttributeValues object
         for (var key in obj){
+            // TODO: Add a filter for valid object keys
             if(obj.hasOwnProperty(key)) {
-                if (key != 'id'){
+                if (key != 'id' && key != 'createdAt'){
                     updateExpression += key + '\= :' + key + ',';
                     expressionAttributeValues[':' + key] = obj[key];
                 }
@@ -31,6 +25,22 @@ module.exports = {
         const timestamp = new Date().getTime();
         updateExpression += "updatedAt = :updatedAt";
         expressionAttributeValues[':updatedAt'] = timestamp;
+    
+        return {
+            updateExpression,
+            expressionAttributeValues
+        }
+    },
+
+    /**
+     * 
+     * @param {*} id - String or Number item ID
+     * @param {Object} obj - object containing key value paris
+     * @param {String} table - name of table, ie 'biztechUsers'
+     */
+    updateDB: async function(id, obj, table) {
+
+        const { updateExpression, expressionAttributeValues } = this.createUpdateExpression(obj)
 
         var params = {
             Key: { id },
