@@ -5,7 +5,7 @@ const helpers = require('./helpers')
 
 module.exports.create = async (event, ctx, callback) => {
 
-  const timestamp = new Date().getTime();
+  // TODO: merge Jacques PR for checking required fields
   const data = JSON.parse(event.body);
   const id = parseInt(event.queryStringParameters.id, 10);
   const eventID = data.eventID;
@@ -15,7 +15,7 @@ module.exports.create = async (event, ctx, callback) => {
     Key: { id: eventID },
     TableName: 'biztechEvents' + process.env.ENVIRONMENT
   }
-
+  // Check if the event is full
   await docClient.get(eventParams).promise()
     .then(async(event) => {
       const counts = await helpers.getEventCounts(eventID)
@@ -24,16 +24,14 @@ module.exports.create = async (event, ctx, callback) => {
       }
     })
     
-    const updateObject = {
-      registrationStatus,
-      createdAt: timestamp
-    };
+    const updateObject = { registrationStatus };
 
     const {
       updateExpression,
       expressionAttributeValues
     } = helpers.createUpdateExpression(updateObject)
 
+    // Because biztechRegistration table has a sort key we cannot use updateDB()
     var params = {
       Key: {
         id,
