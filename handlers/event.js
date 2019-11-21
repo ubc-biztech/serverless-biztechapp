@@ -58,8 +58,11 @@ module.exports.get = async (event, ctx, callback) => {
   };
 
   await docClient.scan(params).promise()
-    .then(result => {
+    .then(async(result) => {
       var events = result.Items
+      for (const event of events) {
+          event.counts = await helpers.getEventCounts(event.id)
+        }
       const response = {
         statusCode: 200,
         headers: {
