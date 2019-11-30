@@ -9,20 +9,13 @@ module.exports.create = async (event, ctx, callback) => {
   const data = JSON.parse(event.body);
 
   if (!data.hasOwnProperty('id')) {
-    callback(null, helpers.idError('Event', data));
+    callback(null, helpers.inputError('Event ID not specified.', data));
     return;
   }
 
   if (data.capac == null || isNaN(data.capac) ){
-      const response = {
-        statusCode: 406,
-        body: JSON.stringify({
-          message: 'Capacity invalid, please provide valid number.',
-          data: data
-        }, null, 2),
-      };
-      callback(null, response);
-      return;
+    callback(null, helpers.inputError('Capacity invalid, please provide valid number.', data));
+    return;
   }
 
   const params = {
@@ -91,7 +84,7 @@ module.exports.update = async (event, ctx, callback) => {
   const data = JSON.parse(event.body);
 
   if (!data.hasOwnProperty('id')) {
-    callback(null, helpers.idError('Event', data));
+    callback(null, helpers.inputError('Event ID not specified.', data));
     return;
   }
   const id = data.id;

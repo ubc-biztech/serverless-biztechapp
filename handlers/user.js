@@ -9,7 +9,7 @@ module.exports.create = async (event, ctx, callback) => {
   const data = JSON.parse(event.body);
 
   if (!data.hasOwnProperty('id')) {
-    callback(null, helpers.idError('User', data));
+    callback(null, helpers.inputError('User ID not specified.', data));
     return;
   }
   const id = parseInt(data.id, 10);
@@ -45,7 +45,7 @@ module.exports.create = async (event, ctx, callback) => {
 module.exports.get = async (event, ctx, callback) => {
   const queryString = event.queryStringParameters;
   if (queryString == null || !queryString.hasOwnProperty('id')) {
-    callback(null, helpers.idError('User', queryString));
+    callback(null, helpers.inputError('User ID not specified.', queryString));
     return;
   }
 
@@ -92,7 +92,7 @@ module.exports.update = async (event, ctx, callback) => {
 
   const data = JSON.parse(event.body);
   if (!data.hasOwnProperty('id')) {
-    callback(null, helpers.idError('User', data));
+    callback(null, helpers.inputError('User ID not specified.', data));
     return;
   }
   const id = parseInt(data.id, 10);

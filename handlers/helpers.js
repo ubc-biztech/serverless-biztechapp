@@ -6,11 +6,11 @@ module.exports = {
         return Object.keys(obj).length === 0;
     },
 
-    idError: function(type, data) {
+    inputError: function(message, data) {
         return {
             statusCode: 406,
             body: JSON.stringify({
-               message: type + ' ID not specified.',
+               message: message,
                data: data
             }, null, 2),
           };

@@ -265,14 +265,14 @@
   request:
     body:
       eventID: testevent
-      studentID: 144444
+      id: 144444
       status: registered
   response:
     status: 200
     body:
       message: 'Update succeeded.'
 
-- name: registration create no studentID returns 406
+- name: registration create no id returns 406
   endpoint:
     method: POST
     path: registration/create
@@ -291,7 +291,7 @@
     path: registration/create
   request:
     body:
-      studentID: 144444
+      id: 144444
       status: registered
   response:
     status: 406
@@ -305,7 +305,7 @@
   request:
     body:
       eventID: testevent
-      studentID: 144444
+      id: 144444
   response:
     status: 406
     body:

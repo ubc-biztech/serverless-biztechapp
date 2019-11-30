@@ -9,11 +9,11 @@ module.exports.create = async (event, ctx, callback) => {
   const data = JSON.parse(event.body);
 
   // Check that parameters are valid
-  if (!data.hasOwnProperty('studentID')) {
-    callback(null, helpers.idError('Registration student', data));
+  if (!data.hasOwnProperty('id')) {
+    callback(null, helpers.inputError('Registration student ID not specified.', data));
     return;
   } else if (!data.hasOwnProperty('eventID')) {
-    callback(null, helpers.idError('Registration event', data));
+    callback(null, helpers.inputError('Registration event ID not specified.', data));
     return;
   } else if (!data.hasOwnProperty('status')) {
     const response = {
@@ -26,11 +26,11 @@ module.exports.create = async (event, ctx, callback) => {
     callback(null, response);
     return;
   }
-  const studentID = parseInt(data.studentID, 10);
+  const id = parseInt(data.id, 10);
 
   const params = {
       Item: {
-          studentID,
+          id: id,
           eventID: data.eventID,
           status: data.status,
           createdAt: timestamp,
@@ -94,18 +94,18 @@ module.exports.create = async (event, ctx, callback) => {
   
 };
 
-// Return list of entries with the matching studentID
+// Return list of entries with the matching id
 module.exports.queryStudent = async (event, ctx, callback) => {
   const queryString = event.queryStringParameters;
   if (queryString == null || !queryString.hasOwnProperty('id')) {
-    callback(null, helpers.idError('Student', queryString));
+    callback(null, helpers.inputError('Student ID not specified.', queryString));
     return;
   }
   const id = parseInt(queryString.id, 10);
 
   const params = {
     TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
-    KeyConditionExpression: 'studentID = :query',
+    KeyConditionExpression: 'id = :query',
     ExpressionAttributeValues: {
       ':query': id
     }
@@ -139,7 +139,7 @@ module.exports.queryStudent = async (event, ctx, callback) => {
 module.exports.scanEvent = async (event, ctx, callback) => {
   const queryString = event.queryStringParameters;
   if (queryString == null || !queryString.hasOwnProperty('eventID')) {
-    callback(null, helpers.idError('Event', queryString));
+    callback(null, helpers.inputError('Event ID not specified.', queryString));
     return;
   }
   const eventID = queryString.eventID;
