@@ -6,6 +6,16 @@ module.exports = {
         return Object.keys(obj).length === 0;
     },
 
+    inputError: function(message, data) {
+        return {
+            statusCode: 406,
+            body: JSON.stringify({
+               message: message,
+               data: data
+            }, null, 2),
+          };
+    },
+
     /**
      * 
      * @param {*} id - String or Integer item ID
@@ -45,7 +55,7 @@ module.exports = {
         .then(result => {
             const response = {
                 statusCode: 200,
-                body: JSON.stringify('Update succeeded')
+                body: JSON.stringify('Update succeeded.')
             };
             return response;
         })

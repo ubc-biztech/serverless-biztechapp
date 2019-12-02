@@ -62,10 +62,6 @@ functions:
       - http:
           path: users/update
           method: post
-          request:
-            parameters:
-              querystrings:
-                id: true
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
   eventCreate:
@@ -90,22 +86,6 @@ functions:
       - http:
           path: events/update
           method: post
-          request:
-            parameters:
-              querystrings:
-                id: true
-          cors: true
-          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
-  eventUserUpdate:
-    handler: handlers/event.userUpdate
-    events:
-      - http:
-          path: events/userupdate
-          method: post
-          request:
-            parameters:
-              querystrings:
-                id: true
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
   eventScan:
