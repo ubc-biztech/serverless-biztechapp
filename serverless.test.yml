@@ -1,6 +1,380 @@
-- name: responds with 200 and Yeet
+- name: default responds with 200 and Yeet
   endpoint: {function: hello}
   response:
     status: 200
     body: 
-      message: "Yeet!"
+      message: 'Yeet!'
+
+- name: user create returns 200
+  endpoint:
+    method: POST
+    path: users/create
+  request:
+    body:
+      id: 144444
+      fname: test
+      lname: dude
+      faculty: Science
+  response:
+    status: 200
+    body:
+      message: 'Created!'
+
+- name: user create no ID returns 406
+  endpoint:
+    method: POST
+    path: users/create
+  request:
+    body:
+      fname: foo
+      lname: bar
+      email: foo
+      faculty: bar
+  response:
+    status: 406
+    body:
+      message: "User ID not specified."
+      data:
+        fname: foo
+        lname: bar
+        email: foo
+        faculty: bar
+
+- name: user get no ID returns 406
+  endpoint:
+    method: GET
+    path: users/get
+  response:
+    status: 406
+    body:
+      message: "User ID not specified."
+      data: null
+
+- name: user get found returns 200
+  endpoint:
+    method: GET
+    path: users/get
+  request:
+    form:
+      id: 144444
+  response:
+    status: 200
+    body:
+      id: 144444
+      fname: test
+      lname: dude
+      faculty: Science
+
+- name: user get not found returns 404
+  endpoint:
+    method: GET
+    path: users/get
+  request:
+    form:
+      id: 0
+  response:
+    status: 404
+    body: "\"User not found.\""
+
+- name: user update returns 200
+  endpoint:
+    method: POST
+    path: users/update
+  request:
+    body:
+      id: 144444
+      fname: updateTest
+      lname: dudeGotUpdated
+      faculty: Sauder
+  response:
+    status: 200
+    body: "\"Update succeeded.\""
+
+- name: user get update info returns 200
+  endpoint:
+    method: GET
+    path: users/get
+  request:
+    form:
+      id: 144444
+  response:
+    status: 200
+    body:
+      id: 144444
+      fname: updateTest
+      lname: dudeGotUpdated
+      faculty: Sauder
+
+- name: user update no ID returns 406
+  endpoint:
+    method: POST
+    path: users/update
+  request:
+    body:
+      fname: badUpdateTest
+      lname: dudeNotUpdated
+      faculty: LFS
+  response:
+    status: 406
+    body:
+      message: "User ID not specified."
+
+- name: user update not found returns 404
+  endpoint:
+    method: POST
+    path: users/update
+  request:
+    body:
+      id: -20
+      fname: badUpdateTest
+      lname: dudeNotUpdated
+  response:
+    status: 404
+    body: "\"User not found.\""
+
+- name: event create returns 200
+  endpoint:
+    method: POST
+    path: events/create
+  request:
+    body:
+      id: testevent
+      ename: test
+      capac: 2000000
+      img: yup
+      code: ripp
+  response:
+    status: 200
+    body:
+      message: 'Event Created!'
+
+- name: event create no ID returns 406
+  endpoint:
+    method: POST
+    path: events/create
+  request:
+    body:
+      ename: test
+      capac: 2000000
+      img: yup
+  response:
+    status: 406
+    body:
+      message: 'Event ID not specified.'
+      data:
+        ename: test
+        capac: 2000000
+        img: yup
+
+- name: event create no capac returns 406
+  endpoint:
+    method: POST
+    path: events/create
+  request:
+    body:
+      id: testevent
+      ename: test
+      img: yup
+      code: test
+  response:
+    status: 406
+    body:
+      message: 'Capacity invalid, please provide valid number.'
+      data:
+        id: testevent
+        ename: test
+        img: yup
+
+- name: event get returns 200
+  endpoint:
+    method: GET
+    path: events/get
+  response:
+    status: 200
+
+- name: event update returns 200
+  endpoint:
+    method: POST
+    path: events/update
+  request:
+    body:
+      id: testevent
+      ename: testUpdated
+      capac: 7
+      img: nope
+      code: test
+  response:
+    status: 200
+    body: "\"Update succeeded.\""
+
+- name: event update not found returns 404
+  endpoint:
+    method: POST
+    path: events/update
+  request:
+    body:
+      id: nonexistanttestidwoo
+      ename: testUpdated
+      capac: 7
+      img: nope
+      code: test
+  response:
+    status: 404
+    body: "\"Event not found.\""
+
+- name: event update no ID returns 406
+  endpoint:
+    method: POST
+    path: events/update
+  request:
+    body:
+      ename: testUpdated
+  response:
+    status: 406
+    body:
+      message: 'Event ID not specified.'
+
+- name: event scan match returns 200
+  endpoint:
+    method: GET
+    path: events/scan
+  request:
+    form:
+      code: test
+  response:
+    status: 200
+    body:
+      size: 1
+
+- name: event scan no match returns 200
+  endpoint:
+    method: GET
+    path: events/scan
+  request:
+    form:
+      code: -1
+  response:
+    status: 200
+    body:
+      size: 0
+
+- name: registration create returns 200
+  endpoint:
+    method: POST
+    path: registration/create
+  request:
+    body:
+      eventID: testevent
+      id: 144444
+      status: registered
+  response:
+    status: 200
+    body:
+      message: 'Update succeeded.'
+
+- name: registration create no id returns 406
+  endpoint:
+    method: POST
+    path: registration/create
+  request:
+    body:
+      eventID: testevent
+      status: registered
+  response:
+    status: 406
+    body:
+      message: 'Registration student ID not specified.'
+
+- name: registration create no eventID returns 406
+  endpoint:
+    method: POST
+    path: registration/create
+  request:
+    body:
+      id: 144444
+      status: registered
+  response:
+    status: 406
+    body:
+      message: 'Registration event ID not specified.'
+
+- name: registration create no status returns 406
+  endpoint:
+    method: POST
+    path: registration/create
+  request:
+    body:
+      eventID: testevent
+      id: 144444
+  response:
+    status: 406
+    body:
+      message: 'Status not specified.'
+
+- name: registration queryStudent returns 200
+  endpoint:
+    method: GET
+    path: registration/queryStudent
+  request:
+    form:
+      id: 144444
+  response:
+    status: 200
+    body:
+      size: 1
+
+- name: registration queryStudent no match returns 200
+  endpoint:
+    method: GET
+    path: registration/queryStudent
+  request:
+    form:
+      id: -1
+  response:
+    status: 200
+    body:
+      size: 0
+
+- name: registration queryStudent no ID returns 406
+  endpoint:
+    method: GET
+    path: registration/queryStudent
+  request:
+    form:
+  response:
+    status: 406
+    message: 'Student ID not specified.'
+
+- name: registration scanEvent returns 200
+  endpoint:
+    method: GET
+    path: registration/scanEvent
+  request:
+    form:
+      eventID: testevent
+  response:
+    status: 200
+    body:
+      size: 1
+
+- name: registration scanEvent no match returns 200
+  endpoint:
+    method: GET
+    path: registration/scanEvent
+  request:
+    form:
+      eventID: nonexistanttestidwoo
+  response:
+    status: 200
+    body:
+      size: 0
+
+- name: registration scanEvent no ID returns 406
+  endpoint:
+    method: GET
+    path: registration/scanEvent
+  request:
+    form:
+  response:
+    status: 406
+    message: 'Event ID not specified.'
