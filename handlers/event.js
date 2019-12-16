@@ -36,6 +36,10 @@ module.exports.create = async (event, ctx, callback) => {
     .then(result => {
       const response = {
         statusCode: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Credentials': true,
+        },
         body: JSON.stringify({
           message: 'Event Created!',
           params: params
@@ -101,6 +105,10 @@ module.exports.update = async (event, ctx, callback) => {
       else {
         const response = {
           statusCode: 404,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Credentials': true,
+          },  
           body: JSON.stringify('Event not found.')
         };
         callback(null, response);
@@ -134,6 +142,10 @@ module.exports.scan = async (event, ctx, callback) => {
       const data = result.Items;
       const response = {
         statusCode: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Credentials': true,
+        },
         body: JSON.stringify({
           size: data.length,
           data: data
