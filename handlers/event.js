@@ -15,8 +15,8 @@ module.exports.create = async (event, ctx, callback) => {
     return;
   }
 
-  if (data.capacity == null || isNaN(data.capacity)) {
-    callback(null, helpers.inputError('Capacity invalid, please provide valid number.', data));
+  if (data.capac == null || isNaN(data.capac)) {
+    callback(null, helpers.inputError('capac invalid, please provide valid number.', data));
     return;
   }
 
@@ -27,7 +27,7 @@ module.exports.create = async (event, ctx, callback) => {
       description: data.description,
       startDate: data.startDate,
       endDate: data.endDate,
-      capacity: data.capacity,
+      capac: data.capac,
       imageUrl: data.imageUrl,
       location: data.location,
       code,
