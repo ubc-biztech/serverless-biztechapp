@@ -179,7 +179,7 @@
   response:
     status: 406
     body:
-      message: 'Capacity invalid, please provide valid number.'
+      message: 'capac invalid, please provide valid number.'
       data:
         id: testevent
         ename: test
