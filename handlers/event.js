@@ -2,34 +2,39 @@
 const AWS = require('aws-sdk');
 const docClient = new AWS.DynamoDB.DocumentClient();
 const helpers = require('./helpers')
+const cryptoRandomString = require('crypto-random-string');
 
 module.exports.create = async (event, ctx, callback) => {
 
   const timestamp = new Date().getTime();
   const data = JSON.parse(event.body);
+  const code = cryptoRandomString({ length: 4, characters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' });
 
   if (!data.hasOwnProperty('id')) {
     callback(null, helpers.inputError('Event ID not specified.', data));
     return;
   }
 
-  if (data.capac == null || isNaN(data.capac) ){
+  if (data.capacity == null || isNaN(data.capacity)) {
     callback(null, helpers.inputError('Capacity invalid, please provide valid number.', data));
     return;
   }
 
   const params = {
-      Item: {
-          id: data.id,
-          ename: data.ename,
-          date: data.date,
-          capacity: data.capac,
-          img: data.img,
-          code: data.code,
-          createdAt: timestamp,
-          updatedAt: timestamp
-      },
-      TableName: 'biztechEvents' + process.env.ENVIRONMENT
+    Item: {
+      id: data.id,
+      ename: data.ename,
+      description: data.description,
+      startDate: data.startDate,
+      endDate: data.endDate,
+      capacity: data.capacity,
+      imageUrl: data.imageUrl,
+      location: data.location,
+      code,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    },
+    TableName: 'biztechEvents' + process.env.ENVIRONMENT
   };
 
   await docClient.put(params).promise()
@@ -55,7 +60,7 @@ module.exports.create = async (event, ctx, callback) => {
 module.exports.get = async (event, ctx, callback) => {
 
   const params = {
-      TableName: 'biztechEvents' + process.env.ENVIRONMENT
+    TableName: 'biztechEvents' + process.env.ENVIRONMENT
   };
 
   await docClient.scan(params).promise()
@@ -95,7 +100,7 @@ module.exports.update = async (event, ctx, callback) => {
   };
 
   await docClient.get(params).promise()
-    .then(async(result) => {
+    .then(async (result) => {
       if (!helpers.isEmpty(result))
         return callback(null, await helpers.updateDB(id, data, 'biztechEvents'));
       else {
@@ -120,7 +125,7 @@ module.exports.scan = async (event, ctx, callback) => {
   const params = {
     TableName: 'biztechEvents' + process.env.ENVIRONMENT,
     FilterExpression: '#code = :query',
-    ExpressionAttributeNames:{
+    ExpressionAttributeNames: {
       '#code': 'code'
     },
     ExpressionAttributeValues: {
@@ -137,7 +142,7 @@ module.exports.scan = async (event, ctx, callback) => {
         body: JSON.stringify({
           size: data.length,
           data: data
-          }, null, 2)
+        }, null, 2)
       };
       callback(null, response);
     })
