@@ -140,7 +140,7 @@
     body:
       id: testevent
       ename: test
-      capac: 2000000
+      capacity: 2000000
       img: yup
       code: ripp
   response:
@@ -155,7 +155,7 @@
   request:
     body:
       ename: test
-      capac: 2000000
+      capacity: 2000000
       img: yup
   response:
     status: 406
@@ -163,10 +163,10 @@
       message: 'Event ID not specified.'
       data:
         ename: test
-        capac: 2000000
+        capacity: 2000000
         img: yup
 
-- name: event create no capac returns 406
+- name: event create no capacity returns 406
   endpoint:
     method: POST
     path: events/create
@@ -200,7 +200,7 @@
     body:
       id: testevent
       ename: testUpdated
-      capac: 7
+      capacity: 7
       img: nope
       code: test
   response:
@@ -215,7 +215,7 @@
     body:
       id: nonexistanttestidwoo
       ename: testUpdated
-      capac: 7
+      capacity: 7
       img: nope
       code: test
   response:
