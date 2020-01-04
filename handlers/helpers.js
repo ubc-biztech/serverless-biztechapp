@@ -9,6 +9,10 @@ module.exports = {
     inputError: function(message, data) {
         return {
             statusCode: 406,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Credentials': true,
+            },
             body: JSON.stringify({
                message: message,
                data: data
@@ -55,6 +59,10 @@ module.exports = {
         .then(result => {
             const response = {
                 statusCode: 200,
+                headers: {
+                  'Access-Control-Allow-Origin': '*',
+                  'Access-Control-Allow-Credentials': true,
+                },
                 body: JSON.stringify('Update succeeded.')
             };
             return response;
@@ -63,6 +71,10 @@ module.exports = {
             console.error(error);
             const response = {
             statusCode: 500,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Credentials': true,
+            },
             body: error
             };
             return response;

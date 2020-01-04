@@ -34,6 +34,10 @@ module.exports.create = async (event, ctx, callback) => {
 
   return {
     statusCode: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Credentials': true,
+    },
     body: JSON.stringify({
       message: 'Created!',
       params: params
@@ -65,6 +69,10 @@ module.exports.get = async (event, ctx, callback) => {
         console.log('User not found');
         const response = {
           statusCode: 404,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Credentials': true,
+          },
           body: JSON.stringify('User not found.')
         };
         callback(null, response);
@@ -74,6 +82,10 @@ module.exports.get = async (event, ctx, callback) => {
         console.log('User found');
         const response = {
           statusCode: 200,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Credentials': true,
+          },
           body: JSON.stringify(result.Item)
         };
         callback(null, response);
@@ -109,6 +121,10 @@ module.exports.update = async (event, ctx, callback) => {
       else {
         const response = {
           statusCode: 404,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Credentials': true,
+          },
           body: JSON.stringify('User not found.')
         };
         callback(null, response);
