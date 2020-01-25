@@ -11,7 +11,7 @@ module.exports.create = async (event, ctx, callback) => {
   // Check that parameters are valid
   if (!data.hasOwnProperty('id')) {
     callback(null, helpers.inputError('Registration student ID not specified.', data));
-    return;
+    return; 
   } else if (!data.hasOwnProperty('eventID')) {
     callback(null, helpers.inputError('Registration event ID not specified.', data));
     return;
