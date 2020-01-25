@@ -6,10 +6,25 @@ module.exports = {
         return Object.keys(obj).length === 0;
     },
 
+    inputError: function(message, data) {
+        return {
+            statusCode: 406,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Credentials': true,
+            },
+            body: JSON.stringify({
+               message: message,
+               data: data
+            }, null, 2),
+          };
+    },
+
     createUpdateExpression: function(obj) {
         let updateExpression = 'set ';
         let expressionAttributeValues = {};
-        
+
+        // TODO: Add a filter for valid object keys
         // loop through keys and create updateExpression string and
         // expressionAttributeValues object
         for (var key in obj){
@@ -55,7 +70,11 @@ module.exports = {
         .then(result => {
             const response = {
                 statusCode: 200,
-                body: JSON.stringify('Update succeeded')
+                headers: {
+                  'Access-Control-Allow-Origin': '*',
+                  'Access-Control-Allow-Credentials': true,
+                },
+                body: JSON.stringify('Update succeeded.')
             };
             return response;
         })
@@ -63,6 +82,10 @@ module.exports = {
             console.error(error);
             const response = {
             statusCode: 500,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Credentials': true,
+            },
             body: error
             };
             return response;

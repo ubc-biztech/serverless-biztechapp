@@ -7,9 +7,26 @@ module.exports.create = async (event, ctx, callback) => {
 
   // TODO: merge Jacques PR for checking required fields
   const data = JSON.parse(event.body);
-  const id = parseInt(event.queryStringParameters.id, 10);
-  const eventID = data.eventID;
-  let registrationStatus = data.registrationStatus;
+
+  // Check that parameters are valid
+  if (!data.hasOwnProperty('id')) {
+    callback(null, helpers.inputError('Registration student ID not specified.', data));
+    return;
+  } else if (!data.hasOwnProperty('eventID')) {
+    callback(null, helpers.inputError('Registration event ID not specified.', data));
+    return;
+  } else if (!data.hasOwnProperty('status')) {
+    const response = {
+      statusCode: 406,
+      body: JSON.stringify({
+        message: 'Status not specified.',
+        data: data
+      }, null, 2),
+    };
+    callback(null, response);
+    return;
+  }
+  const id = parseInt(data.id, 10);
 
   const eventParams = {
     Key: { id: eventID },
@@ -23,7 +40,7 @@ module.exports.create = async (event, ctx, callback) => {
         registrationStatus = 'waitlist'
       }
     })
-    
+
     const updateObject = { registrationStatus };
 
     const {
@@ -66,14 +83,18 @@ module.exports.create = async (event, ctx, callback) => {
   
 };
 
-// Return list of entries with the matching studentID
+// Return list of entries with the matching id
 module.exports.queryStudent = async (event, ctx, callback) => {
-
-  const id = parseInt(event.queryStringParameters.id, 10);
+  const queryString = event.queryStringParameters;
+  if (queryString == null || !queryString.hasOwnProperty('id')) {
+    callback(null, helpers.inputError('Student ID not specified.', queryString));
+    return;
+  }
+  const id = parseInt(queryString.id, 10);
 
   const params = {
     TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
-    KeyConditionExpression: 'studentID = :query',
+    KeyConditionExpression: 'id = :query',
     ExpressionAttributeValues: {
       ':query': id
     }
@@ -81,29 +102,36 @@ module.exports.queryStudent = async (event, ctx, callback) => {
 
   await docClient.query(params).promise()
     .then(result => {
-      console.log('Query success');
-      var data = result.Items;
-      var response = {
+      console.log('Query success.');
+      const data = result.Items;
+      const response = {
         statusCode: 200,
         headers: {
           'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Credentials': true,
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify({
+          size: data.length,
+          data: data
+          }, null, 2)
       };
       callback(null, response);
     })
     .catch(error => {
       console.error(error);
-      callback(new Error('Unable to query registration table'));
+      callback(new Error('Unable to query registration table.'));
       return;
     });
 }
 
 // Return list of entries with the matching eventID
 module.exports.scanEvent = async (event, ctx, callback) => {
-
-  const eventID = event.queryStringParameters.eventID;
+  const queryString = event.queryStringParameters;
+  if (queryString == null || !queryString.hasOwnProperty('eventID')) {
+    callback(null, helpers.inputError('Event ID not specified.', queryString));
+    return;
+  }
+  const eventID = queryString.eventID;
 
   const params = {
     TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
@@ -116,20 +144,23 @@ module.exports.scanEvent = async (event, ctx, callback) => {
   await docClient.scan(params).promise()
   .then(result => {
     console.log('Scan success.');
-    var data = result.Items;
-    var response = {
+    const data = result.Items;
+    const response = {
       statusCode: 200,
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Credentials': true,
       },
-      body: JSON.stringify(data)
+      body: JSON.stringify({
+        size: data.length,
+        data: data
+        }, null, 2)
     };
     callback(null, response);
   })
   .catch(error => {
     console.error(error);
-    callback(new Error('Unable to scan registration table'));
+    callback(new Error('Unable to scan registration table.'));
     return;
   });
 }
