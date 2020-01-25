@@ -13,3 +13,20 @@
       id: bp
   response:
     status: 200
+    body:
+      registeredCount: 0
+      checkedInCount: 0
+      waitlistCount: 0
+
+- name: registration create with full event sets registrationStatus to waitlist
+  endpoint:
+    method: POST
+    path: registration/create
+  request:
+    form:
+      id: usingfortestdonotmodify
+  response:
+    status: 200
+    body:
+      message: "Updated succeeded"
+      registrationStatus: "waitlist"
