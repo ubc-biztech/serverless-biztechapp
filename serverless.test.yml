@@ -278,11 +278,12 @@
     body:
       eventID: testevent
       id: 144444
-      status: registered
+      registrationStatus: registered
   response:
     status: 200
     body:
-      message: 'Update succeeded.'
+      message: Update succeeded
+      registrationStatus: registered
 
 - name: registration create no id returns 406
   endpoint:
@@ -291,7 +292,7 @@
   request:
     body:
       eventID: testevent
-      status: registered
+      registrationStatus: registered
   response:
     status: 406
     body:
@@ -304,7 +305,7 @@
   request:
     body:
       id: 144444
-      status: registered
+      registrationStatus: registered
   response:
     status: 406
     body:
@@ -328,12 +329,14 @@
     method: POST
     path: registration/create
   request:
-    form:
-      id: usingfortestdonotmodify
+    body:
+      eventID: usingfortestdonotmodify
+      id: 144444999
+      registrationStatus: registered
   response:
     status: 200
     body:
-      message: "Updated succeeded"
+      message: "Update succeeded"
       registrationStatus: "waitlist" 
 
 - name: registration queryStudent returns 200
@@ -346,7 +349,7 @@
   response:
     status: 200
     body:
-      size: 1
+      size: 2
 
 - name: registration queryStudent no match returns 200
   endpoint:

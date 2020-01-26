@@ -15,7 +15,7 @@ module.exports.create = async (event, ctx, callback) => {
   } else if (!data.hasOwnProperty('eventID')) {
     callback(null, helpers.inputError('Registration event ID not specified.', data));
     return;
-  } else if (!data.hasOwnProperty('status')) {
+  } else if (!data.hasOwnProperty('registrationStatus')) {
     const response = {
       statusCode: 406,
       body: JSON.stringify({
@@ -27,6 +27,8 @@ module.exports.create = async (event, ctx, callback) => {
     return;
   }
   const id = parseInt(data.id, 10);
+  const eventID = data.eventID;
+  let registrationStatus = data.registrationStatus;
 
   const eventParams = {
     Key: { id: eventID },
@@ -36,50 +38,52 @@ module.exports.create = async (event, ctx, callback) => {
   await docClient.get(eventParams).promise()
     .then(async(event) => {
       const counts = await helpers.getEventCounts(eventID)
-      if (counts.registeredCount >= event.capac){
+
+      if (counts.registeredCount >= event.Item.capac){
         registrationStatus = 'waitlist'
       }
-    })
 
-    const updateObject = { registrationStatus };
+      const updateObject = { registrationStatus };
+      console.log(updateObject)
 
-    const {
-      updateExpression,
-      expressionAttributeValues
-    } = helpers.createUpdateExpression(updateObject)
+      const {
+        updateExpression,
+        expressionAttributeValues
+      } = helpers.createUpdateExpression(updateObject)
 
-    // Because biztechRegistration table has a sort key we cannot use updateDB()
-    var params = {
-      Key: {
-        id,
-        eventID
-      },
-      TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
-      ExpressionAttributeValues: expressionAttributeValues,
-      UpdateExpression: updateExpression,
-      ReturnValues:"UPDATED_NEW"
-    };
+      // Because biztechRegistration table has a sort key we cannot use updateDB()
+      var params = {
+        Key: {
+          id,
+          eventID
+        },
+        TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
+        ExpressionAttributeValues: expressionAttributeValues,
+        UpdateExpression: updateExpression,
+        ReturnValues:"UPDATED_NEW"
+      };
 
-    // call dynamoDb
-    await docClient.update(params).promise()
-      .then(result => {
-        const response = {
-          statusCode: 200,
-          body: JSON.stringify({
-            message: 'Update succeeded',
-            registrationStatus
-            })
-        };
-        callback(null, response)
+      // call dynamoDb
+      await docClient.update(params).promise()
+        .then(result => {
+          const response = {
+            statusCode: 200,
+            body: JSON.stringify({
+              message: 'Update succeeded',
+              registrationStatus
+              })
+          };
+          callback(null, response)
+        })
+        .catch(error => {
+          console.error(error);
+          const response = {
+          statusCode: 500,
+          body: error
+          };
+          callback(null, response)
+        });
       })
-      .catch(error => {
-        console.error(error);
-        const response = {
-        statusCode: 500,
-        body: error
-        };
-        callback(null, response)
-      });
   
 };
 
