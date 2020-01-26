@@ -139,10 +139,6 @@
       id: bp
   response:
     status: 200
-    body:
-      registeredCount: 0
-      checkedInCount: 0
-      waitlistCount: 0
 
 - name: event create returns 200
   endpoint:
