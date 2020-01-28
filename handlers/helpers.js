@@ -26,6 +26,11 @@ module.exports = {
     return response;
   },
 
+  /**
+   *
+   * @param {Array} batch - List of batches in form of [{Key: value}]
+   * @param {String} tableName - Name of table to call batchGet
+   */
   batchGet: function(batch, tableName) {
     const batchRequestParams = {
       RequestItems: {

@@ -133,9 +133,17 @@ module.exports.getUsers = async (event, ctx, callback) => {
     await Promise.all(keyBatches.map(batch => {
       return helpers.batchGet(batch, 'biztechUsers' + process.env.ENVIRONMENT)
     })).then(result => {
-      console.log(result.map(batchResult => batchResult.Responses.biztechUsers))
-      result.forEach(batchResult => batchResult.Responses.biztechUsers)
-      console.log(result)
+      const results = result.flatMap(batchResult => batchResult.Responses.biztechUsers)
+      console.log(results)
+      const response = {
+        statusCode: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Credentials': true,
+        },
+        body: JSON.stringify(results),
+      };
+      callback(null, response);
     })
     
   })
@@ -185,11 +193,11 @@ module.exports.update = async (event, ctx, callback) => {
 };
 
 module.exports.scan = async (event, ctx, callback) => {
-
+  const data = JSON.parse(event.body);
   const code = event.queryStringParameters.code;
 
   // Check that parameters are valid
-  if (code) {
+  if (!code) {
     callback(null, helpers.inputError('code not specified.', data));
     return;
   }

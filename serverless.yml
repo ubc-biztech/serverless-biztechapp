@@ -7,7 +7,7 @@ provider:
   stage: ${opt:stage, 'dev'}
   apiKeys:
     - ${opt:stage, 'dev'}-key
-  runtime: nodejs10.x
+  runtime: nodejs12.x
   region: us-west-2
   cfLogs: true
   environment:
