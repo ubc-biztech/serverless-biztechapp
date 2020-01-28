@@ -7,7 +7,7 @@ module.exports = {
     },
 
     inputError: function(message, data) {
-        return {
+        const response = {
             statusCode: 406,
             headers: {
               'Access-Control-Allow-Origin': '*',
@@ -18,6 +18,8 @@ module.exports = {
                data: data
             }, null, 2),
           };
+        console.log('INPUT ERROR', response)
+        return response;
     },
 
     /**
