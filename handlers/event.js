@@ -117,39 +117,27 @@ module.exports.getUsers = async (event, ctx, callback) => {
      *   registrationStatus: 'registered'
      * }
      */
-    const keysForRequest = registrationList.map(registrationObj => {
+    let keysForRequest = registrationList.map(registrationObj => {
       let keyEntry = {}
       keyEntry.id = parseInt(registrationObj.id)
       return keyEntry
     })
     console.log('Keys:', keysForRequest)
 
-    const batchRequestParams = {
-      RequestItems: {
-        ['biztechUsers' + process.env.ENVIRONMENT]: {
-          Keys: keysForRequest
-        }
-      }
+    let keyBatches = [];
+    const size = 100 // max BatchGetItem count
+    while (keysForRequest.length > 0) {
+      keyBatches.push(keysForRequest.splice(0, size))
     }
 
-    // TODO: Batch in groups of 100 user IDs (bachGet limits)
-    await docClient.batchGet(batchRequestParams).promise()
-      .then(result => {
-        const response = {
-          statusCode: 200,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Credentials': true,
-          },
-          body: JSON.stringify(result.Responses.biztechUsers)
-        };
-        callback(null, response);
-      })
-      .catch(error => {
-        console.error(error);
-        callback(new Error('Unable to call batchGet.'));
-        return;
-      })
+    await Promise.all(keyBatches.map(batch => {
+      return helpers.batchGet(batch, 'biztechUsers' + process.env.ENVIRONMENT)
+    })).then(result => {
+      console.log(result.map(batchResult => batchResult.Responses.biztechUsers))
+      result.forEach(batchResult => batchResult.Responses.biztechUsers)
+      console.log(result)
+    })
+    
   })
   .catch(error => {
     console.error(error);
