@@ -105,10 +105,9 @@ module.exports.getUsers = async (event, ctx, callback) => {
   };
 
   await docClient.scan(params).promise()
-  .then(result => {
+  .then(async result => {
     console.log('Scan success.');
     const registrationList = result.Items;
-    console.log(registrationList)
 
     /**
      * Example registration obj:
@@ -120,61 +119,43 @@ module.exports.getUsers = async (event, ctx, callback) => {
      */
     const keysForRequest = registrationList.map(registrationObj => {
       let keyEntry = {}
-      keyEntry.id = registrationObj.id
+      keyEntry.id = parseInt(registrationObj.id)
       return keyEntry
     })
-
-    console.log(keysForRequest)
+    console.log('Keys:', keysForRequest)
 
     const batchRequestParams = {
       RequestItems: {
-        ['biztechRegistration' + process.env.ENVIRONMENT]: {
+        ['biztechUsers' + process.env.ENVIRONMENT]: {
           Keys: keysForRequest
         }
       }
     }
 
-    console.log(batchRequestParams)
-
-    // await docClient.batchGet(batchRequestParams).promise()
-    //   .then(result => {
-    //     console.log(result)
-    //   })
-    //   .catch(error => {
-    //     console.error(error);
-    //     callback(new Error('Unable to call batchGet.'));
-    //     return;
-    //   })
+    // TODO: Batch in groups of 100 user IDs (bachGet limits)
+    await docClient.batchGet(batchRequestParams).promise()
+      .then(result => {
+        const response = {
+          statusCode: 200,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Credentials': true,
+          },
+          body: JSON.stringify(result.Responses.biztechUsers)
+        };
+        callback(null, response);
+      })
+      .catch(error => {
+        console.error(error);
+        callback(new Error('Unable to call batchGet.'));
+        return;
+      })
   })
   .catch(error => {
     console.error(error);
     callback(new Error('Unable to scan registration table.'));
     return;
   });
-
-  // const params = {
-  //   TableName: 'biztechEvents' + process.env.ENVIRONMENT
-  // };
-
-  // await docClient.scan(params).promise()
-  //   .then(result => {
-  //     const events = result.Items
-  //     const response = {
-  //       statusCode: 200,
-  //       headers: {
-  //         'Access-Control-Allow-Origin': '*',
-  //         'Access-Control-Allow-Credentials': true,
-  //       },
-  //       body: JSON.stringify(events),
-  //     };
-  //     callback(null, response);
-  //   })
-  //   .catch(error => {
-  //     console.error(error);
-  //     callback(new Error('Unable to get events.'));
-  //     return;
-  //   })
-
 };
 
 module.exports.update = async (event, ctx, callback) => {
