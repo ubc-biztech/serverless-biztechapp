@@ -378,3 +378,14 @@
   response:
     status: 406
     message: 'Event ID not specified.'
+
+- name: event getUsers returns 200
+  endpoint:
+    method: GET
+    path: events/getUsers
+  request:
+    form:
+      id: testevent
+  response:
+    status: 200
+  
