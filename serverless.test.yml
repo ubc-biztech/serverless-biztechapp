@@ -320,7 +320,7 @@
     body:
       message: 'Status not specified.'
 
-- name: registration create with full event sets registrationStatus to waitlist
+- name: registration create 'registered' with full event sets registrationStatus to waitlist
   endpoint:
     method: POST
     path: registration/create
@@ -333,7 +333,22 @@
     status: 200
     body:
       message: "Update succeeded"
-      registrationStatus: "waitlist" 
+      registrationStatus: "waitlist"
+
+- name: registration create 'checkedin' with full event sets registrationStatus to checkedin
+  endpoint:
+    method: POST
+    path: registration/create
+  request:
+    body:
+      eventID: usingfortestdonotmodify
+      id: 144444991
+      registrationStatus: checkedin
+  response:
+    status: 200
+    body:
+      message: "Update succeeded"
+      registrationStatus: "checkedin"
 
 - name: registration queryStudent returns 200
   endpoint:
