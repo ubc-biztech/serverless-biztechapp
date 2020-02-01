@@ -133,19 +133,26 @@ module.exports.getUsers = async (event, ctx, callback) => {
     await Promise.all(keyBatches.map(batch => {
       return helpers.batchGet(batch, 'biztechUsers' + process.env.ENVIRONMENT)
     })).then(result => {
-      const results = result.flatMap(batchResult => batchResult.Responses.biztechUsers)
-      console.log(results)
-      const response = {
-        statusCode: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Credentials': true,
-        },
-        body: JSON.stringify(results),
-      };
-      callback(null, response);
-    })
-    
+        const results = result.flatMap(batchResult => batchResult.Responses.biztechUsers)
+        
+        const resultsWithRegistrationStatus = results.map(item => {
+          const registrationObj = registrationList.filter(registrationObject => {
+            return registrationObject.id === item.id
+          })
+          item.registrationStatus = registrationObj[0].registrationStatus
+          return item
+        });
+        console.log(resultsWithRegistrationStatus)
+        const response = {
+          statusCode: 200,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Credentials': true,
+          },
+          body: JSON.stringify(resultsWithRegistrationStatus),
+        };
+        callback(null, response);
+      })    
   })
   .catch(error => {
     console.error(error);
