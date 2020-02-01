@@ -81,19 +81,19 @@ functions:
           method: get
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
-<<<<<<< HEAD
   eventCount:
     handler: handlers/event.count
     events:
       - http:
           path: events/count
-=======
+          method: get
+          cors: true
+          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
   eventGetUsers:
     handler: handlers/event.getUsers
     events:
       - http:
           path: events/getUsers
->>>>>>> master
           method: get
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}

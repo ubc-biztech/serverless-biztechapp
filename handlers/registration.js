@@ -30,65 +30,68 @@ module.exports.create = async (event, ctx, callback) => {
   const eventID = data.eventID;
   let registrationStatus = data.registrationStatus;
 
-  const eventParams = {
-    Key: { id: eventID },
-    TableName: 'biztechEvents' + process.env.ENVIRONMENT
-  }
   // Check if the event is full
-  await docClient.get(eventParams).promise()
+  if (registrationStatus === 'registered'){
+
+    const eventParams = {
+      Key: { id: eventID },
+      TableName: 'biztechEvents' + process.env.ENVIRONMENT
+    }
+    
+    await docClient.get(eventParams).promise()
     .then(async(event) => {
       const counts = await helpers.getEventCounts(eventID)
 
       if (counts.registeredCount >= event.Item.capac){
         registrationStatus = 'waitlist'
       }
+    })
+  }
 
-      const updateObject = { registrationStatus };
-      console.log(updateObject)
+  const updateObject = { registrationStatus };
+  console.log(updateObject)
 
-      const {
-        updateExpression,
-        expressionAttributeValues
-      } = helpers.createUpdateExpression(updateObject)
+  const {
+    updateExpression,
+    expressionAttributeValues
+  } = helpers.createUpdateExpression(updateObject)
 
-      // Because biztechRegistration table has a sort key we cannot use updateDB()
-      var params = {
-        Key: {
-          id,
-          eventID
-        },
-        TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
-        ExpressionAttributeValues: expressionAttributeValues,
-        UpdateExpression: updateExpression,
-        ReturnValues:"UPDATED_NEW"
-      };
+  // Because biztechRegistration table has a sort key we cannot use updateDB()
+  var params = {
+    Key: {
+      id,
+      eventID
+    },
+    TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
+    ExpressionAttributeValues: expressionAttributeValues,
+    UpdateExpression: updateExpression,
+    ReturnValues:"UPDATED_NEW"
+  };
 
-      // call dynamoDb
-      await docClient.update(params).promise()
-        .then(result => {
-          const response = {
-            statusCode: 200,
-            headers: {
-              'Access-Control-Allow-Origin': '*',
-              'Access-Control-Allow-Credentials': true,
-            },
-            body: JSON.stringify({
-              message: 'Update succeeded',
-              registrationStatus
-              })
-          };
-          callback(null, response)
+  // call dynamoDb
+  await docClient.update(params).promise()
+  .then(result => {
+    const response = {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Credentials': true,
+      },
+      body: JSON.stringify({
+        message: 'Update succeeded',
+        registrationStatus
         })
-        .catch(error => {
-          console.error(error);
-          const response = {
-          statusCode: 500,
-          body: error
-          };
-          callback(null, response)
-        });
-      })
-  
+    };
+    callback(null, response)
+  })
+  .catch(error => {
+    console.error(error);
+    const response = {
+    statusCode: 500,
+    body: error
+    };
+    callback(null, response)
+  });
 };
 
 // Return list of entries with the matching id

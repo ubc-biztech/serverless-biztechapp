@@ -345,7 +345,7 @@
   response:
     status: 200
     body:
-      size: 2
+      size: 1
 
 - name: registration queryStudent no match returns 200
   endpoint:
