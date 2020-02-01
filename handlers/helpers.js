@@ -40,9 +40,35 @@ module.exports = {
       }
     };
 
-    console.log('BatchRequestParams', batchRequestParams)
+    console.log("BatchRequestParams", batchRequestParams);
 
-    return docClient.batchGet(batchRequestParams).promise()
+    return docClient.batchGet(batchRequestParams).promise();
+  },
+
+  createUpdateExpression: function(obj) {
+    let updateExpression = "set ";
+    let expressionAttributeValues = {};
+
+    // TODO: Add a filter for valid object keys
+    // loop through keys and create updateExpression string and
+    // expressionAttributeValues object
+    for (var key in obj) {
+      // TODO: Add a filter for valid object keys
+      if (obj.hasOwnProperty(key)) {
+        if (key != "id" && key != "createdAt") {
+          updateExpression += key + "= :" + key + ",";
+          expressionAttributeValues[":" + key] = obj[key];
+        }
+      }
+    }
+    const timestamp = new Date().getTime();
+    updateExpression += "updatedAt = :updatedAt";
+    expressionAttributeValues[":updatedAt"] = timestamp;
+
+    return {
+      updateExpression,
+      expressionAttributeValues
+    };
   },
 
   /**
@@ -106,5 +132,48 @@ module.exports = {
         };
         return response;
       });
+  },
+
+  /**
+   * Takes an event ID and returns an object containing
+   * registeredCount, checkedInCount and waitlistCount
+   * @param {String} eventID
+   * @return {registeredCount checkedInCount waitlistCount}
+   */
+  getEventCounts: async function(eventID) {
+    const params = {
+      TableName: "biztechRegistration" + process.env.ENVIRONMENT,
+      FilterExpression: "eventID = :query",
+      ExpressionAttributeValues: {
+        ":query": eventID
+      }
+    };
+    return await docClient
+      .scan(params)
+      .promise()
+      .then(result => {
+        let counts = {
+          registeredCount: 0,
+          checkedInCount: 0,
+          waitlistCount: 0
+        };
+
+        result.Items.forEach(item => {
+          switch (item.registrationStatus) {
+            case "registered":
+              counts.registeredCount++;
+              break;
+            case "checkedIn":
+              counts.checkedInCount++;
+              break;
+            case "waitlist":
+              counts.waitlistCount++;
+              break;
+          }
+        });
+
+        return counts;
+      })
+      .catch(error => console.log(error));
   }
 };

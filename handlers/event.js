@@ -67,8 +67,11 @@ module.exports.get = async (event, ctx, callback) => {
   };
 
   await docClient.scan(params).promise()
-    .then(result => {
-      const events = result.Items
+    .then(async(result) => {
+      var events = result.Items
+      for (const event of events) {
+          event.counts = await helpers.getEventCounts(event.id)
+        }
       const response = {
         statusCode: 200,
         headers: {
@@ -86,6 +89,20 @@ module.exports.get = async (event, ctx, callback) => {
     })
 
 };
+
+module.exports.count = async (event, ctx, callback) => {
+
+  const id = event.queryStringParameters.id;
+  const counts = await helpers.getEventCounts(id)
+
+  const response = {
+    statusCode: 200,
+    body: JSON.stringify(counts)
+  };
+
+  callback(null, response);
+
+}
 
 module.exports.getUsers = async (event, ctx, callback) => {
 

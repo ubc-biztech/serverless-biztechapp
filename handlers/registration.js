@@ -5,7 +5,7 @@ const helpers = require('./helpers')
 
 module.exports.create = async (event, ctx, callback) => {
 
-  const timestamp = new Date().getTime();
+  // TODO: merge Jacques PR for checking required fields
   const data = JSON.parse(event.body);
 
   // Check that parameters are valid
@@ -15,7 +15,7 @@ module.exports.create = async (event, ctx, callback) => {
   } else if (!data.hasOwnProperty('eventID')) {
     callback(null, helpers.inputError('Registration event ID not specified.', data));
     return;
-  } else if (!data.hasOwnProperty('status')) {
+  } else if (!data.hasOwnProperty('registrationStatus')) {
     const response = {
       statusCode: 406,
       body: JSON.stringify({
@@ -27,71 +27,71 @@ module.exports.create = async (event, ctx, callback) => {
     return;
   }
   const id = parseInt(data.id, 10);
+  const eventID = data.eventID;
+  let registrationStatus = data.registrationStatus;
 
-  const params = {
-      Item: {
-          id: id,
-          eventID: data.eventID,
-          status: data.status,
-          createdAt: timestamp,
-          updatedAt: timestamp
-      },
-      TableName: 'biztechRegistration' + process.env.ENVIRONMENT
+  // Check if the event is full
+  if (registrationStatus === 'registered'){
+
+    const eventParams = {
+      Key: { id: eventID },
+      TableName: 'biztechEvents' + process.env.ENVIRONMENT
+    }
+    
+    await docClient.get(eventParams).promise()
+    .then(async(event) => {
+      const counts = await helpers.getEventCounts(eventID)
+
+      if (counts.registeredCount >= event.Item.capac){
+        registrationStatus = 'waitlist'
+      }
+    })
+  }
+
+  const updateObject = { registrationStatus };
+  console.log(updateObject)
+
+  const {
+    updateExpression,
+    expressionAttributeValues
+  } = helpers.createUpdateExpression(updateObject)
+
+  // Because biztechRegistration table has a sort key we cannot use updateDB()
+  var params = {
+    Key: {
+      id,
+      eventID
+    },
+    TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
+    ExpressionAttributeValues: expressionAttributeValues,
+    UpdateExpression: updateExpression,
+    ReturnValues:"UPDATED_NEW"
   };
 
-  // // Update Event count
-  // let updateExpression = 'set ';
-
-  // if (data.status == 'cancelled') {
-  //     updateExpression += 'registeredNum \= registeredNum - :incr,';
-  // } else {
-  //     const num = data.status + 'Num';
-  //     updateExpression +=  num + ' \= ' + num + ' \+ :incr,';
-  // }
-
-  // let expressionAttributeValues = {':incr': 1};
-
-  // // Update timestamp
-  // updateExpression += "updatedAt = :updatedAt";
-  // expressionAttributeValues[':updatedAt'] = timestamp;
-
-  // // Log the update expression
-  // console.log(updateExpression);
-
-  // const eventParams = {
-  //   Key: {
-  //     id: data.eventID
-  //   },
-  //   TableName: 'biztechEvents' + process.env.ENVIRONMENT,
-  //   ExpressionAttributeValues: expressionAttributeValues,
-  //   UpdateExpression: updateExpression,
-  //   ReturnValues:"UPDATED_NEW"
-  // };
-  await docClient.put(params).promise()
+  // call dynamoDb
+  await docClient.update(params).promise()
   .then(result => {
-      const response = {
-        statusCode: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Credentials': true,
-        },
-        body: JSON.stringify({
-          message: 'Update succeeded.',
-          params: params
-        }, null, 2),
-      };
-      callback(null, response);
+    const response = {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Credentials': true,
+      },
+      body: JSON.stringify({
+        message: 'Update succeeded',
+        registrationStatus
+        })
+    };
+    callback(null, response)
   })
   .catch(error => {
     console.error(error);
     const response = {
-      statusCode: 500,
-      body: error
+    statusCode: 500,
+    body: error
     };
-    callback(null, response);
-    return;
+    callback(null, response)
   });
-  
 };
 
 // Return list of entries with the matching id

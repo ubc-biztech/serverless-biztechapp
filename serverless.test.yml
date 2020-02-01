@@ -3,7 +3,7 @@
   response:
     status: 200
     body: 
-      message: 'Yeet!'
+      message: "Yeet!"
 
 - name: user create returns 200
   endpoint:
@@ -131,6 +131,14 @@
   response:
     status: 404
     body: "\"User not found.\""
+
+- name: event count returns 200
+  endpoint: {function: eventCount}
+  request:
+    form:
+      id: bp
+  response:
+    status: 200
 
 - name: event create returns 200
   endpoint:
@@ -266,11 +274,12 @@
     body:
       eventID: testevent
       id: 144444
-      status: registered
+      registrationStatus: registered
   response:
     status: 200
     body:
-      message: 'Update succeeded.'
+      message: Update succeeded
+      registrationStatus: registered
 
 - name: registration create no id returns 406
   endpoint:
@@ -279,7 +288,7 @@
   request:
     body:
       eventID: testevent
-      status: registered
+      registrationStatus: registered
   response:
     status: 406
     body:
@@ -292,7 +301,7 @@
   request:
     body:
       id: 144444
-      status: registered
+      registrationStatus: registered
   response:
     status: 406
     body:
@@ -310,6 +319,36 @@
     status: 406
     body:
       message: 'Status not specified.'
+
+- name: registration create 'registered' with full event sets registrationStatus to waitlist
+  endpoint:
+    method: POST
+    path: registration/create
+  request:
+    body:
+      eventID: usingfortestdonotmodify
+      id: 144444999
+      registrationStatus: registered
+  response:
+    status: 200
+    body:
+      message: "Update succeeded"
+      registrationStatus: "waitlist"
+
+- name: registration create 'checkedin' with full event sets registrationStatus to checkedin
+  endpoint:
+    method: POST
+    path: registration/create
+  request:
+    body:
+      eventID: usingfortestdonotmodify
+      id: 144444991
+      registrationStatus: checkedin
+  response:
+    status: 200
+    body:
+      message: "Update succeeded"
+      registrationStatus: "checkedin"
 
 - name: registration queryStudent returns 200
   endpoint:
