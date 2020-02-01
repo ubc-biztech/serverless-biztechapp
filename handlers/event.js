@@ -104,6 +104,73 @@ module.exports.count = async (event, ctx, callback) => {
 
 }
 
+module.exports.getUsers = async (event, ctx, callback) => {
+
+  const id = event.queryStringParameters.id;
+
+  // Check that parameters are valid
+  if (!id) {
+    callback(null, helpers.inputError('id not specified.', 'missing query param'));
+  }
+
+  const params = {
+    TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
+    FilterExpression: 'eventID = :query',
+    ExpressionAttributeValues: {
+      ':query': id
+    }
+  };
+
+  await docClient.scan(params).promise()
+  .then(async result => {
+    console.log('Scan success.');
+    const registrationList = result.Items;
+
+    /**
+     * Example registration obj:
+     * { eventID: 'blueprint',
+     *   id: 123,
+     *   updatedAt: 1580007893340,
+     *   registrationStatus: 'registered'
+     * }
+     */
+    let keysForRequest = registrationList.map(registrationObj => {
+      let keyEntry = {}
+      keyEntry.id = parseInt(registrationObj.id)
+      return keyEntry
+    })
+    console.log('Keys:', keysForRequest)
+
+    let keyBatches = [];
+    const size = 100 // max BatchGetItem count
+    while (keysForRequest.length > 0) {
+      keyBatches.push(keysForRequest.splice(0, size))
+    }
+
+    await Promise.all(keyBatches.map(batch => {
+      return helpers.batchGet(batch, 'biztechUsers' + process.env.ENVIRONMENT)
+    })).then(result => {
+      const results = result.flatMap(batchResult => batchResult.Responses.biztechUsers)
+      console.log(results)
+      const response = {
+        statusCode: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Credentials': true,
+        },
+        body: JSON.stringify(results),
+      };
+      callback(null, response);
+    })
+    
+  })
+  .catch(error => {
+    console.error(error);
+    callback(new Error('Unable to scan registration table.'));
+    return;
+  });
+};
+
 module.exports.update = async (event, ctx, callback) => {
 
   const data = JSON.parse(event.body);
@@ -143,8 +210,14 @@ module.exports.update = async (event, ctx, callback) => {
 };
 
 module.exports.scan = async (event, ctx, callback) => {
-
+  const data = JSON.parse(event.body);
   const code = event.queryStringParameters.code;
+
+  // Check that parameters are valid
+  if (!code) {
+    callback(null, helpers.inputError('code not specified.', data));
+    return;
+  }
 
   const params = {
     TableName: 'biztechEvents' + process.env.ENVIRONMENT,

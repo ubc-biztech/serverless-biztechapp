@@ -7,7 +7,7 @@ provider:
   stage: ${opt:stage, 'dev'}
   apiKeys:
     - ${opt:stage, 'dev'}-key
-  runtime: nodejs10.x
+  runtime: nodejs12.x
   region: us-west-2
   cfLogs: true
   environment:
@@ -18,6 +18,7 @@ provider:
         - dynamodb:DescribeTable
         - dynamodb:Query
         - dynamodb:Scan
+        - dynamodb:BatchGetItem
         - dynamodb:GetItem
         - dynamodb:PutItem
         - dynamodb:DeleteItem
@@ -80,11 +81,19 @@ functions:
           method: get
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
+<<<<<<< HEAD
   eventCount:
     handler: handlers/event.count
     events:
       - http:
           path: events/count
+=======
+  eventGetUsers:
+    handler: handlers/event.getUsers
+    events:
+      - http:
+          path: events/getUsers
+>>>>>>> master
           method: get
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
