@@ -45,7 +45,7 @@ module.exports.create = async (event, ctx, callback) => {
     })
     .catch(error => {
       console.error(error);
-      const response = helpers.createResponse(500, error);
+      const response = helpers.createResponse(502, error);
       callback(null, response)
     })
 
@@ -68,7 +68,7 @@ module.exports.get = async (event, ctx, callback) => {
     })
     .catch(error => {
       console.error(error);
-      const response = helpers.createResponse(500, error);
+      const response = helpers.createResponse(502, error);
       callback(null, response);
     })
 
@@ -202,23 +202,15 @@ module.exports.scan = async (event, ctx, callback) => {
     .then(result => {
       console.log('Scan success.');
       const data = result.Items;
-      const response = {
-        statusCode: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Credentials': true,
-        },
-        body: JSON.stringify({
+      const response = helpers.createResponse(200, {
           size: data.length,
           data: data
-        }, null, 2)
-      };
+      })
       callback(null, response);
     })
     .catch(error => {
       console.error(error);
       callback(new Error('Unable to scan events.'));
-      return;
     });
 
 };

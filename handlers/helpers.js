@@ -112,26 +112,12 @@ module.exports = {
       .update(params)
       .promise()
       .then(result => {
-        const response = {
-          statusCode: 200,
-          headers: {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Credentials": true
-          },
-          body: JSON.stringify("Update succeeded.")
-        };
+        const response = this.createResponse(200, "Update succeeded.")
         return response;
       })
       .catch(error => {
         console.error(error);
-        const response = {
-          statusCode: 500,
-          headers: {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Credentials": true
-          },
-          body: error
-        };
+        const response = this.createResponse(502, error)
         return response;
       });
   },

@@ -67,7 +67,7 @@ module.exports.get = async (event, ctx, callback) => {
     })
     .catch(error => {
       console.error(error);
-      const response = helpers.createResponse(500, error)
+      const response = helpers.createResponse(502, error)
       callback(null, response);
     });
 
@@ -97,7 +97,7 @@ module.exports.update = async (event, ctx, callback) => {
     })
     .catch(error => {
       console.error(error);
-      const response = helpers.createResponse(500, error)
+      const response = helpers.createResponse(502, error)
       callback(null, response);
     })
 
