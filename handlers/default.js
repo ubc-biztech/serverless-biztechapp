@@ -2,7 +2,7 @@
 
 const helpers = require('./helpers')
 
-module.exports.hello = () => {
+module.exports.hello = async () => {
   return helpers.createResponse(200, {
     message: 'Yeet!'
   })

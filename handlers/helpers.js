@@ -12,6 +12,7 @@ module.exports = {
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Credentials': true,
+        'Access-Control-Allow-Headers' : 'x-api-key'
       },
       body: JSON.stringify(body)
     };
