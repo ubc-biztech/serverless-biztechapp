@@ -6,22 +6,24 @@ module.exports = {
     return Object.keys(obj).length === 0;
   },
 
-  inputError: function(message, data) {
+  createResponse: function(statusCode, body) {
     const response = {
-      statusCode: 406,
+      statusCode,
       headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Credentials": true
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Credentials': true,
       },
-      body: JSON.stringify(
-        {
-          message: message,
-          data: data
-        },
-        null,
-        2
-      )
+      body: JSON.stringify(body)
     };
+    return response;
+  },
+
+  inputError: function(message, data) {
+    const response = this.createResponse(406, 
+      {
+        message: message,
+        data: data
+      })
     console.log("INPUT ERROR", response);
     return response;
   },

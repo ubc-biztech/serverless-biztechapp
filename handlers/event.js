@@ -12,12 +12,10 @@ module.exports.create = async (event, ctx, callback) => {
 
   if (!data.hasOwnProperty('id')) {
     callback(null, helpers.inputError('Event ID not specified.', data));
-    return;
   }
 
   if (data.capac == null || isNaN(data.capac)) {
     callback(null, helpers.inputError('capac invalid, please provide valid number.', data));
-    return;
   }
 
   const params = {
@@ -39,23 +37,16 @@ module.exports.create = async (event, ctx, callback) => {
 
   await docClient.put(params).promise()
     .then(result => {
-      const response = {
-        statusCode: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Credentials': true,
-        },
-        body: JSON.stringify({
+      const response = helpers.createResponse(200, {
           message: 'Event Created!',
           params: params
-        }, null, 2),
-      };
-      callback(null, response);
+        })
+      callback(null, response)
     })
     .catch(error => {
       console.error(error);
-      callback(new Error('Unable to create event.'));
-      return;
+      const response = helpers.createResponse(500, error);
+      callback(null, response)
     })
 
 };
@@ -68,24 +59,17 @@ module.exports.get = async (event, ctx, callback) => {
 
   await docClient.scan(params).promise()
     .then(async(result) => {
-      var events = result.Items
+      var events = result.Items      
       for (const event of events) {
-          event.counts = await helpers.getEventCounts(event.id)
-        }
-      const response = {
-        statusCode: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Credentials': true,
-        },
-        body: JSON.stringify(events),
-      };
+        event.counts = await helpers.getEventCounts(event.id)
+      }
+      const response = helpers.createResponse(200, events)
       callback(null, response);
     })
     .catch(error => {
       console.error(error);
-      callback(new Error('Unable to get events.'));
-      return;
+      const response = helpers.createResponse(500, error);
+      callback(null, response);
     })
 
 };
@@ -95,13 +79,8 @@ module.exports.count = async (event, ctx, callback) => {
   const id = event.queryStringParameters.id;
   const counts = await helpers.getEventCounts(id)
 
-  const response = {
-    statusCode: 200,
-    body: JSON.stringify(counts)
-  };
-
+  const response = helpers.createResponse(200, counts)
   callback(null, response);
-
 }
 
 module.exports.getUsers = async (event, ctx, callback) => {
@@ -159,22 +138,13 @@ module.exports.getUsers = async (event, ctx, callback) => {
           item.registrationStatus = registrationObj[0].registrationStatus
           return item
         });
-        console.log(resultsWithRegistrationStatus)
-        const response = {
-          statusCode: 200,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Credentials': true,
-          },
-          body: JSON.stringify(resultsWithRegistrationStatus),
-        };
+        const response = helpers.createResponse(200, resultsWithRegistrationStatus)
         callback(null, response);
       })    
   })
   .catch(error => {
     console.error(error);
     callback(new Error('Unable to scan registration table.'));
-    return;
   });
 };
 
@@ -184,7 +154,6 @@ module.exports.update = async (event, ctx, callback) => {
 
   if (!data.hasOwnProperty('id')) {
     callback(null, helpers.inputError('Event ID not specified.', data));
-    return;
   }
   const id = data.id;
 
@@ -198,14 +167,7 @@ module.exports.update = async (event, ctx, callback) => {
       if (!helpers.isEmpty(result))
         return callback(null, await helpers.updateDB(id, data, 'biztechEvents'));
       else {
-        const response = {
-          statusCode: 404,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Credentials': true,
-          },  
-          body: JSON.stringify('Event not found.')
-        };
+        const response = helpers.createResponse(404, 'Event not found.')
         callback(null, response);
       }
     })
@@ -223,7 +185,6 @@ module.exports.scan = async (event, ctx, callback) => {
   // Check that parameters are valid
   if (!code) {
     callback(null, helpers.inputError('code not specified.', data));
-    return;
   }
 
   const params = {
