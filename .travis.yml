@@ -19,6 +19,6 @@ jobs:
 stages:
   - name: "Install and run integration tests"
   - name: "Deploy to Staging"
-    if: (branch = master) AND (type = pull_request)
-  - name: "Deploy to Production"
     if: (branch = master) AND (type = push)
+  - name: "Deploy to Production"
+    if: (branch = prod) AND (type = push)
