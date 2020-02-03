@@ -10,7 +10,6 @@ module.exports.create = async (event, ctx, callback) => {
 
   if (!data.hasOwnProperty('id')) {
     callback(null, helpers.inputError('User ID not specified.', data));
-    return;
   }
   const id = parseInt(data.id, 10);
 
@@ -32,17 +31,11 @@ module.exports.create = async (event, ctx, callback) => {
 
   await docClient.put(params).promise()
 
-  return {
-    statusCode: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Credentials': true,
-    },
-    body: JSON.stringify({
-      message: 'Created!',
-      params: params
-    }, null, 2),
-  };
+  const response = helpers.createResponse(200, {
+    message: 'Created!',
+    params: params
+  })
+  callback(null, response)
 
 };
 
@@ -65,37 +58,17 @@ module.exports.get = async (event, ctx, callback) => {
   await docClient.get(params).promise()
     .then(result => {
       if (result.Item == null){
-
-        console.log('User not found');
-        const response = {
-          statusCode: 404,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Credentials': true,
-          },
-          body: JSON.stringify('User not found.')
-        };
-        callback(null, response);
-
+        const response = helpers.createResponse(404, 'User not found.')
+        callback(null, response)
       } else {
-
-        console.log('User found');
-        const response = {
-          statusCode: 200,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Credentials': true,
-          },
-          body: JSON.stringify(result.Item)
-        };
-        callback(null, response);
-
+        const response = helpers.createResponse(200, result.Item)
+        callback(null, response)
       }
     })
     .catch(error => {
       console.error(error);
-      callback(new Error('Couldn\'t fetch user.'));
-      return;
+      const response = helpers.createResponse(502, error)
+      callback(null, response);
     });
 
 };
@@ -105,7 +78,6 @@ module.exports.update = async (event, ctx, callback) => {
   const data = JSON.parse(event.body);
   if (!data.hasOwnProperty('id')) {
     callback(null, helpers.inputError('User ID not specified.', data));
-    return;
   }
   const id = parseInt(data.id, 10);
 
@@ -117,22 +89,16 @@ module.exports.update = async (event, ctx, callback) => {
   await docClient.get(params).promise()
     .then(async(result) => {
       if (!helpers.isEmpty(result))
-        return callback(null, await helpers.updateDB(id, data, 'biztechUsers'));
+        callback(null, await helpers.updateDB(id, data, 'biztechUsers'));
       else {
-        const response = {
-          statusCode: 404,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Credentials': true,
-          },
-          body: JSON.stringify('User not found.')
-        };
+        const response = helpers.createResponse(404, 'User not found.')
         callback(null, response);
       }
     })
     .catch(error => {
       console.error(error);
-      callback(new Error('Could not get user from database.'));
+      const response = helpers.createResponse(502, error)
+      callback(null, response);
     })
 
 };
