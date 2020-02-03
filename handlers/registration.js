@@ -11,20 +11,10 @@ module.exports.create = async (event, ctx, callback) => {
   // Check that parameters are valid
   if (!data.hasOwnProperty('id')) {
     callback(null, helpers.inputError('Registration student ID not specified.', data));
-    return;
   } else if (!data.hasOwnProperty('eventID')) {
     callback(null, helpers.inputError('Registration event ID not specified.', data));
-    return;
   } else if (!data.hasOwnProperty('registrationStatus')) {
-    const response = {
-      statusCode: 406,
-      body: JSON.stringify({
-        message: 'Status not specified.',
-        data: data
-      }, null, 2),
-    };
-    callback(null, response);
-    return;
+    callback(null, helpers.inputError('Status not specified.', data));
   }
   const id = parseInt(data.id, 10);
   const eventID = data.eventID;
@@ -71,25 +61,15 @@ module.exports.create = async (event, ctx, callback) => {
   // call dynamoDb
   await docClient.update(params).promise()
   .then(result => {
-    const response = {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Credentials': true,
-      },
-      body: JSON.stringify({
-        message: 'Update succeeded',
-        registrationStatus
-        })
-    };
+    const response = helpers.createResponse(200, {
+      message: 'Update succeeded',
+      registrationStatus
+      })
     callback(null, response)
   })
   .catch(error => {
     console.error(error);
-    const response = {
-    statusCode: 500,
-    body: error
-    };
+    const response = helpers.createResponse(502, error);
     callback(null, response)
   });
 };
@@ -115,23 +95,15 @@ module.exports.queryStudent = async (event, ctx, callback) => {
     .then(result => {
       console.log('Query success.');
       const data = result.Items;
-      const response = {
-        statusCode: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Credentials': true,
-        },
-        body: JSON.stringify({
+      const response = helpers.createResponse(200, {
           size: data.length,
           data: data
-          }, null, 2)
-      };
+      })
       callback(null, response);
     })
     .catch(error => {
       console.error(error);
       callback(new Error('Unable to query registration table.'));
-      return;
     });
 }
 
@@ -156,22 +128,14 @@ module.exports.scanEvent = async (event, ctx, callback) => {
   .then(result => {
     console.log('Scan success.');
     const data = result.Items;
-    const response = {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Credentials': true,
-      },
-      body: JSON.stringify({
+    const response = helpers.createResponse(200, {
         size: data.length,
         data: data
-        }, null, 2)
-    };
+    })
     callback(null, response);
   })
   .catch(error => {
     console.error(error);
     callback(new Error('Unable to scan registration table.'));
-    return;
   });
 }
