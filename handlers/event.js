@@ -27,7 +27,7 @@ module.exports.create = async (event, ctx, callback) => {
       endDate: data.endDate,
       capac: data.capac,
       imageUrl: data.imageUrl,
-      location: data.location,
+      elocation: data.elocation,
       code,
       createdAt: timestamp,
       updatedAt: timestamp
@@ -38,9 +38,9 @@ module.exports.create = async (event, ctx, callback) => {
   await docClient.put(params).promise()
     .then(result => {
       const response = helpers.createResponse(200, {
-          message: 'Event Created!',
-          params: params
-        })
+        message: 'Event Created!',
+        params: params
+      })
       callback(null, response)
     })
     .catch(error => {
@@ -58,8 +58,8 @@ module.exports.get = async (event, ctx, callback) => {
   };
 
   await docClient.scan(params).promise()
-    .then(async(result) => {
-      var events = result.Items      
+    .then(async (result) => {
+      var events = result.Items
       for (const event of events) {
         event.counts = await helpers.getEventCounts(event.id)
       }
@@ -101,36 +101,36 @@ module.exports.getUsers = async (event, ctx, callback) => {
   };
 
   await docClient.scan(params).promise()
-  .then(async result => {
-    console.log('Scan success.');
-    const registrationList = result.Items;
+    .then(async result => {
+      console.log('Scan success.');
+      const registrationList = result.Items;
 
-    /**
-     * Example registration obj:
-     * { eventID: 'blueprint',
-     *   id: 123,
-     *   updatedAt: 1580007893340,
-     *   registrationStatus: 'registered'
-     * }
-     */
-    let keysForRequest = registrationList.map(registrationObj => {
-      let keyEntry = {}
-      keyEntry.id = parseInt(registrationObj.id)
-      return keyEntry
-    })
-    console.log('Keys:', keysForRequest)
+      /**
+       * Example registration obj:
+       * { eventID: 'blueprint',
+       *   id: 123,
+       *   updatedAt: 1580007893340,
+       *   registrationStatus: 'registered'
+       * }
+       */
+      let keysForRequest = registrationList.map(registrationObj => {
+        let keyEntry = {}
+        keyEntry.id = parseInt(registrationObj.id)
+        return keyEntry
+      })
+      console.log('Keys:', keysForRequest)
 
-    let keyBatches = [];
-    const size = 100 // max BatchGetItem count
-    while (keysForRequest.length > 0) {
-      keyBatches.push(keysForRequest.splice(0, size))
-    }
+      let keyBatches = [];
+      const size = 100 // max BatchGetItem count
+      while (keysForRequest.length > 0) {
+        keyBatches.push(keysForRequest.splice(0, size))
+      }
 
-    await Promise.all(keyBatches.map(batch => {
-      return helpers.batchGet(batch, 'biztechUsers' + process.env.ENVIRONMENT)
-    })).then(result => {
+      await Promise.all(keyBatches.map(batch => {
+        return helpers.batchGet(batch, 'biztechUsers' + process.env.ENVIRONMENT)
+      })).then(result => {
         const results = result.flatMap(batchResult => batchResult.Responses.biztechUsers)
-        
+
         const resultsWithRegistrationStatus = results.map(item => {
           const registrationObj = registrationList.filter(registrationObject => {
             return registrationObject.id === item.id
@@ -140,12 +140,12 @@ module.exports.getUsers = async (event, ctx, callback) => {
         });
         const response = helpers.createResponse(200, resultsWithRegistrationStatus)
         callback(null, response);
-      })    
-  })
-  .catch(error => {
-    console.error(error);
-    callback(new Error('Unable to scan registration table.'));
-  });
+      })
+    })
+    .catch(error => {
+      console.error(error);
+      callback(new Error('Unable to scan registration table.'));
+    });
 };
 
 module.exports.update = async (event, ctx, callback) => {
@@ -203,8 +203,8 @@ module.exports.scan = async (event, ctx, callback) => {
       console.log('Scan success.');
       const data = result.Items;
       const response = helpers.createResponse(200, {
-          size: data.length,
-          data: data
+        size: data.length,
+        data: data
       })
       callback(null, response);
     })
