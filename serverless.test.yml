@@ -266,18 +266,6 @@
     body:
       size: 0
 
-- name: event delete returns 200
-  endpoint:
-    method: DELETE
-    path: events/delete
-  request:
-    form:
-      id: testevent
-  response:
-    status: 200
-    body:
-      message: 'Event Deleted!'
-
 - name: registration create returns 200
   endpoint:
     method: POST
@@ -439,4 +427,30 @@
       id: testevent
   response:
     status: 200
-  
+
+- name: event delete returns 200
+  endpoint:
+    method: DELETE
+    path: events/delete
+  request:
+    form:
+      id: testevent
+  response:
+    status: 200
+    body:
+      message: 'Event Deleted!'
+
+- name: event update after delete not found returns 404
+  endpoint:
+    method: POST
+    path: events/update
+  request:
+    body:
+      id: testevent
+      ename: testUpdated
+      capac: 7
+      img: nope
+      code: test
+  response:
+    status: 404
+    body: "\"Event not found.\""

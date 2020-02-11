@@ -58,6 +58,7 @@ module.exports.delete = async (event, ctx, callback) => {
   // Check that parameters are valid
   if (!id) {
     callback(null, helpers.inputError('id not specified.', 'missing query param'));
+  }
 
   const params = {
     Key: { id },
