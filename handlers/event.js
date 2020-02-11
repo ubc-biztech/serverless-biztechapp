@@ -51,6 +51,34 @@ module.exports.create = async (event, ctx, callback) => {
 
 };
 
+module.exports.delete = async (event, ctx, callback) => {
+
+  const id = event.queryStringParameters.id;
+
+  // Check that parameters are valid
+  if (!id) {
+    callback(null, helpers.inputError('id not specified.', 'missing query param'));
+
+  const params = {
+    Key: { id },
+    TableName: 'biztechEvents' + process.env.ENVIRONMENT
+  };
+
+  await docClient.delete(params).promise()
+    .then(result => {
+      const response = helpers.createResponse(200, {
+        message: 'Event Deleted!'
+      })
+      callback(null, response)
+    })
+    .catch(error => {
+      console.error(error);
+      const response = helpers.createResponse(502, error);
+      callback(null, response)
+    })
+
+};
+
 module.exports.get = async (event, ctx, callback) => {
 
   const params = {

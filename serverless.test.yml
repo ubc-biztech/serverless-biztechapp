@@ -266,6 +266,18 @@
     body:
       size: 0
 
+- name: event delete returns 200
+  endpoint:
+    method: DELETE
+    path: events/delete
+  request:
+    form:
+      id: testevent
+  response:
+    status: 200
+    body:
+      message: 'Event Deleted!'
+
 - name: registration create returns 200
   endpoint:
     method: POST
