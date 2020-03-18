@@ -3,11 +3,7 @@ const AWS = require('aws-sdk');
 const docClient = new AWS.DynamoDB.DocumentClient();
 const helpers = require('./helpers');
 const sgMail = require('@sendgrid/mail');
-sgMail.setApiKey("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");
-//send grid acc:
-//user: ubcbiztech
-//pass: ubcbiztech123
-//key: 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
+
 
 module.exports.create = async (event, ctx, callback) => {
 
@@ -47,9 +43,8 @@ module.exports.create = async (event, ctx, callback) => {
 
     await docClient.get(eventParams).promise()
       .then(async (event) => {
-        console.log(event);
         const counts = await helpers.getEventCounts(eventID);
-        eventName = event.ename;
+        eventName = event.Item.ename;
 
         if (counts.registeredCount >= event.Item.capac) {
           registrationStatus = 'waitlist'
@@ -58,22 +53,21 @@ module.exports.create = async (event, ctx, callback) => {
   }
 
   //email confirmation 
-  userParams = {
+  const userParams = {
     Key: { id: id },
     TableName: 'biztechUsers' + process.env.ENVIRONMENT
   }
   await docClient.get(userParams).promise()
     .then(async (user) => {
-      const email = await user.email;
-      const userName = await user.fname;
-      if (eventName != "") {
+      const email = await user.Item.email;
+      const userName = await user.Item.fname;
+      if (eventName != undefined) {
         const msg = {
-          to: 'derekc150@gmail.com',
-          from: 'dev@ubcbiztech.com',
-          subject: 'Biztech ' + eventName + ' Receipt',
-          text: 'Hi ' + userName + '\n\n' + 'You have been ' + registrationStatus + ' for ' + eventName + '.',
+          to: email,
+          from: 'info@ubcbiztech.com',
+          subject: 'BizTech ' + eventName + ' Receipt',
+          text: 'Hi ' + userName + '\n\n' + 'You have been ' + registrationStatus + ' for UBC BizTech\'s ' + eventName + ' event.\n\n We look forward to hosting you!',
         }
-        console.log(msg);
         if (msg) {
           sgMail.send(msg);
         }
