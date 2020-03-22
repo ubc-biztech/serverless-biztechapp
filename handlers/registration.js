@@ -4,8 +4,6 @@ const docClient = new AWS.DynamoDB.DocumentClient();
 const helpers = require('./helpers')
 
 module.exports.create = async (event, ctx, callback) => {
-
-  // TODO: merge Jacques PR for checking required fields
   const data = JSON.parse(event.body);
 
   // Check that parameters are valid

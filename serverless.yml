@@ -73,6 +73,14 @@ functions:
           method: post
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
+  eventDelete:
+    handler: handlers/event.delete
+    events:
+      - http:
+          path: events/delete
+          method: delete
+          cors: true
+          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
   eventGet:
     handler: handlers/event.get
     events:
