@@ -158,7 +158,7 @@ module.exports.getUsers = async (event, ctx, callback) => {
       await Promise.all(keyBatches.map(batch => {
         return helpers.batchGet(batch, 'biztechUsers' + process.env.ENVIRONMENT)
       })).then(result => {
-        const results = result.flatMap(batchResult => batchResult.Responses.biztechUsers)
+        const results = result.flatMap(batchResult => `${batchResult.Responses.biztechUsers}${process.env.ENVIRONMENT}`)
 
         const resultsWithRegistrationStatus = results.map(item => {
           const registrationObj = registrationList.filter(registrationObject => {
