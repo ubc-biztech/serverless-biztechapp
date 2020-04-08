@@ -2,13 +2,11 @@
 const AWS = require('aws-sdk');
 const docClient = new AWS.DynamoDB.DocumentClient();
 const helpers = require('./helpers')
-const cryptoRandomString = require('crypto-random-string');
 
 module.exports.create = async (event, ctx, callback) => {
 
   const timestamp = new Date().getTime();
   const data = JSON.parse(event.body);
-  const code = cryptoRandomString({ length: 4, characters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' });
 
   if (!data.hasOwnProperty('id')) {
     callback(null, helpers.inputError('Event ID not specified.', data));
@@ -28,7 +26,6 @@ module.exports.create = async (event, ctx, callback) => {
       capac: data.capac,
       imageUrl: data.imageUrl,
       elocation: data.elocation,
-      code,
       createdAt: timestamp,
       updatedAt: timestamp
     },

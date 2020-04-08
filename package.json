@@ -2,7 +2,6 @@
   "name": "serverless-biztechapp",
   "version": "1.0.0",
   "dependencies": {
-    "crypto-random-string": "^3.1.0",
     "serverless": "^1.61.3"
   }
 }
