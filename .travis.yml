@@ -8,16 +8,16 @@ cache:
   - node_modules
 jobs:
   include:
-    - stage: "Install and run integration tests"
+    - stage: "Deploy and run integration tests"
       script:
-        - npm install
+        - sls deploy
         - sls test
     - stage: "Deploy to Staging"
       script: sls deploy --stage staging --conceal
     - stage: "Deploy to Production"
       script: sls deploy --stage prod --conceal
 stages:
-  - name: "Install and run integration tests"
+  - name: "Deploy and run integration tests"
   - name: "Deploy to Staging"
     if: (branch = master) AND (type = push)
   - name: "Deploy to Production"
