@@ -158,7 +158,7 @@ module.exports.getUsers = async (event, ctx, callback) => {
       await Promise.all(keyBatches.map(batch => {
         return helpers.batchGet(batch, 'biztechUsers' + process.env.ENVIRONMENT)
       })).then(result => {
-        const results = result.flatMap(batchResult => batchResult.Responses.biztechUsers)
+        const results = result.flatMap(batchResult => `${batchResult.Responses.biztechUsers}${process.env.ENVIRONMENT}`)
 
         const resultsWithRegistrationStatus = results.map(item => {
           const registrationObj = registrationList.filter(registrationObject => {
@@ -194,7 +194,7 @@ module.exports.update = async (event, ctx, callback) => {
   await docClient.get(params).promise()
     .then(async (result) => {
       if (!helpers.isEmpty(result))
-        return callback(null, await helpers.updateDB(id, data, 'biztechEvents'));
+        return callback(null, await helpers.updateDB(id, data, 'biztechEvents'+process.env.ENVIRONMENT));
       else {
         const response = helpers.createResponse(404, 'Event not found.')
         callback(null, response);
