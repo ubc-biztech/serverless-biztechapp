@@ -2,6 +2,6 @@
   "name": "serverless-biztechapp",
   "version": "1.0.0",
   "dependencies": {
-    "serverless": "^1.61.3"
+    "serverless": "^1.67.2"
   }
 }

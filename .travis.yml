@@ -10,7 +10,7 @@ jobs:
   include:
     - stage: "Install and run integration tests"
       script:
-        - npm install
+        - sls deploy
         - sls test
     - stage: "Deploy to Staging"
       script: sls deploy --stage staging --conceal
