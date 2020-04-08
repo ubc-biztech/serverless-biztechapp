@@ -194,7 +194,7 @@ module.exports.update = async (event, ctx, callback) => {
   await docClient.get(params).promise()
     .then(async (result) => {
       if (!helpers.isEmpty(result))
-        return callback(null, await helpers.updateDB(id, data, 'biztechEvents'+process.env.ENVIRONMENT));
+        return callback(null, await helpers.updateDB(id, data, 'biztechEvents'));
       else {
         const response = helpers.createResponse(404, 'Event not found.')
         callback(null, response);
