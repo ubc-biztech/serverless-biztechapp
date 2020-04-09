@@ -2,13 +2,11 @@
 const AWS = require('aws-sdk');
 const docClient = new AWS.DynamoDB.DocumentClient();
 const helpers = require('./helpers')
-const cryptoRandomString = require('crypto-random-string');
 
 module.exports.create = async (event, ctx, callback) => {
 
   const timestamp = new Date().getTime();
   const data = JSON.parse(event.body);
-  const code = cryptoRandomString({ length: 4, characters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' });
 
   if (!data.hasOwnProperty('id')) {
     callback(null, helpers.inputError('Event ID not specified.', data));
@@ -28,7 +26,6 @@ module.exports.create = async (event, ctx, callback) => {
       capac: data.capac,
       imageUrl: data.imageUrl,
       elocation: data.elocation,
-      code,
       createdAt: timestamp,
       updatedAt: timestamp
     },
@@ -158,7 +155,7 @@ module.exports.getUsers = async (event, ctx, callback) => {
       await Promise.all(keyBatches.map(batch => {
         return helpers.batchGet(batch, 'biztechUsers' + process.env.ENVIRONMENT)
       })).then(result => {
-        const results = result.flatMap(batchResult => batchResult.Responses.biztechUsers)
+        const results = result.flatMap(batchResult => `${batchResult.Responses.biztechUsers}${process.env.ENVIRONMENT}`)
 
         const resultsWithRegistrationStatus = results.map(item => {
           const registrationObj = registrationList.filter(registrationObject => {
