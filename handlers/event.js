@@ -157,13 +157,14 @@ module.exports.getUsers = async (event, ctx, callback) => {
       await Promise.all(keyBatches.map(batch => {
         return helpers.batchGet(batch, 'biztechUsers' + process.env.ENVIRONMENT)
       })).then(result => {
-        const results = result.flatMap(batchResult => `${batchResult.Responses.biztechUsers}${process.env.ENVIRONMENT}`)
+        const results = result.flatMap(batchResult => batchResult.Responses.biztechUsers) // extract what's inside
 
         const resultsWithRegistrationStatus = results.map(item => {
           const registrationObj = registrationList.filter(registrationObject => {
-            return registrationObject.id === item.id
+            return registrationObject.id === item.id  // find the same user in 'registrationList' and attach the registrationStatus
           })
-          item.registrationStatus = registrationObj[0].registrationStatus
+          if(registrationObj[0]) item.registrationStatus = registrationObj[0].registrationStatus
+          else item.registrationStatus = '';
           return item
         });
         resultsWithRegistrationStatus.sort(sorters.alphabeticalSorter('lname'));
