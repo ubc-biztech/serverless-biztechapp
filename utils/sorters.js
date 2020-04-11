@@ -1,18 +1,18 @@
 module.exports = {
+    // Alphabetical sorter, a -z
     alphabeticalSorter: (property) => (a, b) => {
         let top, bot;
         if(property) {
-            top = a[property] ? a[property].toLowerCase : '';
-            bot = b[property] ? b[property].toLowerCase : '';
+            top = a[property] ? a[property].toLowerCase() : '';
+            bot = b[property] ? b[property].toLowerCase() : '';
         }
         else {
             top = a ? a.toLowerCase : '';
             bot = b ? b.toLowerCase : '';
         }
-        const 
-        const 
-        return top !== bot ? (bot > top ? 1 : -1 ) : 0;
+        return top !== bot ? (top > bot ? 1 : -1 ) : 0;
     },
+    // Date sorter, putting the most 'recent' at the start
     dateSorter: (property) => (a, b) => {
         let top, bot;
         if(property) {
