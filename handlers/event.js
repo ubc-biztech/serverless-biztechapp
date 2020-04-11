@@ -2,6 +2,7 @@
 const AWS = require('aws-sdk');
 const docClient = new AWS.DynamoDB.DocumentClient();
 const helpers = require('./helpers')
+const sorters = require('../utils/sorters')
 
 module.exports.create = async (event, ctx, callback) => {
 
@@ -89,6 +90,7 @@ module.exports.get = async (event, ctx, callback) => {
       for (const event of events) {
         event.counts = await helpers.getEventCounts(event.id)
       }
+      events.sort(sorters.dateSorter('startDate')) // sort by startDate
       const response = helpers.createResponse(200, events)
       callback(null, response);
     })
@@ -164,6 +166,7 @@ module.exports.getUsers = async (event, ctx, callback) => {
           item.registrationStatus = registrationObj[0].registrationStatus
           return item
         });
+        resultsWithRegistrationStatus.sort(sorters.alphabeticalSorter('lname'));
         const response = helpers.createResponse(200, resultsWithRegistrationStatus)
         callback(null, response);
       })
