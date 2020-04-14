@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "dependencies": {
     "@sendgrid/mail": "^6.5.3",
+    "axios": "^0.19.2",
     "crypto-random-string": "^3.1.0",
     "serverless": "^1.61.3"
   }
