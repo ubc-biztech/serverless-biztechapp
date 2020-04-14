@@ -65,7 +65,6 @@ module.exports.create = async (event, ctx, callback) => {
       const userEmail = await user.Item.email;
       const userName = await user.Item.fname;
       if (eventName != undefined) {
-
         const msg = {
           to: userEmail,
           from: "info@ubcbiztech.com",
