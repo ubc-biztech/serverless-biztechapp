@@ -1,6 +1,6 @@
 service: biztechApp
-tenant: ianmh
-app: biztechapp
+org: biztechdev
+app: myapp
 
 provider:
   name: aws
