@@ -1,6 +1,6 @@
 module.exports = {
-    // Alphabetical sorter, a -z
-    alphabeticalSorter: (property) => (a, b) => {
+    // Alphabetical comparer, a -z
+    alphabeticalComparer: (property) => (a, b) => {
         let top, bot;
         if(property) {
             top = a[property] ? a[property].toLowerCase() : '';
@@ -12,8 +12,8 @@ module.exports = {
         }
         return top !== bot ? (top > bot ? 1 : -1 ) : 0;
     },
-    // Date sorter, putting the most 'recent' at the start
-    dateSorter: (property) => (a, b) => {
+    // Date comparer, putting the most 'recent' at the start
+    dateComparer: (property) => (a, b) => {
         let top, bot;
         if(property) {
             top = a[property] ? new Date(a[property]) : 0;

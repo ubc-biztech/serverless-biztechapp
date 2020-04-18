@@ -90,7 +90,7 @@ module.exports.get = async (event, ctx, callback) => {
       for (const event of events) {
         event.counts = await helpers.getEventCounts(event.id)
       }
-      events.sort(sorters.dateSorter('startDate')) // sort by startDate
+      events.sort(sorters.alphabeticalComparer('startDate')) // sort by startDate
       const response = helpers.createResponse(200, events)
       callback(null, response);
     })
@@ -167,7 +167,7 @@ module.exports.getUsers = async (event, ctx, callback) => {
           else item.registrationStatus = '';
           return item
         });
-        resultsWithRegistrationStatus.sort(sorters.alphabeticalSorter('lname'));
+        resultsWithRegistrationStatus.sort(sorters.alphabeticalComparer('lname'));
         const response = helpers.createResponse(200, resultsWithRegistrationStatus)
         callback(null, response);
       })
