@@ -76,9 +76,7 @@ module.exports.create = async (event, ctx, callback) => {
             eventName: eventName
           }
         }
-        if (msg) {
-          await sgMail.send(msg);
-        }
+        await sgMail.send(msg);
       }
     })
 
