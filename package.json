@@ -3,5 +3,8 @@
   "version": "1.0.0",
   "dependencies": {
     "serverless": "^1.67.2"
+  },
+  "devDependencies": {
+    "serverless-prune-plugin": "^1.4.2"
   }
 }

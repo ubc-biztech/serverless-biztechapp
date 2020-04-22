@@ -2,6 +2,13 @@ service: biztechApp
 tenant: ianmh
 app: biztechapp
 
+plugins:
+  - serverless-prune-plugin
+custom:
+  prune:
+    automatic: true
+    number: 3
+  
 provider:
   name: aws
   stage: ${opt:stage, 'dev'}
