@@ -31,7 +31,6 @@ module.exports.create = async (event, ctx, callback) => {
   }
   const id = parseInt(data.id, 10);
   const eventID = data.eventID;
-  let eventName = "";
   let registrationStatus = data.registrationStatus;
 
   // Check if the event is full
@@ -45,40 +44,43 @@ module.exports.create = async (event, ctx, callback) => {
     await docClient.get(eventParams).promise()
       .then(async (event) => {
         const counts = await helpers.getEventCounts(eventID);
-        eventName = event.Item.ename;
 
         if (counts.registeredCount >= event.Item.capac) {
           registrationStatus = 'waitlist'
         }
+        return event.Item.ename;
+      }).then(async (eventName) => {
+        //after the person has been either registered or waitlisted, send confirmation email 
+        const userParams = {
+          Key: { id: id },
+          TableName: 'biztechUsers' + process.env.ENVIRONMENT
+        }
+        await docClient.get(userParams).promise()
+          .then(async (user) => {
+            console.log(user);
+            const userEmail = await user.Item.email;
+            const userName = await user.Item.fname;
+
+            const msg = {
+              to: userEmail,
+              from: "info@ubcbiztech.com",
+              templateId: "d-99da9013c9a04ef293e10f0d73e9b49c",
+              dynamic_template_data: {
+                subject: "BizTech " + eventName + "Receipt",
+                name: userName,
+                registrationStatus: registrationStatus,
+                eventName: eventName
+              }
+            }
+            await sgMail.send(msg);
+
+          })
       })
   }
 
-  //confirmation email 
-  const userParams = {
-    Key: { id: id },
-    TableName: 'biztechUsers' + process.env.ENVIRONMENT
-  }
 
-  await docClient.get(userParams).promise()
-    .then(async (user) => {
-      console.log(user);
-      const userEmail = await user.Item.email;
-      const userName = await user.Item.fname;
-      if (eventName != undefined) {
-        const msg = {
-          to: userEmail,
-          from: "info@ubcbiztech.com",
-          templateId: "d-99da9013c9a04ef293e10f0d73e9b49c",
-          dynamic_template_data: {
-            subject: "BizTech " + eventName + "Receipt",
-            name: userName,
-            registrationStatus: registrationStatus,
-            eventName: eventName
-          }
-        }
-        await sgMail.send(msg);
-      }
-    })
+
+
 
 
   const updateObject = { registrationStatus };
