@@ -49,7 +49,8 @@ module.exports.create = async (event, ctx, callback) => {
           registrationStatus = 'waitlist'
         }
         return event.Item.ename;
-      }).then(async (eventName) => {
+      })
+      .then(async (eventName) => {
         //after the person has been either registered or waitlisted, send confirmation email 
         const userParams = {
           Key: { id: id },
