@@ -2,6 +2,7 @@
 const AWS = require('aws-sdk');
 const docClient = new AWS.DynamoDB.DocumentClient();
 const helpers = require('./helpers')
+const sorters = require('../utils/sorters')
 
 module.exports.create = async (event, ctx, callback) => {
 
@@ -89,6 +90,7 @@ module.exports.get = async (event, ctx, callback) => {
       for (const event of events) {
         event.counts = await helpers.getEventCounts(event.id)
       }
+      events.sort(sorters.alphabeticalComparer('startDate')) // sort by startDate
       const response = helpers.createResponse(200, events)
       callback(null, response);
     })
@@ -155,15 +157,17 @@ module.exports.getUsers = async (event, ctx, callback) => {
       await Promise.all(keyBatches.map(batch => {
         return helpers.batchGet(batch, 'biztechUsers' + process.env.ENVIRONMENT)
       })).then(result => {
-        const results = result.flatMap(batchResult => `${batchResult.Responses.biztechUsers}${process.env.ENVIRONMENT}`)
+        const results = result.flatMap(batchResult => batchResult.Responses[`biztechUsers${process.env.ENVIRONMENT}`]) // extract what's inside
 
         const resultsWithRegistrationStatus = results.map(item => {
           const registrationObj = registrationList.filter(registrationObject => {
-            return registrationObject.id === item.id
+            return registrationObject.id === item.id  // find the same user in 'registrationList' and attach the registrationStatus
           })
-          item.registrationStatus = registrationObj[0].registrationStatus
+          if(registrationObj[0]) item.registrationStatus = registrationObj[0].registrationStatus
+          else item.registrationStatus = '';
           return item
         });
+        resultsWithRegistrationStatus.sort(sorters.alphabeticalComparer('lname'));
         const response = helpers.createResponse(200, resultsWithRegistrationStatus)
         callback(null, response);
       })
