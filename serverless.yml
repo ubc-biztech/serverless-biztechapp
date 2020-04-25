@@ -11,6 +11,7 @@ provider:
   region: us-west-2
   cfLogs: true
   environment:
+    SENDGRID_KEY: ${param:SENDGRID_KEY}
     ENVIRONMENT: ${file(./config.${self:provider.stage}.json):ENVIRONMENT}
   iamRoleStatements:
     - Effect: Allow

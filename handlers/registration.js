@@ -1,7 +1,10 @@
 'use strict';
 const AWS = require('aws-sdk');
 const docClient = new AWS.DynamoDB.DocumentClient();
-const helpers = require('./helpers')
+const helpers = require('./helpers');
+const sgMail = require('@sendgrid/mail');
+sgMail.setApiKey(process.env.SENDGRID_KEY);
+
 
 module.exports.create = async (event, ctx, callback) => {
   const data = JSON.parse(event.body);
@@ -19,21 +22,49 @@ module.exports.create = async (event, ctx, callback) => {
   let registrationStatus = data.registrationStatus;
 
   // Check if the event is full
-  if (registrationStatus === 'registered'){
+  if (registrationStatus === 'registered') {
 
     const eventParams = {
       Key: { id: eventID },
       TableName: 'biztechEvents' + process.env.ENVIRONMENT
     }
-    
-    await docClient.get(eventParams).promise()
-    .then(async(event) => {
-      const counts = await helpers.getEventCounts(eventID)
 
-      if (counts.registeredCount >= event.Item.capac){
-        registrationStatus = 'waitlist'
-      }
-    })
+    await docClient.get(eventParams).promise()
+      .then(async (event) => {
+        const counts = await helpers.getEventCounts(eventID);
+
+        if (counts.registeredCount >= event.Item.capac) {
+          registrationStatus = 'waitlist'
+        }
+        return event.Item.ename;
+      })
+      .then(async (eventName) => {
+        //after the person has been either registered or waitlisted, send confirmation email 
+        const userParams = {
+          Key: { id: id },
+          TableName: 'biztechUsers' + process.env.ENVIRONMENT
+        }
+        await docClient.get(userParams).promise()
+          .then(async (user) => {
+            console.log(user);
+            const userEmail = await user.Item.email;
+            const userName = await user.Item.fname;
+
+            const msg = {
+              to: userEmail,
+              from: "info@ubcbiztech.com",
+              templateId: "d-99da9013c9a04ef293e10f0d73e9b49c",
+              dynamic_template_data: {
+                subject: "BizTech " + eventName + "Receipt",
+                name: userName,
+                registrationStatus: registrationStatus,
+                eventName: eventName
+              }
+            }
+            await sgMail.send(msg);
+
+          })
+      })
   }
 
   const updateObject = { registrationStatus };
@@ -53,23 +84,23 @@ module.exports.create = async (event, ctx, callback) => {
     TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
     ExpressionAttributeValues: expressionAttributeValues,
     UpdateExpression: updateExpression,
-    ReturnValues:"UPDATED_NEW"
+    ReturnValues: "UPDATED_NEW"
   };
 
   // call dynamoDb
   await docClient.update(params).promise()
-  .then(result => {
-    const response = helpers.createResponse(200, {
-      message: 'Update succeeded',
-      registrationStatus
+    .then(result => {
+      const response = helpers.createResponse(200, {
+        message: 'Update succeeded',
+        registrationStatus
       })
-    callback(null, response)
-  })
-  .catch(error => {
-    console.error(error);
-    const response = helpers.createResponse(502, error);
-    callback(null, response)
-  });
+      callback(null, response)
+    })
+    .catch(error => {
+      console.error(error);
+      const response = helpers.createResponse(502, error);
+      callback(null, response)
+    });
 };
 
 // Return list of entries with the matching id
@@ -94,8 +125,8 @@ module.exports.queryStudent = async (event, ctx, callback) => {
       console.log('Query success.');
       const data = result.Items;
       const response = helpers.createResponse(200, {
-          size: data.length,
-          data: data
+        size: data.length,
+        data: data
       })
       callback(null, response);
     })
@@ -123,17 +154,17 @@ module.exports.scanEvent = async (event, ctx, callback) => {
   };
 
   await docClient.scan(params).promise()
-  .then(result => {
-    console.log('Scan success.');
-    const data = result.Items;
-    const response = helpers.createResponse(200, {
+    .then(result => {
+      console.log('Scan success.');
+      const data = result.Items;
+      const response = helpers.createResponse(200, {
         size: data.length,
         data: data
+      })
+      callback(null, response);
     })
-    callback(null, response);
-  })
-  .catch(error => {
-    console.error(error);
-    callback(new Error('Unable to scan registration table.'));
-  });
+    .catch(error => {
+      console.error(error);
+      callback(new Error('Unable to scan registration table.'));
+    });
 }
