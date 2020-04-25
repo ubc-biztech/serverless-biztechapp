@@ -150,7 +150,6 @@
       ename: test
       capac: 2000000
       img: yup
-      code: ripp
   response:
     status: 200
     body:
@@ -183,7 +182,6 @@
       id: testevent
       ename: test
       img: yup
-      code: test
   response:
     status: 406
     body:
@@ -210,7 +208,6 @@
       ename: testUpdated
       capac: 7
       img: nope
-      code: test
   response:
     status: 200
     body: "\"Update succeeded.\""
@@ -225,7 +222,6 @@
       ename: testUpdated
       capac: 7
       img: nope
-      code: test
   response:
     status: 404
     body: "\"Event not found.\""
@@ -242,17 +238,17 @@
     body:
       message: 'Event ID not specified.'
 
-- name: event scan match returns 200
-  endpoint:
-    method: GET
-    path: events/scan
-  request:
-    form:
-      code: test
-  response:
-    status: 200
-    body:
-      size: 1
+# - name: event scan match returns 200
+#   endpoint:
+#     method: GET
+#     path: events/scan
+#   request:
+#     form:
+#       code: test
+#   response:
+#     status: 200
+#     body:
+#       size: 1
 
 - name: event scan no match returns 200
   endpoint:
@@ -427,4 +423,30 @@
       id: testevent
   response:
     status: 200
-  
+
+- name: event delete returns 200
+  endpoint:
+    method: DELETE
+    path: events/delete
+  request:
+    form:
+      id: testevent
+  response:
+    status: 200
+    body:
+      message: 'Event Deleted!'
+
+- name: event update after delete not found returns 404
+  endpoint:
+    method: POST
+    path: events/update
+  request:
+    body:
+      id: testevent
+      ename: testUpdated
+      capac: 7
+      img: nope
+      code: test
+  response:
+    status: 404
+    body: "\"Event not found.\""

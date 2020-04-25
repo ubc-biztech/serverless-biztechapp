@@ -2,22 +2,18 @@
 const AWS = require('aws-sdk');
 const docClient = new AWS.DynamoDB.DocumentClient();
 const helpers = require('./helpers')
-const cryptoRandomString = require('crypto-random-string');
 
 module.exports.create = async (event, ctx, callback) => {
 
   const timestamp = new Date().getTime();
   const data = JSON.parse(event.body);
-  const code = cryptoRandomString({ length: 4, characters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' });
 
   if (!data.hasOwnProperty('id')) {
     callback(null, helpers.inputError('Event ID not specified.', data));
-    return;
   }
 
   if (data.capac == null || isNaN(data.capac)) {
     callback(null, helpers.inputError('capac invalid, please provide valid number.', data));
-    return;
   }
 
   const params = {
@@ -29,8 +25,7 @@ module.exports.create = async (event, ctx, callback) => {
       endDate: data.endDate,
       capac: data.capac,
       imageUrl: data.imageUrl,
-      location: data.location,
-      code,
+      elocation: data.elocation,
       createdAt: timestamp,
       updatedAt: timestamp
     },
@@ -39,23 +34,45 @@ module.exports.create = async (event, ctx, callback) => {
 
   await docClient.put(params).promise()
     .then(result => {
-      const response = {
-        statusCode: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Credentials': true,
-        },
-        body: JSON.stringify({
-          message: 'Event Created!',
-          params: params
-        }, null, 2),
-      };
-      callback(null, response);
+      const response = helpers.createResponse(200, {
+        message: 'Event Created!',
+        params: params
+      })
+      callback(null, response)
     })
     .catch(error => {
       console.error(error);
-      callback(new Error('Unable to create event.'));
-      return;
+      const response = helpers.createResponse(502, error);
+      callback(null, response)
+    })
+
+};
+
+module.exports.delete = async (event, ctx, callback) => {
+
+  const id = event.queryStringParameters.id;
+
+  // Check that parameters are valid
+  if (!id) {
+    callback(null, helpers.inputError('id not specified.', 'missing query param'));
+  }
+
+  const params = {
+    Key: { id },
+    TableName: 'biztechEvents' + process.env.ENVIRONMENT
+  };
+
+  await docClient.delete(params).promise()
+    .then(result => {
+      const response = helpers.createResponse(200, {
+        message: 'Event Deleted!'
+      })
+      callback(null, response)
+    })
+    .catch(error => {
+      console.error(error);
+      const response = helpers.createResponse(502, error);
+      callback(null, response)
     })
 
 };
@@ -67,25 +84,18 @@ module.exports.get = async (event, ctx, callback) => {
   };
 
   await docClient.scan(params).promise()
-    .then(async(result) => {
+    .then(async (result) => {
       var events = result.Items
       for (const event of events) {
-          event.counts = await helpers.getEventCounts(event.id)
-        }
-      const response = {
-        statusCode: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Credentials': true,
-        },
-        body: JSON.stringify(events),
-      };
+        event.counts = await helpers.getEventCounts(event.id)
+      }
+      const response = helpers.createResponse(200, events)
       callback(null, response);
     })
     .catch(error => {
       console.error(error);
-      callback(new Error('Unable to get events.'));
-      return;
+      const response = helpers.createResponse(502, error);
+      callback(null, response);
     })
 
 };
@@ -95,13 +105,8 @@ module.exports.count = async (event, ctx, callback) => {
   const id = event.queryStringParameters.id;
   const counts = await helpers.getEventCounts(id)
 
-  const response = {
-    statusCode: 200,
-    body: JSON.stringify(counts)
-  };
-
+  const response = helpers.createResponse(200, counts)
   callback(null, response);
-
 }
 
 module.exports.getUsers = async (event, ctx, callback) => {
@@ -122,36 +127,36 @@ module.exports.getUsers = async (event, ctx, callback) => {
   };
 
   await docClient.scan(params).promise()
-  .then(async result => {
-    console.log('Scan success.');
-    const registrationList = result.Items;
+    .then(async result => {
+      console.log('Scan success.');
+      const registrationList = result.Items;
 
-    /**
-     * Example registration obj:
-     * { eventID: 'blueprint',
-     *   id: 123,
-     *   updatedAt: 1580007893340,
-     *   registrationStatus: 'registered'
-     * }
-     */
-    let keysForRequest = registrationList.map(registrationObj => {
-      let keyEntry = {}
-      keyEntry.id = parseInt(registrationObj.id)
-      return keyEntry
-    })
-    console.log('Keys:', keysForRequest)
+      /**
+       * Example registration obj:
+       * { eventID: 'blueprint',
+       *   id: 123,
+       *   updatedAt: 1580007893340,
+       *   registrationStatus: 'registered'
+       * }
+       */
+      let keysForRequest = registrationList.map(registrationObj => {
+        let keyEntry = {}
+        keyEntry.id = parseInt(registrationObj.id)
+        return keyEntry
+      })
+      console.log('Keys:', keysForRequest)
 
-    let keyBatches = [];
-    const size = 100 // max BatchGetItem count
-    while (keysForRequest.length > 0) {
-      keyBatches.push(keysForRequest.splice(0, size))
-    }
+      let keyBatches = [];
+      const size = 100 // max BatchGetItem count
+      while (keysForRequest.length > 0) {
+        keyBatches.push(keysForRequest.splice(0, size))
+      }
 
-    await Promise.all(keyBatches.map(batch => {
-      return helpers.batchGet(batch, 'biztechUsers' + process.env.ENVIRONMENT)
-    })).then(result => {
-        const results = result.flatMap(batchResult => batchResult.Responses.biztechUsers)
-        
+      await Promise.all(keyBatches.map(batch => {
+        return helpers.batchGet(batch, 'biztechUsers' + process.env.ENVIRONMENT)
+      })).then(result => {
+        const results = result.flatMap(batchResult => `${batchResult.Responses.biztechUsers}${process.env.ENVIRONMENT}`)
+
         const resultsWithRegistrationStatus = results.map(item => {
           const registrationObj = registrationList.filter(registrationObject => {
             return registrationObject.id === item.id
@@ -159,23 +164,14 @@ module.exports.getUsers = async (event, ctx, callback) => {
           item.registrationStatus = registrationObj[0].registrationStatus
           return item
         });
-        console.log(resultsWithRegistrationStatus)
-        const response = {
-          statusCode: 200,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Credentials': true,
-          },
-          body: JSON.stringify(resultsWithRegistrationStatus),
-        };
+        const response = helpers.createResponse(200, resultsWithRegistrationStatus)
         callback(null, response);
-      })    
-  })
-  .catch(error => {
-    console.error(error);
-    callback(new Error('Unable to scan registration table.'));
-    return;
-  });
+      })
+    })
+    .catch(error => {
+      console.error(error);
+      callback(new Error('Unable to scan registration table.'));
+    });
 };
 
 module.exports.update = async (event, ctx, callback) => {
@@ -184,7 +180,6 @@ module.exports.update = async (event, ctx, callback) => {
 
   if (!data.hasOwnProperty('id')) {
     callback(null, helpers.inputError('Event ID not specified.', data));
-    return;
   }
   const id = data.id;
 
@@ -198,14 +193,7 @@ module.exports.update = async (event, ctx, callback) => {
       if (!helpers.isEmpty(result))
         return callback(null, await helpers.updateDB(id, data, 'biztechEvents'));
       else {
-        const response = {
-          statusCode: 404,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Credentials': true,
-          },  
-          body: JSON.stringify('Event not found.')
-        };
+        const response = helpers.createResponse(404, 'Event not found.')
         callback(null, response);
       }
     })
@@ -223,7 +211,6 @@ module.exports.scan = async (event, ctx, callback) => {
   // Check that parameters are valid
   if (!code) {
     callback(null, helpers.inputError('code not specified.', data));
-    return;
   }
 
   const params = {
@@ -241,23 +228,15 @@ module.exports.scan = async (event, ctx, callback) => {
     .then(result => {
       console.log('Scan success.');
       const data = result.Items;
-      const response = {
-        statusCode: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Credentials': true,
-        },
-        body: JSON.stringify({
-          size: data.length,
-          data: data
-        }, null, 2)
-      };
+      const response = helpers.createResponse(200, {
+        size: data.length,
+        data: data
+      })
       callback(null, response);
     })
     .catch(error => {
       console.error(error);
       callback(new Error('Unable to scan events.'));
-      return;
     });
 
 };
