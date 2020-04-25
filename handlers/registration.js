@@ -19,6 +19,7 @@ module.exports.create = async (event, ctx, callback) => {
   }
   const id = parseInt(data.id, 10);
   const eventID = data.eventID;
+  const heardFrom = data.heardFrom;
   let registrationStatus = data.registrationStatus;
 
   // Check if the event is full
@@ -67,7 +68,7 @@ module.exports.create = async (event, ctx, callback) => {
       })
   }
 
-  const updateObject = { registrationStatus };
+  const updateObject = { registrationStatus, heardFrom };
   console.log(updateObject)
 
   const {
