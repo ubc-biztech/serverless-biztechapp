@@ -19,7 +19,6 @@ module.exports.create = async (event, ctx, callback) => {
   }
   const id = parseInt(data.id, 10);
   const eventID = data.eventID;
-  const heardFrom = data.heardFrom;
   let registrationStatus = data.registrationStatus;
 
   // Check if the event is full
@@ -45,11 +44,13 @@ module.exports.create = async (event, ctx, callback) => {
           Key: { id: id },
           TableName: 'biztechUsers' + process.env.ENVIRONMENT
         }
+        console.log('user params')
+        console.log(userParams)
         await docClient.get(userParams).promise()
           .then(async (user) => {
             console.log(user);
-            const userEmail = await user.Item.email;
-            const userName = await user.Item.fname;
+            const userEmail = user.Item.email;
+            const userName = user.Item.fname;
 
             const msg = {
               to: userEmail,
@@ -68,7 +69,10 @@ module.exports.create = async (event, ctx, callback) => {
       })
   }
 
-  const updateObject = { registrationStatus, heardFrom };
+  const updateObject = { registrationStatus };
+  if (data.heardFrom) {
+    updateObject.heardFrom = data.heardFrom
+  }
   console.log(updateObject)
 
   const {

@@ -15,6 +15,7 @@
       fname: test
       lname: dude
       faculty: Science
+      email: test@dude.asd
   response:
     status: 200
     body:
@@ -86,6 +87,7 @@
       fname: updateTest
       lname: dudeGotUpdated
       faculty: Sauder
+      email: test@dude.asd
   response:
     status: 200
     body: "\"Update succeeded.\""
@@ -323,7 +325,7 @@
   request:
     body:
       eventID: usingfortestdonotmodify
-      id: 144444999
+      id: 144444
       registrationStatus: registered
   response:
     status: 200
@@ -338,7 +340,7 @@
   request:
     body:
       eventID: usingfortestdonotmodify
-      id: 144444991
+      id: 144444
       registrationStatus: checkedin
   response:
     status: 200
@@ -356,7 +358,7 @@
   response:
     status: 200
     body:
-      size: 1
+      size: 2
 
 - name: registration queryStudent no match returns 200
   endpoint:
