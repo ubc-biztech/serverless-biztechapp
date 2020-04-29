@@ -41,36 +41,64 @@ module.exports.create = async (event, ctx, callback) => {
 
 module.exports.get = async (event, ctx, callback) => {
   const queryString = event.queryStringParameters;
-  if (queryString == null || !queryString.hasOwnProperty('id')) {
-    callback(null, helpers.inputError('User ID not specified.', queryString));
-    return;
-  }
-
-  const id = parseInt(queryString.id, 10);
 
   const params = {
-      Key: {
-        id
-      },
-      TableName: 'biztechUsers' + process.env.ENVIRONMENT
+    TableName: 'biztechUsers' + process.env.ENVIRONMENT
   };
 
-  await docClient.get(params).promise()
-    .then(result => {
-      if (result.Item == null){
-        const response = helpers.createResponse(404, 'User not found.')
-        callback(null, response)
-      } else {
-        const response = helpers.createResponse(200, result.Item)
-        callback(null, response)
-      }
-    })
-    .catch(error => {
-      console.error(error);
-      const response = helpers.createResponse(502, error)
-      callback(null, response);
-    });
+  if(queryString !== null && queryString.hasOwnProperty('id')) {
 
+    const id = parseInt(queryString.id, 10);
+    params.Key = { id };
+
+    await docClient.get(params).promise()
+      .then(result => {
+        if (result.Item == null){
+          const response = helpers.createResponse(404, 'User not found.')
+          callback(null, response)
+        } else {
+          const response = helpers.createResponse(200, result.Item)
+          callback(null, response)
+        }
+      })
+      .catch(error => {
+        console.error(error);
+        const response = helpers.createResponse(502, error)
+        callback(null, response);
+      });
+
+  } else if(queryString !== null && queryString.hasOwnProperty('email')) {
+
+    params.ExpressionAttributeValues = {
+      ':queryEmail': queryString.email
+    };
+    params.FilterExpression = 'begins_with(email,:queryEmail)';
+
+    await docClient.scan(params).promise()
+      .then(result => {
+        const response = helpers.createResponse(200, result.Items)
+        callback(null, response)
+      })
+      .catch(error => {
+        console.error(error);
+        const response = helpers.createResponse(502, error)
+        callback(null, response);
+      });
+  
+  } else {
+
+    await docClient.scan(params).promise()
+      .then(result => {
+        const response = helpers.createResponse(200, result.Items)
+        callback(null, response)
+      })
+      .catch(error => {
+        console.error(error);
+        const response = helpers.createResponse(502, error)
+        callback(null, response);
+      });
+
+  }
 };
 
 module.exports.update = async (event, ctx, callback) => {
