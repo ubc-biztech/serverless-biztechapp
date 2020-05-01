@@ -13,6 +13,15 @@ module.exports.create = async (event, ctx, callback) => {
   }
   const id = parseInt(data.id, 10);
 
+  const email = data.email;
+
+  let isBiztechAdmin = false;
+
+  //assume the created user is biztech admin if using biztech email
+  if (email.substring(email.indexOf("@") + 1, email.length) === 'ubcbiztech.com') {
+    isBiztechAdmin = true;
+  }
+
   const params = {
       Item: {
           id,
@@ -24,7 +33,8 @@ module.exports.create = async (event, ctx, callback) => {
           gender: data.gender,
           diet: data.diet,
           createdAt: timestamp,
-          updatedAt: timestamp
+          updatedAt: timestamp,
+          admin: isBiztechAdmin
       },
       TableName: 'biztechUsers' + process.env.ENVIRONMENT
   };
