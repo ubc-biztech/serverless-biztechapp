@@ -1,7 +1,8 @@
 'use strict';
 const AWS = require('aws-sdk');
 const docClient = new AWS.DynamoDB.DocumentClient();
-const helpers = require('./helpers')
+const helpers = require('./helpers');
+var crypto = require('crypto');
 
 module.exports.create = async (event, ctx, callback) => {
 
@@ -13,7 +14,7 @@ module.exports.create = async (event, ctx, callback) => {
   }
   const id = parseInt(data.id, 10);
 
-  const params = {
+  const userParams = {
       Item: {
           id,
           fname: data.fname,
@@ -29,12 +30,39 @@ module.exports.create = async (event, ctx, callback) => {
       TableName: 'biztechUsers' + process.env.ENVIRONMENT
   };
 
-  await docClient.put(params).promise()
+  if (data.hasOwnProperty('inviteCode')) {
+    const inviteCodeParams = {
+      Key: { id: data.inviteCode },
+      TableName: 'inviteCodes' + process.env.ENVIRONMENT
+    };
+    await docClient.get(inviteCodeParams).promise()
+      .then(result => {
+        if (result.Item == null){
+          const response = helpers.createResponse(404, 'Invite code not found.');
+          callback(null, response)
+        } else { // invite code was found
+          // add paid: true to user
+          userParams.Item[paid] = true;
+          const deleteParams = {
+            Key: { id: data.inviteCode }
+          }
+          return docClient.delete(deleteParams).promise();
+        }
+      })
+      .catch(error => {
+        console.error(error);
+        const response = helpers.createResponse(502, error);
+        callback(null, response);
+      });
+  }
+
+  await docClient.put(userParams).promise()
 
   const response = helpers.createResponse(200, {
     message: 'Created!',
     params: params
   })
+  // TODO: send email with invite link
   callback(null, response)
 
 };
@@ -101,4 +129,30 @@ module.exports.update = async (event, ctx, callback) => {
       callback(null, response);
     })
 
+};
+
+module.exports.invite = async (event, ctx, callback) => {
+  const data = JSON.parse(event.body);
+  if (!data.hasOwnProperty('email')) {
+    return helpers.inputError('Email not specified.', data);
+  }
+
+  const params = {
+    Item: {
+      id: crypto.randomBytes(20).toString('hex'),
+      email: data.email
+    },
+    TableName: 'inviteCodes' + process.env.ENVIRONMENT
+  }
+
+  await docClient.put(params).promise()
+    .then(success => {
+        const response = helpers.createResponse(200, 'Invite code created for ' + data.email)
+        callback(null, response)
+    })
+    .catch(error => {
+      console.error(error);
+      const response = helpers.createResponse(502, error)
+      callback(null, response);
+    });
 };
