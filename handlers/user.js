@@ -36,17 +36,18 @@ module.exports.create = async (event, ctx, callback) => {
       TableName: 'inviteCodes' + process.env.ENVIRONMENT
     };
     await docClient.get(inviteCodeParams).promise()
-      .then(result => {
+      .then(async result => {
         if (result.Item == null){
           const response = helpers.createResponse(404, 'Invite code not found.');
           callback(null, response)
         } else { // invite code was found
           // add paid: true to user
-          userParams.Item[paid] = true;
+          userParams.Item.paid = true;
           const deleteParams = {
-            Key: { id: data.inviteCode }
+            Key: { id: data.inviteCode },
+            TableName: 'inviteCodes' + process.env.ENVIRONMENT
           }
-          return docClient.delete(deleteParams).promise();
+          await docClient.delete(deleteParams).promise();
         }
       })
       .catch(error => {
@@ -60,11 +61,10 @@ module.exports.create = async (event, ctx, callback) => {
 
   const response = helpers.createResponse(200, {
     message: 'Created!',
-    params: params
+    params: userParams
   })
   // TODO: send email with invite link
-  callback(null, response)
-
+  return response
 };
 
 module.exports.get = async (event, ctx, callback) => {
