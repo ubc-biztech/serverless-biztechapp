@@ -2,7 +2,8 @@
 const AWS = require('aws-sdk');
 const docClient = new AWS.DynamoDB.DocumentClient();
 const helpers = require('./helpers');
-var crypto = require('crypto');
+const crypto = require('crypto');
+const email = require('../utils/email')
 
 module.exports.create = async (event, ctx, callback) => {
 
@@ -59,12 +60,10 @@ module.exports.create = async (event, ctx, callback) => {
 
   await docClient.put(userParams).promise()
 
-  const response = helpers.createResponse(200, {
+  return helpers.createResponse(200, {
     message: 'Created!',
     params: userParams
   })
-  // TODO: send email with invite link
-  return response
 };
 
 module.exports.get = async (event, ctx, callback) => {
@@ -151,13 +150,12 @@ module.exports.invite = async (event, ctx, callback) => {
     .then(success => {
         const msg = {
           to: data.email,
-          from: "info@ubcbiztech.com",
           templateId: "d-198cfc5057914538af105ef469f51217",
           dynamic_template_data: {
             url: 'https://app.ubcbiztech.com/invite/'+id // TODO: Fix url format based on frontend implementation
           }
         }
-        return sgMail.send(msg)
+        return email.send(msg)
     })
     .then(success => {
       const response = helpers.createResponse(200, 'Invite code created & sent to ' + data.email)

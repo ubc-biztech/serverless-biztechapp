@@ -2,9 +2,7 @@
 const AWS = require('aws-sdk');
 const docClient = new AWS.DynamoDB.DocumentClient();
 const helpers = require('./helpers');
-const sgMail = require('@sendgrid/mail');
-sgMail.setApiKey(process.env.SENDGRID_KEY);
-
+const email = require('../utils/email')
 
 module.exports.create = async (event, ctx, callback) => {
   const data = JSON.parse(event.body);
@@ -63,7 +61,7 @@ module.exports.create = async (event, ctx, callback) => {
                 eventName: eventName
               }
             }
-            await sgMail.send(msg);
+            await email.send(msg);
           })
       })
   }
