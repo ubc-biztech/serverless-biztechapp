@@ -57,14 +57,13 @@ module.exports.create = async (event, ctx, callback) => {
               from: "info@ubcbiztech.com",
               templateId: "d-99da9013c9a04ef293e10f0d73e9b49c",
               dynamic_template_data: {
-                subject: "BizTech " + eventName + "Receipt",
+                subject: "BizTech " + eventName + " Receipt",
                 name: userName,
                 registrationStatus: registrationStatus,
                 eventName: eventName
               }
             }
             await sgMail.send(msg);
-
           })
       })
   }

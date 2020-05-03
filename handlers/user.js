@@ -137,9 +137,11 @@ module.exports.invite = async (event, ctx, callback) => {
     return helpers.inputError('Email not specified.', data);
   }
 
+  const id = crypto.randomBytes(20).toString('hex')
+
   const params = {
     Item: {
-      id: crypto.randomBytes(20).toString('hex'),
+      id,
       email: data.email
     },
     TableName: 'inviteCodes' + process.env.ENVIRONMENT
@@ -147,8 +149,19 @@ module.exports.invite = async (event, ctx, callback) => {
 
   await docClient.put(params).promise()
     .then(success => {
-        const response = helpers.createResponse(200, 'Invite code created for ' + data.email)
-        callback(null, response)
+        const msg = {
+          to: data.email,
+          from: "info@ubcbiztech.com",
+          templateId: "d-198cfc5057914538af105ef469f51217",
+          dynamic_template_data: {
+            url: 'https://app.ubcbiztech.com/invite/'+id // TODO: Fix url format based on frontend implementation
+          }
+        }
+        return sgMail.send(msg)
+    })
+    .then(success => {
+      const response = helpers.createResponse(200, 'Invite code created & sent to ' + data.email)
+      callback(null, response)
     })
     .catch(error => {
       console.error(error);
