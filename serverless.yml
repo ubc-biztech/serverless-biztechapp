@@ -42,7 +42,7 @@ functions:
     handler: handlers/user.create
     events:
       - http:
-          path: users/create
+          path: users/
           method: post
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
@@ -50,7 +50,7 @@ functions:
     handler: handlers/user.get
     events:
       - http:
-          path: users/get
+          path: users/{id}
           method: get
           request:
             parameters:
@@ -58,6 +58,18 @@ functions:
                 id: true
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
+  userGetAll:
+    handler: handlers/user.getAll
+    events:
+      - http:
+        path: users/
+        method: get
+        cors: true
+        private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
+
+
+
+
   userUpdate:
     handler: handlers/user.update
     events:
@@ -66,6 +78,10 @@ functions:
           method: post
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
+
+
+
+          
   eventCreate:
     handler: handlers/event.create
     events:
