@@ -67,14 +67,6 @@ functions:
           method: post
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
-  userInvite:
-    handler: handlers/user.invite
-    events:
-      - http:
-          path: users/invite
-          method: post
-          cors: true
-          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
   eventCreate:
     handler: handlers/event.create
     events:
@@ -133,6 +125,14 @@ functions:
             parameters:
               querystrings:
                 code: true
+          cors: true
+          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
+  inviteCreate:
+    handler: handlers/user.invite
+    events:
+      - http:
+          path: inviteCodes
+          method: post
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
   registrationCreate:
