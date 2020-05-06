@@ -19,6 +19,10 @@ module.exports = {
     return response;
   },
 
+  notFoundResponse: function() {
+    return this.createResponse(404, "Not entries found.");
+  },
+
   inputError: function(message, data) {
     const response = this.createResponse(406, 
       {
