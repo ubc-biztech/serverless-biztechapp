@@ -87,21 +87,6 @@
       lname: dudeGotUpdated
       faculty: Sauder
 
-# returns 403 and missing authentication token when path DNE
-- name: user update no ID returns 406
-  endpoint:
-    method: PATCH
-    path: users/
-  request:
-    body:
-      fname: badUpdateTest
-      lname: dudeNotUpdated
-      faculty: LFS
-  response:
-    status: 403
-    body:
-      message: "Missing Authentication Token"
-
 - name: user update not found returns 404
   endpoint:
     method: PATCH

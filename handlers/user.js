@@ -76,9 +76,9 @@ module.exports.get = async (event, ctx, callback) => {
 module.exports.update = async (event, ctx, callback) => {
   const pathParam = event.pathParameters;
   const data = JSON.parse(event.body);
-  if (!pathParam.hasOwnProperty('id')) {
-    callback(null, helpers.inputError('User ID not specified.', data));
-  }
+  // if (!pathParam.hasOwnProperty('id')) {
+  //   callback(null, helpers.inputError('User ID not specified.', data));
+  // }
   const id = parseInt(pathParam.id, 10);
 
   const params = {
