@@ -4,7 +4,7 @@ const docClient = new AWS.DynamoDB.DocumentClient();
 const helpers = require('./helpers');
 const email = require('../utils/email')
 
-module.exports.create = async (event, ctx, callback) => {
+module.exports.post = async (event, ctx, callback) => {
   const data = JSON.parse(event.body);
 
   // Check that parameters are valid
@@ -106,67 +106,75 @@ module.exports.create = async (event, ctx, callback) => {
 };
 
 // Return list of entries with the matching id
-module.exports.queryStudent = async (event, ctx, callback) => {
+module.exports.get = async (event, ctx, callback) => {
   const queryString = event.queryStringParameters;
-  if (queryString == null || !queryString.hasOwnProperty('id')) {
-    callback(null, helpers.inputError('Student ID not specified.', queryString));
+  if (queryString == null || (!queryString.hasOwnProperty('eventID') && !queryString.hasOwnProperty('id'))) {
+    callback(null, helpers.inputError('User and/or Event ID not specified.', queryString));
     return;
   }
-  const id = parseInt(queryString.id, 10);
 
-  const params = {
-    TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
-    KeyConditionExpression: 'id = :query',
-    ExpressionAttributeValues: {
-      ':query': id
-    }
-  };
-
-  await docClient.query(params).promise()
-    .then(result => {
-      console.log('Query success.');
-      const data = result.Items;
-      const response = helpers.createResponse(200, {
-        size: data.length,
-        data: data
+  if (queryString.hasOwnProperty('eventID')) {
+    const eventID = parseInt(queryString.eventID, 10);
+    const params = {
+      TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
+      FilterExpression: 'eventID = :query',
+      ExpressionAttributeValues: {
+        ':query': eventID
+      }
+    };
+  
+    await docClient.scan(params).promise()
+      .then(result => {
+        console.log('Scan success.');
+        const data = result.Items;
+        if (queryString.hasOwnProperty('id')) {
+          data = data.filter(entry => entry.id === parseInt(queryString.id, 10));
+        }
+        const response;
+        if (data.length == 0) {
+          response = helpers.notFoundResponse();
+        } else {
+          response = helpers.createResponse(200, {
+            size: data.length,
+            data: data
+          })
+        }
+        callback(null, response);
       })
-      callback(null, response);
-    })
-    .catch(error => {
-      console.error(error);
-      callback(new Error('Unable to query registration table.'));
-    });
-}
-
-// Return list of entries with the matching eventID
-module.exports.scanEvent = async (event, ctx, callback) => {
-  const queryString = event.queryStringParameters;
-  if (queryString == null || !queryString.hasOwnProperty('eventID')) {
-    callback(null, helpers.inputError('Event ID not specified.', queryString));
-    return;
+      .catch(error => {
+        console.error(error);
+        const response = helpers.createResponse(502, error)
+        callback(null, response);
+      });
+  } else {
+    // only has id parameter
+    const id = parseInt(queryString.id, 10);
+    const params = {
+      TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
+      KeyConditionExpression: 'id = :query',
+      ExpressionAttributeValues: {
+        ':query': id
+      }
+    };
+  
+    await docClient.query(params).promise()
+      .then(result => {
+        console.log('Query success.');
+        const data = result.Items;
+        const response;
+        if (data.length == 0) {
+          response = helpers.notFoundResponse();
+        }
+        response = helpers.createResponse(200, {
+          size: data.length,
+          data: data
+        })
+        callback(null, response);
+      })
+      .catch(error => {
+        console.error(error);
+        helpers.createResponse(502, error)
+        callback(null, response);
+      });
   }
-  const eventID = queryString.eventID;
-
-  const params = {
-    TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
-    FilterExpression: 'eventID = :query',
-    ExpressionAttributeValues: {
-      ':query': eventID
-    }
-  };
-
-  await docClient.scan(params).promise()
-    .then(result => {
-      console.log('Scan success.');
-      const data = result.Items;
-      const response = helpers.createResponse(200, {
-        size: data.length,
-        data: data
-      })
-      callback(null, response);
-    })
-    .catch(error => {
-      console.error(error);
-      callback(new Error('Unable to scan registration table.'));
-    });
 }
