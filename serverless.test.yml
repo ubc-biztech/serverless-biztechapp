@@ -8,7 +8,7 @@
 - name: user create returns 200
   endpoint:
     method: POST
-    path: users/create
+    path: users/
   request:
     body:
       id: 144444
@@ -24,7 +24,7 @@
 - name: user create no ID returns 406
   endpoint:
     method: POST
-    path: users/create
+    path: users/
   request:
     body:
       fname: foo
@@ -41,23 +41,10 @@
         email: foo
         faculty: bar
 
-- name: user get no ID returns 406
-  endpoint:
-    method: GET
-    path: users/get
-  response:
-    status: 406
-    body:
-      message: "User ID not specified."
-      data: null
-
 - name: user get found returns 200
   endpoint:
     method: GET
-    path: users/get
-  request:
-    form:
-      id: 144444
+    path: users/144444
   response:
     status: 200
     body:
@@ -69,21 +56,17 @@
 - name: user get not found returns 404
   endpoint:
     method: GET
-    path: users/get
-  request:
-    form:
-      id: 0
+    path: users/0
   response:
     status: 404
     body: "\"User not found.\""
 
 - name: user update returns 200
   endpoint:
-    method: POST
-    path: users/update
+    method: PATCH
+    path: users/144444
   request:
     body:
-      id: 144444
       fname: updateTest
       lname: dudeGotUpdated
       faculty: Sauder
@@ -95,10 +78,7 @@
 - name: user get update info returns 200
   endpoint:
     method: GET
-    path: users/get
-  request:
-    form:
-      id: 144444
+    path: users/144444
   response:
     status: 200
     body:
@@ -107,27 +87,27 @@
       lname: dudeGotUpdated
       faculty: Sauder
 
+# returns 403 and missing authentication token when path DNE
 - name: user update no ID returns 406
   endpoint:
-    method: POST
-    path: users/update
+    method: PATCH
+    path: users/
   request:
     body:
       fname: badUpdateTest
       lname: dudeNotUpdated
       faculty: LFS
   response:
-    status: 406
+    status: 403
     body:
-      message: "User ID not specified."
+      message: "Missing Authentication Token"
 
 - name: user update not found returns 404
   endpoint:
-    method: POST
-    path: users/update
+    method: PATCH
+    path: users/-20
   request:
     body:
-      id: -20
       fname: badUpdateTest
       lname: dudeNotUpdated
   response:

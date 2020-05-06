@@ -40,7 +40,7 @@ module.exports.create = async (event, ctx, callback) => {
 };
 
 module.exports.get = async (event, ctx, callback) => {
-  const queryString = event.queryStringParameters;
+  const queryString = event.pathParameters;
   if (queryString == null || !queryString.hasOwnProperty('id')) {
     callback(null, helpers.inputError('User ID not specified.', queryString));
     return;
@@ -74,12 +74,12 @@ module.exports.get = async (event, ctx, callback) => {
 };
 
 module.exports.update = async (event, ctx, callback) => {
-
+  const pathParam = event.pathParameters;
   const data = JSON.parse(event.body);
-  if (!data.hasOwnProperty('id')) {
+  if (!pathParam.hasOwnProperty('id')) {
     callback(null, helpers.inputError('User ID not specified.', data));
   }
-  const id = parseInt(data.id, 10);
+  const id = parseInt(pathParam.id, 10);
 
   const params = {
     Key: { id },
@@ -103,6 +103,9 @@ module.exports.update = async (event, ctx, callback) => {
 
 };
 
+/* 
+  if successful, returns 200 and JSON with 2 fields: items and userCount
+*/
 module.exports.getAll = async (event, ctx, callback) => {
   const params = {
     TableName: 'biztechUsers' + process.env.ENVIRONMENT
@@ -114,7 +117,7 @@ module.exports.getAll = async (event, ctx, callback) => {
         const response = helpers.createResponse(404, 'User not found.');
         callback(null, response);
       } else {
-        const response = helpers.createResponse(200, result.Items);
+        const response = helpers.createResponse(200, { items: result.Items, userCount: result.ScannedCount });
         callback(null, response);
       }
     })
