@@ -348,10 +348,10 @@
       message: "Update succeeded"
       registrationStatus: "checkedin"
 
-- name: registration queryStudent returns 200
+- name: registration get id returns 200
   endpoint:
     method: GET
-    path: registration/queryStudent
+    path: registrations/
   request:
     form:
       id: 144444
@@ -360,32 +360,31 @@
     body:
       size: 2
 
-- name: registration queryStudent no match returns 200
+- name: registration get id no match returns 404
   endpoint:
     method: GET
-    path: registration/queryStudent
+    path: registrations/
   request:
     form:
       id: -1
   response:
-    status: 200
-    body:
-      size: 0
+    status: 404
+    message: 'No entries found.'
 
-- name: registration queryStudent no ID returns 406
+- name: registration get no id no eventID returns 406
   endpoint:
     method: GET
-    path: registration/queryStudent
+    path: registrations/
   request:
     form:
   response:
     status: 406
-    message: 'Student ID not specified.'
+    message: 'User and/or Event ID not specified.'
 
-- name: registration scanEvent returns 200
+- name: registration get eventID returns 200
   endpoint:
     method: GET
-    path: registration/scanEvent
+    path: registrations/
   request:
     form:
       eventID: testevent
@@ -394,27 +393,30 @@
     body:
       size: 1
 
-- name: registration scanEvent no match returns 200
+- name: registration get eventID no match returns 404
   endpoint:
     method: GET
-    path: registration/scanEvent
+    path: registrations/
   request:
     form:
       eventID: nonexistanttestidwoo
   response:
-    status: 200
+    status: 404
     body:
-      size: 0
+      size: 'No entries found.'
 
-- name: registration scanEvent no ID returns 406
+- name: registration with id and eventID returns 200
   endpoint:
     method: GET
-    path: registration/scanEvent
+    path: registrations/
   request:
     form:
+      id: 144444
+      eventID: usingfortestdonotmodify
   response:
-    status: 406
-    message: 'Event ID not specified.'
+    status: 200
+    body:
+      size: 1
 
 - name: event getUsers returns 200
   endpoint:
