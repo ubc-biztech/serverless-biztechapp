@@ -6,6 +6,10 @@ const email = require('../utils/email')
 const CHECKIN_COUNT_SANITY_CHECK = 500;
 
 module.exports.post = async (event, ctx, callback) => {
+  updateWithCondition(event, callback, "true");
+};
+
+const updateWithCondition = async (event, callback, condition) => {
   const data = JSON.parse(event.body);
 
   // Check that parameters are valid
@@ -19,6 +23,7 @@ module.exports.post = async (event, ctx, callback) => {
   const id = parseInt(data.id, 10);
   const eventID = data.eventID;
   let registrationStatus = data.registrationStatus;
+  let eventName;
 
   // Check if the event is full
   if (registrationStatus === 'registered') {
@@ -37,33 +42,8 @@ module.exports.post = async (event, ctx, callback) => {
         }
         return event.Item.ename;
       })
-      .then(async (eventName) => {
-        //after the person has been either registered or waitlisted, send confirmation email 
-        const userParams = {
-          Key: { id: id },
-          TableName: 'biztechUsers' + process.env.ENVIRONMENT
-        }
-        console.log('user params')
-        console.log(userParams)
-        await docClient.get(userParams).promise()
-          .then(async (user) => {
-            console.log(user);
-            const userEmail = user.Item.email;
-            const userName = user.Item.fname;
-
-            const msg = {
-              to: userEmail,
-              from: "info@ubcbiztech.com",
-              templateId: "d-99da9013c9a04ef293e10f0d73e9b49c",
-              dynamic_template_data: {
-                subject: "BizTech " + eventName + " Receipt",
-                name: userName,
-                registrationStatus: registrationStatus,
-                eventName: eventName
-              }
-            }
-            await email.send(msg);
-          })
+      .then(async (ename) => {
+        eventName = ename;
       })
   }
 
@@ -87,24 +67,51 @@ module.exports.post = async (event, ctx, callback) => {
     TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
     ExpressionAttributeValues: expressionAttributeValues,
     UpdateExpression: updateExpression,
+    ConditionExpression: condition,
     ReturnValues: "UPDATED_NEW"
   };
 
   // call dynamoDb
   await docClient.update(params).promise()
-    .then(result => {
-      const response = helpers.createResponse(200, {
-        message: 'Update succeeded',
-        registrationStatus
-      })
-      callback(null, response)
+    .then(async (result) => {
+      //after the person has been either registered or waitlisted, send confirmation email 
+      const userParams = {
+        Key: { id: id },
+        TableName: 'biztechUsers' + process.env.ENVIRONMENT
+      }
+      console.log('user params')
+      console.log(userParams)
+      await docClient.get(userParams).promise()
+        .then(async (user) => {
+          console.log(user);
+          const userEmail = user.Item.email;
+          const userName = user.Item.fname;
+
+          const msg = {
+            to: userEmail,
+            from: "info@ubcbiztech.com",
+            templateId: "d-99da9013c9a04ef293e10f0d73e9b49c",
+            dynamic_template_data: {
+              subject: "BizTech " + eventName + " Receipt",
+              name: userName,
+              registrationStatus: registrationStatus,
+              eventName: eventName
+            }
+          }
+          await email.send(msg);
+          const response = helpers.createResponse(200, {
+            message: 'Update succeeded',
+            registrationStatus
+          });
+          callback(null, response);
+        })
     })
     .catch(error => {
       console.error(error);
       const response = helpers.createResponse(502, error);
-      callback(null, response)
+      callback(null, response);
     });
-};
+}
 
 // Return list of entries with the matching id
 module.exports.get = async (event, ctx, callback) => {
@@ -131,7 +138,7 @@ module.exports.get = async (event, ctx, callback) => {
         if (queryString.hasOwnProperty('id')) {
           data = data.filter(entry => entry.id === parseInt(queryString.id, 10));
         }
-        const response;
+        let response;
         if (data.length == 0) {
           response = helpers.notFoundResponse();
         } else {
@@ -162,7 +169,7 @@ module.exports.get = async (event, ctx, callback) => {
       .then(result => {
         console.log('Query success.');
         const data = result.Items;
-        const response;
+        let response;
         if (data.length == 0) {
           response = helpers.notFoundResponse();
         }
