@@ -41,15 +41,12 @@
         email: foo
         faculty: bar
 
-- name: user get no ID returns 406
+- name: user get no ID returns 200
   endpoint:
     method: GET
     path: users/get
   response:
-    status: 406
-    body:
-      message: "User ID not specified."
-      data: null
+    status: 200
 
 - name: user get found returns 200
   endpoint:
