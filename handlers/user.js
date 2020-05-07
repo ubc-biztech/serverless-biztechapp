@@ -1,7 +1,7 @@
 'use strict';
 const AWS = require('aws-sdk');
 const docClient = new AWS.DynamoDB.DocumentClient();
-const helpers = require('./helpers')
+const helpers = require('./helpers');
 
 module.exports.create = async (event, ctx, callback) => {
 
@@ -13,7 +13,7 @@ module.exports.create = async (event, ctx, callback) => {
   }
   const id = parseInt(data.id, 10);
 
-  const params = {
+  const userParams = {
       Item: {
           id,
           fname: data.fname,
@@ -29,14 +29,39 @@ module.exports.create = async (event, ctx, callback) => {
       TableName: 'biztechUsers' + process.env.ENVIRONMENT
   };
 
-  await docClient.put(params).promise()
+  if (data.hasOwnProperty('inviteCode')) {
+    const inviteCodeParams = {
+      Key: { id: data.inviteCode },
+      TableName: 'inviteCodes' + process.env.ENVIRONMENT
+    };
+    await docClient.get(inviteCodeParams).promise()
+      .then(async result => {
+        if (result.Item == null){
+          const response = helpers.createResponse(404, 'Invite code not found.');
+          callback(null, response)
+        } else { // invite code was found
+          // add paid: true to user
+          userParams.Item.paid = true;
+          const deleteParams = {
+            Key: { id: data.inviteCode },
+            TableName: 'inviteCodes' + process.env.ENVIRONMENT
+          }
+          await docClient.delete(deleteParams).promise();
+        }
+      })
+      .catch(error => {
+        console.error(error);
+        const response = helpers.createResponse(502, error);
+        callback(null, response);
+      });
+  }
 
-  const response = helpers.createResponse(200, {
+  await docClient.put(userParams).promise()
+
+  return helpers.createResponse(200, {
     message: 'Created!',
-    params: params
+    params: userParams
   })
-  callback(null, response)
-
 };
 
 module.exports.get = async (event, ctx, callback) => {
