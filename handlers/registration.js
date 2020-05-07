@@ -3,6 +3,7 @@ const AWS = require('aws-sdk');
 const docClient = new AWS.DynamoDB.DocumentClient();
 const helpers = require('./helpers');
 const email = require('../utils/email')
+const CHECKIN_COUNT_SANITY_CHECK = 500;
 
 module.exports.post = async (event, ctx, callback) => {
   const data = JSON.parse(event.body);
@@ -114,7 +115,7 @@ module.exports.get = async (event, ctx, callback) => {
   }
 
   if (queryString.hasOwnProperty('eventID')) {
-    const eventID = parseInt(queryString.eventID, 10);
+    const eventID = queryString.eventID;
     const params = {
       TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
       FilterExpression: 'eventID = :query',
