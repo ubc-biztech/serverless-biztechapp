@@ -143,7 +143,7 @@ functions:
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
   registrationCreate:
-    handler: handlers/registration.post
+    handler: handlers/registration.create
     events:
       - http:
           path: registration/create
