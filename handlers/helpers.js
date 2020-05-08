@@ -20,7 +20,10 @@ module.exports = {
   },
 
   notFoundResponse: function() {
-    return this.createResponse(404, 'No entries found.');
+    return this.createResponse(404, 
+      {
+      message: 'No entries found.'
+    });
   },
 
   inputError: function(message, data) {

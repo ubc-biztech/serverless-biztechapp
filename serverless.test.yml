@@ -369,7 +369,8 @@
       id: -1
   response:
     status: 404
-    message: 'No entries found.'
+    body:
+      message: 'No entries found.'
 
 - name: registration get no id no eventID returns 406
   endpoint:
@@ -379,7 +380,8 @@
     form:
   response:
     status: 406
-    message: 'User and/or Event ID not specified.'
+    body:
+      message: 'User and/or Event ID not specified.'
 
 - name: registration get eventID returns 200
   endpoint:
@@ -403,7 +405,7 @@
   response:
     status: 404
     body:
-      size: 'No entries found.'
+      message: 'No entries found.'
 
 - name: registration with id and eventID returns 200
   endpoint:
