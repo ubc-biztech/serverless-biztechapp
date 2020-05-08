@@ -5,7 +5,7 @@
     body: 
       message: "Yeet!"
 
-- name: user create returns 200
+- name: user create returns 201
   endpoint:
     method: POST
     path: users/
@@ -17,7 +17,7 @@
       faculty: Science
       email: test@dude.asd
   response:
-    status: 200
+    status: 201
     body:
       message: 'Created!'
 
@@ -52,6 +52,13 @@
       fname: test
       lname: dude
       faculty: Science
+
+- name: users get all returns 200
+  endpoint:
+    method: GET
+    path: users/
+  response:
+    status: 200
 
 - name: user get not found returns 404
   endpoint:
@@ -99,18 +106,18 @@
     status: 404
     body: "\"User not found.\""
 
-- name: event count returns 200
-  endpoint: {function: eventCount}
-  request:
-    form:
-      id: bp
-  response:
-    status: 200
+#- name: event count returns 200
+#  endpoint: {function: eventCount}
+#  request:
+#    form:
+#      id: bp
+#  response:
+#    status: 200
 
-- name: event create returns 200
+- name: event create returns 201
   endpoint:
     method: POST
-    path: events/create
+    path: events/
   request:
     body:
       id: testevent
@@ -118,14 +125,54 @@
       capac: 2000000
       img: yup
   response:
-    status: 200
+    status: 201
     body:
       message: 'Event Created!'
+
+- name: event get with no additional params returns 200
+  endpoint:
+    method: GET
+    path: events/testevent
+  response:
+    status: 200
+
+- name: event get with counts true and users true returns 406
+  endpoint:
+    method: GET
+    path: events/testevent
+  request:
+    form:
+      count: true
+      users: true
+  response:
+    status: 406
+
+- name: events get with counts true and users false returns 200
+  endpoint:
+    method: GET
+    path: events/testevent
+  request:
+    form:
+      count: true
+      users: false
+  response:
+    status: 200
+
+- name: events get with counts false and users true returns 200
+  endpoint:
+    method: GET
+    path: events/testevent
+  request:
+    form:
+      count: false
+      users: true
+  response:
+    status: 200
 
 - name: event create no ID returns 406
   endpoint:
     method: POST
-    path: events/create
+    path: events/
   request:
     body:
       ename: test
@@ -143,7 +190,7 @@
 - name: event create no capac returns 406
   endpoint:
     method: POST
-    path: events/create
+    path: events/
   request:
     body:
       id: testevent
@@ -158,20 +205,19 @@
         ename: test
         img: yup
 
-- name: event get returns 200
+- name: event get all returns 200
   endpoint:
     method: GET
-    path: events/get
+    path: events/
   response:
     status: 200
 
 - name: event update returns 200
   endpoint:
-    method: POST
-    path: events/update
+    method: PATCH
+    path: events/testevent
   request:
     body:
-      id: testevent
       ename: testUpdated
       capac: 7
       img: nope
@@ -181,53 +227,16 @@
 
 - name: event update not found returns 404
   endpoint:
-    method: POST
-    path: events/update
+    method: PATCH
+    path: events/nonexistanttestidwoo
   request:
     body:
-      id: nonexistanttestidwoo
       ename: testUpdated
       capac: 7
       img: nope
   response:
     status: 404
     body: "\"Event not found.\""
-
-- name: event update no ID returns 406
-  endpoint:
-    method: POST
-    path: events/update
-  request:
-    body:
-      ename: testUpdated
-  response:
-    status: 406
-    body:
-      message: 'Event ID not specified.'
-
-# - name: event scan match returns 200
-#   endpoint:
-#     method: GET
-#     path: events/scan
-#   request:
-#     form:
-#       code: test
-#   response:
-#     status: 200
-#     body:
-#       size: 1
-
-- name: event scan no match returns 200
-  endpoint:
-    method: GET
-    path: events/scan
-  request:
-    form:
-      code: -1
-  response:
-    status: 200
-    body:
-      size: 0
 
 - name: registration create returns 200
   endpoint:
@@ -381,23 +390,10 @@
     status: 406
     message: 'Event ID not specified.'
 
-- name: event getUsers returns 200
-  endpoint:
-    method: GET
-    path: events/getUsers
-  request:
-    form:
-      id: testevent
-  response:
-    status: 200
-
 - name: event delete returns 200
   endpoint:
     method: DELETE
-    path: events/delete
-  request:
-    form:
-      id: testevent
+    path: events/testevent
   response:
     status: 200
     body:
@@ -405,11 +401,10 @@
 
 - name: event update after delete not found returns 404
   endpoint:
-    method: POST
-    path: events/update
+    method: PATCH
+    path: events/testevent
   request:
     body:
-      id: testevent
       ename: testUpdated
       capac: 7
       img: nope

@@ -31,7 +31,7 @@ module.exports.create = async (event, ctx, callback) => {
 
   await docClient.put(params).promise()
 
-  const response = helpers.createResponse(200, {
+  const response = helpers.createResponse(201, {
     message: 'Created!',
     params: params
   })
@@ -74,12 +74,8 @@ module.exports.get = async (event, ctx, callback) => {
 };
 
 module.exports.update = async (event, ctx, callback) => {
-  const pathParam = event.pathParameters;
   const data = JSON.parse(event.body);
-  // if (!pathParam.hasOwnProperty('id')) {
-  //   callback(null, helpers.inputError('User ID not specified.', data));
-  // }
-  const id = parseInt(pathParam.id, 10);
+  const id = parseInt(event.pathParameters.id, 10);
 
   const params = {
     Key: { id },
@@ -104,7 +100,7 @@ module.exports.update = async (event, ctx, callback) => {
 };
 
 /* 
-  if successful, returns 200 and JSON with 2 fields: items and userCount
+  if successful, returns 200 and JSON with 2 fields: items and length
 */
 module.exports.getAll = async (event, ctx, callback) => {
   const params = {
@@ -117,7 +113,7 @@ module.exports.getAll = async (event, ctx, callback) => {
         const response = helpers.createResponse(404, 'User not found.');
         callback(null, response);
       } else {
-        const response = helpers.createResponse(200, { items: result.Items, userCount: result.ScannedCount });
+        const response = helpers.createResponse(200, { items: result.Items, length: result.ScannedCount });
         callback(null, response);
       }
     })

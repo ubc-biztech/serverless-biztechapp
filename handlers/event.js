@@ -35,7 +35,7 @@ module.exports.create = async (event, ctx, callback) => {
 
   await docClient.put(params).promise()
     .then(result => {
-      const response = helpers.createResponse(200, {
+      const response = helpers.createResponse(201, {
         message: 'Event Created!',
         params: params
       })
@@ -51,7 +51,7 @@ module.exports.create = async (event, ctx, callback) => {
 
 module.exports.delete = async (event, ctx, callback) => {
 
-  const id = event.queryStringParameters.id;
+  const id = event.pathParameters.id;
 
   // Check that parameters are valid
   if (!id) {
@@ -78,7 +78,7 @@ module.exports.delete = async (event, ctx, callback) => {
 
 };
 
-module.exports.get = async (event, ctx, callback) => {
+module.exports.getAll = async (event, ctx, callback) => {
 
   const params = {
     TableName: 'biztechEvents' + process.env.ENVIRONMENT
@@ -102,90 +102,11 @@ module.exports.get = async (event, ctx, callback) => {
 
 };
 
-module.exports.count = async (event, ctx, callback) => {
-
-  const id = event.queryStringParameters.id;
-  const counts = await helpers.getEventCounts(id)
-
-  const response = helpers.createResponse(200, counts)
-  callback(null, response);
-}
-
-module.exports.getUsers = async (event, ctx, callback) => {
-
-  const id = event.queryStringParameters.id;
-
-  // Check that parameters are valid
-  if (!id) {
-    callback(null, helpers.inputError('id not specified.', 'missing query param'));
-  }
-
-  const params = {
-    TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
-    FilterExpression: 'eventID = :query',
-    ExpressionAttributeValues: {
-      ':query': id
-    }
-  };
-
-  await docClient.scan(params).promise()
-    .then(async result => {
-      console.log('Scan success.');
-      const registrationList = result.Items;
-
-      /**
-       * Example registration obj:
-       * { eventID: 'blueprint',
-       *   id: 123,
-       *   updatedAt: 1580007893340,
-       *   registrationStatus: 'registered'
-       * }
-       */
-      let keysForRequest = registrationList.map(registrationObj => {
-        let keyEntry = {}
-        keyEntry.id = parseInt(registrationObj.id)
-        return keyEntry
-      })
-      console.log('Keys:', keysForRequest)
-
-      let keyBatches = [];
-      const size = 100 // max BatchGetItem count
-      while (keysForRequest.length > 0) {
-        keyBatches.push(keysForRequest.splice(0, size))
-      }
-
-      await Promise.all(keyBatches.map(batch => {
-        return helpers.batchGet(batch, 'biztechUsers' + process.env.ENVIRONMENT)
-      })).then(result => {
-        const results = result.flatMap(batchResult => batchResult.Responses[`biztechUsers${process.env.ENVIRONMENT}`]) // extract what's inside
-
-        const resultsWithRegistrationStatus = results.map(item => {
-          const registrationObj = registrationList.filter(registrationObject => {
-            return registrationObject.id === item.id  // find the same user in 'registrationList' and attach the registrationStatus
-          })
-          if(registrationObj[0]) item.registrationStatus = registrationObj[0].registrationStatus
-          else item.registrationStatus = '';
-          return item
-        });
-        resultsWithRegistrationStatus.sort(sorters.alphabeticalComparer('lname'));
-        const response = helpers.createResponse(200, resultsWithRegistrationStatus)
-        callback(null, response);
-      })
-    })
-    .catch(error => {
-      console.error(error);
-      callback(new Error('Unable to scan registration table.'));
-    });
-};
-
 module.exports.update = async (event, ctx, callback) => {
 
   const data = JSON.parse(event.body);
 
-  if (!data.hasOwnProperty('id')) {
-    callback(null, helpers.inputError('Event ID not specified.', data));
-  }
-  const id = data.id;
+  const id = event.pathParameters.id;
 
   const params = {
     Key: { id },
@@ -208,39 +129,108 @@ module.exports.update = async (event, ctx, callback) => {
 
 };
 
-module.exports.scan = async (event, ctx, callback) => {
-  const data = JSON.parse(event.body);
-  const code = event.queryStringParameters.code;
+module.exports.get = async (event, ctx, callback) => {
+  console.log(event);
+  const id = event.pathParameters.id;
+  console.log(event.queryStringParameters);
+  const queryString = event.queryStringParameters;
 
-  // Check that parameters are valid
-  if (!code) {
-    callback(null, helpers.inputError('code not specified.', data));
-  }
+  // if both count and users are true, throw error 
+  if (queryString && queryString.count == "true" && queryString.users == "true") {
+    console.log("queryString.count: ", queryString.count)
+    console.log("queryString.users: ", queryString.users)
+    const response = helpers.createResponse(406, 'Only one true parameter is permissible at a time');
+    callback(null, response);
+  } else if (queryString && queryString.count == "true") {
+    //return counts
+    const counts = await helpers.getEventCounts(id)
 
-  const params = {
-    TableName: 'biztechEvents' + process.env.ENVIRONMENT,
-    FilterExpression: '#code = :query',
-    ExpressionAttributeNames: {
-      '#code': 'code'
-    },
-    ExpressionAttributeValues: {
-      ':query': code
+    const response = helpers.createResponse(200, counts)
+    callback(null, response);
+  } else if (queryString && queryString.users == "true") {
+    //return users
+    // Check that parameters are valid
+    if (!id) {
+      callback(null, helpers.inputError('id not specified.', 'missing query param'));
     }
-  };
 
-  await docClient.scan(params).promise()
-    .then(result => {
-      console.log('Scan success.');
-      const data = result.Items;
-      const response = helpers.createResponse(200, {
-        size: data.length,
-        data: data
+    const params = {
+      TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
+      FilterExpression: 'eventID = :query',
+      ExpressionAttributeValues: {
+        ':query': id
+      }
+    };
+
+    await docClient.scan(params).promise()
+      .then(async result => {
+        console.log('Scan success.');
+        const registrationList = result.Items;
+
+        /**
+         * Example registration obj:
+         * { eventID: 'blueprint',
+         *   id: 123,
+         *   updatedAt: 1580007893340,
+         *   registrationStatus: 'registered'
+         * }
+         */
+        let keysForRequest = registrationList.map(registrationObj => {
+          let keyEntry = {}
+          keyEntry.id = parseInt(registrationObj.id)
+          return keyEntry
+        })
+        console.log('Keys:', keysForRequest)
+
+        let keyBatches = [];
+        const size = 100 // max BatchGetItem count
+        while (keysForRequest.length > 0) {
+          keyBatches.push(keysForRequest.splice(0, size))
+        }
+
+        await Promise.all(keyBatches.map(batch => {
+          return helpers.batchGet(batch, 'biztechUsers' + process.env.ENVIRONMENT)
+        })).then(result => {
+          const results = result.flatMap(batchResult => batchResult.Responses[`biztechUsers${process.env.ENVIRONMENT}`]) // extract what's inside
+
+          const resultsWithRegistrationStatus = results.map(item => {
+            const registrationObj = registrationList.filter(registrationObject => {
+              return registrationObject.id === item.id  // find the same user in 'registrationList' and attach the registrationStatus
+            })
+            if (registrationObj[0]) item.registrationStatus = registrationObj[0].registrationStatus
+            else item.registrationStatus = '';
+            return item
+          });
+          resultsWithRegistrationStatus.sort(sorters.alphabeticalComparer('lname'));
+          const response = helpers.createResponse(200, resultsWithRegistrationStatus)
+          callback(null, response);
+        })
       })
-      callback(null, response);
-    })
-    .catch(error => {
-      console.error(error);
-      callback(new Error('Unable to scan events.'));
-    });
+      .catch(error => {
+        console.error(error);
+        callback(new Error('Unable to scan registration table.'));
+      });
+  } else {
+    //if none of the optional params are true, then return event
+    const params = {
+      Key: { id },
+      TableName: 'biztechEvents' + process.env.ENVIRONMENT
+    };
 
-};
+    await docClient.get(params).promise()
+      .then(result => {
+        if (result.Item == null) {
+          const response = helpers.createResponse(404, 'Event not found');
+          callback(null, response);
+        } else {
+          const response = helpers.createResponse(200, result.Item);
+          callback(null, response);
+        }
+      })
+      .catch(error => {
+        console.error(error);
+        const response = helpers.createResponse(502, error);
+        callback(null, response);
+      })
+  }
+}
