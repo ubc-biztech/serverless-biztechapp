@@ -135,7 +135,7 @@ functions:
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
   inviteCreate:
-    handler: handlers/user.invite
+    handler: handlers/inviteCodes.invite
     events:
       - http:
           path: inviteCodes
