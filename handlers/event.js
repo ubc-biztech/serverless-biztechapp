@@ -39,12 +39,12 @@ module.exports.create = async (event, ctx, callback) => {
         message: 'Event Created!',
         params: params
       })
-      callback(null, response)
+      callback(null, response);
     })
     .catch(error => {
       console.error(error);
       const response = helpers.createResponse(502, error);
-      callback(null, response)
+      callback(null, response);
     })
 
 };
@@ -68,12 +68,12 @@ module.exports.delete = async (event, ctx, callback) => {
       const response = helpers.createResponse(200, {
         message: 'Event Deleted!'
       })
-      callback(null, response)
+      callback(null, response);
     })
     .catch(error => {
       console.error(error);
       const response = helpers.createResponse(502, error);
-      callback(null, response)
+      callback(null, response);
     })
 
 };
@@ -130,15 +130,11 @@ module.exports.update = async (event, ctx, callback) => {
 };
 
 module.exports.get = async (event, ctx, callback) => {
-  console.log(event);
   const id = event.pathParameters.id;
-  console.log(event.queryStringParameters);
   const queryString = event.queryStringParameters;
 
   // if both count and users are true, throw error 
   if (queryString && queryString.count == "true" && queryString.users == "true") {
-    console.log("queryString.count: ", queryString.count)
-    console.log("queryString.users: ", queryString.users)
     const response = helpers.createResponse(406, 'Only one true parameter is permissible at a time');
     callback(null, response);
   } else if (queryString && queryString.count == "true") {

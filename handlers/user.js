@@ -40,13 +40,7 @@ module.exports.create = async (event, ctx, callback) => {
 };
 
 module.exports.get = async (event, ctx, callback) => {
-  const queryString = event.pathParameters;
-  if (queryString == null || !queryString.hasOwnProperty('id')) {
-    callback(null, helpers.inputError('User ID not specified.', queryString));
-    return;
-  }
-
-  const id = parseInt(queryString.id, 10);
+  const id = parseInt(event.pathParameters.id, 10);
 
   const params = {
     Key: {
@@ -110,7 +104,7 @@ module.exports.getAll = async (event, ctx, callback) => {
   await docClient.scan(params).promise()
     .then(async (result) => {
       if (result.Items == null) {
-        const response = helpers.createResponse(404, 'User not found.');
+        const response = helpers.createResponse(404, 'No users found.');
         callback(null, response);
       } else {
         const response = helpers.createResponse(200, { items: result.Items, length: result.ScannedCount });
