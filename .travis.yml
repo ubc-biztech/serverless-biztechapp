@@ -21,4 +21,4 @@ stages:
   - name: "Deploy to Staging"
     if: (branch = master) AND (type = push)
   - name: "Deploy to Production"
-    if: (branch = master) AND (type = push) AND (tag IS present)
+    if: (branch = master) AND (tag IS present)
