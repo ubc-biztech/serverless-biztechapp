@@ -145,7 +145,7 @@ module.exports.get = async (event, ctx, callback) => {
         ':query': eventID
       }
     };
-
+  
     await docClient.scan(params).promise()
       .then(result => {
         console.log('Scan success.');
@@ -179,7 +179,7 @@ module.exports.get = async (event, ctx, callback) => {
         ':query': id
       }
     };
-
+  
     await docClient.query(params).promise()
       .then(result => {
         console.log('Query success.');
