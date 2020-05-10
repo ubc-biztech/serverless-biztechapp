@@ -170,6 +170,9 @@ module.exports = {
 
         return counts;
       })
-      .catch(error => console.log(error));
+      .catch(error => {
+        console.log(error);
+        return null;
+      });
   }
 };
