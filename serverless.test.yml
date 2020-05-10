@@ -452,3 +452,10 @@
   response:
     status: 404
     body: "\"Event not found.\""
+
+- name: invitecodes returns 200
+  endpoint:
+    method: POST
+    path: inviteCodes/
+  request:
+    body:
