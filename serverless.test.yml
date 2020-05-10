@@ -48,226 +48,256 @@
   response:
     status: 200
 
-- name: user get found returns 200
-  endpoint:
-    method: GET
-    path: users/get
-  request:
-    form:
-      id: 144444
-  response:
-    status: 200
-    body:
-      id: 144444
-      fname: test
-      lname: dude
-      faculty: Science
+# - name: user create no ID returns 406
+#   endpoint:
+#     method: POST
+#     path: users/create
+#   request:
+#     body:
+#       fname: foo
+#       lname: bar
+#       email: foo
+#       faculty: bar
+#   response:
+#     status: 406
+#     body:
+#       message: "User ID not specified."
+#       data:
+#         fname: foo
+#         lname: bar
+#         email: foo
+#         faculty: bar
 
-- name: user get not found returns 404
-  endpoint:
-    method: GET
-    path: users/get
-  request:
-    form:
-      id: 0
-  response:
-    status: 404
-    body: "\"User not found.\""
+# - name: user get no ID returns 406
+#   endpoint:
+#     method: GET
+#     path: users/get
+#   response:
+#     status: 406
+#     body:
+#       message: "User ID not specified."
+#       data: null
 
-- name: user update returns 200
-  endpoint:
-    method: POST
-    path: users/update
-  request:
-    body:
-      id: 144444
-      fname: updateTest
-      lname: dudeGotUpdated
-      faculty: Sauder
-      email: dev@ubcbiztech.com
-  response:
-    status: 200
-    body: "\"Update succeeded.\""
+# - name: user get found returns 200
+#   endpoint:
+#     method: GET
+#     path: users/get
+#   request:
+#     form:
+#       id: 144444
+#   response:
+#     status: 200
+#     body:
+#       id: 144444
+#       fname: test
+#       lname: dude
+#       faculty: Science
 
-- name: user get update info returns 200
-  endpoint:
-    method: GET
-    path: users/get
-  request:
-    form:
-      id: 144444
-  response:
-    status: 200
-    body:
-      id: 144444
-      fname: updateTest
-      lname: dudeGotUpdated
-      faculty: Sauder
+# - name: user get not found returns 404
+#   endpoint:
+#     method: GET
+#     path: users/get
+#   request:
+#     form:
+#       id: 0
+#   response:
+#     status: 404
+#     body: "\"User not found.\""
 
-- name: user update no ID returns 406
-  endpoint:
-    method: POST
-    path: users/update
-  request:
-    body:
-      fname: badUpdateTest
-      lname: dudeNotUpdated
-      faculty: LFS
-  response:
-    status: 406
-    body:
-      message: "User ID not specified."
+# - name: user update returns 200
+#   endpoint:
+#     method: POST
+#     path: users/update
+#   request:
+#     body:
+#       id: 144444
+#       fname: updateTest
+#       lname: dudeGotUpdated
+#       faculty: Sauder
+#       email: dev@ubcbiztech.com
+#   response:
+#     status: 200
+#     body: "\"Update succeeded.\""
 
-- name: user update not found returns 404
-  endpoint:
-    method: POST
-    path: users/update
-  request:
-    body:
-      id: -20
-      fname: badUpdateTest
-      lname: dudeNotUpdated
-  response:
-    status: 404
-    body: "\"User not found.\""
+# - name: user get update info returns 200
+#   endpoint:
+#     method: GET
+#     path: users/get
+#   request:
+#     form:
+#       id: 144444
+#   response:
+#     status: 200
+#     body:
+#       id: 144444
+#       fname: updateTest
+#       lname: dudeGotUpdated
+#       faculty: Sauder
 
-- name: event count returns 200
-  endpoint: {function: eventCount}
-  request:
-    form:
-      id: bp
-  response:
-    status: 200
+# - name: user update no ID returns 406
+#   endpoint:
+#     method: POST
+#     path: users/update
+#   request:
+#     body:
+#       fname: badUpdateTest
+#       lname: dudeNotUpdated
+#       faculty: LFS
+#   response:
+#     status: 406
+#     body:
+#       message: "User ID not specified."
 
-- name: event create returns 200
-  endpoint:
-    method: POST
-    path: events/create
-  request:
-    body:
-      id: testevent
-      ename: test
-      capac: 2000000
-      img: yup
-  response:
-    status: 200
-    body:
-      message: 'Event Created!'
+# - name: user update not found returns 404
+#   endpoint:
+#     method: POST
+#     path: users/update
+#   request:
+#     body:
+#       id: -20
+#       fname: badUpdateTest
+#       lname: dudeNotUpdated
+#   response:
+#     status: 404
+#     body: "\"User not found.\""
 
-- name: event create no ID returns 406
-  endpoint:
-    method: POST
-    path: events/create
-  request:
-    body:
-      ename: test
-      capac: 2000000
-      img: yup
-  response:
-    status: 406
-    body:
-      message: 'Event ID not specified.'
-      data:
-        ename: test
-        capac: 2000000
-        img: yup
+# - name: event count returns 200
+#   endpoint: {function: eventCount}
+#   request:
+#     form:
+#       id: bp
+#   response:
+#     status: 200
 
-- name: event create no capac returns 406
-  endpoint:
-    method: POST
-    path: events/create
-  request:
-    body:
-      id: testevent
-      ename: test
-      img: yup
-  response:
-    status: 406
-    body:
-      message: 'capac invalid, please provide valid number.'
-      data:
-        id: testevent
-        ename: test
-        img: yup
+# - name: event create returns 200
+#   endpoint:
+#     method: POST
+#     path: events/create
+#   request:
+#     body:
+#       id: testevent
+#       ename: test
+#       capac: 2000000
+#       img: yup
+#   response:
+#     status: 200
+#     body:
+#       message: 'Event Created!'
 
-- name: event get returns 200
-  endpoint:
-    method: GET
-    path: events/get
-  response:
-    status: 200
+# - name: event create no ID returns 406
+#   endpoint:
+#     method: POST
+#     path: events/create
+#   request:
+#     body:
+#       ename: test
+#       capac: 2000000
+#       img: yup
+#   response:
+#     status: 406
+#     body:
+#       message: 'Event ID not specified.'
+#       data:
+#         ename: test
+#         capac: 2000000
+#         img: yup
 
-- name: event update returns 200
-  endpoint:
-    method: POST
-    path: events/update
-  request:
-    body:
-      id: testevent
-      ename: testUpdated
-      capac: 7
-      img: nope
-  response:
-    status: 200
-    body: "\"Update succeeded.\""
+# - name: event create no capac returns 406
+#   endpoint:
+#     method: POST
+#     path: events/create
+#   request:
+#     body:
+#       id: testevent
+#       ename: test
+#       img: yup
+#   response:
+#     status: 406
+#     body:
+#       message: 'capac invalid, please provide valid number.'
+#       data:
+#         id: testevent
+#         ename: test
+#         img: yup
 
-- name: event update not found returns 404
-  endpoint:
-    method: POST
-    path: events/update
-  request:
-    body:
-      id: nonexistanttestidwoo
-      ename: testUpdated
-      capac: 7
-      img: nope
-  response:
-    status: 404
-    body: "\"Event not found.\""
+# - name: event get returns 200
+#   endpoint:
+#     method: GET
+#     path: events/get
+#   response:
+#     status: 200
 
-- name: event update no ID returns 406
-  endpoint:
-    method: POST
-    path: events/update
-  request:
-    body:
-      ename: testUpdated
-  response:
-    status: 406
-    body:
-      message: 'Event ID not specified.'
+# - name: event update returns 200
+#   endpoint:
+#     method: POST
+#     path: events/update
+#   request:
+#     body:
+#       id: testevent
+#       ename: testUpdated
+#       capac: 7
+#       img: nope
+#   response:
+#     status: 200
+#     body: "\"Update succeeded.\""
 
-# - name: event scan match returns 200
+# - name: event update not found returns 404
+#   endpoint:
+#     method: POST
+#     path: events/update
+#   request:
+#     body:
+#       id: nonexistanttestidwoo
+#       ename: testUpdated
+#       capac: 7
+#       img: nope
+#   response:
+#     status: 404
+#     body: "\"Event not found.\""
+
+# - name: event update no ID returns 406
+#   endpoint:
+#     method: POST
+#     path: events/update
+#   request:
+#     body:
+#       ename: testUpdated
+#   response:
+#     status: 406
+#     body:
+#       message: 'Event ID not specified.'
+
+# # - name: event scan match returns 200
+# #   endpoint:
+# #     method: GET
+# #     path: events/scan
+# #   request:
+# #     form:
+# #       code: test
+# #   response:
+# #     status: 200
+# #     body:
+# #       size: 1
+
+# - name: event scan no match returns 200
 #   endpoint:
 #     method: GET
 #     path: events/scan
 #   request:
 #     form:
-#       code: test
+#       code: -1
 #   response:
 #     status: 200
 #     body:
-#       size: 1
+#       size: 0
 
-- name: event scan no match returns 200
-  endpoint:
-    method: GET
-    path: events/scan
-  request:
-    form:
-      code: -1
-  response:
-    status: 200
-    body:
-      size: 0
-
-- name: registration create returns 200
+- name: registration create returns 201
   endpoint:
     method: POST
-    path: registration/create
+    path: registrations/
   request:
     body:
-      eventID: testevent
+      eventID: hello
       id: 144444
       registrationStatus: registered
   response:
@@ -279,7 +309,7 @@
 - name: registration create no id returns 406
   endpoint:
     method: POST
-    path: registration/create
+    path: registrations/
   request:
     body:
       eventID: testevent
@@ -292,7 +322,7 @@
 - name: registration create no eventID returns 406
   endpoint:
     method: POST
-    path: registration/create
+    path: registrations/
   request:
     body:
       id: 144444
@@ -305,7 +335,7 @@
 - name: registration create no status returns 406
   endpoint:
     method: POST
-    path: registration/create
+    path: registrations/
   request:
     body:
       eventID: testevent
@@ -318,7 +348,7 @@
 - name: registration create 'registered' with full event sets registrationStatus to waitlist
   endpoint:
     method: POST
-    path: registration/create
+    path: registrations/
   request:
     body:
       eventID: usingfortestdonotmodify
@@ -333,7 +363,7 @@
 - name: registration create 'checkedin' with full event sets registrationStatus to checkedin
   endpoint:
     method: POST
-    path: registration/create
+    path: registrations/
   request:
     body:
       eventID: usingfortestdonotmodify
@@ -344,6 +374,33 @@
     body:
       message: "Update succeeded"
       registrationStatus: "checkedin"
+
+- name: registration put returns 200
+  endpoint:
+    method: PUT
+    path: registrations/
+  request:
+    body:
+      eventID: checkintestonlydonotmodify
+      id: 144444
+      registrationStatus: waitlisted
+  response:
+    status: 200
+    body:
+      message: Update succeeded
+      registrationStatus: waitlisted
+
+- name: registration put entry doesn't exist returns 502
+  endpoint:
+    method: PUT
+    path: registrations/
+  request:
+    body:
+      eventID: randomeventdontexit
+      id: 144444
+      registrationStatus: waitlisted
+  response:
+    status: 502
 
 - name: registration get id returns 200
   endpoint:
@@ -417,27 +474,27 @@
     body:
       size: 1
 
-- name: event getUsers returns 200
-  endpoint:
-    method: GET
-    path: events/getUsers
-  request:
-    form:
-      id: testevent
-  response:
-    status: 200
+# - name: event getUsers returns 200
+#   endpoint:
+#     method: GET
+#     path: events/getUsers
+#   request:
+#     form:
+#       id: testevent
+#   response:
+#     status: 200
 
-- name: event delete returns 200
-  endpoint:
-    method: DELETE
-    path: events/delete
-  request:
-    form:
-      id: testevent
-  response:
-    status: 200
-    body:
-      message: 'Event Deleted!'
+# - name: event delete returns 200
+#   endpoint:
+#     method: DELETE
+#     path: events/delete
+#   request:
+#     form:
+#       id: testevent
+#   response:
+#     status: 200
+#     body:
+#       message: 'Event Deleted!'
 
 - name: event update after delete not found returns 404
   endpoint:

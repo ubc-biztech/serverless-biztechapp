@@ -142,12 +142,20 @@ functions:
           method: post
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
-  registrationCreate:
-    handler: handlers/registration.create
+  registrationPost:
+    handler: handlers/registration.post
     events:
       - http:
-          path: registration/create
+          path: registrations/
           method: post
+          cors: true
+          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
+  registrationPut:
+    handler: handlers/registration.put
+    events:
+      - http:
+          path: registrations/
+          method: put
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
   registrationGet:
