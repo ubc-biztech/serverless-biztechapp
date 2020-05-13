@@ -20,7 +20,9 @@ async function updateHelper (event, callback, createNew) {
   const eventID = data.eventID;
   let registrationStatus = data.registrationStatus;
 
+  let emailError = false;
   // Check if the event is full
+  // TODO: Refactor this nicely into a promise or something
   if (registrationStatus === 'registered') {
 
     const eventParams = {
@@ -72,8 +74,14 @@ async function updateHelper (event, callback, createNew) {
       .catch(error => {
         console.log('error processing data or sending email');
         const response = helpers.createResponse(502, error);
+        emailError = true;
         return callback(null, response);
       });
+  }
+  
+  // See TODO above
+  if (emailError) {
+    return;
   }
 
   const updateObject = { registrationStatus };
@@ -99,23 +107,43 @@ async function updateHelper (event, callback, createNew) {
     ReturnValues: "UPDATED_NEW"
   };
 
-  if (!createNew) {
+  if (createNew) {
+    params["ConditionExpression"] = 'attribute_not_exists(id) and attribute_not_exists(eventID)'
+  } else {
     params["ConditionExpression"] = 'attribute_exists(id) and attribute_exists(eventID)';
   }
 
   // call dynamoDb
   await docClient.update(params).promise()
     .then(result => {
-      const response = helpers.createResponse(200, {
-        message: 'Update succeeded',
-        registrationStatus
-      })
-      callback(null, response)
+      let response;
+      if (createNew) {
+        response = helpers.createResponse(201, {
+          message: 'Entry created',
+          registrationStatus
+        })
+      } else {
+        response = helpers.createResponse(200, {
+          message: 'Update succeeded',
+          registrationStatus
+        })
+      }
+      callback(null, response);
     })
     .catch(error => {
       console.error(error);
-      const response = helpers.createResponse(502, error);
-      callback(null, response)
+      let errorCode = 502;
+      let message = "Interal server error."
+      if (error.code === 'ConditionalCheckFailedException') {
+        errorCode = 409;
+        if (createNew) {
+          message = 'Entry with given id and eventID already exists.';
+        } else {
+          message = 'Entry with given id and eventID doesn\'t exist.';
+        }
+      }
+      const response = helpers.createResponse(errorCode, { message });
+      callback(null, response);
     });
 }
 

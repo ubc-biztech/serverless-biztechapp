@@ -291,7 +291,7 @@
     body:
       size: 0
 
-- name: registration create returns 200
+- name: registration create entry already exists returns 409
   endpoint:
     method: POST
     path: registrations/
@@ -301,10 +301,9 @@
       id: 144444
       registrationStatus: registered
   response:
-    status: 200
+    status: 409
     body:
-      message: Update succeeded
-      registrationStatus: registered
+      message: Entry with given id and eventID already exists.
 
 - name: registration create no id returns 406
   endpoint:
@@ -317,7 +316,7 @@
   response:
     status: 406
     body:
-      message: 'Registration student ID not specified.'
+      message: Registration student ID not specified.
 
 - name: registration create no eventID returns 406
   endpoint:
@@ -330,7 +329,7 @@
   response:
     status: 406
     body:
-      message: 'Registration event ID not specified.'
+      message: Registration event ID not specified.
 
 - name: registration create no status returns 406
   endpoint:
@@ -343,37 +342,38 @@
   response:
     status: 406
     body:
-      message: 'Status not specified.'
+      message: Status not specified.
 
-- name: registration create 'registered' with full event sets registrationStatus to waitlist
-  endpoint:
-    method: POST
-    path: registrations/
-  request:
-    body:
-      eventID: usingfortestdonotmodify
-      id: 144444
-      registrationStatus: registered
-  response:
-    status: 200
-    body:
-      message: "Update succeeded"
-      registrationStatus: "waitlist"
+#TODO: replace these with unit tests
+# - name: registration create 'registered' with full event sets registrationStatus to waitlist
+#   endpoint:
+#     method: POST
+#     path: registrations/
+#   request:
+#     body:
+#       eventID: usingfortestdonotmodify
+#       id: 144444
+#       registrationStatus: registered
+#   response:
+#     status: 200
+#     body:
+#       message: "Update succeeded"
+#       registrationStatus: "waitlist"
 
-- name: registration create 'checkedin' with full event sets registrationStatus to checkedin
-  endpoint:
-    method: POST
-    path: registrations/
-  request:
-    body:
-      eventID: usingfortestdonotmodify
-      id: 144444
-      registrationStatus: checkedin
-  response:
-    status: 200
-    body:
-      message: "Update succeeded"
-      registrationStatus: "checkedin"
+# - name: registration create 'checkedin' with full event sets registrationStatus to checkedin
+#   endpoint:
+#     method: POST
+#     path: registrations/
+#   request:
+#     body:
+#       eventID: usingfortestdonotmodify
+#       id: 144444
+#       registrationStatus: checkedin
+#   response:
+#     status: 200
+#     body:
+#       message: "Update succeeded"
+#       registrationStatus: "checkedin"
 
 - name: registration create event doesnt exist returns 502
   endpoint:
@@ -393,7 +393,7 @@
     path: registrations/
   request:
     body:
-      eventID: usingfortestdonotmodify
+      eventID: checkintestonlydonotmodify
       id: -1
       registrationStatus: registered
   response:
@@ -414,7 +414,7 @@
       message: Update succeeded
       registrationStatus: waitlisted
 
-- name: registration put entry doesn't exist returns 502
+- name: registration put entry doesn't exist returns 409
   endpoint:
     method: PUT
     path: registrations/
@@ -424,7 +424,9 @@
       id: 144444
       registrationStatus: waitlisted
   response:
-    status: 502
+    status: 409
+    body:
+      message: Entry with given id and eventID doesn't exist.
 
 - name: registration put 'registered' with full event sets registrationStatus to waitlist
   endpoint:
@@ -438,7 +440,7 @@
   response:
     status: 200
     body:
-      message: "Update succeeded"
+      message: Update succeeded
       registrationStatus: "waitlist"
 
 - name: registration get id returns 200
@@ -463,7 +465,7 @@
   response:
     status: 404
     body:
-      message: 'No entries found.'
+      message: No entries found.
 
 - name: registration get no id no eventID returns 406
   endpoint:
@@ -474,7 +476,7 @@
   response:
     status: 406
     body:
-      message: 'User and/or Event ID not specified.'
+      message: User and/or Event ID not specified.
 
 - name: registration get eventID returns 200
   endpoint:
@@ -498,7 +500,7 @@
   response:
     status: 404
     body:
-      message: 'No entries found.'
+      message: No entries found.
 
 - name: registration with id and eventID returns 200
   endpoint:
