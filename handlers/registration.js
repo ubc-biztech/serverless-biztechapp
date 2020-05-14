@@ -5,7 +5,7 @@ const helpers = require('./helpers');
 const email = require('../utils/email')
 const CHECKIN_COUNT_SANITY_CHECK = 500;
 
-async function updateHelper (event, callback, createNew) {
+async function updateHelper(event, callback, createNew) {
   const data = JSON.parse(event.body);
 
   // Check that parameters are valid
@@ -45,31 +45,7 @@ async function updateHelper (event, callback, createNew) {
       })
       .then(async (eventName) => {
         //after the person has been either registered or waitlisted, send confirmation email 
-        const userParams = {
-          Key: { id: id },
-          TableName: 'biztechUsers' + process.env.ENVIRONMENT
-        }
-        console.log('user params')
-        console.log(userParams)
-        await docClient.get(userParams).promise()
-          .then(async (user) => {
-            console.log(user);
-            const userEmail = user.Item.email;
-            const userName = user.Item.fname;
-
-            const msg = {
-              to: userEmail,
-              from: "info@ubcbiztech.com",
-              templateId: "d-99da9013c9a04ef293e10f0d73e9b49c",
-              dynamic_template_data: {
-                subject: "BizTech " + eventName + " Receipt",
-                name: userName,
-                registrationStatus: registrationStatus,
-                eventName: eventName
-              }
-            }
-            await email.send(msg);
-          })
+        sendEmail(id, eventName, registrationStatus);
       })
       .catch(error => {
         console.log('error processing data or sending email');
@@ -78,7 +54,7 @@ async function updateHelper (event, callback, createNew) {
         return callback(null, response);
       });
   }
-  
+
   // See TODO above
   if (emailError) {
     return;
@@ -147,6 +123,40 @@ async function updateHelper (event, callback, createNew) {
     });
 }
 
+async function sendEmail(id, eventName, registrationStatus) {
+  if (registrationStatus !== "checkedIn") {
+    const userParams = {
+      Key: { id: id },
+      TableName: 'biztechUsers' + process.env.ENVIRONMENT
+    }
+    await docClient.get(userParams).promise()
+      .then(async (user) => {
+        const userEmail = user.Item.email;
+        const userName = user.Item.fname;
+
+        let tempId;
+        if (registrationStatus == "registered" || registrationStatus == "waitlist") {
+          tempId = "d-99da9013c9a04ef293e10f0d73e9b49c";
+        } else {
+          //registrationStatus == "cancelled"
+          tempId = "d-0c87cb420ba2456ebc4c3f99a9d50ba0";
+        }
+        const msg = {
+          to: userEmail,
+          from: "info@ubcbiztech.com",
+          templateId: tempId,
+          dynamic_template_data: {
+            subject: "BizTech " + eventName + " Receipt",
+            name: userName,
+            registrationStatus: registrationStatus,
+            eventName: eventName
+          }
+        }
+        await email.send(msg);
+      })
+  }
+}
+
 module.exports.post = async (event, ctx, callback) => {
   await updateHelper(event, callback, true);
 };
@@ -173,7 +183,7 @@ module.exports.get = async (event, ctx, callback) => {
         ':query': eventID
       }
     };
-  
+
     await docClient.scan(params).promise()
       .then(result => {
         console.log('Scan success.');
@@ -207,7 +217,7 @@ module.exports.get = async (event, ctx, callback) => {
         ':query': id
       }
     };
-  
+
     await docClient.query(params).promise()
       .then(result => {
         console.log('Query success.');
@@ -217,8 +227,8 @@ module.exports.get = async (event, ctx, callback) => {
           response = helpers.notFoundResponse();
         } else {
           response = helpers.createResponse(200, {
-          size: data.length,
-          data: data
+            size: data.length,
+            data: data
           })
         }
         callback(null, response);
