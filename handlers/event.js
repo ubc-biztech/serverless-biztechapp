@@ -30,7 +30,8 @@ module.exports.create = async (event, ctx, callback) => {
       createdAt: timestamp,
       updatedAt: timestamp
     },
-    TableName: 'biztechEvents' + process.env.ENVIRONMENT
+    TableName: 'biztechEvents' + process.env.ENVIRONMENT,
+    ConditionExpression: 'attribute_not_exists(id)'
   };
 
   await docClient.put(params).promise()
@@ -42,8 +43,7 @@ module.exports.create = async (event, ctx, callback) => {
       callback(null, response);
     })
     .catch(error => {
-      console.error(error);
-      const response = helpers.createResponse(502, error);
+      const response = helpers.createResponse(409, "Event could not be created because id already exists");
       callback(null, response);
     })
 
@@ -105,26 +105,40 @@ module.exports.getAll = async (event, ctx, callback) => {
 module.exports.update = async (event, ctx, callback) => {
 
   const data = JSON.parse(event.body);
+  var updateExpression = "set ";
+  var expressionAttributeValues = {};
+
+  for (var key in data) {
+    if (data.hasOwnProperty(key)) {
+      if (key != "id") {
+        updateExpression += key + "= :" + key + ",";
+        expressionAttributeValues[":" + key] = data[key];
+      }
+    }
+  }
+
+  const timestamp = new Date().getTime();
+  updateExpression += "updatedAt = :updatedAt";
+  expressionAttributeValues[":updatedAt"] = timestamp;
 
   const id = event.pathParameters.id;
 
   const params = {
     Key: { id },
     TableName: 'biztechEvents' + process.env.ENVIRONMENT,
+    ExpressionAttributeValues: expressionAttributeValues,
+    UpdateExpression: updateExpression,
+    ReturnValues: "UPDATED_NEW",
+    ConditionExpression: "attribute_exists(id)"
   };
 
-  await docClient.get(params).promise()
+  await docClient.update(params).promise()
     .then(async (result) => {
-      if (!helpers.isEmpty(result))
-        return callback(null, await helpers.updateDB(id, data, 'biztechEvents'));
-      else {
-        const response = helpers.createResponse(404, 'Event not found.')
-        callback(null, response);
-      }
+      callback(null, helpers.createResponse(200, "Update succeeded."));
     })
     .catch(error => {
       console.error(error);
-      callback(new Error('Could not get event from database.'));
+      callback(null, helpers.createResponse(404, "Event not found."));
     })
 
 };
@@ -145,11 +159,6 @@ module.exports.get = async (event, ctx, callback) => {
     callback(null, response);
   } else if (queryString && queryString.users == "true") {
     //return users
-    // Check that parameters are valid
-    if (!id) {
-      callback(null, helpers.inputError('id not specified.', 'missing query param'));
-    }
-
     const params = {
       TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
       FilterExpression: 'eventID = :query',

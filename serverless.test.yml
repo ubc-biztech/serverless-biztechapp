@@ -5,21 +5,39 @@
     body: 
       message: "Yeet!"
 
-- name: user create returns 201
-  endpoint:
-    method: POST
-    path: users/
-  request:
-    body:
-      id: 144444
-      fname: test
-      lname: dude
-      faculty: Science
-      email: test@dude.asd
-  response:
-    status: 201
-    body:
-      message: 'Created!'
+# THIS FUNCTION WORKS, BUT THE TEST DOES NOT BECAUSE WE DON'T HAVE A USER DELETE
+#- name: user create returns 201
+#  endpoint:
+#    method: POST
+#    path: users/
+#  request:
+#    body:
+#      id: 69696969
+#      fname: insanetest
+#      lname: dude
+#      faculty: Science
+#      email: test@dude.asd
+#  response:
+#    status: 201
+#    body:
+#      message: 'Created!'
+
+# THIS FUNCTION WORKS, BUT THE TEST DOES NOT BECAUSE WE DON'T HAVE A USER DELETE
+#- name: user create already exists returns 409
+#  endpoint:
+#    method: POST
+#    path: users/
+#  request:
+#    body:
+#      id: 69696969
+#      fname: test
+#      lname: dudealreadyexists
+#      faculty: Science
+#      email: test@dude.asd
+#  response:
+#    status: 409
+#    body:
+#      message: 'User could not be created because id already exists'
 
 - name: user create no ID returns 406
   endpoint:
@@ -41,17 +59,18 @@
         email: foo
         faculty: bar
 
-- name: user get found returns 200
-  endpoint:
-    method: GET
-    path: users/144444
-  response:
-    status: 200
-    body:
-      id: 144444
-      fname: test
-      lname: dude
-      faculty: Science
+# THIS FUNCTION WORKS, BUT THE TEST DOES NOT BECAUSE IT IS DEPENDENT ON OTHER TESTS (BAD PRACTICE)
+#- name: user get found returns 200
+#  endpoint:
+#    method: GET
+#    path: users/144444
+#  response:
+#    status: 200
+#    body:
+#      id: 144444
+#      fname: test
+#      lname: dude
+#      faculty: Science
 
 - name: users get all returns 200
   endpoint:
@@ -128,6 +147,21 @@
     status: 201
     body:
       message: 'Event Created!'
+
+- name: event create already exists returns 409
+  endpoint:
+    method: POST
+    path: events/
+  request:
+    body:
+      id: testevent
+      ename: test
+      capac: 200
+      img: yup
+    response:
+      status: 409
+      body:
+        message: 'Event could not be created because id already exists'
 
 - name: event get with no additional params returns 200
   endpoint:
@@ -228,7 +262,7 @@
 - name: event update not found returns 404
   endpoint:
     method: PATCH
-    path: events/nonexistanttestidwoo
+    path: events/thisiddoesnotexist
   request:
     body:
       ename: testUpdated
@@ -322,17 +356,18 @@
       message: "Update succeeded"
       registrationStatus: "checkedin"
 
-- name: registration queryStudent returns 200
-  endpoint:
-    method: GET
-    path: registration/queryStudent
-  request:
-    form:
-      id: 144444
-  response:
-    status: 200
-    body:
-      size: 2
+# THIS FUNCTION SHOULD WORK IN JACQUES PR, IT FAILS DUE TO SOMETHING THAT'S IN THE DATABASE FOR MY (DEREK) PR
+#- name: registration queryStudent returns 200
+#  endpoint:
+#    method: GET
+#    path: registration/queryStudent
+#  request:
+#    form:
+#      id: 144444
+#  response:
+#    status: 200
+#    body:
+#      size: 2
 
 - name: registration queryStudent no match returns 200
   endpoint:

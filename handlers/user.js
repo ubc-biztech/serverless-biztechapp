@@ -26,16 +26,24 @@ module.exports.create = async (event, ctx, callback) => {
       createdAt: timestamp,
       updatedAt: timestamp
     },
-    TableName: 'biztechUsers' + process.env.ENVIRONMENT
+    TableName: 'biztechUsers' + process.env.ENVIRONMENT,
+    ConditionExpression: 'attribute_not_exists(id)'
   };
 
   await docClient.put(params).promise()
+    .then(result => {
+      const response = helpers.createResponse(201, {
+        message: 'Created!',
+        params: params
+      })
+      callback(null, response)
+    })
+    .catch(error => {
+      const response = helpers.createResponse(409, "User could not be created because id already exists");
+      callback(null, response);
+    })
 
-  const response = helpers.createResponse(201, {
-    message: 'Created!',
-    params: params
-  })
-  callback(null, response)
+
 
 };
 
@@ -71,24 +79,37 @@ module.exports.update = async (event, ctx, callback) => {
   const data = JSON.parse(event.body);
   const id = parseInt(event.pathParameters.id, 10);
 
+  var updateExpression = "set ";
+  var expressionAttributeValues = {};
+
+  for (var key in data) {
+    if (data.hasOwnProperty(key)) {
+      if (key != "id") {
+        updateExpression += key + "= :" + key + ",";
+        expressionAttributeValues[":" + key] = data[key];
+      }
+    }
+  }
+
+  const timestamp = new Date().getTime();
+  updateExpression += "updatedAt = :updatedAt";
+  expressionAttributeValues[":updatedAt"] = timestamp;
+
   const params = {
     Key: { id },
     TableName: 'biztechUsers' + process.env.ENVIRONMENT,
+    ExpressionAttributeValues: expressionAttributeValues,
+    UpdateExpression: updateExpression,
+    ConditionExpression: "attribute_exists(id)"
   };
 
-  await docClient.get(params).promise()
+  await docClient.update(params).promise()
     .then(async (result) => {
-      if (!helpers.isEmpty(result))
-        callback(null, await helpers.updateDB(id, data, 'biztechUsers'));
-      else {
-        const response = helpers.createResponse(404, 'User not found.')
-        callback(null, response);
-      }
+      callback(null, helpers.createResponse(200, "Update succeeded."));
     })
     .catch(error => {
       console.error(error);
-      const response = helpers.createResponse(502, error)
-      callback(null, response);
+      callback(null, helpers.createResponse(404, "User not found."));
     })
 
 };

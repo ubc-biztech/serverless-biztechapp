@@ -2,25 +2,25 @@ const AWS = require("aws-sdk");
 const docClient = new AWS.DynamoDB.DocumentClient();
 
 module.exports = {
-  isEmpty: function(obj) {
+  isEmpty: function (obj) {
     return Object.keys(obj).length === 0;
   },
 
-  createResponse: function(statusCode, body) {
+  createResponse: function (statusCode, body) {
     const response = {
       statusCode,
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Credentials': true,
-        'Access-Control-Allow-Headers' : 'x-api-key'
+        'Access-Control-Allow-Headers': 'x-api-key'
       },
       body: JSON.stringify(body)
     };
     return response;
   },
 
-  inputError: function(message, data) {
-    const response = this.createResponse(406, 
+  inputError: function (message, data) {
+    const response = this.createResponse(406,
       {
         message: message,
         data: data
@@ -34,7 +34,7 @@ module.exports = {
    * @param {Array} batch - List of batches in form of [{Key: value}]
    * @param {String} tableName - Name of table to call batchGet
    */
-  batchGet: function(batch, tableName) {
+  batchGet: function (batch, tableName) {
     const batchRequestParams = {
       RequestItems: {
         [tableName]: {
@@ -48,7 +48,7 @@ module.exports = {
     return docClient.batchGet(batchRequestParams).promise();
   },
 
-  createUpdateExpression: function(obj) {
+  createUpdateExpression: function (obj) {
     let updateExpression = "set ";
     let expressionAttributeValues = {};
 
@@ -80,7 +80,7 @@ module.exports = {
    * @param {Object} obj - object containing key value paris
    * @param {String} table - name of table, ie 'biztechUsers'
    */
-  updateDB: async function(id, obj, table) {
+  updateDB: async function (id, obj, table) {
     var updateExpression = "set ";
     var expressionAttributeValues = {};
 
@@ -105,7 +105,8 @@ module.exports = {
       TableName: table + process.env.ENVIRONMENT,
       ExpressionAttributeValues: expressionAttributeValues,
       UpdateExpression: updateExpression,
-      ReturnValues: "UPDATED_NEW"
+      ReturnValues: "UPDATED_NEW",
+      ConditionExpression: "attribute_exists(id)"
     };
 
     // call dynamoDb
@@ -129,7 +130,7 @@ module.exports = {
    * @param {String} eventID
    * @return {registeredCount checkedInCount waitlistCount}
    */
-  getEventCounts: async function(eventID) {
+  getEventCounts: async function (eventID) {
     const params = {
       TableName: "biztechRegistration" + process.env.ENVIRONMENT,
       FilterExpression: "eventID = :query",
