@@ -2,6 +2,13 @@ service: biztechApp
 tenant: ianmh
 app: biztechapp
 
+plugins:
+  - serverless-prune-plugin
+custom:
+  prune:
+    automatic: true
+    number: 3
+  
 provider:
   name: aws
   stage: ${opt:stage, 'dev'}
@@ -28,6 +35,7 @@ provider:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechUsers${file(./config.${self:provider.stage}.json):ENVIRONMENT}"
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechEvents${file(./config.${self:provider.stage}.json):ENVIRONMENT}"
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechRegistration${file(./config.${self:provider.stage}.json):ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/inviteCodes${file(./config.${self:provider.stage}.json):ENVIRONMENT}"
 
 functions:
   hello:
@@ -124,6 +132,14 @@ functions:
             parameters:
               querystrings:
                 code: true
+          cors: true
+          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
+  inviteCreate:
+    handler: handlers/inviteCodes.invite
+    events:
+      - http:
+          path: inviteCodes
+          method: post
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
   registrationCreate:
