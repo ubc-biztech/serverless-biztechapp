@@ -5,6 +5,13 @@ const helpers = require('./helpers');
 const email = require('../utils/email')
 const CHECKIN_COUNT_SANITY_CHECK = 500;
 
+/* returns an error if id, eventID, or registrationStatus is not provided
+   returns error 403 if the given id/eventID DNE in database
+   returns error 502 if there is a problem with processing data or sending an email
+   returns 201 when entry is created successfully, error 409 if a registration with the same id/eventID exists 
+   returns 200 when entry is updated successfully, error 409 if a registration with the same id/eventID DNE
+   sends an email to the user if they are registered, waitlisted, or cancelled, but not if checkedIn
+*/
 async function updateHelper(event, callback, createNew) {
   const data = JSON.parse(event.body);
 
@@ -23,15 +30,20 @@ async function updateHelper(event, callback, createNew) {
   let emailError = false;
   // Check if the event is full
   // TODO: Refactor this nicely into a promise or something
-  if (registrationStatus === 'registered') {
 
-    const eventParams = {
-      Key: { id: eventID },
-      TableName: 'biztechEvents' + process.env.ENVIRONMENT
-    }
+  const eventParams = {
+    Key: { id: eventID },
+    TableName: 'biztechEvents' + process.env.ENVIRONMENT
+  }
 
-    await docClient.get(eventParams).promise()
-      .then(async (event) => {
+  await docClient.get(eventParams).promise()
+    .then(async (event) => {
+      if (event.Item == null) {
+        const response = helpers.createResponse(403, "Event with event id: " + eventID + " was not found.");
+        callback(null, response)
+      }
+
+      if (registrationStatus == "registered") {
         const counts = await helpers.getEventCounts(eventID);
 
         if (counts == null) {
@@ -41,19 +53,19 @@ async function updateHelper(event, callback, createNew) {
         if (counts.registeredCount >= event.Item.capac) {
           registrationStatus = 'waitlist'
         }
-        return event.Item.ename;
-      })
-      .then(async (eventName) => {
-        //after the person has been either registered or waitlisted, send confirmation email 
-        sendEmail(id, eventName, registrationStatus);
-      })
-      .catch(error => {
-        console.log('error processing data or sending email');
-        const response = helpers.createResponse(502, error);
-        emailError = true;
-        return callback(null, response);
-      });
-  }
+      }
+      return event.Item.ename;
+    })
+    .then(async (eventName) => {
+      //after the person has been either registered or waitlisted, send confirmation email 
+      sendEmail(id, eventName, callback, registrationStatus);
+    })
+    .catch(error => {
+      console.log('error processing data or sending email');
+      const response = helpers.createResponse(502, error);
+      emailError = true;
+      return callback(null, response);
+    });
 
   // See TODO above
   if (emailError) {
@@ -109,7 +121,7 @@ async function updateHelper(event, callback, createNew) {
     .catch(error => {
       console.error(error);
       let errorCode = 502;
-      let message = "Interal server error."
+      let message = "Internal server error."
       if (error.code === 'ConditionalCheckFailedException') {
         errorCode = 409;
         if (createNew) {
@@ -123,7 +135,7 @@ async function updateHelper(event, callback, createNew) {
     });
 }
 
-async function sendEmail(id, eventName, registrationStatus) {
+async function sendEmail(id, eventName, callback, registrationStatus) {
   if (registrationStatus !== "checkedIn") {
     const userParams = {
       Key: { id: id },
@@ -131,15 +143,22 @@ async function sendEmail(id, eventName, registrationStatus) {
     }
     await docClient.get(userParams).promise()
       .then(async (user) => {
+        if (user.Item == null) {
+          const response = helpers.createResponse(403, "User with user id: " + id + " was not found.")
+          callback(null, response)
+        }
         const userEmail = user.Item.email;
         const userName = user.Item.fname;
 
-        let tempId;
-        if (registrationStatus == "registered" || registrationStatus == "waitlist") {
-          tempId = "d-99da9013c9a04ef293e10f0d73e9b49c";
-        } else {
-          //registrationStatus == "cancelled"
+        //template id for registered and waitlist
+        let tempId = "d-99da9013c9a04ef293e10f0d73e9b49c";
+        if (registrationStatus == "cancelled") {
           tempId = "d-0c87cb420ba2456ebc4c3f99a9d50ba0";
+        }
+
+        let status = registrationStatus;
+        if (registrationStatus == "waitlist") {
+          status = "waitlisted"
         }
         const msg = {
           to: userEmail,
@@ -148,7 +167,7 @@ async function sendEmail(id, eventName, registrationStatus) {
           dynamic_template_data: {
             subject: "BizTech " + eventName + " Receipt",
             name: userName,
-            registrationStatus: registrationStatus,
+            registrationStatus: status,
             eventName: eventName
           }
         }
