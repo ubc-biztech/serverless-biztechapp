@@ -4,6 +4,7 @@ app: biztechapp
 
 plugins:
   - serverless-prune-plugin
+  - serverless-mocha-plugin
 custom:
   prune:
     automatic: true

@@ -1,9 +1,9 @@
 'use strict';
 const AWS = require('aws-sdk');
-const docClient = new AWS.DynamoDB.DocumentClient();
 const helpers = require('./helpers');
 
 module.exports.create = async (event, ctx, callback) => {
+  const docClient = new AWS.DynamoDB.DocumentClient();
 
   const timestamp = new Date().getTime();
   const data = JSON.parse(event.body);
@@ -65,6 +65,7 @@ module.exports.create = async (event, ctx, callback) => {
 };
 
 module.exports.get = async (event, ctx, callback) => {
+  const docClient = new AWS.DynamoDB.DocumentClient();
   const queryString = event.queryStringParameters;
 
   const params = {
@@ -127,6 +128,7 @@ module.exports.get = async (event, ctx, callback) => {
 };
 
 module.exports.update = async (event, ctx, callback) => {
+  const docClient = new AWS.DynamoDB.DocumentClient();
 
   const data = JSON.parse(event.body);
   if (!data.hasOwnProperty('id')) {
