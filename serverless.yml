@@ -154,8 +154,11 @@ functions:
     handler: handlers/registration.put
     events:
       - http:
-          path: registrations/
+          path: registrations/{id}
           method: put
+          request:
+            path:
+              id: true
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
   registrationGet:
