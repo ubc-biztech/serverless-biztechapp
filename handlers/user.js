@@ -1,7 +1,7 @@
 'use strict';
 const AWS = require('aws-sdk');
 const docClient = new AWS.DynamoDB.DocumentClient();
-const helpers = require('./helpers')
+const helpers = require('./helpers');
 
 module.exports.create = async (event, ctx, callback) => {
 
@@ -12,40 +12,73 @@ module.exports.create = async (event, ctx, callback) => {
     callback(null, helpers.inputError('User ID not specified.', data));
   }
   const id = parseInt(data.id, 10);
+  
+  const email = data.email;
 
-  const params = {
-    Item: {
-      id,
-      fname: data.fname,
-      lname: data.lname,
-      email: data.email,
-      faculty: data.faculty,
-      year: data.year,
-      gender: data.gender,
-      diet: data.diet,
-      createdAt: timestamp,
-      updatedAt: timestamp
-    },
-    TableName: 'biztechUsers' + process.env.ENVIRONMENT,
-    ConditionExpression: 'attribute_not_exists(id)'
+  let isBiztechAdmin = false;
+
+  //assume the created user is biztech admin if using biztech email
+  if (email.substring(email.indexOf("@") + 1, email.length) === 'ubcbiztech.com') {
+    isBiztechAdmin = true;
+  }
+  const userParams = {
+      Item: {
+          id,
+          fname: data.fname,
+          lname: data.lname,
+          email: data.email,
+          faculty: data.faculty,
+          year: data.year,
+          gender: data.gender,
+          diet: data.diet,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          admin: isBiztechAdmin
+      },
+      TableName: 'biztechUsers' + process.env.ENVIRONMENT,
+      ConditionExpression: 'attribute_not_exists(id)'
   };
 
-  await docClient.put(params).promise()
+  if (data.hasOwnProperty('inviteCode')) {
+    const inviteCodeParams = {
+      Key: { id: data.inviteCode },
+      TableName: 'inviteCodes' + process.env.ENVIRONMENT
+    };
+    await docClient.get(inviteCodeParams).promise()
+      .then(async result => {
+        if (result.Item == null){
+          const response = helpers.createResponse(404, 'Invite code not found.');
+          callback(null, response)
+        } else { // invite code was found
+          // add paid: true to user
+          userParams.Item.paid = true;
+          const deleteParams = {
+            Key: { id: data.inviteCode },
+            TableName: 'inviteCodes' + process.env.ENVIRONMENT
+          }
+          await docClient.delete(deleteParams).promise();
+        }
+      })
+      .catch(error => {
+        console.error(error);
+        const response = helpers.createResponse(502, error);
+        callback(null, response);
+      });
+    await docClient.put(params).promise()
     .then(result => {
-      const response = helpers.createResponse(201, {
+        const response = helpers.createResponse(201, {
         message: 'Created!',
         params: params
       })
       callback(null, response)
-    })
+      })
     .catch(error => {
       const response = helpers.createResponse(409, "User could not be created because id already exists");
       callback(null, response);
     })
-
-
-
-};
+  };
+ }
+  
 
 module.exports.get = async (event, ctx, callback) => {
   const id = parseInt(event.pathParameters.id, 10);
@@ -66,13 +99,12 @@ module.exports.get = async (event, ctx, callback) => {
         const response = helpers.createResponse(200, result.Item)
         callback(null, response)
       }
-    })
-    .catch(error => {
-      console.error(error);
-      const response = helpers.createResponse(502, error)
-      callback(null, response);
-    });
-
+  })
+      .catch(error => {
+        console.error(error);
+        const response = helpers.createResponse(502, error)
+        callback(null, response);
+      });
 };
 
 module.exports.update = async (event, ctx, callback) => {

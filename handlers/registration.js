@@ -2,9 +2,7 @@
 const AWS = require('aws-sdk');
 const docClient = new AWS.DynamoDB.DocumentClient();
 const helpers = require('./helpers');
-const sgMail = require('@sendgrid/mail');
-sgMail.setApiKey(process.env.SENDGRID_KEY);
-
+const email = require('../utils/email')
 
 module.exports.create = async (event, ctx, callback) => {
   const data = JSON.parse(event.body);
@@ -57,14 +55,13 @@ module.exports.create = async (event, ctx, callback) => {
               from: "info@ubcbiztech.com",
               templateId: "d-99da9013c9a04ef293e10f0d73e9b49c",
               dynamic_template_data: {
-                subject: "BizTech " + eventName + "Receipt",
+                subject: "BizTech " + eventName + " Receipt",
                 name: userName,
                 registrationStatus: registrationStatus,
                 eventName: eventName
               }
             }
-            await sgMail.send(msg);
-
+            await email.send(msg);
           })
       })
   }

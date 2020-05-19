@@ -59,6 +59,7 @@
         email: foo
         faculty: bar
 
+
 # THIS FUNCTION WORKS, BUT THE TEST DOES NOT BECAUSE IT IS DEPENDENT ON OTHER TESTS (BAD PRACTICE)
 #- name: user get found returns 200
 #  endpoint:
@@ -96,7 +97,7 @@
       fname: updateTest
       lname: dudeGotUpdated
       faculty: Sauder
-      email: test@dude.asd
+      email: dev@ubcbiztech.com
   response:
     status: 200
     body: "\"Update succeeded.\""
@@ -447,3 +448,10 @@
   response:
     status: 404
     body: "\"Event not found.\""
+
+- name: invitecodes returns 200
+  endpoint:
+    method: POST
+    path: inviteCodes/
+  request:
+    body:

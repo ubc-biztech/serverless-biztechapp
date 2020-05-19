@@ -4,5 +4,8 @@
   "dependencies": {
     "@sendgrid/mail": "^6.5.3",
     "serverless": "^1.67.2"
+  },
+  "devDependencies": {
+    "serverless-prune-plugin": "^1.4.2"
   }
 }
