@@ -299,7 +299,7 @@
     body:
       eventID: checkintestonlydonotmodify
       id: 144444
-      registrationStatus: registered
+      registrationStatus: checkedin
   response:
     status: 409
     body:
