@@ -5,13 +5,14 @@ const helpers = require('./helpers');
 const email = require('../utils/email')
 const CHECKIN_COUNT_SANITY_CHECK = 500;
 
-async function updateHelper (event, callback, data, createNew, id) {
+async function updateHelper (event, callback, data, createNew, idString) {
 
   if (data == null || !data.hasOwnProperty('eventID')) {
     return callback(null, helpers.inputError('Registration event ID not specified.', data));
   } else if (!data.hasOwnProperty('registrationStatus')) {
     return callback(null, helpers.inputError('Status not specified.', data));
   }
+  const id = parseInt(idString, 10);
   const eventID = data.eventID;
   let registrationStatus = data.registrationStatus;
 
@@ -150,13 +151,18 @@ module.exports.post = async (event, ctx, callback) => {
     return callback(null, helpers.inputError('Registration student ID not specified.', data));
   }
 
-  await updateHelper(event, callback, data, true, parseInt(data.id, 10));
+  await updateHelper(event, callback, data, true, data.id);
 };
 
 module.exports.put = async (event, ctx, callback) => {
   const data = JSON.parse(event.body);
-
   const id = event.pathParameters.id;
+
+  // Check that parameters are valid
+  if (data == null || id == null) {
+    return callback(null, helpers.inputError('Registration student ID or data not specified.', data));
+  }
+
   await updateHelper(event, callback, data, false, id);
 };
 
