@@ -12,18 +12,14 @@ const CHECKIN_COUNT_SANITY_CHECK = 500;
    returns 200 when entry is updated successfully, error 409 if a registration with the same id/eventID DNE
    sends an email to the user if they are registered, waitlisted, or cancelled, but not if checkedIn
 */
-async function updateHelper(event, callback, createNew) {
-  const data = JSON.parse(event.body);
+async function updateHelper (event, callback, data, createNew, idString) {
 
-  // Check that parameters are valid
-  if (data == null || !data.hasOwnProperty('id')) {
-    return callback(null, helpers.inputError('Registration student ID not specified.', data));
-  } else if (!data.hasOwnProperty('eventID')) {
+  if (data == null || !data.hasOwnProperty('eventID')) {
     return callback(null, helpers.inputError('Registration event ID not specified.', data));
   } else if (!data.hasOwnProperty('registrationStatus')) {
     return callback(null, helpers.inputError('Status not specified.', data));
   }
-  const id = parseInt(data.id, 10);
+  const id = parseInt(idString, 10);
   const eventID = data.eventID;
   let registrationStatus = data.registrationStatus;
 
@@ -177,11 +173,26 @@ async function sendEmail(id, eventName, callback, registrationStatus) {
 }
 
 module.exports.post = async (event, ctx, callback) => {
-  await updateHelper(event, callback, true);
+  const data = JSON.parse(event.body);
+
+  // Check that parameters are valid
+  if (data == null || !data.hasOwnProperty('id')) {
+    return callback(null, helpers.inputError('Registration student ID not specified.', data));
+  }
+
+  await updateHelper(event, callback, data, true, data.id);
 };
 
 module.exports.put = async (event, ctx, callback) => {
-  await updateHelper(event, callback, false);
+  const data = JSON.parse(event.body);
+  const id = event.pathParameters.id;
+
+  // Check that parameters are valid
+  if (data == null || id == null) {
+    return callback(null, helpers.inputError('Registration student ID or data not specified.', data));
+  }
+
+  await updateHelper(event, callback, data, false, id);
 };
 
 

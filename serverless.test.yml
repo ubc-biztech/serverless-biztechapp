@@ -299,7 +299,7 @@
     body:
       eventID: checkintestonlydonotmodify
       id: 144444
-      registrationStatus: registered
+      registrationStatus: checkedin
   response:
     status: 409
     body:
@@ -402,11 +402,10 @@
 - name: registration put returns 200
   endpoint:
     method: PUT
-    path: registrations/
+    path: registrations/144444
   request:
     body:
       eventID: checkintestonlydonotmodify
-      id: 144444
       registrationStatus: waitlisted
   response:
     status: 200
@@ -417,11 +416,10 @@
 - name: registration put entry doesn't exist returns 409
   endpoint:
     method: PUT
-    path: registrations/
+    path: registrations/144444
   request:
     body:
       eventID: randomeventdontexit
-      id: 144444
       registrationStatus: waitlisted
   response:
     status: 409
@@ -431,11 +429,10 @@
 - name: registration put 'registered' with full event sets registrationStatus to waitlist
   endpoint:
     method: PUT
-    path: registrations/
+    path: registrations/144444
   request:
     body:
       eventID: usingfortestdonotmodify
-      id: 144444
       registrationStatus: registered
   response:
     status: 200
