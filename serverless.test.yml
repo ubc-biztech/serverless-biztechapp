@@ -375,7 +375,7 @@
 #       message: "Update succeeded"
 #       registrationStatus: "checkedin"
 
-- name: registration create event doesnt exist returns 502
+- name: registration create event doesnt exist returns 403
   endpoint:
     method: POST
     path: registrations/
@@ -385,9 +385,9 @@
       id: 144444
       registrationStatus: registered
   response:
-    status: 502
+    status: 403
 
-- name: registration create user doesn't exist returns 502
+- name: registration create user doesn't exist returns 403
   endpoint:
     method: POST
     path: registrations/
@@ -397,7 +397,7 @@
       id: -1
       registrationStatus: registered
   response:
-    status: 502
+    status: 403
 
 - name: registration put returns 200
   endpoint:
@@ -413,18 +413,19 @@
       message: Update succeeded
       registrationStatus: waitlisted
 
-- name: registration put entry doesn't exist returns 409
-  endpoint:
-    method: PUT
-    path: registrations/144444
-  request:
-    body:
-      eventID: randomeventdontexit
-      registrationStatus: waitlisted
-  response:
-    status: 409
-    body:
-      message: Entry with given id and eventID doesn't exist.
+# TODO: change to unit test
+# - name: registration put entry doesn't exist returns 409
+#   endpoint:
+#     method: PUT
+#     path: registrations/144444
+#   request:
+#     body:
+#       eventID: checkintestonlydonotmodify
+#       registrationStatus: waitlisted
+#   response:
+#     status: 409
+#     body:
+#       message: Entry with given id and eventID doesn't exist.
 
 - name: registration put 'registered' with full event sets registrationStatus to waitlist
   endpoint:
