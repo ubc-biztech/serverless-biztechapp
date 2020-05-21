@@ -19,6 +19,13 @@ module.exports = {
     return response;
   },
 
+  notFoundResponse: function() {
+    return this.createResponse(404, 
+      {
+      message: 'No entries found.'
+    });
+  },
+
   inputError: function(message, data) {
     const response = this.createResponse(406, 
       {
@@ -163,6 +170,9 @@ module.exports = {
 
         return counts;
       })
-      .catch(error => console.log(error));
+      .catch(error => {
+        console.log(error);
+        return null;
+      });
   }
 };

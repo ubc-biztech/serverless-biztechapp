@@ -142,35 +142,30 @@ functions:
           method: post
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
-  registrationCreate:
-    handler: handlers/registration.create
+  registrationPost:
+    handler: handlers/registration.post
     events:
       - http:
-          path: registration/create
+          path: registrations/
           method: post
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
-  registrationQueryStudent:
-    handler: handlers/registration.queryStudent
+  registrationPut:
+    handler: handlers/registration.put
     events:
       - http:
-          path: registration/queryStudent
-          method: get
+          path: registrations/{id}
+          method: put
           request:
-            parameters:
-              querystrings:
-                id: true
+            path:
+              id: true
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
-  registrationScanEvent:
-    handler: handlers/registration.scanEvent
+  registrationGet:
+    handler: handlers/registration.get
     events:
       - http:
-          path: registration/scanEvent
+          path: registrations/
           method: get
-          request:
-            parameters:
-              querystrings:
-                eventID: true
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
