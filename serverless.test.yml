@@ -59,21 +59,7 @@
         email: foo
         faculty: bar
 
-
-# THIS FUNCTION WORKS, BUT THE TEST DOES NOT BECAUSE IT IS DEPENDENT ON OTHER TESTS (BAD PRACTICE)
-#- name: user get found returns 200
-#  endpoint:
-#    method: GET
-#    path: users/144444
-#  response:
-#    status: 200
-#    body:
-#      id: 144444
-#      fname: test
-#      lname: dude
-#      faculty: Science
-
-- name: users get all returns 200
+- name: user get found returns 200
   endpoint:
     method: GET
     path: users/
@@ -276,155 +262,223 @@
 - name: registration create returns 200
   endpoint:
     method: POST
-    path: registration/create
+    path: registrations/
+  request:
+    body:
+      eventID: checkintestonlydonotmodify
+      id: 144444
+      registrationStatus: checkedin
+  response:
+    status: 409
+    body:
+      message: Entry with given id and eventID already exists.
+
+- name: registration create no id returns 406
+  endpoint:
+    method: POST
+    path: registrations/
+  request:
+    body:
+      eventID: testevent
+      registrationStatus: registered
+  response:
+    status: 406
+    body:
+      message: Registration student ID not specified.
+
+- name: registration create no eventID returns 406
+  endpoint:
+    method: POST
+    path: registrations/
+  request:
+    body:
+      id: 144444
+      registrationStatus: registered
+  response:
+    status: 406
+    body:
+      message: Registration event ID not specified.
+
+- name: registration create no status returns 406
+  endpoint:
+    method: POST
+    path: registrations/
   request:
     body:
       eventID: testevent
       id: 144444
+  response:
+    status: 406
+    body:
+      message: Status not specified.
+
+#TODO: replace these with unit tests
+# - name: registration create 'registered' with full event sets registrationStatus to waitlist
+#   endpoint:
+#     method: POST
+#     path: registrations/
+#   request:
+#     body:
+#       eventID: usingfortestdonotmodify
+#       id: 144444
+#       registrationStatus: registered
+#   response:
+#     status: 200
+#     body:
+#       message: "Update succeeded"
+#       registrationStatus: "waitlist"
+
+# - name: registration create 'checkedin' with full event sets registrationStatus to checkedin
+#   endpoint:
+#     method: POST
+#     path: registrations/
+#   request:
+#     body:
+#       eventID: usingfortestdonotmodify
+#       id: 144444
+#       registrationStatus: checkedin
+#   response:
+#     status: 200
+#     body:
+#       message: "Update succeeded"
+#       registrationStatus: "checkedin"
+
+- name: registration create event doesnt exist returns 502
+  endpoint:
+    method: POST
+    path: registrations/
+  request:
+    body:
+      eventID: randomNonexistantEvent
+      id: 144444
+      registrationStatus: registered
+  response:
+    status: 502
+
+- name: registration create user doesn't exist returns 502
+  endpoint:
+    method: POST
+    path: registrations/
+  request:
+    body:
+      eventID: checkintestonlydonotmodify
+      id: -1
+      registrationStatus: registered
+  response:
+    status: 502
+
+- name: registration put returns 200
+  endpoint:
+    method: PUT
+    path: registrations/144444
+  request:
+    body:
+      eventID: checkintestonlydonotmodify
+      registrationStatus: waitlisted
+  response:
+    status: 200
+    body:
+      message: Update succeeded
+      registrationStatus: waitlisted
+
+- name: registration put entry doesn't exist returns 409
+  endpoint:
+    method: PUT
+    path: registrations/144444
+  request:
+    body:
+      eventID: randomeventdontexit
+      registrationStatus: waitlisted
+  response:
+    status: 409
+    body:
+      message: Entry with given id and eventID doesn't exist.
+
+- name: registration put 'registered' with full event sets registrationStatus to waitlist
+  endpoint:
+    method: PUT
+    path: registrations/144444
+  request:
+    body:
+      eventID: usingfortestdonotmodify
       registrationStatus: registered
   response:
     status: 200
     body:
       message: Update succeeded
-      registrationStatus: registered
-
-- name: registration create no id returns 406
-  endpoint:
-    method: POST
-    path: registration/create
-  request:
-    body:
-      eventID: testevent
-      registrationStatus: registered
-  response:
-    status: 406
-    body:
-      message: 'Registration student ID not specified.'
-
-- name: registration create no eventID returns 406
-  endpoint:
-    method: POST
-    path: registration/create
-  request:
-    body:
-      id: 144444
-      registrationStatus: registered
-  response:
-    status: 406
-    body:
-      message: 'Registration event ID not specified.'
-
-- name: registration create no status returns 406
-  endpoint:
-    method: POST
-    path: registration/create
-  request:
-    body:
-      eventID: testevent
-      id: 144444
-  response:
-    status: 406
-    body:
-      message: 'Status not specified.'
-
-- name: registration create 'registered' with full event sets registrationStatus to waitlist
-  endpoint:
-    method: POST
-    path: registration/create
-  request:
-    body:
-      eventID: usingfortestdonotmodify
-      id: 144444
-      registrationStatus: registered
-  response:
-    status: 200
-    body:
-      message: "Update succeeded"
       registrationStatus: "waitlist"
 
-- name: registration create 'checkedin' with full event sets registrationStatus to checkedin
+- name: registration get id returns 200
   endpoint:
-    method: POST
-    path: registration/create
+    method: GET
+    path: registrations/
   request:
-    body:
-      eventID: usingfortestdonotmodify
-      id: 144444
-      registrationStatus: checkedin
+    form:
+      id: 292929
   response:
     status: 200
     body:
-      message: "Update succeeded"
-      registrationStatus: "checkedin"
+      size: 2
 
-# THIS FUNCTION SHOULD WORK IN JACQUES PR, IT FAILS DUE TO SOMETHING THAT'S IN THE DATABASE FOR MY (DEREK) PR
-#- name: registration queryStudent returns 200
-#  endpoint:
-#    method: GET
-#    path: registration/queryStudent
-#  request:
-#    form:
-#      id: 144444
-#  response:
-#    status: 200
-#    body:
-#      size: 2
-
-- name: registration queryStudent no match returns 200
+- name: registration get id no match returns 404
   endpoint:
     method: GET
-    path: registration/queryStudent
+    path: registrations/
   request:
     form:
       id: -1
   response:
-    status: 200
+    status: 404
     body:
-      size: 0
+      message: No entries found.
 
-- name: registration queryStudent no ID returns 406
+- name: registration get no id no eventID returns 406
   endpoint:
     method: GET
-    path: registration/queryStudent
+    path: registrations/
   request:
     form:
   response:
     status: 406
-    message: 'Student ID not specified.'
+    body:
+      message: User and/or Event ID not specified.
 
-- name: registration scanEvent returns 200
+- name: registration get eventID returns 200
   endpoint:
     method: GET
-    path: registration/scanEvent
+    path: registrations/
   request:
     form:
-      eventID: testevent
+      eventID: doNOTmodifyentry
   response:
     status: 200
     body:
-      size: 1
+      size: 2
 
-- name: registration scanEvent no match returns 200
+- name: registration get eventID no match returns 404
   endpoint:
     method: GET
-    path: registration/scanEvent
+    path: registrations/
   request:
     form:
       eventID: nonexistanttestidwoo
   response:
-    status: 200
+    status: 404
     body:
-      size: 0
+      message: No entries found.
 
-- name: registration scanEvent no ID returns 406
+- name: registration with id and eventID returns 200
   endpoint:
     method: GET
-    path: registration/scanEvent
+    path: registrations/
   request:
     form:
+      id: 144444
+      eventID: usingfortestdonotmodify
   response:
-    status: 406
-    message: 'Event ID not specified.'
+    status: 200
+    body:
+      size: 1
 
 - name: event delete returns 200
   endpoint:
