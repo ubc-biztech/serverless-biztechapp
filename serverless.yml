@@ -50,7 +50,7 @@ functions:
     handler: handlers/user.create
     events:
       - http:
-          path: users/create
+          path: users/
           method: post
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
@@ -58,27 +58,38 @@ functions:
     handler: handlers/user.get
     events:
       - http:
-          path: users/get
+          path: users/{id}
           method: get
           request:
             parameters:
-              querystrings:
+              path:
                 id: true
+          cors: true
+          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
+  userGetAll:
+    handler: handlers/user.getAll
+    events:
+      - http:
+          path: users/
+          method: get
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
   userUpdate:
     handler: handlers/user.update
     events:
       - http:
-          path: users/update
-          method: post
+          path: users/{id}
+          method: patch
+          request:
+            path:
+              id: true
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
   eventCreate:
     handler: handlers/event.create
     events:
       - http:
-          path: events/create
+          path: events/
           method: post
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
@@ -86,31 +97,18 @@ functions:
     handler: handlers/event.delete
     events:
       - http:
-          path: events/delete
+          path: events/{id}
           method: delete
+          request:
+            path:
+              id: true
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
-  eventGet:
-    handler: handlers/event.get
+  eventGetAll:
+    handler: handlers/event.getAll
     events:
       - http:
-          path: events/get
-          method: get
-          cors: true
-          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
-  eventCount:
-    handler: handlers/event.count
-    events:
-      - http:
-          path: events/count
-          method: get
-          cors: true
-          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
-  eventGetUsers:
-    handler: handlers/event.getUsers
-    events:
-      - http:
-          path: events/getUsers
+          path: events/
           method: get
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
@@ -118,20 +116,26 @@ functions:
     handler: handlers/event.update
     events:
       - http:
-          path: events/update
-          method: post
+          path: events/{id}
+          method: patch
+          request:
+            path:
+              id: true
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
-  eventScan:
-    handler: handlers/event.scan
+  eventGet:
+    handler: handlers/event.get
     events:
       - http:
-          path: events/scan
+          path: events/{id}
           method: get
           request:
             parameters:
+              path:
+                id: true
               querystrings:
-                code: true
+                count: false
+                users: false
           cors: true
           private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
   inviteCreate:

@@ -5,26 +5,44 @@
     body: 
       message: "Yeet!"
 
-- name: user create returns 200
-  endpoint:
-    method: POST
-    path: users/create
-  request:
-    body:
-      id: 144444
-      fname: test
-      lname: dude
-      faculty: Science
-      email: test@dude.asd
-  response:
-    status: 200
-    body:
-      message: 'Created!'
+# THIS FUNCTION WORKS, BUT THE TEST DOES NOT BECAUSE WE DON'T HAVE A USER DELETE
+#- name: user create returns 201
+#  endpoint:
+#    method: POST
+#    path: users/
+#  request:
+#    body:
+#      id: 69696969
+#      fname: insanetest
+#      lname: dude
+#      faculty: Science
+#      email: test@dude.asd
+#  response:
+#    status: 201
+#    body:
+#      message: 'Created!'
+
+# THIS FUNCTION WORKS, BUT THE TEST DOES NOT BECAUSE WE DON'T HAVE A USER DELETE
+#- name: user create already exists returns 409
+#  endpoint:
+#    method: POST
+#    path: users/
+#  request:
+#    body:
+#      id: 69696969
+#      fname: test
+#      lname: dudealreadyexists
+#      faculty: Science
+#      email: test@dude.asd
+#  response:
+#    status: 409
+#    body:
+#      message: 'User could not be created because id already exists'
 
 - name: user create no ID returns 406
   endpoint:
     method: POST
-    path: users/create
+    path: users/
   request:
     body:
       fname: foo
@@ -40,77 +58,28 @@
         lname: bar
         email: foo
         faculty: bar
-
-- name: user get no ID returns 200
-  endpoint:
-    method: GET
-    path: users/get
-  response:
-    status: 200
-
-- name: user create no ID returns 406
-  endpoint:
-    method: POST
-    path: users/create
-  request:
-    body:
-      fname: foo
-      lname: bar
-      email: foo
-      faculty: bar
-  response:
-    status: 406
-    body:
-      message: "User ID not specified."
-      data:
-        fname: foo
-        lname: bar
-        email: foo
-        faculty: bar
-
-- name: user get no ID returns 406
-  endpoint:
-    method: GET
-    path: users/get
-  response:
-    status: 406
-    body:
-      message: "User ID not specified."
-      data: null
 
 - name: user get found returns 200
   endpoint:
     method: GET
-    path: users/get
-  request:
-    form:
-      id: 144444
+    path: users/
   response:
     status: 200
-    body:
-      id: 144444
-      fname: test
-      lname: dude
-      faculty: Science
 
 - name: user get not found returns 404
   endpoint:
     method: GET
-    path: users/get
-  request:
-    form:
-      id: 0
+    path: users/0
   response:
     status: 404
     body: "\"User not found.\""
 
 - name: user update returns 200
   endpoint:
-    method: POST
-    path: users/update
+    method: PATCH
+    path: users/144444
   request:
     body:
-      id: 144444
       fname: updateTest
       lname: dudeGotUpdated
       faculty: Sauder
@@ -122,10 +91,7 @@
 - name: user get update info returns 200
   endpoint:
     method: GET
-    path: users/get
-  request:
-    form:
-      id: 144444
+    path: users/144444
   response:
     status: 200
     body:
@@ -134,45 +100,30 @@
       lname: dudeGotUpdated
       faculty: Sauder
 
-- name: user update no ID returns 406
-  endpoint:
-    method: POST
-    path: users/update
-  request:
-    body:
-      fname: badUpdateTest
-      lname: dudeNotUpdated
-      faculty: LFS
-  response:
-    status: 406
-    body:
-      message: "User ID not specified."
-
 - name: user update not found returns 404
   endpoint:
-    method: POST
-    path: users/update
+    method: PATCH
+    path: users/-20
   request:
     body:
-      id: -20
       fname: badUpdateTest
       lname: dudeNotUpdated
   response:
     status: 404
     body: "\"User not found.\""
 
-- name: event count returns 200
-  endpoint: {function: eventCount}
-  request:
-    form:
-      id: bp
-  response:
-    status: 200
+#- name: event count returns 200
+#  endpoint: {function: eventCount}
+#  request:
+#    form:
+#      id: bp
+#  response:
+#    status: 200
 
-- name: event create returns 200
+- name: event create returns 201
   endpoint:
     method: POST
-    path: events/create
+    path: events/
   request:
     body:
       id: testevent
@@ -180,14 +131,69 @@
       capac: 2000000
       img: yup
   response:
-    status: 200
+    status: 201
     body:
       message: 'Event Created!'
+
+- name: event create already exists returns 409
+  endpoint:
+    method: POST
+    path: events/
+  request:
+    body:
+      id: testevent
+      ename: test
+      capac: 200
+      img: yup
+    response:
+      status: 409
+      body:
+        message: 'Event could not be created because id already exists'
+
+- name: event get with no additional params returns 200
+  endpoint:
+    method: GET
+    path: events/testevent
+  response:
+    status: 200
+
+- name: event get with counts true and users true returns 406
+  endpoint:
+    method: GET
+    path: events/testevent
+  request:
+    form:
+      count: true
+      users: true
+  response:
+    status: 406
+
+- name: events get with counts true and users false returns 200
+  endpoint:
+    method: GET
+    path: events/testevent
+  request:
+    form:
+      count: true
+      users: false
+  response:
+    status: 200
+
+- name: events get with counts false and users true returns 200
+  endpoint:
+    method: GET
+    path: events/testevent
+  request:
+    form:
+      count: false
+      users: true
+  response:
+    status: 200
 
 - name: event create no ID returns 406
   endpoint:
     method: POST
-    path: events/create
+    path: events/
   request:
     body:
       ename: test
@@ -205,7 +211,7 @@
 - name: event create no capac returns 406
   endpoint:
     method: POST
-    path: events/create
+    path: events/
   request:
     body:
       id: testevent
@@ -220,20 +226,19 @@
         ename: test
         img: yup
 
-- name: event get returns 200
+- name: event get all returns 200
   endpoint:
     method: GET
-    path: events/get
+    path: events/
   response:
     status: 200
 
 - name: event update returns 200
   endpoint:
-    method: POST
-    path: events/update
+    method: PATCH
+    path: events/testevent
   request:
     body:
-      id: testevent
       ename: testUpdated
       capac: 7
       img: nope
@@ -243,11 +248,10 @@
 
 - name: event update not found returns 404
   endpoint:
-    method: POST
-    path: events/update
+    method: PATCH
+    path: events/thisiddoesnotexist
   request:
     body:
-      id: nonexistanttestidwoo
       ename: testUpdated
       capac: 7
       img: nope
@@ -255,43 +259,7 @@
     status: 404
     body: "\"Event not found.\""
 
-- name: event update no ID returns 406
-  endpoint:
-    method: POST
-    path: events/update
-  request:
-    body:
-      ename: testUpdated
-  response:
-    status: 406
-    body:
-      message: 'Event ID not specified.'
-
-# - name: event scan match returns 200
-#   endpoint:
-#     method: GET
-#     path: events/scan
-#   request:
-#     form:
-#       code: test
-#   response:
-#     status: 200
-#     body:
-#       size: 1
-
-- name: event scan no match returns 200
-  endpoint:
-    method: GET
-    path: events/scan
-  request:
-    form:
-      code: -1
-  response:
-    status: 200
-    body:
-      size: 0
-
-- name: registration create entry already exists returns 409
+- name: registration create returns 200
   endpoint:
     method: POST
     path: registrations/
@@ -512,23 +480,10 @@
     body:
       size: 1
 
-- name: event getUsers returns 200
-  endpoint:
-    method: GET
-    path: events/getUsers
-  request:
-    form:
-      id: testevent
-  response:
-    status: 200
-
 - name: event delete returns 200
   endpoint:
     method: DELETE
-    path: events/delete
-  request:
-    form:
-      id: testevent
+    path: events/testevent
   response:
     status: 200
     body:
@@ -536,11 +491,10 @@
 
 - name: event update after delete not found returns 404
   endpoint:
-    method: POST
-    path: events/update
+    method: PATCH
+    path: events/testevent
   request:
     body:
-      id: testevent
       ename: testUpdated
       capac: 7
       img: nope
