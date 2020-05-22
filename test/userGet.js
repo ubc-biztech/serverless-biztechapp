@@ -30,7 +30,7 @@ describe('userGet', () => {
 
   it('successfully get user', async () => {
     const response = await wrapped.run({
-      queryStringParameters: {
+      pathParameters: {
         id: '332332'
       }
     });
