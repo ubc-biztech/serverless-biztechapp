@@ -12,7 +12,7 @@ const CHECKIN_COUNT_SANITY_CHECK = 500;
    returns 200 when entry is updated successfully, error 409 if a registration with the same id/eventID DNE
    sends an email to the user if they are registered, waitlisted, or cancelled, but not if checkedIn
 */
-async function updateHelper (event, callback, data, createNew, idString) {
+async function updateHelper(event, callback, data, createNew, idString) {
 
   if (data == null || !data.hasOwnProperty('eventID')) {
     return callback(null, helpers.inputError('Registration event ID not specified.', data));
@@ -24,6 +24,7 @@ async function updateHelper (event, callback, data, createNew, idString) {
   let registrationStatus = data.registrationStatus;
 
   let emailError = false;
+  let userExists;
   // Check if the event is full
   // TODO: Refactor this nicely into a promise or something
 
@@ -32,14 +33,18 @@ async function updateHelper (event, callback, data, createNew, idString) {
     TableName: 'biztechEvents' + process.env.ENVIRONMENT
   }
 
+  console.log("about to get the event\n")
   await docClient.get(eventParams).promise()
     .then(async (event) => {
+      console.log("just returned from getting the event")
       if (event.Item == null) {
+        console.log("turns out the event is null :( - this should result in error 403")
         const response = helpers.createResponse(403, "Event with event id: " + eventID + " was not found.");
         callback(null, response)
       }
 
       if (registrationStatus == "registered") {
+        console.log("the registration status is apparently registered")
         const counts = await helpers.getEventCounts(eventID);
 
         if (counts == null) {
@@ -49,12 +54,14 @@ async function updateHelper (event, callback, data, createNew, idString) {
         if (counts.registeredCount >= event.Item.capac) {
           registrationStatus = 'waitlist'
         }
+        console.log("finished the registered if statement")
       }
       return event.Item.ename;
     })
     .then(async (eventName) => {
       //after the person has been either registered or waitlisted, send confirmation email 
-      sendEmail(id, eventName, callback, registrationStatus);
+      console.log("about to go send an email")
+      userExists = sendEmail(id, eventName, callback, registrationStatus);
     })
     .catch(error => {
       console.log('error processing data or sending email');
@@ -65,6 +72,9 @@ async function updateHelper (event, callback, data, createNew, idString) {
 
   // See TODO above
   if (emailError) {
+    return;
+  }
+  if (!userExists) {
     return;
   }
 
@@ -97,16 +107,19 @@ async function updateHelper (event, callback, data, createNew, idString) {
     params["ConditionExpression"] = 'attribute_exists(id) and attribute_exists(eventID)';
   }
 
+  console.log("about to go an update")
   // call dynamoDb
   await docClient.update(params).promise()
     .then(result => {
       let response;
       if (createNew) {
+        console.log("POST request created successfully - 201")
         response = helpers.createResponse(201, {
           message: 'Entry created',
           registrationStatus
         })
       } else {
+        console.log("PUT request created successfully - 200")
         response = helpers.createResponse(200, {
           message: 'Update succeeded',
           registrationStatus
@@ -115,6 +128,7 @@ async function updateHelper (event, callback, data, createNew, idString) {
       callback(null, response);
     })
     .catch(error => {
+      console.log("error'd out")
       console.error(error);
       let errorCode = 502;
       let message = "Internal server error."
@@ -132,6 +146,8 @@ async function updateHelper (event, callback, data, createNew, idString) {
 }
 
 async function sendEmail(id, eventName, callback, registrationStatus) {
+  console.log("email helper\n")
+  let userExists = true;
   if (registrationStatus !== "checkedIn") {
     const userParams = {
       Key: { id: id },
@@ -139,9 +155,13 @@ async function sendEmail(id, eventName, callback, registrationStatus) {
     }
     await docClient.get(userParams).promise()
       .then(async (user) => {
+        console.log("get user returned")
         if (user.Item == null) {
+          userExists = false;
+          console.log("user wasnull :(")
           const response = helpers.createResponse(403, "User with user id: " + id + " was not found.")
           callback(null, response)
+          console.log("AFTER THE CALLBACK")
         }
         const userEmail = user.Item.email;
         const userName = user.Item.fname;
@@ -170,6 +190,8 @@ async function sendEmail(id, eventName, callback, registrationStatus) {
         await email.send(msg);
       })
   }
+  console.log("userExists: " + userExists)
+  return userExists;
 }
 
 module.exports.post = async (event, ctx, callback) => {

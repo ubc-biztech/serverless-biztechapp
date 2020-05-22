@@ -394,7 +394,7 @@
   request:
     body:
       eventID: checkintestonlydonotmodify
-      id: -1
+      id: -69
       registrationStatus: registered
   response:
     status: 403
@@ -459,7 +459,7 @@
     path: registrations/
   request:
     form:
-      id: -1
+      id: -69
   response:
     status: 404
     body:
