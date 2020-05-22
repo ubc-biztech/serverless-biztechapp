@@ -66,11 +66,11 @@ module.exports.create = async (event, ctx, callback) => {
       });
   }
 
-  await docClient.put(params).promise()
+  await docClient.put(userParams).promise()
     .then(result => {
       const response = helpers.createResponse(201, {
         message: 'Created!',
-        params: params
+        params: userParams
       })
       callback(null, response)
     })
