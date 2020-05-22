@@ -13,20 +13,30 @@ module.exports.create = async (event, ctx, callback) => {
   }
   const id = parseInt(data.id, 10);
 
+  const email = data.email;
+
+  let isBiztechAdmin = false;
+
+  //assume the created user is biztech admin if using biztech email
+  if (email.substring(email.indexOf("@") + 1, email.length) === 'ubcbiztech.com') {
+    isBiztechAdmin = true;
+  }
   const userParams = {
-      Item: {
-          id,
-          fname: data.fname,
-          lname: data.lname,
-          email: data.email,
-          faculty: data.faculty,
-          year: data.year,
-          gender: data.gender,
-          diet: data.diet,
-          createdAt: timestamp,
-          updatedAt: timestamp
-      },
-      TableName: 'biztechUsers' + process.env.ENVIRONMENT
+    Item: {
+      id,
+      fname: data.fname,
+      lname: data.lname,
+      email: data.email,
+      faculty: data.faculty,
+      year: data.year,
+      gender: data.gender,
+      diet: data.diet,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      admin: isBiztechAdmin
+    },
+    TableName: 'biztechUsers' + process.env.ENVIRONMENT,
+    ConditionExpression: 'attribute_not_exists(id)'
   };
 
   if (data.hasOwnProperty('inviteCode')) {
@@ -36,7 +46,7 @@ module.exports.create = async (event, ctx, callback) => {
     };
     await docClient.get(inviteCodeParams).promise()
       .then(async result => {
-        if (result.Item == null){
+        if (result.Item == null) {
           const response = helpers.createResponse(404, 'Invite code not found.');
           callback(null, response)
         } else { // invite code was found
@@ -57,103 +67,108 @@ module.exports.create = async (event, ctx, callback) => {
   }
 
   await docClient.put(userParams).promise()
-
-  return helpers.createResponse(200, {
-    message: 'Created!',
-    params: userParams
-  })
+    .then(result => {
+      const response = helpers.createResponse(201, {
+        message: 'Created!',
+        params: userParams
+      })
+      callback(null, response)
+    })
+    .catch(error => {
+      const response = helpers.createResponse(409, "User could not be created because id already exists");
+      callback(null, response);
+    })
 };
 
 module.exports.get = async (event, ctx, callback) => {
   const docClient = new AWS.DynamoDB.DocumentClient();
-  const queryString = event.queryStringParameters;
+  const id = parseInt(event.pathParameters.id, 10);
 
   const params = {
+    Key: {
+      id
+    },
     TableName: 'biztechUsers' + process.env.ENVIRONMENT
   };
 
-  if(queryString !== null && queryString.hasOwnProperty('id')) {
-
-    const id = parseInt(queryString.id, 10);
-    params.Key = { id };
-
-    await docClient.get(params).promise()
-      .then(result => {
-        if (result.Item == null){
-          const response = helpers.createResponse(404, 'User not found.')
-          callback(null, response)
-        } else {
-          const response = helpers.createResponse(200, result.Item)
-          callback(null, response)
-        }
-      })
-      .catch(error => {
-        console.error(error);
-        const response = helpers.createResponse(502, error)
-        callback(null, response);
-      });
-
-  } else if(queryString !== null && queryString.hasOwnProperty('email')) {
-
-    params.ExpressionAttributeValues = {
-      ':queryEmail': queryString.email
-    };
-    params.FilterExpression = 'begins_with(email,:queryEmail)';
-
-    await docClient.scan(params).promise()
-      .then(result => {
-        const response = helpers.createResponse(200, result.Items)
-        callback(null, response)
-      })
-      .catch(error => {
-        console.error(error);
-        const response = helpers.createResponse(502, error)
-        callback(null, response);
-      });
-  
-  } else {
-
-    await docClient.scan(params).promise()
-      .then(result => {
-        const response = helpers.createResponse(200, result.Items)
-        callback(null, response)
-      })
-      .catch(error => {
-        console.error(error);
-        const response = helpers.createResponse(502, error)
-        callback(null, response);
-      });
-
-  }
-};
-
-module.exports.update = async (event, ctx, callback) => {
-  const docClient = new AWS.DynamoDB.DocumentClient();
-
-  const data = JSON.parse(event.body);
-  if (!data.hasOwnProperty('id')) {
-    callback(null, helpers.inputError('User ID not specified.', data));
-  }
-  const id = parseInt(data.id, 10);
-
-  const params = {
-    Key: { id },
-    TableName: 'biztechUsers' + process.env.ENVIRONMENT,
-  };
-
   await docClient.get(params).promise()
-    .then(async(result) => {
-      if (!helpers.isEmpty(result))
-        callback(null, await helpers.updateDB(id, data, 'biztechUsers'));
-      else {
+    .then(result => {
+      if (result.Item == null) {
         const response = helpers.createResponse(404, 'User not found.')
-        callback(null, response);
+        callback(null, response)
+      } else {
+        const response = helpers.createResponse(200, result.Item)
+        callback(null, response)
       }
     })
     .catch(error => {
       console.error(error);
       const response = helpers.createResponse(502, error)
       callback(null, response);
+    });
+};
+
+module.exports.update = async (event, ctx, callback) => {
+  const docClient = new AWS.DynamoDB.DocumentClient();
+  const data = JSON.parse(event.body);
+  const id = parseInt(event.pathParameters.id, 10);
+
+  var updateExpression = "set ";
+  var expressionAttributeValues = {};
+
+  for (var key in data) {
+    if (data.hasOwnProperty(key)) {
+      if (key != "id") {
+        updateExpression += key + "= :" + key + ",";
+        expressionAttributeValues[":" + key] = data[key];
+      }
+    }
+  }
+
+  const timestamp = new Date().getTime();
+  updateExpression += "updatedAt = :updatedAt";
+  expressionAttributeValues[":updatedAt"] = timestamp;
+
+  const params = {
+    Key: { id },
+    TableName: 'biztechUsers' + process.env.ENVIRONMENT,
+    ExpressionAttributeValues: expressionAttributeValues,
+    UpdateExpression: updateExpression,
+    ConditionExpression: "attribute_exists(id)"
+  };
+
+  await docClient.update(params).promise()
+    .then(async (result) => {
+      callback(null, helpers.createResponse(200, "Update succeeded."));
+    })
+    .catch(error => {
+      console.error(error);
+      callback(null, helpers.createResponse(404, "User not found."));
     })
 
 };
+
+/* 
+  if successful, returns 200 and JSON with 2 fields: items and length
+*/
+module.exports.getAll = async (event, ctx, callback) => {
+  const params = {
+    TableName: 'biztechUsers' + process.env.ENVIRONMENT
+  }
+
+  await docClient.scan(params).promise()
+    .then(async (result) => {
+      if (result.Items == null) {
+        const response = helpers.createResponse(404, 'No users found.');
+        callback(null, response);
+      } else {
+        const response = helpers.createResponse(200, { items: result.Items, length: result.ScannedCount });
+        callback(null, response);
+      }
+    })
+    .catch(async (error) => {
+      console.error(error);
+      const response = helpers.createResponse(502, error);
+      callback(null, response);
+    })
+}
