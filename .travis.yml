@@ -11,6 +11,7 @@ jobs:
     - stage: "Deploy and run integration tests"
       script:
         - sls deploy
+        - sls invoke test
         - sls test
     - stage: "Deploy to Staging"
       script: sls deploy --stage staging --conceal
