@@ -56,7 +56,80 @@ async function updateHelper(event, callback, data, createNew, idString) {
       return event.Item.ename;
     })
     .then(async (eventName) => {
-      //after the person has been either registered or waitlisted, send confirmation email 
+      //attempt to send email 
+      let sendMessage = new Promise((resolve, reject) => {
+        userExists = await sendEmail(id, eventName, callback, registrationStatus);
+        if (userExists) {
+          resolve();
+        } else {
+          reject()
+        }
+      })
+      sendMessage.then(() => {
+        // if send message is resolved, then update the database since both email and user exists
+        const updateObject = { registrationStatus };
+        if (data.heardFrom) {
+          updateObject.heardFrom = data.heardFrom
+        }
+        console.log(updateObject)
+
+        const {
+          updateExpression,
+          expressionAttributeValues
+        } = helpers.createUpdateExpression(updateObject)
+
+        // Because biztechRegistration table has a sort key we cannot use updateDB()
+        let params = {
+          Key: {
+            id,
+            eventID
+          },
+          TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
+          ExpressionAttributeValues: expressionAttributeValues,
+          UpdateExpression: updateExpression,
+          ReturnValues: "UPDATED_NEW"
+        };
+
+        if (createNew) {
+          params["ConditionExpression"] = 'attribute_not_exists(id) and attribute_not_exists(eventID)'
+        } else {
+          params["ConditionExpression"] = 'attribute_exists(id) and attribute_exists(eventID)';
+        }
+
+        // call dynamoDb
+        await docClient.update(params).promise()
+          .then(result => {
+            let response;
+            if (createNew) {
+              response = helpers.createResponse(201, {
+                message: 'Entry created',
+                registrationStatus
+              })
+            } else {
+              response = helpers.createResponse(200, {
+                message: 'Update succeeded',
+                registrationStatus
+              })
+            }
+            callback(null, response);
+          })
+          .catch(error => {
+            console.error(error);
+            let errorCode = 502;
+            let message = "Internal server error."
+            if (error.code === 'ConditionalCheckFailedException') {
+              errorCode = 409;
+              if (createNew) {
+                message = 'Entry with given id and eventID already exists.';
+              } else {
+                message = 'Entry with given id and eventID doesn\'t exist.';
+              }
+            }
+            const response = helpers.createResponse(errorCode, { message });
+            callback(null, response);
+          });
+      }
+      )
       userExists = await sendEmail(id, eventName, callback, registrationStatus);
     })
     .catch(error => {
@@ -76,67 +149,7 @@ async function updateHelper(event, callback, data, createNew, idString) {
     return;
   }
 
-  const updateObject = { registrationStatus };
-  if (data.heardFrom) {
-    updateObject.heardFrom = data.heardFrom
-  }
-  console.log(updateObject)
 
-  const {
-    updateExpression,
-    expressionAttributeValues
-  } = helpers.createUpdateExpression(updateObject)
-
-  // Because biztechRegistration table has a sort key we cannot use updateDB()
-  let params = {
-    Key: {
-      id,
-      eventID
-    },
-    TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
-    ExpressionAttributeValues: expressionAttributeValues,
-    UpdateExpression: updateExpression,
-    ReturnValues: "UPDATED_NEW"
-  };
-
-  if (createNew) {
-    params["ConditionExpression"] = 'attribute_not_exists(id) and attribute_not_exists(eventID)'
-  } else {
-    params["ConditionExpression"] = 'attribute_exists(id) and attribute_exists(eventID)';
-  }
-
-  // call dynamoDb
-  await docClient.update(params).promise()
-    .then(result => {
-      let response;
-      if (createNew) {
-        response = helpers.createResponse(201, {
-          message: 'Entry created',
-          registrationStatus
-        })
-      } else {
-        response = helpers.createResponse(200, {
-          message: 'Update succeeded',
-          registrationStatus
-        })
-      }
-      callback(null, response);
-    })
-    .catch(error => {
-      console.error(error);
-      let errorCode = 502;
-      let message = "Internal server error."
-      if (error.code === 'ConditionalCheckFailedException') {
-        errorCode = 409;
-        if (createNew) {
-          message = 'Entry with given id and eventID already exists.';
-        } else {
-          message = 'Entry with given id and eventID doesn\'t exist.';
-        }
-      }
-      const response = helpers.createResponse(errorCode, { message });
-      callback(null, response);
-    });
 }
 
 async function sendEmail(id, eventName, callback, registrationStatus) {
