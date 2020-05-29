@@ -170,10 +170,13 @@ module.exports.put = async (event, ctx, callback) => {
 // Return list of entries with the matching id
 module.exports.get = async (event, ctx, callback) => {
   const queryString = event.queryStringParameters;
+  
   if (queryString == null || (!queryString.hasOwnProperty('eventID') && !queryString.hasOwnProperty('id'))) {
     callback(null, helpers.inputError('User and/or Event ID not specified.', queryString));
     return;
   }
+
+  console.log('queryString==>', queryString);
 
   if (queryString.hasOwnProperty('eventID')) {
     const eventID = queryString.eventID;
@@ -201,6 +204,9 @@ module.exports.get = async (event, ctx, callback) => {
             data: data
           })
         }
+
+        console.log('Registration DATA1:==>', queryString);
+
         callback(null, response);
       })
       .catch(error => {
@@ -232,6 +238,7 @@ module.exports.get = async (event, ctx, callback) => {
           data: data
           })
         }
+        console.log('Registration DATA2:==>', queryString);
         callback(null, response);
       })
       .catch(error => {
