@@ -27,6 +27,8 @@ module.exports.create = async (event, ctx, callback) => {
       capac: data.capac,
       imageUrl: data.imageUrl,
       elocation: data.elocation,
+      longitude: data.longitude,
+      latitude: data.latitude,
       createdAt: timestamp,
       updatedAt: timestamp
     },
