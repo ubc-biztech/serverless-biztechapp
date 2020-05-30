@@ -25,6 +25,7 @@ module.exports.create = async (event, ctx, callback) => {
       startDate: data.startDate,
       endDate: data.endDate,
       capac: data.capac,
+      facebookUrl: data.facebookUrl,
       imageUrl: data.imageUrl,
       elocation: data.elocation,
       createdAt: timestamp,
