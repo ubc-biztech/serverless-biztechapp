@@ -170,14 +170,25 @@ module.exports.put = async (event, ctx, callback) => {
 // Return list of entries with the matching id
 module.exports.get = async (event, ctx, callback) => {
   const queryString = event.queryStringParameters;
-  
   if (queryString == null || (!queryString.hasOwnProperty('eventID') && !queryString.hasOwnProperty('id'))) {
     callback(null, helpers.inputError('User and/or Event ID not specified.', queryString));
     return;
   }
-
-  console.log('queryString==>', queryString);
-
+  if (queryString.hasOwnProperty('timeStampFilter') && queryString.hasOwnProperty('dateTimeFilter')) {
+    callback(null, helpers.inputError('Both timestamp and date are provided.', queryString));
+    return;
+  }
+  let timeStampFilter = undefined;
+  if (queryString.hasOwnProperty('timeStampFilter')) {
+    timeStampFilter = Number(queryString.timeStampFilter);
+    const d = new Date(timeStampFilter);
+    console.log('Get registration on and after ', d.getHours() + ':' +  d.getMinutes()  + '/' + d.getDate() + '/' + (d.getMonth()+1) + '/' + d.getFullYear());
+  }
+  if (queryString.hasOwnProperty('dateTimeFilter')) {
+    const d = new Date(queryString.dateTimeFilter);
+    timeStampFilter = d.getTime();
+    console.log('Get registration on and after ', d.getDate() + '/' + (d.getMonth()+1) + '/' + d.getFullYear());
+  }
   if (queryString.hasOwnProperty('eventID')) {
     const eventID = queryString.eventID;
     const params = {
@@ -187,13 +198,15 @@ module.exports.get = async (event, ctx, callback) => {
         ':query': eventID
       }
     };
-  
     await docClient.scan(params).promise()
       .then(result => {
         console.log('Scan success.');
         let data = result.Items;
         if (queryString.hasOwnProperty('id')) {
           data = data.filter(entry => entry.id === parseInt(queryString.id, 10));
+        }
+        if (timeStampFilter !== undefined) {
+          data = data.filter(entry => entry.updatedAt > timeStampFilter);
         }
         let response;
         if (data.length == 0) {
@@ -204,9 +217,6 @@ module.exports.get = async (event, ctx, callback) => {
             data: data
           })
         }
-
-        console.log('Registration DATA1:==>', queryString);
-
         callback(null, response);
       })
       .catch(error => {
@@ -229,6 +239,9 @@ module.exports.get = async (event, ctx, callback) => {
       .then(result => {
         console.log('Query success.');
         const data = result.Items;
+        if (timeStampFilter !== undefined) {
+          data = data.filter(entry => entry.updatedAt > timeStampFilter);
+        }
         let response;
         if (data.length == 0) {
           response = helpers.notFoundResponse();
@@ -238,7 +251,6 @@ module.exports.get = async (event, ctx, callback) => {
           data: data
           })
         }
-        console.log('Registration DATA2:==>', queryString);
         callback(null, response);
       })
       .catch(error => {

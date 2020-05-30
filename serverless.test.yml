@@ -426,7 +426,7 @@
     path: registrations/
   request:
     form:
-      id: -1
+      id: -123666
   response:
     status: 404
     body:
@@ -479,6 +479,33 @@
     status: 200
     body:
       size: 1
+
+- name: registration with eventID and timeStamp (13 digits) returns 200
+  endpoint:
+    method: GET
+    path: registrations/
+  request:
+    form:
+      eventID: usingfortestdonotmodify
+      timeStampFilter: 1579992318000
+  response:
+    status: 200
+    body:
+      size: 5
+
+- name: registration with eventID and dateTime (eg:2020-01-01) returns 200
+  endpoint:
+    method: GET
+    path: registrations/
+  request:
+    form:
+      eventID: usingfortestdonotmodify
+      dateTimeFilter: "2020-01-26"
+
+  response:
+    status: 200
+    body:
+      size: 5
 
 - name: event delete returns 200
   endpoint:
