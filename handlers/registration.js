@@ -23,7 +23,6 @@ async function updateHelper(event, callback, data, createNew, idString) {
   const eventID = data.eventID;
   let registrationStatus = data.registrationStatus;
 
-  let emailError = false;
   let eventExists = true;
   // Check if the event is full
   // TODO: Refactor this nicely into a promise or something
@@ -36,9 +35,8 @@ async function updateHelper(event, callback, data, createNew, idString) {
   await docClient.get(eventParams).promise()
     .then(async (event) => {
       if (event.Item == null) {
-        const response = helpers.createResponse(403, "Event with event id: " + eventID + " was not found.");
-        callback(null, response)
         eventExists = false;
+        return eventID;
       }
 
       if (registrationStatus == "registered") {
@@ -58,7 +56,12 @@ async function updateHelper(event, callback, data, createNew, idString) {
       // if send email is resolved, then update the database since both email and user exists
       await sendEmail(id, eventName, registrationStatus)
         .then(async () => {
-          await createRegistration(registrationStatus, data, id, eventID, createNew, callback)
+          if (eventExists) {
+            await createRegistration(registrationStatus, data, id, eventID, createNew, callback)
+          } else {
+            const response = helpers.createResponse(403, "Event with event id: " + eventName + " was not found.")
+            callback(null, response)
+          }
         }, () => {
           const response = helpers.createResponse(403, "User with user id: " + id + " was not found.")
           callback(null, response)
@@ -66,17 +69,8 @@ async function updateHelper(event, callback, data, createNew, idString) {
     })
     .catch(error => {
       const response = helpers.createResponse(502, error);
-      emailError = true;
       return callback(null, response);
     });
-
-  // See TODO above
-  if (emailError) {
-    return;
-  }
-  if (!eventExists) {
-    return;
-  }
 }
 
 async function createRegistration(registrationStatus, data, id, eventID, createNew, callback) {
