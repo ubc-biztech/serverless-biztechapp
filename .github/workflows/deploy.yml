@@ -6,16 +6,12 @@ jobs:
   dev:
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        node-version: [12.x]
-
     steps:
     - uses: actions/checkout@v2
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v1
       with:
-        node-version: ${{ matrix.node-version }}
+        node-version: '12.x'
 
     # https://help.github.com/en/actions/configuring-and-managing-workflows/caching-dependencies-to-speed-up-workflows
     - name: Cache node modules
@@ -40,9 +36,9 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
       run: |
-        sls deploy
-        sls invoke test
-        sls test
+        npx sls deploy
+        npx sls invoke test
+        npx sls test
 
     - name: 'Deploy to Staging'
       if: ${{ github.head_ref == 'master' }}
