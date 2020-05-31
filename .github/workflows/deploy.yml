@@ -20,8 +20,8 @@ jobs:
     # https://help.github.com/en/actions/configuring-and-managing-workflows/caching-dependencies-to-speed-up-workflows
     - name: Cache node modules
         uses: actions/cache@v2
-        env:
-        cache-name: cache-node-modules
+          env:
+          cache-name: cache-node-modules
         with:
         # npm cache files are stored in `~/.npm` on Linux/macOS
         path: ~/.npm
@@ -46,4 +46,3 @@ jobs:
     - name: 'Deploy to Staging'
       if: ${{ github.head_ref == 'master' }}
       run: sls deploy --stage staging --conceal
-      
