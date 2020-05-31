@@ -1,9 +1,9 @@
 name: Serverless CI
 
-on: push
+on: pull_request
 
 jobs:
-  dev:
+  test-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
