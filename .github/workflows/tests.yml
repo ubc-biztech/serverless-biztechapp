@@ -1,4 +1,4 @@
-name: Serverless CI
+name: Run tests
 
 on: pull_request
 
