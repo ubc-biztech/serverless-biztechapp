@@ -414,18 +414,16 @@
       registrationStatus: waitlisted
 
 # TODO: change to unit test
-# - name: registration put entry doesn't exist returns 409
-#   endpoint:
-#     method: PUT
-#     path: registrations/144444
-#   request:
-#     body:
-#       eventID: checkintestonlydonotmodify
-#       registrationStatus: waitlisted
-#   response:
-#     status: 409
-#     body:
-#       message: Entry with given id and eventID doesn't exist.
+- name: registration put entry doesn't exist returns 403
+  endpoint:
+    method: PUT
+    path: registrations/144444
+  request:
+    body:
+      eventID: thisdoesntexist
+      registrationStatus: waitlisted
+  response:
+    status: 403
 
 - name: registration put 'registered' with full event sets registrationStatus to waitlist
   endpoint:

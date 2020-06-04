@@ -23,7 +23,6 @@ async function updateHelper(event, callback, data, createNew, idString) {
   const eventID = data.eventID;
   let registrationStatus = data.registrationStatus;
 
-  let eventExists = true;
   // Check if the event is full
   // TODO: Refactor this nicely into a promise or something
 
@@ -35,15 +34,14 @@ async function updateHelper(event, callback, data, createNew, idString) {
   await docClient.get(eventParams).promise()
     .then(async (event) => {
       if (event.Item == null) {
-        eventExists = false;
-        return eventID;
+        throw 'event';
       }
 
       if (registrationStatus == "registered") {
         const counts = await helpers.getEventCounts(eventID);
 
         if (counts == null) {
-          throw "error getting event counts";
+          throw 'error getting event counts';
         }
 
         if (counts.registeredCount >= event.Item.capac) {
@@ -54,23 +52,36 @@ async function updateHelper(event, callback, data, createNew, idString) {
     })
     .then(async (eventName) => {
       // if send email is resolved, then update the database since both email and user exists
+
       await sendEmail(id, eventName, registrationStatus)
         .then(async () => {
-          if (eventExists) {
-            await createRegistration(registrationStatus, data, id, eventID, createNew, callback)
-          } else {
-            const response = helpers.createResponse(403, "Event with event id: " + eventName + " was not found.")
-            callback(null, response)
-          }
-        }, () => {
-          const response = helpers.createResponse(403, "User with user id: " + id + " was not found.")
-          callback(null, response)
+          await createRegistration(registrationStatus, data, id, eventID, createNew, callback)
         })
     })
     .catch(error => {
-      const response = helpers.createResponse(502, error);
-      return callback(null, response);
+      let response;
+      let message;
+      switch (error) {
+        case 'event':
+          response = helpers.createResponse(403, 'Event with eventID: ' + eventID + ' was not found.')
+          break;
+        case 'user':
+          response = helpers.createResponse(403, "User with user id: " + id + " was not found.")
+          break;
+        case 'exists':
+          message = 'Entry with given id and eventID already exists.';
+          response = helpers.createResponse(409, { message });
+          break;
+        case 'DNE':
+          message = 'Entry with given id and eventID doesn\'t exist.';
+          response = helpers.createResponse(409, { message })
+          break;
+        default:
+          response = helpers.createResponse(502, error);
+      }
+      callback(null, response)
     });
+
 }
 
 async function createRegistration(registrationStatus, data, id, eventID, createNew, callback) {
@@ -122,18 +133,14 @@ async function createRegistration(registrationStatus, data, id, eventID, createN
     })
     .catch(error => {
       console.error(error);
-      let errorCode = 502;
-      let message = "Internal server error."
       if (error.code === 'ConditionalCheckFailedException') {
-        errorCode = 409;
         if (createNew) {
-          message = 'Entry with given id and eventID already exists.';
+          throw 'exists'
         } else {
-          message = 'Entry with given id and eventID doesn\'t exist.';
+          throw 'DNE'
         }
       }
-      const response = helpers.createResponse(errorCode, { message });
-      callback(null, response);
+      throw '502';
     });
 }
 
@@ -147,7 +154,7 @@ async function sendEmail(id, eventName, registrationStatus) {
       await docClient.get(userParams).promise()
         .then(async (user) => {
           if (user.Item == null) {
-            reject()
+            reject('user')
           } else {
             const userEmail = user.Item.email;
             const userName = user.Item.fname;
