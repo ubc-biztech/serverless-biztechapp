@@ -11,25 +11,21 @@ module.exports = {
       statusCode,
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Credentials': true,
-        'Access-Control-Allow-Headers': 'x-api-key'
+        'Access-Control-Allow-Credentials': true
       },
       body: JSON.stringify(body)
     };
     return response;
   },
 
-
   notFoundResponse: function() {
-    return this.createResponse(404, 
-      {
+    return this.createResponse(404, {
       message: 'No entries found.'
     });
   },
 
   inputError: function(message, data) {
-    const response = this.createResponse(406, 
-      {
+    const response = this.createResponse(406, {
         message: message,
         data: data
       })
