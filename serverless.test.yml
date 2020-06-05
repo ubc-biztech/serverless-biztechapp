@@ -480,27 +480,27 @@
     body:
       size: 1
 
-- name: registration with eventID and timeStamp (13 digits) returns 200
+- name: registration with eventID and afterTimestamp (13 digits) returns 200
   endpoint:
     method: GET
     path: registrations/
   request:
     form:
       eventID: usingfortestdonotmodify
-      timeStampFilter: 1579992318000
+      afterTimestamp: 1579992318000
   response:
     status: 200
     body:
       size: 5
 
-- name: registration with eventID and dateTime (eg:2020-01-01) returns 200
+- name: registration with eventID and afterTime (eg:2020-01-01) returns 200
   endpoint:
     method: GET
     path: registrations/
   request:
     form:
       eventID: usingfortestdonotmodify
-      dateTimeFilter: "2020-01-26"
+      afterTime: "2020-01-26"
 
   response:
     status: 200
