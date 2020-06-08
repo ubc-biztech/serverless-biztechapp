@@ -49,7 +49,8 @@ module.exports.create = async (event, ctx, callback) => {
         if (result.Item == null) {
           const response = helpers.createResponse(404, 'Invite code not found.');
           callback(null, response)
-        } else { // invite code was found
+        } else { 
+          // invite code was found
           // add paid: true to user
           userParams.Item.paid = true;
           const deleteParams = {
@@ -75,9 +76,16 @@ module.exports.create = async (event, ctx, callback) => {
       callback(null, response)
     })
     .catch(error => {
-      const response = helpers.createResponse(409, "User could not be created because id already exists");
+      let response;
+      if (error.code === 'ConditionalCheckFailedException') {
+        response = helpers.createResponse(409,
+          'User could not be created because id already exists');
+      } else {
+        response = helpers.createResponse(502,
+          'Internal Server Error occurred');
+      }
       callback(null, response);
-    })
+    });
 };
 
 module.exports.get = async (event, ctx, callback) => {
@@ -152,6 +160,7 @@ module.exports.update = async (event, ctx, callback) => {
   if successful, returns 200 and JSON with 2 fields: items and length
 */
 module.exports.getAll = async (event, ctx, callback) => {
+  const docClient = new AWS.DynamoDB.DocumentClient();
   const params = {
     TableName: 'biztechUsers' + process.env.ENVIRONMENT
   }
