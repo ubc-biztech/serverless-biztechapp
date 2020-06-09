@@ -86,6 +86,7 @@ module.exports.delete = async (event, ctx, callback) => {
 };
 
 module.exports.getAll = async (event, ctx, callback) => {
+  const docClient = new AWS.DynamoDB.DocumentClient();
 
   const params = {
     TableName: 'biztechEvents' + process.env.ENVIRONMENT
