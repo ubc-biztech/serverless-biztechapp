@@ -1,5 +1,4 @@
 'use strict';
-// const AWS = require("aws-sdk"); 
 const AWSMock = require('aws-sdk-mock');
 
 // tests for eventCreate
@@ -32,10 +31,10 @@ describe('eventCreate', () => {
   before(() => {
 
     AWSMock.mock('DynamoDB.DocumentClient', 'put', (params, callback) => {
-      if(params.Item.id && createdEventIds.includes(params.Item.id)) callback(new Error())
+      if(params.Item.id && createdEventIds.includes(params.Item.id)) callback(new Error('event already exists!'))
       else {
         createdEventIds.push(params.Item.id);
-        callback(null, "successfully put item in database");
+        callback(null, 'successfully put item in database');
       }
     });
     
