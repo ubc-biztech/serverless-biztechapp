@@ -1,0 +1,40 @@
+{
+    "Items": [
+      {
+        "eventID": "existingEvent1",
+        "id": 1,
+        "updatedAt": 1580007893340,
+        "registrationStatus": "registered"
+      },
+      {
+        "eventID": "existingEvent1",
+        "id": 2,
+        "updatedAt": 1580007893340,
+        "registrationStatus": "registered"
+      },
+      {
+        "eventID": "existingEvent1",
+        "id": 3,
+        "updatedAt": 1580007893340,
+        "registrationStatus": "checkedIn"
+      },
+      {
+        "eventID": "existingEvent1",
+        "id": 4,
+        "updatedAt": 1580007893340,
+        "registrationStatus": "checkedIn"
+      },
+      {
+        "eventID": "existingEvent1",
+        "id": 5,
+        "updatedAt": 1580007893340,
+        "registrationStatus": "checkedIn"
+      },
+      {
+        "eventID": "existingEvent1",
+        "id": 6,
+        "updatedAt": 1580007893340,
+        "registrationStatus": "waitlist"
+      }
+    ]
+  }
