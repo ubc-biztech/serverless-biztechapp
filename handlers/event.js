@@ -1,20 +1,22 @@
 'use strict';
 const AWS = require('aws-sdk');
-const docClient = new AWS.DynamoDB.DocumentClient();
 const helpers = require('./helpers')
 const sorters = require('../utils/sorters')
 
 module.exports.create = async (event, ctx, callback) => {
+  const docClient = new AWS.DynamoDB.DocumentClient();
 
   const timestamp = new Date().getTime();
   const data = JSON.parse(event.body);
 
   if (!data.hasOwnProperty('id')) {
     callback(null, helpers.inputError('Event ID not specified.', data));
+    return null;
   }
 
   if (data.capac == null || isNaN(data.capac)) {
     callback(null, helpers.inputError('capac invalid, please provide valid number.', data));
+    return null;
   }
 
   const params = {
@@ -53,12 +55,14 @@ module.exports.create = async (event, ctx, callback) => {
 };
 
 module.exports.delete = async (event, ctx, callback) => {
+  const docClient = new AWS.DynamoDB.DocumentClient();
 
   const id = event.pathParameters.id;
 
   // Check that parameters are valid
   if (!id) {
     callback(null, helpers.inputError('id not specified.', 'missing query param'));
+    return null;
   }
 
   const params = {
@@ -106,6 +110,7 @@ module.exports.getAll = async (event, ctx, callback) => {
 };
 
 module.exports.update = async (event, ctx, callback) => {
+  const docClient = new AWS.DynamoDB.DocumentClient();
 
   const data = JSON.parse(event.body);
   var updateExpression = "set ";
@@ -147,6 +152,8 @@ module.exports.update = async (event, ctx, callback) => {
 };
 
 module.exports.get = async (event, ctx, callback) => {
+  const docClient = new AWS.DynamoDB.DocumentClient();
+
   const id = event.pathParameters.id;
   const queryString = event.queryStringParameters;
 

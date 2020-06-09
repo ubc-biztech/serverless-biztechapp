@@ -1,5 +1,5 @@
 'use strict';
-const AWS = require("aws-sdk"); 
+// const AWS = require("aws-sdk"); 
 const AWSMock = require('aws-sdk-mock');
 
 // tests for eventCreate
@@ -9,21 +9,10 @@ const mochaPlugin = require('serverless-mocha-plugin');
 const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper('eventCreate', '/handlers/event.js', 'create');
 
-AWSMock.setSDKInstance(AWS);
-AWSMock.mock('DynamoDB.DocumentClient', 'putItem', function (params, callback){
-  if (params.Key.id == 332332) {
-    Promise.resolve(
-      callback(null, {
-        Item: 'not null user'
-      } 
-    ));
-  }
-});
-
 const eventPayload = {
-  id: 'testEvent',
-  ename: 'testEvent',
-  description: 'Test event description',
+  id: 'localTestEvent',
+  ename: 'Local Test Event',
+  description: 'Local test event description',
   startDate: '20200607T000000-0400',
   endDate: '20200607T000000-0400',
   capac: 100,
@@ -37,20 +26,66 @@ const eventPayload = {
 }
 
 describe('eventCreate', () => {
-  before((done) => {
-    done();
+
+  let createdEventIds = [];
+
+  before(() => {
+
+    AWSMock.mock('DynamoDB.DocumentClient', 'put', (params, callback) => {
+      if(params.Item.id && createdEventIds.includes(params.Item.id)) callback(new Error())
+      else {
+        createdEventIds.push(params.Item.id);
+        callback(null, "successfully put item in database");
+      }
+    });
+    
+  });
+  after(() => {
+
+    AWSMock.restore('DynamoDB.DocumentClient');
+
   });
 
-  it('implement tests here', async () => {
+  it('return 406 for trying to create an event with no id', async () => {
     const invalidPayload = {
-      ...eventPayload,
-      id: null,
+      ...eventPayload
     }
+    delete invalidPayload.id;
+
     const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
+    expect(response.statusCode).to.be.equal(406);
+    
+  });
+
+  it('return 406 for trying to create an event with invalid capac', async () => {
+    const invalidPayload = {
+      ...eventPayload
+    }
+    delete invalidPayload.capac;
+
+    const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
+    expect(response.statusCode).to.be.equal(406);
+    
+  });
+
+  it('return 201 for successfully creating an event', async () => {
+    const payload = {
+      ...eventPayload,
+    }
+
+    const response = await wrapped.run({ body: JSON.stringify(payload) });
+    expect(response.statusCode).to.be.equal(201);
+    
+  });
+
+  it('return 409 for trying to create an event with the same id', async () => {
+    const payload = {
+      ...eventPayload,
+    }
+
+    const response = await wrapped.run({ body: JSON.stringify(payload) });
     expect(response.statusCode).to.be.equal(409);
     
   });
+
 });
-
-
-AWSMock.restore('DynamoDB.DocumentClient');
