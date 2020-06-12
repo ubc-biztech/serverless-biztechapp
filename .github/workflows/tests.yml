@@ -36,6 +36,6 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
       run: |
-        npx sls deploy
+        npx sls deploy --conceal
         npx sls invoke test
         npx sls test
