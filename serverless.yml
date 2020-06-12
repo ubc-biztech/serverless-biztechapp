@@ -24,6 +24,11 @@ provider:
   iamRoleStatements:
     - Effect: Allow
       Action:
+        - cognito-idp:AdminAddUserToGroup
+      Resource:
+        - "arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp"
+    - Effect: Allow
+      Action:
         - dynamodb:DescribeTable
         - dynamodb:Query
         - dynamodb:Scan
@@ -45,6 +50,16 @@ functions:
       - http:
           path: /hello
           method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+  admin:
+    handler: handlers/admin.create
+    events:
+      - http:
+          path: admin/
+          method: post
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS
