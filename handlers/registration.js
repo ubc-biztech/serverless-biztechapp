@@ -5,7 +5,14 @@ const helpers = require('./helpers');
 const email = require('../utils/email')
 const CHECKIN_COUNT_SANITY_CHECK = 500;
 
-async function updateHelper (event, callback, data, createNew, idString) {
+/* returns an error if id, eventID, or registrationStatus is not provided
+   returns error 403 if the given id/eventID DNE in database
+   returns error 502 if there is a problem with processing data or sending an email
+   returns 201 when entry is created successfully, error 409 if a registration with the same id/eventID exists 
+   returns 200 when entry is updated successfully, error 409 if a registration with the same id/eventID DNE
+   sends an email to the user if they are registered, waitlisted, or cancelled, but not if checkedIn
+*/
+async function updateHelper(event, callback, data, createNew, idString) {
 
   if (data == null || !data.hasOwnProperty('eventID')) {
     return callback(null, helpers.inputError('Registration event ID not specified.', data));
@@ -16,70 +23,68 @@ async function updateHelper (event, callback, data, createNew, idString) {
   const eventID = data.eventID;
   let registrationStatus = data.registrationStatus;
 
-  let emailError = false;
   // Check if the event is full
   // TODO: Refactor this nicely into a promise or something
-  if (registrationStatus === 'registered') {
 
-    const eventParams = {
-      Key: { id: eventID },
-      TableName: 'biztechEvents' + process.env.ENVIRONMENT
-    }
+  const eventParams = {
+    Key: { id: eventID },
+    TableName: 'biztechEvents' + process.env.ENVIRONMENT
+  }
 
-    await docClient.get(eventParams).promise()
-      .then(async (event) => {
+  await docClient.get(eventParams).promise()
+    .then(async (event) => {
+      if (event.Item == null) {
+        throw 'event';
+      }
+
+      if (registrationStatus == "registered") {
         const counts = await helpers.getEventCounts(eventID);
 
         if (counts == null) {
-          throw "error getting event counts";
+          throw 'error getting event counts';
         }
 
         if (counts.registeredCount >= event.Item.capac) {
           registrationStatus = 'waitlist'
         }
-        return event.Item.ename;
-      })
-      .then(async (eventName) => {
-        //after the person has been either registered or waitlisted, send confirmation email 
-        const userParams = {
-          Key: { id: id },
-          TableName: 'biztechUsers' + process.env.ENVIRONMENT
-        }
-        console.log('user params')
-        console.log(userParams)
-        await docClient.get(userParams).promise()
-          .then(async (user) => {
-            console.log(user);
-            const userEmail = user.Item.email;
-            const userName = user.Item.fname;
+      }
+      return event.Item.ename;
+    })
+    .then(async (eventName) => {
+      // if send email is resolved, then update the database since both email and user exists
 
-            const msg = {
-              to: userEmail,
-              from: "info@ubcbiztech.com",
-              templateId: "d-99da9013c9a04ef293e10f0d73e9b49c",
-              dynamic_template_data: {
-                subject: "BizTech " + eventName + " Receipt",
-                name: userName,
-                registrationStatus: registrationStatus,
-                eventName: eventName
-              }
-            }
-            await email.send(msg);
-          })
-      })
-      .catch(error => {
-        console.log('error processing data or sending email');
-        const response = helpers.createResponse(502, error);
-        emailError = true;
-        return callback(null, response);
-      });
-  }
-  
-  // See TODO above
-  if (emailError) {
-    return;
-  }
+      await sendEmail(id, eventName, registrationStatus)
+        .then(async () => {
+          await createRegistration(registrationStatus, data, id, eventID, createNew, callback)
+        })
+    })
+    .catch(error => {
+      let response;
+      let message;
+      switch (error) {
+        case 'event':
+          response = helpers.createResponse(403, 'Event with eventID: ' + eventID + ' was not found.')
+          break;
+        case 'user':
+          response = helpers.createResponse(403, "User with user id: " + id + " was not found.")
+          break;
+        case 'exists':
+          message = 'Entry with given id and eventID already exists.';
+          response = helpers.createResponse(409, { message });
+          break;
+        case 'DNE':
+          message = 'Entry with given id and eventID doesn\'t exist.';
+          response = helpers.createResponse(409, { message })
+          break;
+        default:
+          response = helpers.createResponse(502, error);
+      }
+      callback(null, response)
+    });
 
+}
+
+async function createRegistration(registrationStatus, data, id, eventID, createNew, callback) {
   const updateObject = { registrationStatus };
   if (data.heardFrom) {
     updateObject.heardFrom = data.heardFrom
@@ -128,19 +133,60 @@ async function updateHelper (event, callback, data, createNew, idString) {
     })
     .catch(error => {
       console.error(error);
-      let errorCode = 502;
-      let message = "Interal server error."
       if (error.code === 'ConditionalCheckFailedException') {
-        errorCode = 409;
         if (createNew) {
-          message = 'Entry with given id and eventID already exists.';
+          throw 'exists'
         } else {
-          message = 'Entry with given id and eventID doesn\'t exist.';
+          throw 'DNE'
         }
       }
-      const response = helpers.createResponse(errorCode, { message });
-      callback(null, response);
+      throw '502';
     });
+}
+
+async function sendEmail(id, eventName, registrationStatus) {
+  return new Promise(async (resolve, reject) => {
+    if (registrationStatus !== "checkedIn") {
+      const userParams = {
+        Key: { id: id },
+        TableName: 'biztechUsers' + process.env.ENVIRONMENT
+      }
+      await docClient.get(userParams).promise()
+        .then(async (user) => {
+          if (user.Item == null) {
+            reject('user')
+          } else {
+            const userEmail = user.Item.email;
+            const userName = user.Item.fname;
+
+            //template id for registered and waitlist
+            let tempId = "d-99da9013c9a04ef293e10f0d73e9b49c";
+            if (registrationStatus == "cancelled") {
+              tempId = "d-0c87cb420ba2456ebc4c3f99a9d50ba0";
+            }
+
+            let status = registrationStatus;
+            if (registrationStatus == "waitlist") {
+              status = "waitlisted"
+            }
+            const msg = {
+              to: userEmail,
+              from: "info@ubcbiztech.com",
+              templateId: tempId,
+              dynamic_template_data: {
+                subject: "BizTech " + eventName + " Receipt",
+                name: userName,
+                registrationStatus: status,
+                eventName: eventName
+              }
+            }
+            await email.send(msg);
+            resolve()
+          }
+        })
+    }
+  })
+
 }
 
 module.exports.post = async (event, ctx, callback) => {
@@ -187,10 +233,9 @@ module.exports.get = async (event, ctx, callback) => {
         ':query': eventID
       }
     };
-  
+
     await docClient.scan(params).promise()
       .then(result => {
-        console.log('Scan success.');
         let data = result.Items;
         if (queryString.hasOwnProperty('id')) {
           data = data.filter(entry => entry.id === parseInt(queryString.id, 10));
@@ -224,7 +269,7 @@ module.exports.get = async (event, ctx, callback) => {
         ':query': id
       }
     };
-  
+
     await docClient.query(params).promise()
       .then(result => {
         console.log('Query success.');
@@ -234,8 +279,8 @@ module.exports.get = async (event, ctx, callback) => {
           response = helpers.notFoundResponse();
         } else {
           response = helpers.createResponse(200, {
-          size: data.length,
-          data: data
+            size: data.length,
+            data: data
           })
         }
         console.log('Registration DATA2:==>', queryString);
