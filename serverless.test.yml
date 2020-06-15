@@ -493,20 +493,6 @@
     body:
       size: 5
 
-- name: registration with eventID and afterTime (eg:2020-01-01) returns 200
-  endpoint:
-    method: GET
-    path: registrations/
-  request:
-    form:
-      eventID: usingfortestdonotmodify
-      afterTime: "2020-01-26"
-
-  response:
-    status: 200
-    body:
-      size: 5
-
 - name: event delete returns 200
   endpoint:
     method: DELETE

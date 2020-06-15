@@ -174,20 +174,11 @@ module.exports.get = async (event, ctx, callback) => {
     callback(null, helpers.inputError('User and/or Event ID not specified.', queryString));
     return;
   }
-  if (queryString.hasOwnProperty('afterTimestamp') && queryString.hasOwnProperty('afterTime')) {
-    callback(null, helpers.inputError('Both timestamp and time are provided.', queryString));
-    return;
-  }
   let timeStampFilter = undefined;
   if (queryString.hasOwnProperty('afterTimestamp')) {
     timeStampFilter = Number(queryString.afterTimestamp);
     const d = new Date(timeStampFilter);
     console.log('Get registration on and after ', d.getHours() + ':' +  d.getMinutes()  + '/' + d.getDate() + '/' + (d.getMonth()+1) + '/' + d.getFullYear());
-  }
-  if (queryString.hasOwnProperty('afterTime')) {
-    const d = new Date(queryString.afterTime);
-    timeStampFilter = d.getTime();
-    console.log('Get registration on and after ', d.getDate() + '/' + (d.getMonth()+1) + '/' + d.getFullYear());
   }
   if (queryString.hasOwnProperty('eventID')) {
     const eventID = queryString.eventID;
