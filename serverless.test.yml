@@ -479,6 +479,19 @@
     body:
       size: 1
 
+- name: registration with eventID and afterTimestamp (13 digits) returns 200
+  endpoint:
+    method: GET
+    path: registrations/
+  request:
+    form:
+      eventID: usingfortestdonotmodify
+      afterTimestamp: 1579992318000
+  response:
+    status: 200
+    body:
+      size: 5
+
 - name: event delete returns 200
   endpoint:
     method: DELETE
