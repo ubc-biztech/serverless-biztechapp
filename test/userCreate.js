@@ -8,80 +8,16 @@ const expect = mochaPlugin.chai.expect;
 const AWS = require('aws-sdk-mock');
 let wrapped = mochaPlugin.getWrapper('userCreate', '/handlers/user.js', 'create');
 
+const testEntry = {
+  id: '6456456464',
+  fname: 'insanetest',
+  lname: 'dude',
+  faculty: 'Science',
+  email: 'test@test.com'
+};
+
 describe('userCreate', () => {
-  before((done) => {
-    done();
-  });
-
-  it('user create success', async () => {
-    AWS.mock('DynamoDB.DocumentClient', 'put', function (params, callback){
-      Promise.resolve(
-          callback(null, {
-            Item: 'not null user'
-          } 
-        ));
-    });
-
-    const body = JSON.stringify( {
-      id: '6456456464',
-      fname: 'insanetest',
-      lname: 'dude',
-      faculty: 'Science',
-      email: 'test@test.com'
-    }
-    );
-    const response = await wrapped.run({
-      body: body
-    });
-    expect(response.statusCode).to.equal(201);
-    const responseBody = JSON.parse(response.body);
-    expect(responseBody.params.Item.id).to.equal(6456456464);
-    expect(responseBody.params.Item.admin).to.equal(false);
-  });
-
-  it('user create no ID fails', async () => {
-    const body = JSON.stringify( {
-      fname: 'insanetest',
-      lname: 'dude',
-      faculty: 'Science',
-      email: 'test@test.com'
-    }
-    );
-    const response = await wrapped.run({
-      body: body
-    });
-    expect(response.statusCode).to.equal(406);
-    const responseBody = JSON.parse(response.body);
-    expect(responseBody.message).to.equal("User ID not specified.");
-  });
-
-  it('user create admin success', async () => {
-    AWS.mock('DynamoDB.DocumentClient', 'put', function (params, callback){
-      Promise.resolve(
-          callback(null, {
-            Item: 'not null user'
-          } 
-        ));
-    });
-
-    const body = JSON.stringify( {
-      id: '6456456464',
-      fname: 'insanetest',
-      lname: 'dude',
-      faculty: 'Science',
-      email: 'test@ubcbiztech.com'
-    }
-    );
-    const response = await wrapped.run({
-      body: body
-    });
-    expect(response.statusCode).to.equal(201);
-    const responseBody = JSON.parse(response.body);
-    expect(responseBody.params.Item.id).to.equal(6456456464);
-    expect(responseBody.params.Item.admin).to.equal(true);
-  });
-
-  it('user create invitecode success', async () => {
+  beforeEach(() => {
     AWS.mock('DynamoDB.DocumentClient', 'put', function (params, callback) {
       Promise.resolve(
           callback(null, {
@@ -89,7 +25,50 @@ describe('userCreate', () => {
           } 
         ));
     });
+  });
 
+  it('returns 201 when given valid data', async () => {
+    const response = await wrapped.run({ body: JSON.stringify(testEntry) });
+    expect(response.statusCode).to.equal(201);
+    const responseBody = JSON.parse(response.body);
+    expect(responseBody.params.Item.id).to.equal(6456456464);
+    expect(responseBody.params.Item.admin).to.equal(false);
+  });
+
+  it('returns 406 when not given ID', async () => {
+    const body = {
+      ...testEntry
+    };
+    delete body.id;
+
+    const response = await wrapped.run({ body: JSON.stringify(body) });
+    expect(response.statusCode).to.equal(406);
+    const responseBody = JSON.parse(response.body);
+    expect(responseBody.message).to.equal("User ID not specified.");
+  });
+
+  it('returns 201 and sets user as admin', async () => {
+    AWS.mock('DynamoDB.DocumentClient', 'put', function (params, callback){
+      Promise.resolve(
+          callback(null, {
+            Item: 'not null user'
+          } 
+        ));
+    });
+
+    const body = {
+      ...testEntry
+    };
+    body.email = 'adminUser@ubcbiztech.com';
+
+    const response = await wrapped.run({ body: JSON.stringify(body) });
+    expect(response.statusCode).to.equal(201);
+    const responseBody = JSON.parse(response.body);
+    expect(responseBody.params.Item.id).to.equal(6456456464);
+    expect(responseBody.params.Item.admin).to.equal(true);
+  });
+
+  it('returns 201 and deletes invite code', async () => {
     AWS.mock('DynamoDB.DocumentClient', 'get', function (params, callback) {
       if (params.TableName == 'inviteCodes' + process.env.ENVIRONMENT) {
         Promise.resolve(
@@ -110,18 +89,12 @@ describe('userCreate', () => {
       }
     });
 
-    const body = JSON.stringify( {
-      id: '6456456464',
-      fname: 'insanetest',
-      lname: 'dude',
-      faculty: 'Science',
-      email: 'test@biztech.com',
-      inviteCode: '23233',
-    }
-    );
-    const response = await wrapped.run({
-      body: body
-    });
+    const body = {
+      ...testEntry,
+      inviteCode: '23323'
+    };
+
+    const response = await wrapped.run({ body: JSON.stringify(body) });
     expect(response.statusCode).to.equal(201);
     const responseBody = JSON.parse(response.body);
     expect(responseBody.params.Item.id).to.equal(6456456464);
@@ -129,15 +102,7 @@ describe('userCreate', () => {
     expect(responseBody.params.Item.paid).to.equal(true);
   });
 
-  it('user create invitecode failure', async () => {
-    AWS.mock('DynamoDB.DocumentClient', 'put', function (params, callback) {
-      Promise.resolve(
-          callback(null, {
-            Item: 'not null user'
-          } 
-        ));
-    });
-
+  it('returns 404 when invite code not found', async () => {
     AWS.mock('DynamoDB.DocumentClient', 'get', function (params, callback) {
       if (params.TableName == 'inviteCodes' + process.env.ENVIRONMENT) {
         Promise.resolve(
@@ -148,18 +113,11 @@ describe('userCreate', () => {
       }
     });
 
-    const body = JSON.stringify( {
-      id: '6456456464',
-      fname: 'insanetest',
-      lname: 'dude',
-      faculty: 'Science',
-      email: 'test@biztech.com',
-      inviteCode: '23233',
+    const body = {
+      ...testEntry,
+      inviteCode: '23323'
     }
-    );
-    const response = await wrapped.run({
-      body: body
-    });
+    const response = await wrapped.run({ body: JSON.stringify(body) });
     expect(response.statusCode).to.equal(404);
     const responseBody = JSON.parse(response.body);
     expect(responseBody).to.equal('Invite code not found.');
@@ -168,5 +126,4 @@ describe('userCreate', () => {
   afterEach(function() {
     AWS.restore('DynamoDB.DocumentClient');
   });
-
 });
