@@ -220,7 +220,12 @@ module.exports.get = async (event, ctx, callback) => {
     callback(null, helpers.inputError('User and/or Event ID not specified.', queryString));
     return;
   }
-
+  let timeStampFilter = undefined;
+  if (queryString.hasOwnProperty('afterTimestamp')) {
+    timeStampFilter = Number(queryString.afterTimestamp);
+    const d = new Date(timeStampFilter);
+    console.log('Get registration on and after ', d.getHours() + ':' +  d.getMinutes()  + '/' + d.getDate() + '/' + (d.getMonth()+1) + '/' + d.getFullYear());
+  }
   if (queryString.hasOwnProperty('eventID')) {
     const eventID = queryString.eventID;
     const params = {
@@ -230,12 +235,14 @@ module.exports.get = async (event, ctx, callback) => {
         ':query': eventID
       }
     };
-
     await docClient.scan(params).promise()
       .then(result => {
         let data = result.Items;
         if (queryString.hasOwnProperty('id')) {
           data = data.filter(entry => entry.id === parseInt(queryString.id, 10));
+        }
+        if (timeStampFilter !== undefined) {
+          data = data.filter(entry => entry.updatedAt > timeStampFilter);
         }
         let response;
         if (data.length == 0) {
@@ -268,6 +275,9 @@ module.exports.get = async (event, ctx, callback) => {
       .then(result => {
         console.log('Query success.');
         const data = result.Items;
+        if (timeStampFilter !== undefined) {
+          data = data.filter(entry => entry.updatedAt > timeStampFilter);
+        }
         let response;
         if (data.length == 0) {
           response = helpers.notFoundResponse();
