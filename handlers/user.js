@@ -31,9 +31,10 @@ module.exports.create = async (event, ctx, callback) => {
       year: data.year,
       gender: data.gender,
       diet: data.diet,
+      likedEvent: data.likedEvent,
       createdAt: timestamp,
       updatedAt: timestamp,
-      admin: isBiztechAdmin
+      admin: isBiztechAdmin,
     },
     TableName: 'biztechUsers' + process.env.ENVIRONMENT,
     ConditionExpression: 'attribute_not_exists(id)'
