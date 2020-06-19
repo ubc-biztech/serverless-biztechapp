@@ -173,3 +173,35 @@ module.exports.getAll = async (event, ctx, callback) => {
       callback(null, response);
     })
 }
+
+
+module.exports.likeEvent = async (event, ctx, callback) => {
+  const docClient = new AWS.DynamoDB.DocumentClient();
+  const data = JSON.parse(event.body);
+  const id = parseInt(event.pathParameters.id, 10);
+  
+  var updateExpression = "SET likedEvent = :list_append(likedEvent, :likedEvent)";
+  var expressionAttributeValues = {":likedEvent": data.eventID}
+
+  const timestamp = new Date().getTime();
+  updateExpression += "updatedAt = :updatedAt";
+  expressionAttributeValues[":updatedAt"] = timestamp;
+
+  const params = {
+    Key: { id },
+    TableName: 'biztechUsers' + process.env.ENVIRONMENT,
+    ExpressionAttributeValues: expressionAttributeValues,
+    UpdateExpression: updateExpression,
+    ConditionExpression: "attribute_exists(id)"
+  };
+
+  await docClient.update(params).promise()
+    .then(async (result) => {
+      callback(null, helpers.createResponse(200, "Update succeeded."));
+    })
+    .catch(error => {
+      console.error(error);
+      callback(null, helpers.createResponse(404, "User not found."));
+    })
+
+};
