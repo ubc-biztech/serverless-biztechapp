@@ -24,6 +24,11 @@ provider:
   iamRoleStatements:
     - Effect: Allow
       Action:
+        - cognito-idp:AdminAddUserToGroup
+      Resource:
+        - "arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp"
+    - Effect: Allow
+      Action:
         - dynamodb:DescribeTable
         - dynamodb:Query
         - dynamodb:Scan
@@ -46,7 +51,19 @@ functions:
           path: /hello
           method: get
           cors: true
-          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+  admin:
+    handler: handlers/admin.create
+    events:
+      - http:
+          path: admin/
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   userCreate:
     handler: handlers/user.create
     events:
@@ -54,7 +71,9 @@ functions:
           path: users/
           method: post
           cors: true
-          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   userGet:
     handler: handlers/user.get
     events:
@@ -66,7 +85,9 @@ functions:
               path:
                 id: true
           cors: true
-          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   userGetAll:
     handler: handlers/user.getAll
     events:
@@ -74,7 +95,9 @@ functions:
           path: users/
           method: get
           cors: true
-          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   userUpdate:
     handler: handlers/user.update
     events:
@@ -85,7 +108,9 @@ functions:
             path:
               id: true
           cors: true
-          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   eventCreate:
     handler: handlers/event.create
     events:
@@ -93,7 +118,9 @@ functions:
           path: events/
           method: post
           cors: true
-          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   eventDelete:
     handler: handlers/event.delete
     events:
@@ -104,7 +131,9 @@ functions:
             path:
               id: true
           cors: true
-          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   eventGetAll:
     handler: handlers/event.getAll
     events:
@@ -112,7 +141,9 @@ functions:
           path: events/
           method: get
           cors: true
-          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   eventUpdate:
     handler: handlers/event.update
     events:
@@ -123,7 +154,9 @@ functions:
             path:
               id: true
           cors: true
-          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   eventGet:
     handler: handlers/event.get
     events:
@@ -138,7 +171,9 @@ functions:
                 count: false
                 users: false
           cors: true
-          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   inviteCreate:
     handler: handlers/inviteCodes.invite
     events:
@@ -146,7 +181,9 @@ functions:
           path: inviteCodes
           method: post
           cors: true
-          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   registrationPost:
     handler: handlers/registration.post
     events:
@@ -154,7 +191,9 @@ functions:
           path: registrations/
           method: post
           cors: true
-          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   registrationPut:
     handler: handlers/registration.put
     events:
@@ -165,7 +204,9 @@ functions:
             path:
               id: true
           cors: true
-          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   registrationGet:
     handler: handlers/registration.get
     events:
@@ -173,4 +214,6 @@ functions:
           path: registrations/
           method: get
           cors: true
-          private: ${file(./config.${self:provider.stage}.json):REQUIRE_API_KEY}
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
