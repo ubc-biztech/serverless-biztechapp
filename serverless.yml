@@ -213,6 +213,12 @@ functions:
       - http:
           path: registrations/
           method: get
+          request:
+            parameters:
+              querystrings:
+                eventID: false
+                id: false
+                afterTimestamp: false
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS
