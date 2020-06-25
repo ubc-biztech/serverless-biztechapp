@@ -111,6 +111,21 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+  userFavouriteEvent:
+    handler: handlers/user.update
+    events:
+      - http:
+          path: users/{id}
+          method: patch
+          request:
+            path:
+              id: true
+            querystrings:
+              favOrUnfav: true
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   eventCreate:
     handler: handlers/event.create
     events:

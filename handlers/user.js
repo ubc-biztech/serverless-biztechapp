@@ -1,6 +1,6 @@
-'use strict';
-const AWS = require('aws-sdk');
-const helpers = require('./helpers');
+"use strict";
+const AWS = require("aws-sdk");
+const helpers = require("./helpers");
 
 module.exports.create = async (event, ctx, callback) => {
   const docClient = new AWS.DynamoDB.DocumentClient();
@@ -8,8 +8,8 @@ module.exports.create = async (event, ctx, callback) => {
   const timestamp = new Date().getTime();
   const data = JSON.parse(event.body);
 
-  if (!data.hasOwnProperty('id')) {
-    callback(null, helpers.inputError('User ID not specified.', data));
+  if (!data.hasOwnProperty("id")) {
+    callback(null, helpers.inputError("User ID not specified.", data));
   }
   const id = parseInt(data.id, 10);
 
@@ -18,7 +18,9 @@ module.exports.create = async (event, ctx, callback) => {
   let isBiztechAdmin = false;
 
   //assume the created user is biztech admin if using biztech email
-  if (email.substring(email.indexOf("@") + 1, email.length) === 'ubcbiztech.com') {
+  if (
+    email.substring(email.indexOf("@") + 1, email.length) === "ubcbiztech.com"
+  ) {
     isBiztechAdmin = true;
   }
   const userParams = {
@@ -31,32 +33,38 @@ module.exports.create = async (event, ctx, callback) => {
       year: data.year,
       gender: data.gender,
       diet: data.diet,
-      likedEvent: data.likedEvent,
       createdAt: timestamp,
       updatedAt: timestamp,
       admin: isBiztechAdmin,
+      favedEventsID: docClient.createSet(data.favedEventsArray) //data.favedEventsArray should be a js array []
     },
-    TableName: 'biztechUsers' + process.env.ENVIRONMENT,
-    ConditionExpression: 'attribute_not_exists(id)'
+    TableName: "biztechUsers" + process.env.ENVIRONMENT,
+    ConditionExpression: "attribute_not_exists(id)"
   };
 
-  if (data.hasOwnProperty('inviteCode')) {
+  if (data.hasOwnProperty("inviteCode")) {
     const inviteCodeParams = {
       Key: { id: data.inviteCode },
-      TableName: 'inviteCodes' + process.env.ENVIRONMENT
+      TableName: "inviteCodes" + process.env.ENVIRONMENT
     };
-    await docClient.get(inviteCodeParams).promise()
+    await docClient
+      .get(inviteCodeParams)
+      .promise()
       .then(async result => {
         if (result.Item == null) {
-          const response = helpers.createResponse(404, 'Invite code not found.');
-          callback(null, response)
-        } else { // invite code was found
+          const response = helpers.createResponse(
+            404,
+            "Invite code not found."
+          );
+          callback(null, response);
+        } else {
+          // invite code was found
           // add paid: true to user
           userParams.Item.paid = true;
           const deleteParams = {
             Key: { id: data.inviteCode },
-            TableName: 'inviteCodes' + process.env.ENVIRONMENT
-          }
+            TableName: "inviteCodes" + process.env.ENVIRONMENT
+          };
           await docClient.delete(deleteParams).promise();
         }
       })
@@ -67,18 +75,23 @@ module.exports.create = async (event, ctx, callback) => {
       });
   }
 
-  await docClient.put(userParams).promise()
+  await docClient
+    .put(userParams)
+    .promise()
     .then(result => {
       const response = helpers.createResponse(201, {
-        message: 'Created!',
+        message: "Created!",
         params: userParams
-      })
-      callback(null, response)
-    })
-    .catch(error => {
-      const response = helpers.createResponse(409, "User could not be created because id already exists");
+      });
       callback(null, response);
     })
+    .catch(error => {
+      const response = helpers.createResponse(
+        409,
+        "User could not be created because id already exists"
+      );
+      callback(null, response);
+    });
 };
 
 module.exports.get = async (event, ctx, callback) => {
@@ -89,22 +102,24 @@ module.exports.get = async (event, ctx, callback) => {
     Key: {
       id
     },
-    TableName: 'biztechUsers' + process.env.ENVIRONMENT
+    TableName: "biztechUsers" + process.env.ENVIRONMENT
   };
 
-  await docClient.get(params).promise()
+  await docClient
+    .get(params)
+    .promise()
     .then(result => {
       if (result.Item == null) {
-        const response = helpers.createResponse(404, 'User not found.')
-        callback(null, response)
+        const response = helpers.createResponse(404, "User not found.");
+        callback(null, response);
       } else {
-        const response = helpers.createResponse(200, result.Item)
-        callback(null, response)
+        const response = helpers.createResponse(200, result.Item);
+        callback(null, response);
       }
     })
     .catch(error => {
       console.error(error);
-      const response = helpers.createResponse(502, error)
+      const response = helpers.createResponse(502, error);
       callback(null, response);
     });
 };
@@ -132,21 +147,22 @@ module.exports.update = async (event, ctx, callback) => {
 
   const params = {
     Key: { id },
-    TableName: 'biztechUsers' + process.env.ENVIRONMENT,
+    TableName: "biztechUsers" + process.env.ENVIRONMENT,
     ExpressionAttributeValues: expressionAttributeValues,
     UpdateExpression: updateExpression,
     ConditionExpression: "attribute_exists(id)"
   };
 
-  await docClient.update(params).promise()
-    .then(async (result) => {
+  await docClient
+    .update(params)
+    .promise()
+    .then(async result => {
       callback(null, helpers.createResponse(200, "Update succeeded."));
     })
     .catch(error => {
       console.error(error);
       callback(null, helpers.createResponse(404, "User not found."));
-    })
-
+    });
 };
 
 /* 
@@ -154,56 +170,89 @@ module.exports.update = async (event, ctx, callback) => {
 */
 module.exports.getAll = async (event, ctx, callback) => {
   const params = {
-    TableName: 'biztechUsers' + process.env.ENVIRONMENT
-  }
+    TableName: "biztechUsers" + process.env.ENVIRONMENT
+  };
 
-  await docClient.scan(params).promise()
-    .then(async (result) => {
+  await docClient
+    .scan(params)
+    .promise()
+    .then(async result => {
       if (result.Items == null) {
-        const response = helpers.createResponse(404, 'No users found.');
+        const response = helpers.createResponse(404, "No users found.");
         callback(null, response);
       } else {
-        const response = helpers.createResponse(200, { items: result.Items, length: result.ScannedCount });
+        const response = helpers.createResponse(200, {
+          items: result.Items,
+          length: result.ScannedCount
+        });
         callback(null, response);
       }
     })
-    .catch(async (error) => {
+    .catch(async error => {
       console.error(error);
       const response = helpers.createResponse(502, error);
       callback(null, response);
-    })
-}
+    });
+};
 
-
-module.exports.likeEvent = async (event, ctx, callback) => {  
+module.exports.favouriteEvent = async (event, ctx, callback) => {
   const docClient = new AWS.DynamoDB.DocumentClient();
   const data = JSON.parse(event.body);
-  const id = parseInt(event.pathParameters.id, 10);
-  var updateExpression;
-  var expressionAttributeValues;
-  
-  updateExpression = "SET likedEvent = :list_append(likedEvent, :likedEvent)";
-  expressionAttributeValues = {":likedEvent": data.eventID}
-  
-  const timestamp = new Date().getTime();
-  updateExpression += "updatedAt = :updatedAt";
-  expressionAttributeValues[":updatedAt"] = timestamp;
 
-  const params = {
-    Key: { id },
-    TableName: 'biztechUsers' + process.env.ENVIRONMENT,
-    ExpressionAttributeValues: expressionAttributeValues,
-    UpdateExpression: updateExpression,
-    ConditionExpression: "attribute_exists(id)"
-  };
+  if (!data.hasOwnProperty("eventID")) {
+    callback(null, helpers.inputError("event ID not specified.", data));
+  }
 
-  await docClient.update(params).promise()
-    .then(async (result) => {
-      callback(null, helpers.createResponse(200, "Update succeeded."));
-    })
-    .catch(error => {
-      console.error(error);
-      callback(null, helpers.createResponse(404, "User not found."));
-    })
+  if (!queryString.hasOwnProperty("favOrUnfav")) {
+    callback(
+      null,
+      helpers.inputError("favourite or unfavourite event not specified.", data)
+    );
 
+    const favStatus = queryString.favOrUnfav;
+    let updateExpression = "";
+    let conditionExpression = "";
+    switch (favStatus) {
+      case "fav":
+        updateExpression = "add favedEventsID = :eventsID,"
+        conditionExpression = "attribute_exists(id) and (not contains(favedEventsID, :eventID))"; // if eventID already exists, not to add into fav sets again
+        break;
+      case "unfav":
+        updateExpression = "delete favedEventsID = :eventsID,";
+        conditionExpression = "attribute_exists(id) and contains(favedEventsID, :eventID)"; // if eventID does not exists, don't perform delete operation
+        break;
+      default:
+        callback(null,helpers.inputError("favOrUnfav input need to be either 'fav' or 'unfav'",data));
+    }
+    const inputEventID = String(data.eventID);
+    const id = parseInt(event.pathParameters.id, 10);
+    let expressionAttributeValues;
+    expressionAttributeValues = { ":eventsID": docClient.createSet([inputEventID])}; //sets data type, for updateExpression
+    expressionAttributeValues[":eventID"] = inputEventID; //string data type, for conditionExpression
+
+    const timestamp = new Date().getTime();
+    updateExpression += "updatedAt = :updatedAt";
+    expressionAttributeValues[":updatedAt"] = timestamp;
+
+    const params = {
+      Key: { id },
+      TableName: "biztechUsers" + process.env.ENVIRONMENT,
+      ExpressionAttributeValues: expressionAttributeValues,
+      UpdateExpression: updateExpression,
+      ConditionExpression:conditionExpression,
+    };
+
+    await docClient
+      .update(params)
+      .promise()
+      .then(async result => {
+        callback(null, helpers.createResponse(200, "Update succeeded."));
+      })
+      .catch(error => {
+        console.error(error);
+        callback(null, helpers.createResponse(404, "User not found."));
+      });
+  }
 };
+
+
