@@ -1,5 +1,4 @@
 const AWS = require("aws-sdk");
-const docClient = new AWS.DynamoDB.DocumentClient();
 
 module.exports = {
   isEmpty: function (obj) {
@@ -39,6 +38,8 @@ module.exports = {
    * @param {String} tableName - Name of table to call batchGet
    */
   batchGet: function (batch, tableName) {
+    const docClient = new AWS.DynamoDB.DocumentClient();
+
     const batchRequestParams = {
       RequestItems: {
         [tableName]: {
@@ -85,6 +86,7 @@ module.exports = {
    * @param {String} table - name of table, ie 'biztechUsers'
    */
   updateDB: async function (id, obj, table) {
+    const docClient = new AWS.DynamoDB.DocumentClient();
     var updateExpression = "set ";
     var expressionAttributeValues = {};
 
@@ -135,6 +137,7 @@ module.exports = {
    * @return {registeredCount checkedInCount waitlistCount}
    */
   getEventCounts: async function (eventID) {
+    const docClient = new AWS.DynamoDB.DocumentClient();
     const params = {
       TableName: "biztechRegistration" + process.env.ENVIRONMENT,
       FilterExpression: "eventID = :query",

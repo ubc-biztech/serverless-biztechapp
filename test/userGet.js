@@ -10,22 +10,27 @@ let wrapped = mochaPlugin.getWrapper('userGet', '/handlers/user.js', 'get');
 // If want to invoke mocha instead of sls invoke
 // let wrapped = mochaPlugin.getWrapper('userGet', '../../../handlers/user.js', 'get');
 
-const AWS = require('aws-sdk-mock');
-
-AWS.mock('DynamoDB.DocumentClient', 'get', function (params, callback){
-  if (params.Key.id == 332332) {
-    Promise.resolve(
-      callback(null, {
-        Item: 'not null user'
-      } 
-    ));
-  }
-});
+const AWSMock = require('aws-sdk-mock');
 
 
 describe('userGet', () => {
-  before((done) => {
-    done();
+  before(() => {
+
+    AWSMock.mock('DynamoDB.DocumentClient', 'get', function (params, callback){
+      if (params.Key.id == 332332) {
+        Promise.resolve(
+          callback(null, {
+            Item: 'not null user'
+          } 
+        ));
+      }
+    })
+;
+  });
+  after(() => {
+
+    AWSMock.restore('DynamoDB.DocumentClient');
+
   });
 
   it('successfully get user', async () => {
