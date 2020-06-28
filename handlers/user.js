@@ -203,56 +203,58 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
     callback(null, helpers.inputError("event ID not specified.", data));
   }
 
-  if (!queryString.hasOwnProperty("favOrUnfav")) {
+  if (!data.hasOwnProperty("isFavourite")) {
     callback(
       null,
       helpers.inputError("favourite or unfavourite event not specified.", data)
     );
-
-    const favStatus = queryString.favOrUnfav;
-    let updateExpression = "";
-    let conditionExpression = "";
-    switch (favStatus) {
-      case "fav":
-        updateExpression = "add favedEventsID = :eventsID,"
-        conditionExpression = "attribute_exists(id) and (not contains(favedEventsID, :eventID))"; // if eventID already exists, not to add into fav sets again
-        break;
-      case "unfav":
-        updateExpression = "delete favedEventsID = :eventsID,";
-        conditionExpression = "attribute_exists(id) and contains(favedEventsID, :eventID)"; // if eventID does not exists, don't perform delete operation
-        break;
-      default:
-        callback(null,helpers.inputError("favOrUnfav input need to be either 'fav' or 'unfav'",data));
-    }
-    const inputEventID = String(data.eventID);
-    const id = parseInt(event.pathParameters.id, 10);
-    let expressionAttributeValues;
-    expressionAttributeValues = { ":eventsID": docClient.createSet([inputEventID])}; //sets data type, for updateExpression
-    expressionAttributeValues[":eventID"] = inputEventID; //string data type, for conditionExpression
-
-    const timestamp = new Date().getTime();
-    updateExpression += "updatedAt = :updatedAt";
-    expressionAttributeValues[":updatedAt"] = timestamp;
-
-    const params = {
-      Key: { id },
-      TableName: "biztechUsers" + process.env.ENVIRONMENT,
-      ExpressionAttributeValues: expressionAttributeValues,
-      UpdateExpression: updateExpression,
-      ConditionExpression:conditionExpression,
-    };
-
-    await docClient
-      .update(params)
-      .promise()
-      .then(async result => {
-        callback(null, helpers.createResponse(200, "Update succeeded."));
-      })
-      .catch(error => {
-        console.error(error);
-        callback(null, helpers.createResponse(404, "User not found."));
-      });
   }
+  if (typeof data.isFavourite !== "boolean") {
+    callback(
+      null,
+      helpers.inputError("isFavourite should be either true or false", data)
+    );
+  }
+  let updateExpression = "";
+  let conditionExpression = "";
+  const isFavourite = data.isFavourite;
+  if (isFavourite) {
+    updateExpression = "add favedEventsID = :eventsID,";
+    conditionExpression =
+      "attribute_exists(id) and (not contains(favedEventsID, :eventID))"; // if eventID already exists, not to add into fav sets again
+  } else {
+    updateExpression = "delete favedEventsID = :eventsID,";
+    conditionExpression =
+      "attribute_exists(id) and contains(favedEventsID, :eventID)"; // if eventID does not exists, don't perform delete operation
+  }
+  const inputEventID = String(data.eventID);
+  const id = parseInt(event.pathParameters.id, 10);
+  let expressionAttributeValues;
+  expressionAttributeValues = {
+    ":eventsID": docClient.createSet([inputEventID])
+  }; //sets data type, for updateExpression
+  expressionAttributeValues[":eventID"] = inputEventID; //string data type, for conditionExpression
+
+  const timestamp = new Date().getTime();
+  updateExpression += "updatedAt = :updatedAt";
+  expressionAttributeValues[":updatedAt"] = timestamp;
+
+  const params = {
+    Key: { id },
+    TableName: "biztechUsers" + process.env.ENVIRONMENT,
+    ExpressionAttributeValues: expressionAttributeValues,
+    UpdateExpression: updateExpression,
+    ConditionExpression: conditionExpression
+  };
+
+  await docClient
+    .update(params)
+    .promise()
+    .then(async result => {
+      callback(null, helpers.createResponse(200, "Update succeeded."));
+    })
+    .catch(error => {
+      console.error(error);
+      callback(null, helpers.createResponse(404, "User not found."));
+    });
 };
-
-
