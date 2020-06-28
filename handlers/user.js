@@ -238,19 +238,19 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
   if (isFavourite) {
     updateExpression = "add favedEventsID = :eventsID,";
     conditionExpression =
-      "attribute_exists(id) and (not contains(favedEventsID, :eventID))"; // if eventID already exists, not to add into fav sets again
+      "attribute_exists(id) and (not contains(favedEventsID, :eventID))"; // if eventID already exists, don't perform add operation
   } else {
     updateExpression = "delete favedEventsID = :eventsID,";
     conditionExpression =
-      "attribute_exists(id) and contains(favedEventsID, :eventID)"; // if eventID does not exists, don't perform delete operation
+      "attribute_exists(id) and contains(favedEventsID, :eventID)"; // if eventID does not exist, don't perform delete operation
   }
   const inputEventID = String(data.eventID);
   const id = parseInt(event.pathParameters.id, 10);
   let expressionAttributeValues;
   expressionAttributeValues = {
-    ":eventsID": docClient.createSet([inputEventID])
-  }; //sets data type, for updateExpression
-  expressionAttributeValues[":eventID"] = inputEventID; //string data type, for conditionExpression
+    ":eventsID": docClient.createSet([inputEventID]) //Set data type, for updateExpression
+  }; 
+  expressionAttributeValues[":eventID"] = inputEventID; //String data type, for conditionExpression
 
   const timestamp = new Date().getTime();
   updateExpression += "updatedAt = :updatedAt";
