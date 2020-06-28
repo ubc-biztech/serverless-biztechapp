@@ -53,7 +53,7 @@ module.exports.create = async (event, ctx, callback) => {
       createdAt: timestamp,
       updatedAt: timestamp,
       admin: isBiztechAdmin,
-      favedEventsID: docClient.createSet(favedEventsArray);
+      favedEventsID: docClient.createSet(favedEventsArray)
     },
     TableName: "biztechUsers" + process.env.ENVIRONMENT,
     ConditionExpression: "attribute_not_exists(id)"
