@@ -75,7 +75,11 @@ describe('userCreate', () => {
           callback(null, {
             Item: 'not null invites'
           })
-        )
+        );
+      } else {
+        Promise.reject(
+          callback(null)
+        );
       }
     });
 
@@ -85,7 +89,11 @@ describe('userCreate', () => {
           callback(null, {
             Item: 'expected invites delete'
           })
-        )
+        );
+      } else {
+        Promise.reject(
+          callback(null)
+        );
       }
     });
 
@@ -109,7 +117,11 @@ describe('userCreate', () => {
           callback(null, {
             Item: null
           })
-        )
+        );
+      } else {
+        Promise.reject(
+          callback(null)
+        );
       }
     });
 
