@@ -12,11 +12,14 @@ let wrapped = mochaPlugin.getWrapper('userGet', '/handlers/user.js', 'get');
 // let wrapped = mochaPlugin.getWrapper('userGet', '../../../handlers/user.js', 'get');
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 const AWSMock = require('aws-sdk-mock');
 
 
 =======
 >>>>>>> b859b20... user create tests and tweaks
+=======
+>>>>>>> c109828ddca27951c3332b5815d50cf8424fbd2d
 describe('userGet', () => {
   before(() => {
 
