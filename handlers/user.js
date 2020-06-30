@@ -43,7 +43,7 @@ module.exports.create = async (event, ctx, callback) => {
   };
 
 
-  //check whether the favedEventsArray body param meets the requirement
+  //check whether the favedEventsArray body param meets the requirements
   if (data.hasOwnProperty(favedEventsArray) && Array.isArray(data.favedEventsArray)) {
     let favedEventsArray = data.favedEventsArray;
     if (!favedEventsArray.length === 0) { 
@@ -53,10 +53,10 @@ module.exports.create = async (event, ctx, callback) => {
     if (!favedEventsArray.every(eventID => (typeof eventID === "string"))) { 
       callback(null, helpers.inputError("the favedEventsArray contains non-string element(s)", data));
     }
-    
     if (favedEventsArray.length !== new Set(favedEventsArray).size) { 
       callback(null, helpers.inputError("the favedEventsArray contains duplicate elements", data));
     }
+    //if all conditions met, add favedEventsArray as a Set to userParams
     userParams.Item['favedEventsID'] = docClient.createSet(favedEventsArray);
   }
 
