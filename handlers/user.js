@@ -42,7 +42,7 @@ module.exports.create = async (event, ctx, callback) => {
     ConditionExpression: "attribute_not_exists(id)"
   };
 
-  let favedEventsArray; 
+  let favedEventsArray = undefined; 
 
   //check whether the favedEventsArray body param meets the requirement
   if (data.hasOwnProperty(favedEventsArray) && Array.isArray(data.favedEventsArray)) {
@@ -60,7 +60,7 @@ module.exports.create = async (event, ctx, callback) => {
     }
   }
 
-  if (favedEventsArray) { //if favedEventsArray exists, add to userParams
+  if (favedEventsArray !== undefined) { //if favedEventsArray exists, add to userParams
     userParams.Item['favedEventsID'] = docClient.createSet(favedEventsArray);
   }
 
