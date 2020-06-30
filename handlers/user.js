@@ -18,22 +18,6 @@ module.exports.create = async (event, ctx, callback) => {
 
   let isBiztechAdmin = false;
 
-  let favedEventsArray = []; 
-
-  //check whether the favedEventsArray body param meets the requirement
-  if (data.hasOwnProperty(favedEventsArray) && Array.isArray(data.favedEventsArray)) {
-    favedEventsArray = data.favedEventsArray;
-
-    if (!favedEventsArray.every(eventID => (typeof eventID === "string"))) { 
-      callback(null, helpers.inputError("the favedEventsArray contains non-string element(s)", data));
-    }
-    
-    if (favedEventsArray.length !== new Set(favedEventsArray).size) { 
-      callback(null, helpers.inputError("the favedEventsArray contains duplicate elements", data));
-    }
-  }
-
-
   //assume the created user is biztech admin if using biztech email
   if (
     email.substring(email.indexOf("@") + 1, email.length) === "ubcbiztech.com"
@@ -53,11 +37,32 @@ module.exports.create = async (event, ctx, callback) => {
       createdAt: timestamp,
       updatedAt: timestamp,
       admin: isBiztechAdmin,
-      favedEventsID: docClient.createSet(favedEventsArray)
     },
     TableName: "biztechUsers" + process.env.ENVIRONMENT,
     ConditionExpression: "attribute_not_exists(id)"
   };
+
+  let favedEventsArray; 
+
+  //check whether the favedEventsArray body param meets the requirement
+  if (data.hasOwnProperty(favedEventsArray) && Array.isArray(data.favedEventsArray)) {
+    favedEventsArray = data.favedEventsArray;
+    if (!favedEventsArray.length === 0) { 
+      callback(null, helpers.inputError("the favedEventsArray is empty", data));
+    }
+
+    if (!favedEventsArray.every(eventID => (typeof eventID === "string"))) { 
+      callback(null, helpers.inputError("the favedEventsArray contains non-string element(s)", data));
+    }
+    
+    if (favedEventsArray.length !== new Set(favedEventsArray).size) { 
+      callback(null, helpers.inputError("the favedEventsArray contains duplicate elements", data));
+    }
+  }
+
+  if (favedEventsArray) { //if favedEventsArray exists, add to userParams
+    userParams.Item['favedEventsID'] = docClient.createSet(favedEventsArray);
+  }
 
   if (data.hasOwnProperty("inviteCode")) {
     const inviteCodeParams = {
