@@ -49,7 +49,6 @@ module.exports.create = async (event, ctx, callback) => {
     if (!favedEventsArray.length === 0) { 
       callback(null, helpers.inputError("the favedEventsArray is empty", data));
     }
-
     if (!favedEventsArray.every(eventID => (typeof eventID === "string"))) { 
       callback(null, helpers.inputError("the favedEventsArray contains non-string element(s)", data));
     }
