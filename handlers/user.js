@@ -236,11 +236,11 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
   let conditionExpression = "";
   const isFavourite = data.isFavourite;
   if (isFavourite) {
-    updateExpression = "add favedEventsID = :eventsID,";
+    updateExpression = "add favedEventsID :eventsID";
     conditionExpression =
       "attribute_exists(id) and (not contains(favedEventsID, :eventID))"; // if eventID already exists, don't perform add operation
   } else {
-    updateExpression = "delete favedEventsID = :eventsID,";
+    updateExpression = "delete favedEventsID :eventsID";
     conditionExpression =
       "attribute_exists(id) and contains(favedEventsID, :eventID)"; // if eventID does not exist, don't perform delete operation
   }
@@ -251,10 +251,6 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
     ":eventsID": docClient.createSet([inputEventID]) //Set data type, for updateExpression
   }; 
   expressionAttributeValues[":eventID"] = inputEventID; //String data type, for conditionExpression
-
-  const timestamp = new Date().getTime();
-  updateExpression += "updatedAt = :updatedAt";
-  expressionAttributeValues[":updatedAt"] = timestamp;
 
   const params = {
     Key: { id },
@@ -268,10 +264,19 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
     .update(params)
     .promise()
     .then(async result => {
-      callback(null, helpers.createResponse(200, "Update succeeded."));
+      let successMsg = "";
+      (isFavourite)? successMsg = "Favourate" : successMsg = "Unfavourite";
+      successMsg += (" event " + data.eventID + " succeed.");
+      callback(null, helpers.createResponse(200, successMsg));
     })
     .catch(error => {
-      console.error(error);
-      callback(null, helpers.createResponse(404, "User not found."));
+      let errMsg = "";
+      if (error.message === "The conditional request failed") {
+        (isFavourite)? errMsg = "Fail to favourite pre-existed event" : errMsg = "Fail to unfavourite non-existed event";
+        errMsg += (" " + data.eventID + ".");
+      }else{
+        errMsg = error.message;
+      }
+      callback(null, helpers.createResponse(error.statusCode, errMsg));
     });
 };
