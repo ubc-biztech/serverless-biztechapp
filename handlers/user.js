@@ -273,10 +273,10 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
       let errMsg = "";
       if (error.message === "The conditional request failed") {
         (isFavourite)? errMsg = "Fail to favourite pre-existed event" : errMsg = "Fail to unfavourite non-existed event";
-        errMsg += (" " + data.eventID + ".");
+        errMsg += (" " + data.eventID + ", OR the user does not exist.")
       }else{
         errMsg = error.message;
       }
-      callback(null, helpers.createResponse(error.statusCode, errMsg));
+      callback(null, helpers.createResponse(error.statusCode, error));
     });
 };
