@@ -44,7 +44,7 @@ module.exports.create = async (event, ctx, callback) => {
 
 
   //check whether the favedEventsArray body param meets the requirements
-  if (data.hasOwnProperty(favedEventsArray) && Array.isArray(data.favedEventsArray)) {
+  if (data.hasOwnProperty('favedEventsArray') && Array.isArray(data.favedEventsArray)) {
     let favedEventsArray = data.favedEventsArray;
     if (!favedEventsArray.length === 0) { 
       callback(null, helpers.inputError("the favedEventsArray is empty", data));
