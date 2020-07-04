@@ -277,6 +277,6 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
       }else{
         errMsg = error.message;
       }
-      callback(null, helpers.createResponse(error.statusCode, error));
+      callback(null, helpers.createResponse(error.statusCode, errMsg));
     });
 };
