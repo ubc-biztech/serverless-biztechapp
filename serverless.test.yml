@@ -5,59 +5,20 @@
     body: 
       message: "Yeet!"
 
-# THIS FUNCTION WORKS, BUT THE TEST DOES NOT BECAUSE WE DON'T HAVE A USER DELETE
-#- name: user create returns 201
-#  endpoint:
-#    method: POST
-#    path: users/
-#  request:
-#    body:
-#      id: 69696969
-#      fname: insanetest
-#      lname: dude
-#      faculty: Science
-#      email: test@dude.asd
-#  response:
-#    status: 201
-#    body:
-#      message: 'Created!'
-
-# THIS FUNCTION WORKS, BUT THE TEST DOES NOT BECAUSE WE DON'T HAVE A USER DELETE
-#- name: user create already exists returns 409
-#  endpoint:
-#    method: POST
-#    path: users/
-#  request:
-#    body:
-#      id: 69696969
-#      fname: test
-#      lname: dudealreadyexists
-#      faculty: Science
-#      email: test@dude.asd
-#  response:
-#    status: 409
-#    body:
-#      message: 'User could not be created because id already exists'
-
-- name: user create no ID returns 406
+- name: user create already exists returns 409
   endpoint:
     method: POST
     path: users/
   request:
     body:
-      fname: foo
-      lname: bar
-      email: foo
-      faculty: bar
+      id: 12345678
+      fname: test
+      lname: dudealreadyexist
+      email: test@dude.asd
   response:
-    status: 406
-    body:
-      message: "User ID not specified."
-      data:
-        fname: foo
-        lname: bar
-        email: foo
-        faculty: bar
+    status: 409
+    body: "\"User could not be created because id already exists\""
+
 
 - name: user get found returns 200
   endpoint:
