@@ -5,18 +5,11 @@
 
 const mochaPlugin = require('serverless-mocha-plugin');
 const expect = mochaPlugin.chai.expect;
-const AWS = require('aws-sdk-mock');
+const AWSMock = require('aws-sdk-mock');
 let wrapped = mochaPlugin.getWrapper('userGet', '/handlers/user.js', 'get');
 
 // If want to invoke mocha instead of sls invoke
 // let wrapped = mochaPlugin.getWrapper('userGet', '../../../handlers/user.js', 'get');
-
-<<<<<<< HEAD
-const AWSMock = require('aws-sdk-mock');
-
-
-=======
->>>>>>> b859b20... user create tests and tweaks
 describe('userGet', () => {
   before(() => {
 
@@ -28,8 +21,7 @@ describe('userGet', () => {
           } 
         ));
       }
-    })
-;
+    });
   });
   after(() => {
 
@@ -38,7 +30,7 @@ describe('userGet', () => {
   });
 
   it('successfully get user', async () => {
-    AWS.mock('DynamoDB.DocumentClient', 'get', function (params, callback){
+    AWSMock.mock('DynamoDB.DocumentClient', 'get', function (params, callback){
       if (params.Key.id == 332332) {
         Promise.resolve(
           callback(null, {
@@ -54,6 +46,6 @@ describe('userGet', () => {
     });
     expect(response).to.not.be.empty;
     expect(response.statusCode).to.equal(200);
-    AWS.restore('DynamoDB.DocumentClient');
+    AWSMock.restore('DynamoDB.DocumentClient');
   });
 });

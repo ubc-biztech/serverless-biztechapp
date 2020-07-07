@@ -5,7 +5,7 @@
 
 const mochaPlugin = require('serverless-mocha-plugin');
 const expect = mochaPlugin.chai.expect;
-const AWS = require('aws-sdk-mock');
+const AWSMock = require('aws-sdk-mock');
 let wrapped = mochaPlugin.getWrapper('userCreate', '/handlers/user.js', 'create');
 
 const testEntry = {
@@ -18,7 +18,7 @@ const testEntry = {
 
 describe('userCreate', () => {
   beforeEach(() => {
-    AWS.mock('DynamoDB.DocumentClient', 'put', function (params, callback) {
+    AWSMock.mock('DynamoDB.DocumentClient', 'put', function (params, callback) {
       Promise.resolve(
           callback(null, {
             Item: 'not null user'
@@ -48,7 +48,7 @@ describe('userCreate', () => {
   });
 
   it('returns 201 and sets user as admin', async () => {
-    AWS.mock('DynamoDB.DocumentClient', 'put', function (params, callback){
+    AWSMock.mock('DynamoDB.DocumentClient', 'put', function (params, callback){
       Promise.resolve(
           callback(null, {
             Item: 'not null user'
@@ -69,23 +69,27 @@ describe('userCreate', () => {
   });
 
   it('returns 201 and deletes invite code', async () => {
-    AWS.mock('DynamoDB.DocumentClient', 'get', function (params, callback) {
+    AWSMock.mock('DynamoDB.DocumentClient', 'get', function (params, callback) {
       if (params.TableName == 'inviteCodes' + process.env.ENVIRONMENT) {
         Promise.resolve(
           callback(null, {
             Item: 'not null invites'
           })
         )
+      } else {
+        Promise.reject('wrong table');
       }
     });
 
-    AWS.mock('DynamoDB.DocumentClient', 'delete', function (params, callback) {
+    AWSMock.mock('DynamoDB.DocumentClient', 'delete', function (params, callback) {
       if (params.TableName == 'inviteCodes' + process.env.ENVIRONMENT) {
         Promise.resolve(
           callback(null, {
             Item: 'expected invites delete'
           })
         )
+      } else {
+        Promise.reject('wrong table');
       }
     });
 
@@ -103,7 +107,7 @@ describe('userCreate', () => {
   });
 
   it('returns 404 when invite code not found', async () => {
-    AWS.mock('DynamoDB.DocumentClient', 'get', function (params, callback) {
+    AWSMock.mock('DynamoDB.DocumentClient', 'get', function (params, callback) {
       if (params.TableName == 'inviteCodes' + process.env.ENVIRONMENT) {
         Promise.resolve(
           callback(null, {
@@ -124,6 +128,6 @@ describe('userCreate', () => {
   });
 
   afterEach(function() {
-    AWS.restore('DynamoDB.DocumentClient');
+    AWSMock.restore('DynamoDB.DocumentClient');
   });
 });
