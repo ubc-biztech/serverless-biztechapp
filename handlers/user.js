@@ -46,13 +46,13 @@ module.exports.create = async (event, ctx, callback) => {
   //check whether the favedEventsArray body param meets the requirements
   if (data.hasOwnProperty('favedEventsArray') && Array.isArray(data.favedEventsArray)) {
     let favedEventsArray = data.favedEventsArray;
-    if (!favedEventsArray.length === 0) { 
+    if (!favedEventsArray.length === 0) {
       callback(null, helpers.inputError("the favedEventsArray is empty", data));
     }
-    if (!favedEventsArray.every(eventID => (typeof eventID === "string"))) { 
+    if (!favedEventsArray.every(eventID => (typeof eventID === "string"))) {
       callback(null, helpers.inputError("the favedEventsArray contains non-string element(s)", data));
     }
-    if (favedEventsArray.length !== new Set(favedEventsArray).size) { 
+    if (favedEventsArray.length !== new Set(favedEventsArray).size) {
       callback(null, helpers.inputError("the favedEventsArray contains duplicate elements", data));
     }
     //if all conditions met, add favedEventsArray as a Set to userParams
@@ -152,12 +152,19 @@ module.exports.update = async (event, ctx, callback) => {
 
   var updateExpression = "set ";
   var expressionAttributeValues = {};
+  var expressionAttributeNames = {
+    "#yr": "year"
+  }
 
   for (var key in data) {
     if (data.hasOwnProperty(key)) {
-      if (key != "id") {
+      if (key != "id" && key != "year") {
         updateExpression += key + "= :" + key + ",";
         expressionAttributeValues[":" + key] = data[key];
+      } else if (key == "year") {
+        // year is a reserved word in DynamoDB so has to be mapped to ExpressionAttributeNames
+        updateExpression += "#yr= :year,";
+        expressionAttributeValues[":year"] = data["year"]
       }
     }
   }
@@ -170,6 +177,7 @@ module.exports.update = async (event, ctx, callback) => {
     Key: { id },
     TableName: "biztechUsers" + process.env.ENVIRONMENT,
     ExpressionAttributeValues: expressionAttributeValues,
+    ExpressionAttributeNames: expressionAttributeNames,
     UpdateExpression: updateExpression,
     ConditionExpression: "attribute_exists(id)"
   };
@@ -254,7 +262,7 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
   let expressionAttributeValues;
   expressionAttributeValues = {
     ":eventsID": docClient.createSet([inputEventID]) //Set data type, for updateExpression
-  }; 
+  };
   expressionAttributeValues[":eventID"] = inputEventID; //String data type, for conditionExpression
 
   const params = {
@@ -270,16 +278,16 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
     .promise()
     .then(async result => {
       let successMsg = "";
-      (isFavourite)? successMsg = "Favourate" : successMsg = "Unfavourite";
+      (isFavourite) ? successMsg = "Favourate" : successMsg = "Unfavourite";
       successMsg += (" event " + data.eventID + " succeed.");
       callback(null, helpers.createResponse(200, successMsg));
     })
     .catch(error => {
       let errMsg = "";
       if (error.message === "The conditional request failed") {
-        (isFavourite)? errMsg = "Fail to favourite pre-existed event" : errMsg = "Fail to unfavourite non-existed event";
+        (isFavourite) ? errMsg = "Fail to favourite pre-existed event" : errMsg = "Fail to unfavourite non-existed event";
         errMsg += (" " + data.eventID + ", OR the user does not exist.")
-      }else{ 
+      } else {
         errMsg = error.message;
       }
       callback(null, helpers.createResponse(error.statusCode, errMsg));
