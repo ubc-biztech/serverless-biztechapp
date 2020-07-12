@@ -116,10 +116,20 @@ module.exports.update = async (event, ctx, callback) => {
   const data = JSON.parse(event.body);
   var updateExpression = "set ";
   var expressionAttributeValues = {};
+  var expressionAttributeNames = {
+    "#ename": "name",
+    "#elocation": "location"
+  }
 
   for (var key in data) {
     if (data.hasOwnProperty(key)) {
-      if (key != "id") {
+      if (key == "name") {
+        updateExpression += "#ename= :name,";
+        expressionAttributeValues[":name"] = data["name"];
+      } else if (key == "location") {
+        updateExpression += "#elocation= :location,";
+        expressionAttributeValues[":location"] = data["location"];
+      } else if (key != "id") {
         updateExpression += key + "= :" + key + ",";
         expressionAttributeValues[":" + key] = data[key];
       }
@@ -136,6 +146,7 @@ module.exports.update = async (event, ctx, callback) => {
     Key: { id },
     TableName: 'biztechEvents' + process.env.ENVIRONMENT,
     ExpressionAttributeValues: expressionAttributeValues,
+    ExpressionAttributeNames: expressionAttributeNames,
     UpdateExpression: updateExpression,
     ReturnValues: "UPDATED_NEW",
     ConditionExpression: "attribute_exists(id)"
