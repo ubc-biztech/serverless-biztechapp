@@ -117,17 +117,17 @@ module.exports.update = async (event, ctx, callback) => {
   var updateExpression = "set ";
   var expressionAttributeValues = {};
   var expressionAttributeNames = {
-    "#ename": "name",
-    "#elocation": "location"
+    "#eventName": "name",
+    "#eventLocation": "location"
   }
 
   for (var key in data) {
     if (data.hasOwnProperty(key)) {
       if (key == "name") {
-        updateExpression += "#ename= :name,";
+        updateExpression += "#eventName= :name,";
         expressionAttributeValues[":name"] = data["name"];
       } else if (key == "location") {
-        updateExpression += "#elocation= :location,";
+        updateExpression += "#eventLocation= :location,";
         expressionAttributeValues[":location"] = data["location"];
       } else if (key != "id") {
         updateExpression += key + "= :" + key + ",";
