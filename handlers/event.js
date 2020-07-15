@@ -22,14 +22,14 @@ module.exports.create = async (event, ctx, callback) => {
   const params = {
     Item: {
       id: data.id,
-      ename: data.ename,
+      name: data.name,
       description: data.description,
       startDate: data.startDate,
       endDate: data.endDate,
       capac: data.capac,
       facebookUrl: data.facebookUrl,
       imageUrl: data.imageUrl,
-      elocation: data.elocation,
+      location: data.location,
       longitude: data.longitude,
       latitude: data.latitude,
       createdAt: timestamp,
