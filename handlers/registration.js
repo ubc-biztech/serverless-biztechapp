@@ -146,16 +146,16 @@ async function createRegistration(registrationStatus, data, id, eventID, createN
 
 async function sendEmail(id, eventName, registrationStatus) {
   return new Promise(async (resolve, reject) => {
-    if (registrationStatus !== "checkedIn") {
-      const userParams = {
-        Key: { id: id },
-        TableName: 'biztechUsers' + process.env.ENVIRONMENT
-      }
-      await docClient.get(userParams).promise()
-        .then(async (user) => {
-          if (user.Item == null) {
-            reject('user')
-          } else {
+    const userParams = {
+      Key: { id: id },
+      TableName: 'biztechUsers' + process.env.ENVIRONMENT
+    }
+    await docClient.get(userParams).promise()
+      .then(async (user) => {
+        if (user.Item == null) {
+          reject('user')
+        } else {
+          if (registrationStatus !== "checkedIn") {
             const userEmail = user.Item.email;
             const userName = user.Item.fname;
 
@@ -181,10 +181,10 @@ async function sendEmail(id, eventName, registrationStatus) {
               }
             }
             await email.send(msg);
-            resolve()
           }
-        })
-    }
+          resolve()
+        }
+      })
   })
 
 }
@@ -224,7 +224,7 @@ module.exports.get = async (event, ctx, callback) => {
   if (queryString.hasOwnProperty('afterTimestamp')) {
     timeStampFilter = Number(queryString.afterTimestamp);
     const d = new Date(timeStampFilter);
-    console.log('Get registration on and after ', d.getHours() + ':' +  d.getMinutes()  + '/' + d.getDate() + '/' + (d.getMonth()+1) + '/' + d.getFullYear());
+    console.log('Get registration on and after ', d.getHours() + ':' + d.getMinutes() + '/' + d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear());
   }
   if (queryString.hasOwnProperty('eventID')) {
     const eventID = queryString.eventID;
