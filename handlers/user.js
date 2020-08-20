@@ -118,6 +118,11 @@ module.exports.create = async (event, ctx, callback) => {
 module.exports.get = async (event, ctx, callback) => {
   const docClient = new AWS.DynamoDB.DocumentClient();
   const id = parseInt(event.pathParameters.id, 10);
+  if (isNaN(id)) {
+    const response = helpers.createResponse(400, 'Invalid id');
+    callback(null, response);
+    return;
+  }
 
   const params = {
     Key: {
