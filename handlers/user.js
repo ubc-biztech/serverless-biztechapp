@@ -119,7 +119,7 @@ module.exports.get = async (event, ctx, callback) => {
   const docClient = new AWS.DynamoDB.DocumentClient();
   const id = parseInt(event.pathParameters.id, 10);
   if (isNaN(id)) {
-    const response = helpers.createResponse(400, 'Invalid id');
+    const response = helpers.createResponse(400, 'Invalid ID');
     callback(null, response);
     return;
   }
@@ -154,6 +154,11 @@ module.exports.update = async (event, ctx, callback) => {
   const docClient = new AWS.DynamoDB.DocumentClient();
   const data = JSON.parse(event.body);
   const id = parseInt(event.pathParameters.id, 10);
+  if (isNaN(id)) {
+    const response = helpers.createResponse(400, 'Invalid ID');
+    callback(null, response);
+    return;
+  }
 
   var updateExpression = "set ";
   var expressionAttributeValues = {};
