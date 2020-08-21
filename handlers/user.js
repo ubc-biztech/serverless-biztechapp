@@ -288,7 +288,7 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
     .promise()
     .then(async result => {
       let successMsg = "";
-      (isFavourite) ? successMsg = "Favourate" : successMsg = "Unfavourite";
+      (isFavourite) ? successMsg = "Favourite" : successMsg = "Unfavourite";
       successMsg += (" event " + data.eventID + " succeed.");
       callback(null, helpers.createResponse(200, successMsg));
     })
