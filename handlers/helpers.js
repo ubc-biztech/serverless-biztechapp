@@ -17,9 +17,9 @@ module.exports = {
     return response;
   },
 
-  notFoundResponse: function() {
+  notFoundResponse: function(type = null) {
     return this.createResponse(404, {
-      message: 'No entries found.'
+      message: type ? `${type} could not be found. Make sure you have provided the correct id.`: 'No entries found.'
     });
   },
 
