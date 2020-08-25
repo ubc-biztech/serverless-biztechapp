@@ -246,3 +246,50 @@ module.exports.update = async (event, ctx, callback) => {
   }
 
 };
+
+module.exports.delete = async (event, ctx, callback) => {
+  
+  const docClient = new AWS.DynamoDB.DocumentClient();
+
+  try {
+    
+    // check if id was given
+    if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdResponse('prize');
+    const id = event.pathParameters.id;
+
+    // check that the id exists
+    const existingPrize = await docClient.get({
+      Key: { id },
+      TableName: 'biztechPrizes' + process.env.ENVIRONMENT,
+    }).promise();
+
+    if(!existingPrize.Item) throw helpers.notFoundResponse('Prize', id);
+
+    // construct the param object
+    const params = {
+      Key: { id },
+      TableName: 'biztechPrizes' + process.env.ENVIRONMENT
+    };
+
+    // do the magic
+    const res = await docClient.delete(params).promise()
+
+    const response = helpers.createResponse(200, {
+      message: 'Prize deleted!',
+      params: params,
+      response: res
+    })
+
+    callback(null, response);
+
+  } catch(err) {
+
+    // check if it is an unidentified error
+    let errorObject = err;
+    if(!errorObject.statusCode && !errorObject.headers) errorObject = helpers.dynamoErrorResponse(err);
+
+    callback(null, errorObject);
+    return null;
+  }
+
+};
