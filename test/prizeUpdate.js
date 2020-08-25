@@ -47,7 +47,7 @@ describe('prizeUpdate', () => {
 
   });
 
-  it('return 400 for trying to update a prize with no id parameter', async () => {
+  it('return 400 for trying to update a prize with no id', async () => {
 
     const response = await wrapped.run({
       body: JSON.stringify(updatePayload)
@@ -56,7 +56,7 @@ describe('prizeUpdate', () => {
     
   });
 
-  it('return 404 for trying to update a prize with unknown id', async () => {
+  it('return 404 for trying to update a prize that doesn\'t exist', async () => {
 
     const unknownId = 'unknownid';
 

@@ -17,9 +17,15 @@ module.exports = {
     return response;
   },
 
-  notFoundResponse: function(type = null) {
+  missingIdResponse: function (type) {
+    return this.createResponse(400, {
+      message: `A ${type} id was not provided. Check query params`
+    });
+  },
+
+  notFoundResponse: function(type = null, id = null) {
     return this.createResponse(404, {
-      message: type ? `${type} could not be found. Make sure you have provided the correct id.`: 'No entries found.'
+      message: (type && id) ? `${type} with id '${id}' could not be found. Make sure you have provided the correct id.`: 'No entries found.'
     });
   },
 
@@ -30,6 +36,21 @@ module.exports = {
     });
     console.log("DUPLICATE ERROR", response);
     return response;
+  },
+
+  dynamoErrorResponse: function (err) {
+
+    const response = this.createResponse(err.statusCode || 500, {
+      code: err.code,
+      time: err.time,
+      requestId: err.requestId,
+      statusCode: err.statusCode,
+      retryable: err.retryable,
+      retryDelay: err.retryDelay
+    });
+    console.log("DYNAMO DB ERROR", response);
+    return response;
+
   },
 
   inputError: function(message, data) {

@@ -42,6 +42,7 @@ describe('prizeCreate', () => {
     });
     
   });
+
   after(() => {
 
     AWSMock.restore('DynamoDB.DocumentClient');
