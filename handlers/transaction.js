@@ -59,7 +59,7 @@ module.exports.create = async (event, ctx, callback) => {
     ]);
 
     if(existingTransaction.Item && existingTransaction.Item !== null) throw helpers.duplicateResponse('id', data);
-    if(!existingUser.Item) throw helpers.notFoundResponse('User', data.id);
+    if(!existingUser.Item) throw helpers.notFoundResponse('User', data.userId);
 
     // construct the param object
     const params = {
