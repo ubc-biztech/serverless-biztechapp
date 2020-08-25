@@ -23,6 +23,15 @@ module.exports = {
     });
   },
 
+  duplicateResponse: function(prop, data) {
+    const response = this.createResponse(409, {
+      message: `A database entry with the same '${prop}' already exists!`,
+      data: data
+    });
+    console.log("DUPLICATE ERROR", response);
+    return response;
+  },
+
   inputError: function(message, data) {
     const response = this.createResponse(406, {
         message: message,
@@ -30,6 +39,40 @@ module.exports = {
       })
     console.log("INPUT ERROR", response);
     return response;
+  },
+
+  /**
+   * Check if the object passed matches the criteria
+   * @param {*} payload - the object 
+   * @param {*} check  - object containing the criteria for each property keyed by the property name
+   * The object criteria accepts the following properties:
+   * {
+   *    required: <boolean>,
+   *    type: <string>
+   * }
+   */
+  checkPayloadProps: function(payload, check = {}) {
+    try {
+
+      const criteria = Object.entries(check);
+
+      criteria.forEach(([key, crit]) => {
+
+        // check if property exists
+        if(crit.required && !payload[key]) {
+          throw `'${key}' is missing from the request body`;
+        }
+        // check for the property's type
+        if(crit.type && payload[key] && typeof payload[key] !== crit.type) {
+          throw `'${key}' in the request body is invalid, expected type '${crit.type}' but got '${typeof payload[key]}'`;
+        }
+
+      })
+    } catch(errMsg) {
+
+      throw this.inputError(errMsg, payload);
+
+    }
   },
 
   /**
