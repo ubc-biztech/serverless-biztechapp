@@ -240,9 +240,9 @@ functions:
           path: prizes/
           method: get
           cors: true
-          # authorizer:
-          #   type: COGNITO_USER_POOLS
-          #   arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   prizeCreate:
     handler: handlers/prize.create
     events:
@@ -250,9 +250,9 @@ functions:
           path: prize/
           method: post
           cors: true
-          # authorizer:
-          #   type: COGNITO_USER_POOLS
-          #   arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   prizeUpdate:
     handler: handlers/prize.update
     events:
@@ -263,9 +263,9 @@ functions:
             path:
               id: true
           cors: true
-          # authorizer:
-          #   type: COGNITO_USER_POOLS
-          #   arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   prizeDelete:
     handler: handlers/prize.delete
     events:
@@ -276,6 +276,6 @@ functions:
             path:
               id: true
           cors: true
-          # authorizer:
-          #   type: COGNITO_USER_POOLS
-          #   arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
