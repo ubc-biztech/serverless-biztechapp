@@ -21,12 +21,12 @@ module.exports.create = async (event, ctx, callback) => {
     });
 
     // check if there are prizes with the given id
-    const currentPrize = await docClient.get({
+    const existingPrize = await docClient.get({
       Key: { id: data.id },
       TableName: 'biztechPrizes' + process.env.ENVIRONMENT,
     }).promise();
 
-    if(currentPrize.Item !== null) throw helpers.duplicateResponse('id', data);
+    if(existingPrize.Item && existingPrize.Item !== null) throw helpers.duplicateResponse('id', data);
 
     // construct the param object
     const params = {
@@ -44,10 +44,11 @@ module.exports.create = async (event, ctx, callback) => {
     };
 
     // do the magic
-    await docClient.put(params).promise();
+    const res = await docClient.put(params).promise();
     const response = helpers.createResponse(201, {
       message: 'Event Created!',
-      params: params
+      params: params,
+      response: res
     });
 
     // return the response object

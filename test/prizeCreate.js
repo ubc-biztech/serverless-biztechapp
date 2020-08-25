@@ -49,6 +49,7 @@ describe('prizeCreate', () => {
   });
 
   it('return 406 for trying to create a prize with no id', async () => {
+
     const invalidPayload = {
       ...prizePayload
     }
@@ -60,6 +61,7 @@ describe('prizeCreate', () => {
   });
 
   it('return 406 for trying to create a prize with no name', async () => {
+
     const invalidPayload = {
       ...prizePayload
     }
@@ -71,6 +73,7 @@ describe('prizeCreate', () => {
   });
 
   it('return 406 for trying to create a prize with no price', async () => {
+
     const invalidPayload = {
       ...prizePayload
     }
@@ -82,6 +85,7 @@ describe('prizeCreate', () => {
   });
 
   it('return 406 for trying to create a prize with invalid name', async () => {
+
     const invalidPayload = {
       ...prizePayload,
       name: 123456789
@@ -93,6 +97,7 @@ describe('prizeCreate', () => {
   });
 
   it('return 406 for trying to create a prize with invalid image hash', async () => {
+
     const invalidPayload = {
       ...prizePayload,
       imageHash: 123456789
@@ -104,6 +109,7 @@ describe('prizeCreate', () => {
   });
 
   it('return 406 for trying to create a prize with invalid price', async () => {
+
     const invalidPayload = {
       ...prizePayload,
       price: 'not a price'
@@ -115,6 +121,7 @@ describe('prizeCreate', () => {
   });
 
   it('return 406 for trying to create a prize with invalid links', async () => {
+
     const invalidPayload = {
       ...prizePayload,
       links: 'not a link object'
