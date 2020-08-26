@@ -13,7 +13,8 @@ const testEntry = {
     fname: 'insanetest',
     lname: 'dude',
     faculty: 'Science',
-    email: 'test@test.com'
+    email: 'test@test.com',
+    year: '3rd year'
 };
 
 describe('userUpdate', () => {

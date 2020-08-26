@@ -15,16 +15,25 @@ describe('userGetAll', () => {
   });
 
   it('successfully returns 200 get all user', async () => {
+    const users = [{
+      ename: 'some random user'
+    }, {
+      ename: 'another random user'
+    }];
     AWSMock.mock('DynamoDB.DocumentClient', 'scan', function (params, callback){
         Promise.resolve(
             callback(null, {
-                Items: 'not null result'
+                Items: users,
+                ScannedCount: 2
             })
         )
       });
     const response = await wrapped.run();
     expect(response).to.not.be.empty;
     expect(response.statusCode).to.equal(200);
+    const body = JSON.parse(response.body)
+    expect(body.items.length).to.equal(2);
+    expect(body.length).to.equal(2)
   });
 
   it('return 404 when users not found', async () => {
