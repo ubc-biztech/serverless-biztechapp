@@ -5,6 +5,8 @@ This lambda is used to automatically update the `biztechUsers`/`biztechUsersPROD
 
 The diagram below draws a better picture of where the lambda plays a part.
 
+![Image of Yaktocat](./lambda-transactions.png)
+
 ### Installation
 
 1. Clone the repo:
