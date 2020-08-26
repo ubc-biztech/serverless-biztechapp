@@ -8,15 +8,38 @@ module.exports.getAll = async (event, ctx, callback) => {
 
   try {
 
-    // scan the table
-    const transaction = await docClient.scan({
-      TableName: 'biztechTransactions' + process.env.ENVIRONMENT,
-    }).promise();
+    // construct the params
+    const params = { TableName: 'biztechTransactions' + process.env.ENVIRONMENT };
 
-    let response = {}
+    // check if a query was provided
+    const userId = event && event.queryStringParameters && event.queryStringParameters.userId;
+
+    if (userId) {
+      params.FilterExpression = 'userId = :query';
+      params.ExpressionAttributeValues = {
+        ':query': userId
+      }
+    }
+
+    // scan the table
+    const transaction = await docClient.scan(params).promise();
+
+    let items = {};
     
     // re-organize the response
-    if(transaction.Items !== null) response = helpers.createResponse(200, transaction.Items);
+    if(userId && transaction.Items !== null) {
+      items.count = transaction.Items.length;
+      items.transactions = transaction.Items;
+      items.totalCredits = transaction.Items.reduce((accumulator, item) => accumulator + item.credits, 0);
+    }
+    else if(userId) {
+      items.count = 0;
+      items.transactions = {};
+      items.totalCredits = 0;
+    }
+    else if(transaction.Items !== null) items = transaction.Items
+
+    const response = helpers.createResponse(200, items);
 
     // return the response object
     callback(null, response);
@@ -101,7 +124,6 @@ module.exports.create = async (event, ctx, callback) => {
 
     // check if it is an unidentified error
     let errorObject = err;
-    console.log({err})
     if(!errorObject.statusCode && !errorObject.headers) errorObject = helpers.dynamoErrorResponse(err);
 
     callback(null, errorObject);
