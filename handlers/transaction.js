@@ -61,6 +61,17 @@ module.exports.create = async (event, ctx, callback) => {
     if(existingTransaction.Item && existingTransaction.Item !== null) throw helpers.duplicateResponse('id', data);
     if(!existingUser.Item) throw helpers.notFoundResponse('User', data.userId);
 
+    // if credits is negative value, check if the user has enough credits
+    if(data.credits < 0) {
+
+      const userCredits = existingUser.Item.credits || 0;
+      // 202 means "accepted, but not acted upon"
+      if(userCredits + data.credits < 0) throw helpers.createResponse(202, {
+        message: 'Transaction was not created because user does not have enough credits!'
+      });
+
+    }
+
     // construct the param object
     const params = {
       Item: {

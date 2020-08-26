@@ -11,22 +11,26 @@ let wrapped = mochaPlugin.getWrapper('transactionCreate', '/handlers/transaction
 const transactionPayload = {
   id: 'transaction_id',
   userId: 77777777,
-  reason: 'PURCHASE/NINTENDO',
+  reason: 'ATTENDANCE/EVENT',
   credits: 100
 }
 
 describe('transactionCreate', () => {
 
   let createdTransactionIds = [];
-  const existingUsers = [77777777, 77777771];
+  const userCredits = {
+    77777777: 0,
+    77777771: 100
+  };
 
   before(() => {
 
     AWSMock.mock('DynamoDB.DocumentClient', 'get', (params, callback) => {
+
         let returnValue = null;
-        if(params.TableName.includes('biztechUsers') && existingUsers.includes(params.Key.id)) {
+        if(params.TableName.includes('biztechUsers') && userCredits[params.Key.id] !== undefined) {
           // if searching for users
-          returnValue = { id: params.Key.id };
+          returnValue = { id: params.Key.id, credits: userCredits[params.Key.id] };
         }
         else if(createdTransactionIds.includes(params.Key.id)) {
           // if searching for transactions
@@ -154,11 +158,27 @@ describe('transactionCreate', () => {
     
   });
 
+  it('return 202 for trying to create a transaction when the user doesn\'t have enough credits', async () => {
+
+    const payload = {
+      ...transactionPayload,
+      id: 'negative_transaction_id',
+      reason: 'PURCHASE/STICKER',
+      credits: -100
+    }
+
+    const response = await wrapped.run({ body: JSON.stringify(payload) });
+    expect(response.statusCode).to.be.equal(202);
+    
+  });
+
   it('return 201 for successfully creating a transaction with negative balance', async () => {
 
     const payload = {
       ...transactionPayload,
       id: 'negative_transaction_id',
+      userId: 77777771,
+      reason: 'PURCHASE/STICKER',
       credits: -100
     }
 
