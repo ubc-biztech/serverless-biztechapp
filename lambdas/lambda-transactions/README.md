@@ -45,12 +45,12 @@ They correspond to the environmental variables that need to be provided for each
 
 ### Testing
 
-In addition to Apiary, the endpoints can be tested using API testing framework [dredd](https://dredd.org/en/latest/). To add extra tests, first make sure you have docker installed. Then, make changes to the blueprints located in `api-blueprints/` by adding requests and responses (or adding the necessary endpoints). Test the new endpoints and requests by running the following script:
+Test the lambda's logic by running the following script:
 ```
 npm run test
 ```
 
-Using the current API-B documentation, this script will spin up separate Docker containers for the API and database to tests the different endpoints for structure and return values. The logs can be viewed on the console, and will also be logged on the Apiary web application. Contact one of the lead developers for access to the account.
+The script makes use of Jest to run all the tests located in the `./tests` folder. 
 
 ### Deployment
 
