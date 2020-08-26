@@ -17,7 +17,7 @@ module.exports.getAll = async (event, ctx, callback) => {
     if (userId) {
       params.FilterExpression = 'userId = :query';
       params.ExpressionAttributeValues = {
-        ':query': userId
+        ':query': parseInt(userId, 10)
       }
     }
 
