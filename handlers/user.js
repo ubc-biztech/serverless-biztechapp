@@ -158,7 +158,8 @@ module.exports.update = async (event, ctx, callback) => {
 
   for (var key in data) {
     if (data.hasOwnProperty(key)) {
-      if (key != "id" && key != "year") {
+      if(key  === "credits") continue;
+      else if (key != "id" && key != "year") {
         updateExpression += key + "= :" + key + ",";
         expressionAttributeValues[":" + key] = data[key];
       } else if (key == "year") {
