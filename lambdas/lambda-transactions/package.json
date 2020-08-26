@@ -1,0 +1,22 @@
+{
+  "name": "lambda-transactions",
+  "version": "1.0.0",
+  "description": "lambda to update biztech user credits",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "prebuild": "chmod +x ./build.sh",
+    "build": "./build.sh",
+    "predeploy": "chmod +x ./build.sh ./deploy.sh",
+    "deploy": "./build.sh && ./deploy.sh"
+  },
+  "author": "ad2969",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.739.0"
+  },
+  "devDependencies": {
+    "aws-sdk-mock": "^5.1.0",
+    "jest": "^26.4.2"
+  }
+}

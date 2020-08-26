@@ -1,0 +1,40 @@
+{
+    "Records": [
+      {
+        "eventID": "c4ca4238a0b923820dcc509a6f75849b",
+        "eventName": "INSERT",
+        "eventVersion": "1.1",
+        "eventSource": "aws:dynamodb",
+        "awsRegion": "us-west-2",
+        "dynamodb": {
+          "Keys": {
+            "Id": {
+              "N": "101"
+            }
+          },
+          "NewImage": {
+            "createdAt": {
+              "N": "1598400855766"
+            },
+            "reason": {
+              "S": "ATTENDANCE/BLUEPRINT"
+            },
+            "credits": {
+              "N": "-100"
+            },
+            "id": {
+              "S": "transaction_id_1"
+            },
+            "userId": {
+              "N": "33333331"
+            }
+          },
+          "ApproximateCreationDateTime": 1428537600,
+          "SequenceNumber": "4440800000000014816587752",
+          "SizeBytes": 99,
+          "StreamViewType": "NEW_IMAGE"
+        },
+        "eventSourceARN": "arn:aws:dynamodb:us-west-2:432714361962:table/biztechTransactions/stream/2020-08-25T23:30:58.304"
+      }
+    ]
+  }
