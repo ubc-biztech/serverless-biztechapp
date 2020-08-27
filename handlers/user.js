@@ -69,11 +69,7 @@ module.exports.create = async (event, ctx, callback) => {
       .promise()
       .then(async result => {
         if (result.Item == null) {
-          const response = helpers.createResponse(
-            404,
-            "Invite code not found."
-          );
-          callback(null, response);
+          throw "404";
         } else {
           // invite code was found
           // add paid: true to user
@@ -86,8 +82,15 @@ module.exports.create = async (event, ctx, callback) => {
         }
       })
       .catch(error => {
-        console.error(error);
-        const response = helpers.createResponse(502, error);
+        let response;
+        if (error == "404") {
+          response = helpers.createResponse(
+            404,
+            "Invite code not found."
+          );
+        } else {
+          response = helpers.createResponse(502, error);
+        }
         callback(null, response);
       });
   }
@@ -139,7 +142,6 @@ module.exports.get = async (event, ctx, callback) => {
       }
     })
     .catch(error => {
-      console.error(error);
       const response = helpers.createResponse(502, error);
       callback(null, response);
     });

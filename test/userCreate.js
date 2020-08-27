@@ -111,6 +111,11 @@ describe('userCreate', () => {
   });
 
   it('returns 404 when invite code not found', async () => {
+    AWSMock.mock('DynamoDB.DocumentClient', 'put', function (params, callback) {
+      Promise.reject(
+          callback(null)
+          );
+    });
     AWSMock.mock('DynamoDB.DocumentClient', 'get', function (params, callback) {
       if (params.TableName == 'inviteCodes' + process.env.ENVIRONMENT) {
         Promise.resolve(
