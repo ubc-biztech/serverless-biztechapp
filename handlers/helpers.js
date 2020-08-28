@@ -1,10 +1,7 @@
 const AWS = require("aws-sdk");
+const { RESERVED_WORDS } = require('../constants/dynamodb');
 
 module.exports = {
-  isEmpty: function (obj) {
-    return Object.keys(obj).length === 0;
-  },
-
   createResponse: function (statusCode, body) {
     const response = {
       statusCode,
@@ -12,7 +9,10 @@ module.exports = {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Credentials': true
       },
-      body: JSON.stringify(body)
+      // helps stringify Error objects as well
+      body: (body && body.stack && body.message)
+        ? JSON.stringify(body, Object.getOwnPropertyNames(body))
+        : JSON.stringify(body)
     };
     return response;
   },
@@ -48,7 +48,7 @@ module.exports = {
       retryable: err.retryable,
       retryDelay: err.retryDelay
     });
-    console.log("DYNAMO DB ERROR", response);
+    console.log("DYNAMO DB ERROR", err);
     return response;
 
   },
@@ -97,6 +97,99 @@ module.exports = {
   },
 
   /**
+   * Create one item and put into db
+   * @param {Object} item - The item to put
+   * @param {String} table - Name of table to create item in
+   */
+  create: async function(item, table) {
+
+    const docClient = new AWS.DynamoDB.DocumentClient();
+
+    try {
+
+      // construct the param object
+      const params = {
+        Item: item,
+        TableName: table + process.env.ENVIRONMENT,
+        ConditionExpression: 'attribute_not_exists(id)'
+      };
+  
+      // put into db
+      const res = await docClient.put(params).promise();
+      return res;
+
+    }
+    catch(err) {
+      
+      const errorResponse = this.dynamoErrorResponse(err);
+      throw errorResponse;
+
+    }
+
+  },
+
+  /**
+   * Gets one item from db
+   * @param {Number} id - The id of the item to get
+   * @param {String} table - Name of the table
+   */
+  getOne: async function (id, table) {
+
+    const docClient = new AWS.DynamoDB.DocumentClient();
+
+    try {
+
+      // construct the param object
+      const params = {
+        Key: { id },
+        TableName: table + process.env.ENVIRONMENT,
+      };
+
+      // get the item from db
+      const item = await docClient.get(params).promise();
+      return item.Item || null;
+
+    }
+    catch(err) {
+      
+      const errorResponse = this.dynamoErrorResponse(err);
+      throw errorResponse;
+
+    }
+
+  },
+
+  /**
+   * Scans the rows in a DB table
+   * @param {String} table - Name of the table to scan
+   * @param {Object} filters - Extra scan params (filters, etc)
+   */
+  scan: async function (table, filters = {}) {
+
+    const docClient = new AWS.DynamoDB.DocumentClient();
+
+    try {
+
+      // construct the param object
+      const params = {
+        TableName: table + process.env.ENVIRONMENT,
+        ...filters
+      }
+      
+      // scan the db
+      const results = await docClient.scan(params).promise();
+      return results.Items || {};
+
+    }
+    catch(err) {
+
+      const errorResponse = this.dynamoErrorResponse(err);
+      throw errorResponse;
+
+    }
+  },
+
+  /**
    *
    * @param {Array} batch - List of batches in form of [{Key: value}]
    * @param {String} tableName - Name of table to call batchGet
@@ -117,17 +210,61 @@ module.exports = {
     return docClient.batchGet(batchRequestParams).promise();
   },
 
+  /**
+   * Deletes one item from db
+   * @param {Number} id - The id of the item to delete
+   * @param {String} table - Name of the table
+   */
+  deleteOne: async function (id, table) {
+
+    const docClient = new AWS.DynamoDB.DocumentClient();
+
+    try {
+
+      // construct the param object
+      const params = {
+        Key: { id },
+        TableName: table + process.env.ENVIRONMENT,
+      };
+
+      // delete the item from db
+      const res = await docClient.delete(params).promise();
+
+      return res;
+
+    }
+    catch(err) {
+      
+      const errorResponse = this.dynamoErrorResponse(err);
+      throw errorResponse;
+
+    }
+
+  },
+
   createUpdateExpression: function (obj) {
+    let val = 0;
     let updateExpression = "set ";
     let expressionAttributeValues = {};
+    let expressionAttributeNames = {};
 
     // TODO: Add a filter for valid object keys
     // loop through keys and create updateExpression string and
     // expressionAttributeValues object
-    for (var key in obj) {
-      // TODO: Add a filter for valid object keys
+    for (const key in obj) {
+      
       if (obj.hasOwnProperty(key)) {
-        if (key != "id" && key != "createdAt") {
+        // skip if "id" or "createdAt"
+        if(key === "id" || key === "createdAt") continue;
+        // use expressionAttributeNames if a reserved dynamodb word
+        else if(RESERVED_WORDS.includes(key.toUpperCase())) {
+          updateExpression += `#v${val} = :val${val},`;
+          expressionAttributeValues[`:val${val}`] = obj[key];
+          expressionAttributeNames[`#v${val}`] = key;
+          val++;
+        }
+        // else do the normal
+        else {
           updateExpression += key + "= :" + key + ",";
           expressionAttributeValues[":" + key] = obj[key];
         }
@@ -139,59 +276,53 @@ module.exports = {
 
     return {
       updateExpression,
-      expressionAttributeValues
+      expressionAttributeValues,
+      expressionAttributeNames
     };
   },
 
   /**
    *
    * @param {*} id - String or Integer item ID
-   * @param {Object} obj - object containing key value paris
+   * @param {Object} obj - object containing key value pairs
    * @param {String} table - name of table, ie 'biztechUsers'
    */
   updateDB: async function (id, obj, table) {
-    const docClient = new AWS.DynamoDB.DocumentClient();
-    var updateExpression = "set ";
-    var expressionAttributeValues = {};
 
-    // TODO: Add a filter for valid object keys
-    // loop through keys and create updateExpression string and
-    // expressionAttributeValues object
-    for (var key in obj) {
-      if (obj.hasOwnProperty(key)) {
-        if (key != "id") {
-          updateExpression += key + "= :" + key + ",";
-          expressionAttributeValues[":" + key] = obj[key];
-        }
-      }
+    const docClient = new AWS.DynamoDB.DocumentClient();
+
+    try {
+
+      // construct the update expressions
+      const {
+        updateExpression,
+        expressionAttributeValues,
+        expressionAttributeNames
+      } = this.createUpdateExpression(obj);
+  
+      // construct the param object
+      var params = {
+        Key: { id },
+        TableName: table + process.env.ENVIRONMENT,
+        ExpressionAttributeValues: expressionAttributeValues,
+        ExpressionAttributeNames: expressionAttributeNames,
+        UpdateExpression: updateExpression,
+        ReturnValues: "UPDATED_NEW",
+        ConditionExpression: "attribute_exists(id)"
+      };
+
+      // do the magic
+      const res = await docClient.update(params).promise();
+      return res;
+
+    }
+    catch(err) {
+
+      const errorResponse = this.dynamoErrorResponse(err);
+      throw errorResponse;
+
     }
 
-    const timestamp = new Date().getTime();
-    updateExpression += "updatedAt = :updatedAt";
-    expressionAttributeValues[":updatedAt"] = timestamp;
-
-    var params = {
-      Key: { id },
-      TableName: table + process.env.ENVIRONMENT,
-      ExpressionAttributeValues: expressionAttributeValues,
-      UpdateExpression: updateExpression,
-      ReturnValues: "UPDATED_NEW",
-      ConditionExpression: "attribute_exists(id)"
-    };
-
-    // call dynamoDb
-    return await docClient
-      .update(params)
-      .promise()
-      .then(result => {
-        const response = this.createResponse(200, "Update succeeded.")
-        return response;
-      })
-      .catch(error => {
-        console.error(error);
-        const response = this.createResponse(502, error)
-        return response;
-      });
   },
 
   /**

@@ -34,7 +34,7 @@ describe('prizeCreate', () => {
     });
 
     AWSMock.mock('DynamoDB.DocumentClient', 'put', (params, callback) => {
-      if(params.Item.id && createdPrizeIds.includes(params.Item.id)) callback(new Error('Prize already exists!'));
+      if(params.Item.id && createdPrizeIds.includes(params.Item.id)) callback('Prize already exists!');
       else {
         createdPrizeIds.push(params.Item.id);
         callback(null, 'Successfully put item in database');

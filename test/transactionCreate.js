@@ -40,7 +40,7 @@ describe('transactionCreate', () => {
     });
 
     AWSMock.mock('DynamoDB.DocumentClient', 'put', (params, callback) => {
-      if(params.Item.id && createdTransactionIds.includes(params.Item.id)) callback(new Error('Transaction already exists!'));
+      if(params.Item.id && createdTransactionIds.includes(params.Item.id)) callback('Transaction already exists!');
       else {
         createdTransactionIds.push(params.Item.id);
         callback(null, 'Successfully put item in database');

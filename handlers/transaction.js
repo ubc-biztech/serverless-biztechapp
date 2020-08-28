@@ -1,43 +1,41 @@
 'use strict';
-const AWS = require('aws-sdk');
 const helpers = require('./helpers');
+const { isEmpty } = require('../utils/functions');
 
 module.exports.getAll = async (event, ctx, callback) => {
 
-  const docClient = new AWS.DynamoDB.DocumentClient();
-
   try {
 
-    // construct the params
-    const params = { TableName: 'biztechTransactions' + process.env.ENVIRONMENT };
-
+    const filters = {};
+    
     // check if a query was provided
     const userId = event && event.queryStringParameters && event.queryStringParameters.userId;
-
+    
+    // construct the filter params if needed
     if (userId) {
-      params.FilterExpression = 'userId = :query';
-      params.ExpressionAttributeValues = {
+      filters.FilterExpression = 'userId = :query';
+      filters.ExpressionAttributeValues = {
         ':query': parseInt(userId, 10)
       }
     }
 
     // scan the table
-    const transaction = await docClient.scan(params).promise();
+    const transaction = await helpers.scan('biztechTransactions', filters);
 
     let items = {};
     
     // re-organize the response
-    if(userId && transaction.Items !== null) {
-      items.count = transaction.Items.length;
-      items.transactions = transaction.Items;
-      items.totalCredits = transaction.Items.reduce((accumulator, item) => accumulator + item.credits, 0);
+    if(userId && transaction !== null) {
+      items.count = transaction.length;
+      items.transactions = transaction;
+      items.totalCredits = transaction.reduce((accumulator, item) => accumulator + item.credits, 0);
     }
     else if(userId) {
       items.count = 0;
       items.transactions = {};
       items.totalCredits = 0;
     }
-    else if(transaction.Items !== null) items = transaction.Items
+    else if(transaction !== null) items = transaction
 
     const response = helpers.createResponse(200, items);
 
@@ -47,19 +45,13 @@ module.exports.getAll = async (event, ctx, callback) => {
 
   } catch(err) {
 
-    // check if it is an unidentified error
-    let errorObject = err;
-    if(!errorObject.statusCode && !errorObject.headers) errorObject = helpers.dynamoErrorResponse(err);
-
-    callback(null, errorObject);
+    callback(null, err);
     return null;
   }
 
 };
 
 module.exports.create = async (event, ctx, callback) => {
-
-  const docClient = new AWS.DynamoDB.DocumentClient();
 
   try {
 
@@ -77,17 +69,17 @@ module.exports.create = async (event, ctx, callback) => {
     // check if there are transactions with the given id
     // check that the user id exists
     const [existingTransaction, existingUser] = await Promise.all([
-        docClient.get({ Key: { id: data.id }, TableName: 'biztechTransactions' + process.env.ENVIRONMENT }).promise(),
-        docClient.get({ Key: { id: data.userId }, TableName: 'biztechUsers' + process.env.ENVIRONMENT }).promise()
+        helpers.getOne(data.id, 'biztechTransactions'),
+        helpers.getOne(data.userId, 'biztechUsers')
     ]);
 
-    if(existingTransaction.Item && existingTransaction.Item !== null) throw helpers.duplicateResponse('id', data);
-    if(!existingUser.Item) throw helpers.notFoundResponse('User', data.userId);
+    if(!isEmpty(existingTransaction)) throw helpers.duplicateResponse('id', data);
+    if(isEmpty(existingUser)) throw helpers.notFoundResponse('User', data.userId);
 
     // if credits is negative value, check if the user has enough credits
     if(data.credits < 0) {
 
-      const userCredits = existingUser.Item.credits || 0;
+      const userCredits = existingUser.credits || 0;
       // 202 means "accepted, but not acted upon"
       if(userCredits + data.credits < 0) throw helpers.createResponse(202, {
         message: 'Transaction was not created because user does not have enough credits!'
@@ -95,25 +87,21 @@ module.exports.create = async (event, ctx, callback) => {
 
     }
 
-    // construct the param object
-    const params = {
-      Item: {
-          id: data.id,
-          userId: data.userId,
-          reason: data.reason,
-          credits: data.credits,
-          createdAt: timestamp
-      },
-      TableName: 'biztechTransactions' + process.env.ENVIRONMENT,
-      ConditionExpression: 'attribute_not_exists(id)'
+    // construct the item object
+    const item = {
+      id: data.id,
+      userId: data.userId,
+      reason: data.reason,
+      credits: data.credits,
+      createdAt: timestamp
     };
 
     // do the magic
-    const res = await docClient.put(params).promise();
+    const res = await helpers.create(item, 'biztechTransactions');
     const response = helpers.createResponse(201, {
       message: 'Transaction Created!',
-      params: params,
-      response: res
+      response: res,
+      item
     });
 
     // return the response object
@@ -122,11 +110,7 @@ module.exports.create = async (event, ctx, callback) => {
 
   } catch(err) {
 
-    // check if it is an unidentified error
-    let errorObject = err;
-    if(!errorObject.statusCode && !errorObject.headers) errorObject = helpers.dynamoErrorResponse(err);
-
-    callback(null, errorObject);
+    callback(null, err);
     return null;
   }
 

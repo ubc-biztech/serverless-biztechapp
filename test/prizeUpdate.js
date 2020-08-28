@@ -36,7 +36,7 @@ describe('prizeUpdate', () => {
       if(params.Key.id && existingPrizes.includes(params.Key.id)) {
         callback(null, "successfully updated item in database");
       }
-      else callback(new Error(""));
+      else callback("item not found in database");
     });
     
   });

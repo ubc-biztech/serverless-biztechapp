@@ -38,7 +38,7 @@ describe('prizeDelete', () => {
         if(params.Key.id && existingPrizes.includes(params.Key.id)) {
           callback(null, "successfully deleted item in database");
         }
-        else callback(new Error(""));
+        else callback("item not found in database");
     });
     
   });
@@ -62,7 +62,6 @@ describe('prizeDelete', () => {
     const unknownId = 'nonExistantPrize';
 
     const response = await wrapped.run({ pathParameters: { id: unknownId } });
-    console.log({response})
     expect(response.statusCode).to.be.equal(404);
     
   });

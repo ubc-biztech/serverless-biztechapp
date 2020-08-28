@@ -1,22 +1,17 @@
 'use strict';
-const AWS = require('aws-sdk');
 const helpers = require('./helpers');
+const { isEmpty } = require('../utils/functions');
 
 module.exports.getAll = async (event, ctx, callback) => {
-
-  const docClient = new AWS.DynamoDB.DocumentClient();
 
   try {
 
     // scan the table
-    const prizes = await docClient.scan({
-      TableName: 'biztechPrizes' + process.env.ENVIRONMENT,
-    }).promise();
+    const prizes = await helpers.scan("biztechPrizes");
 
-    let response = {}
-    
     // re-organize the response
-    if(prizes.Items !== null) response = helpers.createResponse(200, prizes.Items);
+    let response = {}
+    if(prizes !== null) response = helpers.createResponse(200, prizes);
 
     // return the response object
     callback(null, response);
@@ -24,19 +19,13 @@ module.exports.getAll = async (event, ctx, callback) => {
 
   } catch(err) {
 
-    // check if it is an unidentified error
-    let errorObject = err;
-    if(!errorObject.statusCode && !errorObject.headers) errorObject = helpers.dynamoErrorResponse(err);
-
-    callback(null, errorObject);
+    callback(null, err);
     return null;
   }
 
 };
 
 module.exports.create = async (event, ctx, callback) => {
-
-  const docClient = new AWS.DynamoDB.DocumentClient();
 
   try {
 
@@ -53,34 +42,27 @@ module.exports.create = async (event, ctx, callback) => {
     });
 
     // check if there are prizes with the given id
-    const existingPrize = await docClient.get({
-      Key: { id: data.id },
-      TableName: 'biztechPrizes' + process.env.ENVIRONMENT,
-    }).promise();
+    const existingPrize = await helpers.getOne(data.id, "biztechPrizes");
+    if(!isEmpty(existingPrize)) throw helpers.duplicateResponse('id', data);
 
-    if(existingPrize.Item && existingPrize.Item !== null) throw helpers.duplicateResponse('id', data);
-
-    // construct the param object
-    const params = {
-      Item: {
-          id: data.id,
-          name: data.name,
-          price: data.price,
-          imageHash: data.imageHash,
-          links: data.links,
-          createdAt: timestamp,
-          updatedAt: timestamp
-      },
-      TableName: 'biztechPrizes' + process.env.ENVIRONMENT,
-      ConditionExpression: 'attribute_not_exists(id)'
+    // construct the item
+    const item = {
+      id: data.id,
+      name: data.name,
+      price: data.price,
+      imageHash: data.imageHash,
+      links: data.links,
+      createdAt: timestamp,
+      updatedAt: timestamp
     };
 
     // do the magic
-    const res = await docClient.put(params).promise();
+    const res = await helpers.create(item, 'biztechPrizes');
+
     const response = helpers.createResponse(201, {
       message: 'Prize Created!',
-      params: params,
-      response: res
+      response: res,
+      item
     });
 
     // return the response object
@@ -89,11 +71,7 @@ module.exports.create = async (event, ctx, callback) => {
 
   } catch(err) {
 
-    // check if it is an unidentified error
-    let errorObject = err;
-    if(!errorObject.statusCode && !errorObject.headers) errorObject = helpers.dynamoErrorResponse(err);
-
-    callback(null, errorObject);
+    callback(null, err);
     return null;
   }
 
@@ -101,11 +79,8 @@ module.exports.create = async (event, ctx, callback) => {
 
 module.exports.update = async (event, ctx, callback) => {
 
-  const docClient = new AWS.DynamoDB.DocumentClient();
-
   try {
 
-    const timestamp = new Date().getTime();
     const data = JSON.parse(event.body);
     
     // check if id was given
@@ -121,70 +96,30 @@ module.exports.update = async (event, ctx, callback) => {
     });
 
     // check that the id exists
-    const existingPrize = await docClient.get({
-      Key: { id },
-      TableName: 'biztechPrizes' + process.env.ENVIRONMENT,
-    }).promise();
-
-    if(!existingPrize.Item) throw helpers.notFoundResponse('Prize', id);
-
-    // construct the update expressions
-    let updateExpression = "set ";
-    let expressionAttributeValues = {};
-    let expressionAttributeNames = {};
-    for (const key in data) {
-      if (data.hasOwnProperty(key)) {
-        if(key === "name") {  // "name" is a reserved word in dynamoDB
-          updateExpression += "#nm = :nmval,";
-          expressionAttributeValues[":nmval"] = data["name"];
-          expressionAttributeNames["#nm"] = "name";
-        } else {
-          updateExpression += key + "= :" + key + ",";
-          expressionAttributeValues[":" + key] = data[key];
-        }
-      }
-    }
-    updateExpression += "updatedAt = :updatedAt";
-    expressionAttributeValues[":updatedAt"] = timestamp;
-
-    // construct the param object
-    const params = {
-      Key: { id },
-      TableName: 'biztechPrizes' + process.env.ENVIRONMENT,
-      ExpressionAttributeValues: expressionAttributeValues,
-      ExpressionAttributeNames: expressionAttributeNames,
-      UpdateExpression: updateExpression,
-      ReturnValues: "UPDATED_NEW",
-      ConditionExpression: "attribute_exists(id)"
-    };
+    const existingPrize = await helpers.getOne(id, "biztechPrizes")
+    if(isEmpty(existingPrize)) throw helpers.notFoundResponse('Prize', id);
 
     // do the magic
-    const res = await docClient.update(params).promise();
+    const res = await helpers.updateDB(id, data, "biztechPrizes");
+    
     const response = helpers.createResponse(200, {
-      message: 'Prize Updated!',
-      params: params,
+      message: "Prize updated!",
       response: res
     });
-    
+
     // return the response object
     callback(null, response);
     return null;
 
   } catch(err) {
 
-    // check if it is an unidentified error
-    let errorObject = err;
-    if(!errorObject.statusCode && !errorObject.headers) errorObject = helpers.dynamoErrorResponse(err);
-
-    callback(null, errorObject);
+    callback(null, err);
     return null;
   }
 
 };
 
 module.exports.delete = async (event, ctx, callback) => {
-  
-  const docClient = new AWS.DynamoDB.DocumentClient();
 
   try {
     
@@ -193,25 +128,13 @@ module.exports.delete = async (event, ctx, callback) => {
     const id = event.pathParameters.id;
 
     // check that the id exists
-    const existingPrize = await docClient.get({
-      Key: { id },
-      TableName: 'biztechPrizes' + process.env.ENVIRONMENT,
-    }).promise();
-
-    if(!existingPrize.Item) throw helpers.notFoundResponse('Prize', id);
-
-    // construct the param object
-    const params = {
-      Key: { id },
-      TableName: 'biztechPrizes' + process.env.ENVIRONMENT
-    };
+    const existingPrize = await helpers.getOne(id, 'biztechPrizes');
+    if(isEmpty(existingPrize)) throw helpers.notFoundResponse('Prize', id);
 
     // do the magic
-    const res = await docClient.delete(params).promise()
-
+    const res = await helpers.deleteOne(id, 'biztechPrizes');
     const response = helpers.createResponse(200, {
       message: 'Prize deleted!',
-      params: params,
       response: res
     })
 
@@ -219,11 +142,7 @@ module.exports.delete = async (event, ctx, callback) => {
 
   } catch(err) {
 
-    // check if it is an unidentified error
-    let errorObject = err;
-    if(!errorObject.statusCode && !errorObject.headers) errorObject = helpers.dynamoErrorResponse(err);
-
-    callback(null, errorObject);
+    callback(null, err);
     return null;
   }
 
