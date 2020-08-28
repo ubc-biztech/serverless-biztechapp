@@ -9,14 +9,14 @@ const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper('prizeCreate', '/handlers/prize.js', 'delete');
 
 const prizePayload = {
-    id: 'prize001',
-    name: 'i am a prize',
-    price: 100,
-    imageHash: 'bf9f97372c2ebbb3',
-    links: {
-        sponsor: 'https://www.google.com'
-    }
-}
+  id: 'prize001',
+  name: 'i am a prize',
+  price: 100,
+  imageHash: 'bf9f97372c2ebbb3',
+  links: {
+    sponsor: 'https://www.google.com'
+  }
+};
 
 describe('prizeDelete', () => {
 
@@ -25,22 +25,28 @@ describe('prizeDelete', () => {
   before(() => {
 
     AWSMock.mock('DynamoDB.DocumentClient', 'get', (params, callback) => {
-        let returnValue = null;
-        if(existingPrizes.includes(params.Key.id)) returnValue = {
-            ...prizePayload,
-            id: params.Key.id
-        };
-        callback(null, { Item: returnValue });
+
+      let returnValue = null;
+      if(existingPrizes.includes(params.Key.id)) returnValue = {
+        ...prizePayload,
+        id: params.Key.id
+      };
+      callback(null, { Item: returnValue });
+
     });
 
 
     AWSMock.mock('DynamoDB.DocumentClient', 'delete', (params, callback) => {
-        if(params.Key.id && existingPrizes.includes(params.Key.id)) {
-          callback(null, "successfully deleted item in database");
-        }
-        else callback("item not found in database");
+
+      if(params.Key.id && existingPrizes.includes(params.Key.id)) {
+
+        callback(null, 'successfully deleted item in database');
+
+      }
+      else callback('item not found in database');
+
     });
-    
+
   });
 
   after(() => {
@@ -54,7 +60,7 @@ describe('prizeDelete', () => {
 
     const response = await wrapped.run({ pathParameters: {} });
     expect(response.statusCode).to.be.equal(400);
-    
+
   });
 
   it('return 404 for trying to delete a prize that doesn\'t exist', async () => {
@@ -63,7 +69,7 @@ describe('prizeDelete', () => {
 
     const response = await wrapped.run({ pathParameters: { id: unknownId } });
     expect(response.statusCode).to.be.equal(404);
-    
+
   });
 
   it('return 200 for successfully deleting a prize', async () => {
@@ -72,7 +78,7 @@ describe('prizeDelete', () => {
 
     const response = await wrapped.run({ pathParameters: { id: validId } });
     expect(response.statusCode).to.be.equal(200);
-    
+
   });
 
 });

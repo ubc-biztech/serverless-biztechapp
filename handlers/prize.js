@@ -7,10 +7,10 @@ module.exports.getAll = async (event, ctx, callback) => {
   try {
 
     // scan the table
-    const prizes = await helpers.scan("biztechPrizes");
+    const prizes = await helpers.scan('biztechPrizes');
 
     // re-organize the response
-    let response = {}
+    let response = {};
     if(prizes !== null) response = helpers.createResponse(200, prizes);
 
     // return the response object
@@ -21,6 +21,7 @@ module.exports.getAll = async (event, ctx, callback) => {
 
     callback(null, err);
     return null;
+
   }
 
 };
@@ -36,13 +37,13 @@ module.exports.create = async (event, ctx, callback) => {
     helpers.checkPayloadProps(data, {
       id: { required: true, type: 'string' },
       name: { required: true, type: 'string' },
-      imageHash: { type: 'string'},
+      imageHash: { type: 'string' },
       price: { required: true, type: 'number' },
       links: { type: 'object' }
     });
 
     // check if there are prizes with the given id
-    const existingPrize = await helpers.getOne(data.id, "biztechPrizes");
+    const existingPrize = await helpers.getOne(data.id, 'biztechPrizes');
     if(!isEmpty(existingPrize)) throw helpers.duplicateResponse('id', data);
 
     // construct the item
@@ -73,6 +74,7 @@ module.exports.create = async (event, ctx, callback) => {
 
     callback(null, err);
     return null;
+
   }
 
 };
@@ -82,28 +84,28 @@ module.exports.update = async (event, ctx, callback) => {
   try {
 
     const data = JSON.parse(event.body);
-    
+
     // check if id was given
-    if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdResponse('prize');
+    if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('prize');
     const id = event.pathParameters.id;
 
     // check request body
     helpers.checkPayloadProps(data, {
       name: { type: 'string' },
-      imageHash: { type: 'string'},
+      imageHash: { type: 'string' },
       price: { type: 'number' },
       links: { type: 'object' }
     });
 
     // check that the id exists
-    const existingPrize = await helpers.getOne(id, "biztechPrizes")
+    const existingPrize = await helpers.getOne(id, 'biztechPrizes');
     if(isEmpty(existingPrize)) throw helpers.notFoundResponse('Prize', id);
 
     // do the magic
-    const res = await helpers.updateDB(id, data, "biztechPrizes");
-    
+    const res = await helpers.updateDB(id, data, 'biztechPrizes');
+
     const response = helpers.createResponse(200, {
-      message: "Prize updated!",
+      message: 'Prize updated!',
       response: res
     });
 
@@ -115,6 +117,7 @@ module.exports.update = async (event, ctx, callback) => {
 
     callback(null, err);
     return null;
+
   }
 
 };
@@ -122,9 +125,9 @@ module.exports.update = async (event, ctx, callback) => {
 module.exports.delete = async (event, ctx, callback) => {
 
   try {
-    
+
     // check if id was given
-    if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdResponse('prize');
+    if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('prize');
     const id = event.pathParameters.id;
 
     // check that the id exists
@@ -136,7 +139,7 @@ module.exports.delete = async (event, ctx, callback) => {
     const response = helpers.createResponse(200, {
       message: 'Prize deleted!',
       response: res
-    })
+    });
 
     callback(null, response);
 
@@ -144,6 +147,7 @@ module.exports.delete = async (event, ctx, callback) => {
 
     callback(null, err);
     return null;
+
   }
 
 };

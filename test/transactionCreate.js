@@ -13,7 +13,7 @@ const transactionPayload = {
   userId: 77777777,
   reason: 'ATTENDANCE/EVENT',
   credits: 100
-}
+};
 
 describe('transactionCreate', () => {
 
@@ -27,26 +27,35 @@ describe('transactionCreate', () => {
 
     AWSMock.mock('DynamoDB.DocumentClient', 'get', (params, callback) => {
 
-        let returnValue = null;
-        if(params.TableName.includes('biztechUsers') && userCredits[params.Key.id] !== undefined) {
-          // if searching for users
-          returnValue = { id: params.Key.id, credits: userCredits[params.Key.id] };
-        }
-        else if(createdTransactionIds.includes(params.Key.id)) {
-          // if searching for transactions
-          returnValue = { ...transactionPayload, id: params.Key.id };
-        }
-        callback(null, { Item: returnValue });
+      let returnValue = null;
+      if(params.TableName.includes('biztechUsers') && userCredits[params.Key.id] !== undefined) {
+
+        // if searching for users
+        returnValue = { id: params.Key.id, credits: userCredits[params.Key.id] };
+
+      }
+      else if(createdTransactionIds.includes(params.Key.id)) {
+
+        // if searching for transactions
+        returnValue = { ...transactionPayload, id: params.Key.id };
+
+      }
+      callback(null, { Item: returnValue });
+
     });
 
     AWSMock.mock('DynamoDB.DocumentClient', 'put', (params, callback) => {
+
       if(params.Item.id && createdTransactionIds.includes(params.Item.id)) callback('Transaction already exists!');
       else {
+
         createdTransactionIds.push(params.Item.id);
         callback(null, 'Successfully put item in database');
+
       }
+
     });
-    
+
   });
 
   after(() => {
@@ -59,48 +68,48 @@ describe('transactionCreate', () => {
 
     const invalidPayload = {
       ...transactionPayload
-    }
+    };
     delete invalidPayload.id;
 
     const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
     expect(response.statusCode).to.be.equal(406);
-    
+
   });
 
   it('return 406 for trying to create a transaction with no user id', async () => {
 
     const invalidPayload = {
       ...transactionPayload
-    }
+    };
     delete invalidPayload.userId;
 
     const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
     expect(response.statusCode).to.be.equal(406);
-    
+
   });
 
   it('return 406 for trying to create a transaction with no reason', async () => {
 
     const invalidPayload = {
       ...transactionPayload
-    }
+    };
     delete invalidPayload.reason;
 
     const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
     expect(response.statusCode).to.be.equal(406);
-    
+
   });
 
   it('return 406 for trying to create a transaction with no credits', async () => {
 
     const invalidPayload = {
       ...transactionPayload
-    }
+    };
     delete invalidPayload.credits;
 
     const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
     expect(response.statusCode).to.be.equal(406);
-    
+
   });
 
   it('return 406 for trying to create a transaction with invalid user id', async () => {
@@ -108,11 +117,11 @@ describe('transactionCreate', () => {
     const invalidPayload = {
       ...transactionPayload,
       userId: 'not a user id'
-    }
+    };
 
     const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
     expect(response.statusCode).to.be.equal(406);
-    
+
   });
 
   it('return 406 for trying to create a transaction with invalid reason', async () => {
@@ -120,11 +129,11 @@ describe('transactionCreate', () => {
     const invalidPayload = {
       ...transactionPayload,
       reason: 123456789
-    }
+    };
 
     const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
     expect(response.statusCode).to.be.equal(406);
-    
+
   });
 
   it('return 406 for trying to create a transaction with invalid credits', async () => {
@@ -132,11 +141,11 @@ describe('transactionCreate', () => {
     const invalidPayload = {
       ...transactionPayload,
       credits: 'not a credit'
-    }
+    };
 
     const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
     expect(response.statusCode).to.be.equal(406);
-    
+
   });
 
   it('return 404 for trying to create a transaction with a user that doesn\'t exist ', async () => {
@@ -144,18 +153,18 @@ describe('transactionCreate', () => {
     const invalidPayload = {
       ...transactionPayload,
       userId: 11111111
-    }
+    };
 
     const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
     expect(response.statusCode).to.be.equal(404);
-    
+
   });
 
   it('return 201 for successfully creating a transaction', async () => {
 
     const response = await wrapped.run({ body: JSON.stringify(transactionPayload) });
     expect(response.statusCode).to.be.equal(201);
-    
+
   });
 
   it('return 202 for trying to create a transaction when the user doesn\'t have enough credits', async () => {
@@ -165,11 +174,11 @@ describe('transactionCreate', () => {
       id: 'negative_transaction_id',
       reason: 'PURCHASE/STICKER',
       credits: -100
-    }
+    };
 
     const response = await wrapped.run({ body: JSON.stringify(payload) });
     expect(response.statusCode).to.be.equal(202);
-    
+
   });
 
   it('return 201 for successfully creating a transaction with negative balance', async () => {
@@ -180,18 +189,18 @@ describe('transactionCreate', () => {
       userId: 77777771,
       reason: 'PURCHASE/STICKER',
       credits: -100
-    }
+    };
 
     const response = await wrapped.run({ body: JSON.stringify(payload) });
     expect(response.statusCode).to.be.equal(201);
-    
+
   });
 
   it('return 409 for trying to create a transaction with the same id', async () => {
 
     const response = await wrapped.run({ body: JSON.stringify(transactionPayload) });
     expect(response.statusCode).to.be.equal(409);
-    
+
   });
 
 });

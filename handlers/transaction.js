@@ -7,35 +7,41 @@ module.exports.getAll = async (event, ctx, callback) => {
   try {
 
     const filters = {};
-    
+
     // check if a query was provided
     const userId = event && event.queryStringParameters && event.queryStringParameters.userId;
-    
+
     // construct the filter params if needed
     if (userId) {
+
       filters.FilterExpression = 'userId = :query';
       filters.ExpressionAttributeValues = {
         ':query': parseInt(userId, 10)
-      }
+      };
+
     }
 
     // scan the table
     const transaction = await helpers.scan('biztechTransactions', filters);
 
     let items = {};
-    
+
     // re-organize the response
     if(userId && transaction !== null) {
+
       items.count = transaction.length;
       items.transactions = transaction;
       items.totalCredits = transaction.reduce((accumulator, item) => accumulator + item.credits, 0);
+
     }
     else if(userId) {
+
       items.count = 0;
       items.transactions = {};
       items.totalCredits = 0;
+
     }
-    else if(transaction !== null) items = transaction
+    else if(transaction !== null) items = transaction;
 
     const response = helpers.createResponse(200, items);
 
@@ -47,6 +53,7 @@ module.exports.getAll = async (event, ctx, callback) => {
 
     callback(null, err);
     return null;
+
   }
 
 };
@@ -62,15 +69,15 @@ module.exports.create = async (event, ctx, callback) => {
     helpers.checkPayloadProps(data, {
       id: { required: true, type: 'string' },
       userId: { required: true, type: 'number' },
-      reason: { required: true, type: 'string'},
+      reason: { required: true, type: 'string' },
       credits: { required: true, type: 'number' },
     });
 
     // check if there are transactions with the given id
     // check that the user id exists
     const [existingTransaction, existingUser] = await Promise.all([
-        helpers.getOne(data.id, 'biztechTransactions'),
-        helpers.getOne(data.userId, 'biztechUsers')
+      helpers.getOne(data.id, 'biztechTransactions'),
+      helpers.getOne(data.userId, 'biztechUsers')
     ]);
 
     if(!isEmpty(existingTransaction)) throw helpers.duplicateResponse('id', data);
@@ -112,6 +119,7 @@ module.exports.create = async (event, ctx, callback) => {
 
     callback(null, err);
     return null;
+
   }
 
 };
