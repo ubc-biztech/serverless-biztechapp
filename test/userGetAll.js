@@ -10,42 +10,56 @@ let wrapped = mochaPlugin.getWrapper('userGetAll', '/handlers/user.js', 'getAll'
 
 
 describe('userGetAll', () => {
+
   afterEach(() => {
+
     AWSMock.restore('DynamoDB.DocumentClient');
+
   });
 
-  it('successfully returns 200 get all user', async () => {
+  it('successfully returns 200 and empty array when no users exist', async () => {
+
+    AWSMock.mock('DynamoDB.DocumentClient', 'scan', function (params, callback){
+
+      Promise.resolve(
+        callback(null, { Items: null })
+      );
+
+    });
+    const response = await wrapped.run();
+    expect(response).to.not.be.empty;
+    expect(response.statusCode).to.equal(200);
+
+    const body = JSON.parse(response.body);
+    expect(body.length).to.equal(0);
+
+  });
+
+  it('successfully returns 200 with all the users', async () => {
+
     const users = [{
       ename: 'some random user'
     }, {
       ename: 'another random user'
     }];
+
     AWSMock.mock('DynamoDB.DocumentClient', 'scan', function (params, callback){
-        Promise.resolve(
-            callback(null, {
-                Items: users,
-                ScannedCount: 2
-            })
-        )
-      });
+
+      Promise.resolve(
+        callback(null, {
+          Items: users,
+          ScannedCount: 2
+        })
+      );
+
+    });
     const response = await wrapped.run();
     expect(response).to.not.be.empty;
+
     expect(response.statusCode).to.equal(200);
-    const body = JSON.parse(response.body)
-    expect(body.items.length).to.equal(2);
-    expect(body.length).to.equal(2)
+    const body = JSON.parse(response.body);
+    expect(body.length).to.equal(2);
+
   });
 
-  it('return 404 when users not found', async () => {
-    AWSMock.mock('DynamoDB.DocumentClient', 'scan', function (params, callback){
-        Promise.resolve(
-            callback(null, {
-                Items: null
-            })
-        )
-      });
-      const response = await wrapped.run();
-      expect(response).to.not.be.empty;
-      expect(response.statusCode).to.equal(404);
-  }) 
 });

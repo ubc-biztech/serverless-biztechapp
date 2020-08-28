@@ -17,25 +17,33 @@ const testEntry = {
 };
 
 describe('userCreate', () => {
+
   beforeEach(() => {
+
     AWSMock.mock('DynamoDB.DocumentClient', 'put', function (params, callback) {
+
       Promise.resolve(
-          callback(null, {
-            Item: 'not null user'
-          } 
+        callback(null, {
+          Item: 'not null user'
+        }
         ));
+
     });
+
   });
 
   it('returns 201 when given valid data', async () => {
+
     const response = await wrapped.run({ body: JSON.stringify(testEntry) });
     expect(response.statusCode).to.equal(201);
     const responseBody = JSON.parse(response.body);
     expect(responseBody.params.Item.id).to.equal(6456456464);
     expect(responseBody.params.Item.admin).to.equal(false);
+
   });
 
   it('returns 406 when not given ID', async () => {
+
     const body = {
       ...testEntry
     };
@@ -44,57 +52,75 @@ describe('userCreate', () => {
     const response = await wrapped.run({ body: JSON.stringify(body) });
     expect(response.statusCode).to.equal(406);
     const responseBody = JSON.parse(response.body);
-    expect(responseBody.message).to.equal("User ID not specified.");
+    expect(responseBody.message).to.equal('User ID not specified.');
+
   });
 
   it('returns 201 and sets user as admin', async () => {
+
     AWSMock.mock('DynamoDB.DocumentClient', 'put', function (params, callback){
+
       Promise.resolve(
-          callback(null, {
-            Item: 'not null user'
-          } 
+        callback(null, {
+          Item: 'not null user'
+        }
         ));
+
     });
 
     const body = {
-      ...testEntry
+      ...testEntry,
+      email: 'adminUser@ubcbiztech.com'
     };
-    body.email = 'adminUser@ubcbiztech.com';
 
     const response = await wrapped.run({ body: JSON.stringify(body) });
     expect(response.statusCode).to.equal(201);
     const responseBody = JSON.parse(response.body);
     expect(responseBody.params.Item.id).to.equal(6456456464);
     expect(responseBody.params.Item.admin).to.equal(true);
+
   });
 
   it('returns 201 and deletes invite code', async () => {
+
     AWSMock.mock('DynamoDB.DocumentClient', 'get', function (params, callback) {
+
       if (params.TableName == 'inviteCodes' + process.env.ENVIRONMENT) {
+
         Promise.resolve(
           callback(null, {
             Item: 'not null invites'
           })
         );
+
       } else {
+
         Promise.reject(
           callback(null)
         );
+
       }
+
     });
 
     AWSMock.mock('DynamoDB.DocumentClient', 'delete', function (params, callback) {
+
       if (params.TableName == 'inviteCodes' + process.env.ENVIRONMENT) {
+
         Promise.resolve(
           callback(null, {
             Item: 'expected invites delete'
           })
         );
+
       } else {
+
         Promise.reject(
           callback(null)
         );
+
       }
+
     });
 
     const body = {
@@ -108,34 +134,46 @@ describe('userCreate', () => {
     expect(responseBody.params.Item.id).to.equal(6456456464);
     expect(responseBody.params.Item.admin).to.equal(false);
     expect(responseBody.params.Item.paid).to.equal(true);
+
   });
 
   it('returns 404 when invite code not found', async () => {
+
     AWSMock.mock('DynamoDB.DocumentClient', 'get', function (params, callback) {
+
       if (params.TableName == 'inviteCodes' + process.env.ENVIRONMENT) {
+
         Promise.resolve(
           callback(null, {
             Item: null
           })
         );
+
       } else {
+
         Promise.reject(
           callback(null)
         );
+
       }
+
     });
 
     const body = {
       ...testEntry,
       inviteCode: '23323'
-    }
+    };
     const response = await wrapped.run({ body: JSON.stringify(body) });
     expect(response.statusCode).to.equal(404);
     const responseBody = JSON.parse(response.body);
     expect(responseBody).to.equal('Invite code not found.');
+
   });
 
   afterEach(function() {
+
     AWSMock.restore('DynamoDB.DocumentClient');
+
   });
+
 });
