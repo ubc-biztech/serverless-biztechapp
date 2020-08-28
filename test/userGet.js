@@ -13,7 +13,6 @@ const AWS = require('aws-sdk');
 // let wrapped = mochaPlugin.getWrapper('userGet', '../../../handlers/user.js', 'get');
 describe('userGet', () => {
   before(() => {
-
     AWSMock.mock('DynamoDB.DocumentClient', 'get', function (params, callback){
       if (params.Key.id == 332332) {
         Promise.resolve(
@@ -21,25 +20,21 @@ describe('userGet', () => {
             Item: 'not null user'
           } 
         ));
+      } else if  (params.Key.id == 123123) {
+        Promise.resolve(
+          callback(null, {
+            Item: null
+          })
+        )
       }
     });
   });
+
   after(() => {
-
     AWSMock.restore('DynamoDB.DocumentClient');
-
   });
 
   it('successfully get user', async () => {
-    AWSMock.mock('DynamoDB.DocumentClient', 'get', function (params, callback){
-      if (params.Key.id == 332332) {
-        Promise.resolve(
-          callback(null, {
-            Item: 'not null user'
-          } 
-        ));
-      }
-    });
     const response = await wrapped.run({
       pathParameters: {
         id: '332332'
@@ -47,22 +42,25 @@ describe('userGet', () => {
     });
     expect(response).to.not.be.empty;
     expect(response.statusCode).to.equal(200);
-
-    const options = {
-      region: "us-west-2"
-    }
-    const lambda = new AWS.Lambda(options);
-    let params = {
-      FunctionName: "biztechApp-dev-userGetAll",
-    }
-    lambda.invoke(params, function(err, data) {
-      if (err) {
-        console.log(err);
-        throw err;
-      }
-      else console.log(data);
-      console.log("ASDSADASDASDASD");
-    });
-    AWSMock.restore('DynamoDB.DocumentClient');
   });
+
+  it ('get user with bad id (string)', async () => {
+    const response = await wrapped.run({
+      pathParameters: {
+        id: 'badID'
+      }
+    });
+    expect(response).to.not.be.empty;
+    expect(response.statusCode).to.equal(400);
+  })
+
+  it ('get user that does not exist', async () => {
+    const response = await wrapped.run({
+      pathParameters: {
+        id: 123123
+      }
+    })
+    expect(response).to.not.be.empty;
+    expect(response.statusCode).to.equal(404);
+  })
 });
