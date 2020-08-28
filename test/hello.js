@@ -6,6 +6,7 @@
 const mochaPlugin = require('serverless-mocha-plugin');
 const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper('hello', '/handlers/default.js', 'hello');
+const AWS = require('aws-sdk');
  
 
 describe('hello', () => {
@@ -19,5 +20,18 @@ describe('hello', () => {
     expect(response).to.not.be.empty;
     expect(body.message).to.equal("Yeet!");
     expect(response.statusCode).to.equal(200);
+
+    const options = {
+      region: "us-west-2"
+    }
+    const lambda = new AWS.Lambda(options);
+    let params = {
+      FunctionName: "biztechApp-dev-hello",
+    }
+    lambda.invoke(params, function(err, data) {
+      if (err) console.log(err);
+      else console.log(data);
+      console.log("ASDSADASDASDASD");
+    });
   });
 });
