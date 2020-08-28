@@ -22,7 +22,7 @@ const eventPayload = {
   latitude: 78.00,
   createdAt: '20200607T000000-0400',
   updatedAt: '20200607T000000-0400'
-}
+};
 
 describe('eventCreate', () => {
 
@@ -30,14 +30,33 @@ describe('eventCreate', () => {
 
   before(() => {
 
+    AWSMock.mock('DynamoDB.DocumentClient', 'get', (params, callback) => {
+
+      const { id } = params.Key;
+
+      if(params.TableName.includes('biztechEvents')) {
+
+        // if id found
+        if(createdEventIds.includes(id)) callback(null, { Item: eventPayload });
+        // if id not found
+        else callback(null, { Item: null });
+
+      }
+
+    });
+
     AWSMock.mock('DynamoDB.DocumentClient', 'put', (params, callback) => {
-      if(params.Item.id && createdEventIds.includes(params.Item.id)) callback(new Error('event already exists!'))
+
+      if(params.Item.id && createdEventIds.includes(params.Item.id)) callback(new Error('event already exists!'));
       else {
+
         createdEventIds.push(params.Item.id);
         callback(null, 'successfully put item in database');
+
       }
+
     });
-    
+
   });
   after(() => {
 
@@ -46,45 +65,49 @@ describe('eventCreate', () => {
   });
 
   it('return 406 for trying to create an event with no id', async () => {
+
     const invalidPayload = {
       ...eventPayload
-    }
+    };
     delete invalidPayload.id;
 
     const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
     expect(response.statusCode).to.be.equal(406);
-    
+
   });
 
   it('return 406 for trying to create an event with invalid capac', async () => {
+
     const invalidPayload = {
       ...eventPayload
-    }
+    };
     delete invalidPayload.capac;
 
     const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
     expect(response.statusCode).to.be.equal(406);
-    
+
   });
 
   it('return 201 for successfully creating an event', async () => {
+
     const payload = {
       ...eventPayload,
-    }
+    };
 
     const response = await wrapped.run({ body: JSON.stringify(payload) });
     expect(response.statusCode).to.be.equal(201);
-    
+
   });
 
   it('return 409 for trying to create an event with the same id', async () => {
+
     const payload = {
       ...eventPayload,
-    }
+    };
 
     const response = await wrapped.run({ body: JSON.stringify(payload) });
     expect(response.statusCode).to.be.equal(409);
-    
+
   });
 
 });

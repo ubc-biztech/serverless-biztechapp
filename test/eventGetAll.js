@@ -16,13 +16,18 @@ describe('eventGetAll', () => {
   before(() => {
 
     AWSMock.mock('DynamoDB.DocumentClient', 'scan', (params, callback) => {
+
       // event counts
       if(params.TableName.includes('biztechRegistration')) {
+
         callback(null, getRegistrationResponse);
+      
       }
       // events itself
       else if(params.TableName.includes('biztechEvents')){
+
         callback(null, getEventsResponse);
+      
       }
 
     });

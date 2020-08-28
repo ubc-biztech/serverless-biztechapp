@@ -14,13 +14,32 @@ describe('eventDelete', () => {
 
   before(() => {
 
-    AWSMock.mock('DynamoDB.DocumentClient', 'delete', (params, callback) => {
-      if(params.Key.id && existingEvents.includes(params.Key.id)) {
-        callback(null, "successfully deleted item in database");
+    AWSMock.mock('DynamoDB.DocumentClient', 'get', (params, callback) => {
+
+      const { id } = params.Key;
+
+      if(params.TableName.includes('biztechEvents')) {
+
+        // if id found
+        if(existingEvents.includes(id)) callback(null, { Item: { id: 'exEv', capac: 100 } });
+        // if id not found
+        else callback(null, { Item: null });
+
       }
-      else callback(new Error(""));
+
     });
-    
+
+    AWSMock.mock('DynamoDB.DocumentClient', 'delete', (params, callback) => {
+
+      if(params.Key.id && existingEvents.includes(params.Key.id)) {
+
+        callback(null, 'successfully deleted item in database');
+
+      }
+      else callback(new Error(''));
+
+    });
+
   });
   after(() => {
 
@@ -28,30 +47,30 @@ describe('eventDelete', () => {
 
   });
 
-  it('return 406 for trying to delete an event with no id', async () => {
+  it('return 400 for trying to delete an event with no id', async () => {
 
 
     const response = await wrapped.run({ pathParameters: {} });
-    expect(response.statusCode).to.be.equal(406);
-    
+    expect(response.statusCode).to.be.equal(400);
+
   });
 
-  it('return 502 for trying to delete an event that doesn\'t exist', async () => {
+  it('return 404 for trying to delete an event that doesn\'t exist', async () => {
 
     const unknownId = 'nonExistingEvent';
 
     const response = await wrapped.run({ pathParameters: { id: unknownId } });
-    expect(response.statusCode).to.be.equal(502);
-    
+    expect(response.statusCode).to.be.equal(404);
+
   });
 
-  it('return 200 for successfully creating an event', async () => {
+  it('return 200 for successfully deleting an event', async () => {
 
     const validId = existingEvents[0];
 
     const response = await wrapped.run({ pathParameters: { id: validId } });
     expect(response.statusCode).to.be.equal(200);
-    
+
   });
 
 });
