@@ -195,7 +195,7 @@ module.exports = {
 
       // scan the db
       const results = await docClient.scan(params).promise();
-      return results.Items || {};
+      return results.Items || [];
 
     }
     catch(err) {

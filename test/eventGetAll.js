@@ -21,17 +21,17 @@ describe('eventGetAll', () => {
       if(params.TableName.includes('biztechRegistration')) {
 
         callback(null, getRegistrationResponse);
-      
+
       }
       // events itself
       else if(params.TableName.includes('biztechEvents')){
 
         callback(null, getEventsResponse);
-      
+
       }
 
     });
-    
+
   });
   after(() => {
 
@@ -52,7 +52,7 @@ describe('eventGetAll', () => {
     expect(event.counts).to.have.property('registeredCount', 2);
     expect(event.counts).to.have.property('checkedInCount', 3);
     expect(event.counts).to.have.property('waitlistCount', 1);
-    
+
   });
 
 });

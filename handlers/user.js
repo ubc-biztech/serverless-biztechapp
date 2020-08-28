@@ -119,7 +119,7 @@ module.exports.create = async (event, ctx, callback) => {
   await docClient
     .put(userParams)
     .promise()
-    .then(result => {
+    .then(() => {
 
       const response = helpers.createResponse(201, {
         message: 'Created!',
