@@ -48,11 +48,7 @@ module.exports.create = async (event, ctx, callback) => {
 
     // construct the item
     const item = {
-      id: data.id,
-      name: data.name,
-      price: data.price,
-      imageHash: data.imageHash,
-      links: data.links,
+      ...data,
       createdAt: timestamp,
       updatedAt: timestamp
     };
