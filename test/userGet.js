@@ -47,22 +47,6 @@ describe('userGet', () => {
     });
     expect(response).to.not.be.empty;
     expect(response.statusCode).to.equal(200);
-
-    const options = {
-      region: "us-west-2"
-    }
-    const lambda = new AWS.Lambda(options);
-    let params = {
-      FunctionName: "biztechApp-dev-userGetAll",
-    }
-    lambda.invoke(params, function(err, data) {
-      if (err) {
-        console.log(err);
-        throw err;
-      }
-      else console.log(data);
-      console.log("ASDSADASDASDASD");
-    });
     AWSMock.restore('DynamoDB.DocumentClient');
   });
 });

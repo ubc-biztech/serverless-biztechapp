@@ -6,8 +6,6 @@
 const mochaPlugin = require('serverless-mocha-plugin');
 const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper('hello', '/handlers/default.js', 'hello');
-const AWS = require('aws-sdk');
- 
 
 describe('hello', () => {
   before((done) => {
@@ -20,49 +18,5 @@ describe('hello', () => {
     expect(response).to.not.be.empty;
     expect(body.message).to.equal("Yeet!");
     expect(response.statusCode).to.equal(200);
-
-    const options = {
-      region: "us-west-2"
-    }
-    const lambda = new AWS.Lambda(options);
-    let params = {
-      FunctionName: "biztechApp-dev-hello",
-    }
-    lambda.invoke(params, function(err, data) {
-      if (err) {
-        console.log(err);
-        throw err;
-      }
-      else console.log(data);
-      console.log("ASDSADASDASDASD");
-    });
-
-    params = {
-      FunctionName: "biztechApp-dev-userGetAll",
-    }
-    lambda.invoke(params, function(err, data) {
-      if (err) {
-        console.log(err);
-        throw err;
-      }
-      else console.log(data);
-      console.log("ASDSADASDASDASD");
-    });
-
-    let event= {};
-    event.pathParameters = { };
-    event.pathParameters.id = 144444;
-    params = {
-      FunctionName: "biztechApp-dev-userGet",
-      Payload: JSON.stringify( event ) 
-    }
-    lambda.invoke(params, function(err, data) {
-      if (err) {
-        console.log(err);
-        throw err;
-      }
-      else console.log(data);
-      console.log("ASDSADASDASDASD");
-    });
   });
 });
