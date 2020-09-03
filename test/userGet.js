@@ -7,7 +7,6 @@ const mochaPlugin = require('serverless-mocha-plugin');
 const expect = mochaPlugin.chai.expect;
 const AWSMock = require('aws-sdk-mock');
 let wrapped = mochaPlugin.getWrapper('userGet', '/handlers/user.js', 'get');
-const AWS = require('aws-sdk');
 
 // If want to invoke mocha instead of sls invoke
 // let wrapped = mochaPlugin.getWrapper('userGet', '../../../handlers/user.js', 'get');
@@ -42,6 +41,25 @@ describe('userGet', () => {
     });
     expect(response).to.not.be.empty;
     expect(response.statusCode).to.equal(200);
-    AWSMock.restore('DynamoDB.DocumentClient');
   });
+
+  it ('get user with bad id (string)', async () => {
+    const response = await wrapped.run({
+      pathParameters: {
+        id: 'badID'
+      }
+    });
+    expect(response).to.not.be.empty;
+    expect(response.statusCode).to.equal(400);
+  })
+
+  it ('get user that does not exist', async () => {
+    const response = await wrapped.run({
+      pathParameters: {
+        id: 123123
+      }
+    })
+    expect(response).to.not.be.empty;
+    expect(response.statusCode).to.equal(404);
+  })
 });

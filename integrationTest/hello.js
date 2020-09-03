@@ -5,7 +5,7 @@ const expect = chai.expect;
 
 const helpers = require('./helpers')
 
-describe('hello', function () {
+describe('hello integration', function () {
   
   this.timeout(10000);
 
