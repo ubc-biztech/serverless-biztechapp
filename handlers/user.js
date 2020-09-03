@@ -118,6 +118,11 @@ module.exports.create = async (event, ctx, callback) => {
 module.exports.get = async (event, ctx, callback) => {
   const docClient = new AWS.DynamoDB.DocumentClient();
   const id = parseInt(event.pathParameters.id, 10);
+  if (isNaN(id)) {
+    const response = helpers.createResponse(400, 'Invalid ID');
+    callback(null, response);
+    return;
+  }
 
   const params = {
     Key: {
@@ -149,6 +154,11 @@ module.exports.update = async (event, ctx, callback) => {
   const docClient = new AWS.DynamoDB.DocumentClient();
   const data = JSON.parse(event.body);
   const id = parseInt(event.pathParameters.id, 10);
+  if (isNaN(id)) {
+    const response = helpers.createResponse(400, 'Invalid ID');
+    callback(null, response);
+    return;
+  }
 
   var updateExpression = "set ";
   var expressionAttributeValues = {};
@@ -278,7 +288,7 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
     .promise()
     .then(async result => {
       let successMsg = "";
-      (isFavourite) ? successMsg = "Favourate" : successMsg = "Unfavourite";
+      (isFavourite) ? successMsg = "Favourite" : successMsg = "Unfavourite";
       successMsg += (" event " + data.eventID + " succeed.");
       callback(null, helpers.createResponse(200, successMsg));
     })
