@@ -1,6 +1,8 @@
 'use strict';
+const { v4: uuidv4 } = require('uuid');
 const helpers = require('./helpers');
 const { isEmpty } = require('../utils/functions');
+const { TRANSACTIONS_TABLE, USERS_TABLE } = require('../constants/tables');
 
 module.exports.getAll = async (event, ctx, callback) => {
 
@@ -22,7 +24,7 @@ module.exports.getAll = async (event, ctx, callback) => {
     }
 
     // scan the table
-    const transaction = await helpers.scan('biztechTransactions', filters);
+    const transaction = await helpers.scan(TRANSACTIONS_TABLE, filters);
 
     let items = {};
 
@@ -67,21 +69,24 @@ module.exports.create = async (event, ctx, callback) => {
 
     // check request body
     helpers.checkPayloadProps(data, {
-      id: { required: true, type: 'string' },
       userId: { required: true, type: 'number' },
       reason: { required: true, type: 'string' },
       credits: { required: true, type: 'number' },
     });
 
-    // check if there are transactions with the given id
     // check that the user id exists
-    const [existingTransaction, existingUser] = await Promise.all([
-      helpers.getOne(data.id, 'biztechTransactions'),
-      helpers.getOne(data.userId, 'biztechUsers')
-    ]);
-
-    if(!isEmpty(existingTransaction)) throw helpers.duplicateResponse('id', data);
+    const existingUser = await helpers.getOne(data.userId, USERS_TABLE);
     if(isEmpty(existingUser)) throw helpers.notFoundResponse('User', data.userId);
+
+    // generate a random uuid for the transaction
+    // if by some chance the uuid exists, generate another uuid until a unique one is created
+    let existingTransaction = null;
+    while(!data.id || !isEmpty(existingTransaction)) {
+
+      data.id = uuidv4();
+      existingTransaction = await helpers.getOne(data.id, TRANSACTIONS_TABLE);
+
+    }
 
     // if credits is negative value, check if the user has enough credits
     if(data.credits < 0) {
@@ -104,7 +109,7 @@ module.exports.create = async (event, ctx, callback) => {
     };
 
     // do the magic
-    const res = await helpers.create(item, 'biztechTransactions');
+    const res = await helpers.create(item, TRANSACTIONS_TABLE);
     const response = helpers.createResponse(201, {
       message: 'Transaction Created!',
       response: res,

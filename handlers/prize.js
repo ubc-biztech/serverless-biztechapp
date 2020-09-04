@@ -1,13 +1,14 @@
 'use strict';
 const helpers = require('./helpers');
 const { isEmpty } = require('../utils/functions');
+const { PRIZES_TABLE } = require('../constants/tables');
 
 module.exports.getAll = async (event, ctx, callback) => {
 
   try {
 
     // scan the table
-    const prizes = await helpers.scan('biztechPrizes');
+    const prizes = await helpers.scan(PRIZES_TABLE);
 
     // re-organize the response
     let response = {};
@@ -43,7 +44,7 @@ module.exports.create = async (event, ctx, callback) => {
     });
 
     // check if there are prizes with the given id
-    const existingPrize = await helpers.getOne(data.id, 'biztechPrizes');
+    const existingPrize = await helpers.getOne(data.id, PRIZES_TABLE);
     if(!isEmpty(existingPrize)) throw helpers.duplicateResponse('id', data);
 
     // construct the item
@@ -54,7 +55,7 @@ module.exports.create = async (event, ctx, callback) => {
     };
 
     // do the magic
-    const res = await helpers.create(item, 'biztechPrizes');
+    const res = await helpers.create(item, PRIZES_TABLE);
 
     const response = helpers.createResponse(201, {
       message: 'Prize Created!',
@@ -94,11 +95,11 @@ module.exports.update = async (event, ctx, callback) => {
     });
 
     // check that the id exists
-    const existingPrize = await helpers.getOne(id, 'biztechPrizes');
+    const existingPrize = await helpers.getOne(id, PRIZES_TABLE);
     if(isEmpty(existingPrize)) throw helpers.notFoundResponse('Prize', id);
 
     // do the magic
-    const res = await helpers.updateDB(id, data, 'biztechPrizes');
+    const res = await helpers.updateDB(id, data, PRIZES_TABLE);
 
     const response = helpers.createResponse(200, {
       message: 'Prize updated!',
@@ -127,11 +128,11 @@ module.exports.delete = async (event, ctx, callback) => {
     const id = event.pathParameters.id;
 
     // check that the id exists
-    const existingPrize = await helpers.getOne(id, 'biztechPrizes');
+    const existingPrize = await helpers.getOne(id, PRIZES_TABLE);
     if(isEmpty(existingPrize)) throw helpers.notFoundResponse('Prize', id);
 
     // do the magic
-    const res = await helpers.deleteOne(id, 'biztechPrizes');
+    const res = await helpers.deleteOne(id, PRIZES_TABLE);
     const response = helpers.createResponse(200, {
       message: 'Prize deleted!',
       response: res

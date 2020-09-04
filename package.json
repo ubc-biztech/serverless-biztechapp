@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "dependencies": {
     "@sendgrid/mail": "^6.5.3",
-    "serverless": "^1.67.2"
+    "serverless": "^1.67.2",
+    "uuid": "^8.3.0"
   },
   "devDependencies": {
     "aws-sdk-mock": "^5.1.0",
