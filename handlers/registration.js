@@ -4,6 +4,8 @@ const docClient = new AWS.DynamoDB.DocumentClient();
 const helpers = require('./helpers');
 const email = require('../utils/email');
 const { isEmpty } = require('../utils/functions');
+const { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } = require('../constants/tables');
+
 // const CHECKIN_COUNT_SANITY_CHECK = 500;
 
 /* returns an error if id, eventID, or registrationStatus is not provided
@@ -33,7 +35,7 @@ async function updateHelper(event, callback, data, createNew, idString) {
 
   const eventParams = {
     Key: { id: eventID },
-    TableName: 'biztechEvents' + process.env.ENVIRONMENT
+    TableName: EVENTS_TABLE + process.env.ENVIRONMENT
   };
 
   await docClient.get(eventParams).promise()
@@ -128,7 +130,7 @@ async function createRegistration(registrationStatus, data, id, eventID, createN
       id,
       eventID
     },
-    TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
+    TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
     ExpressionAttributeValues: expressionAttributeValues,
     UpdateExpression: updateExpression,
     ReturnValues: 'UPDATED_NEW'
@@ -191,7 +193,7 @@ async function createRegistration(registrationStatus, data, id, eventID, createN
 
 async function sendEmail(id, eventName, registrationStatus) {
 
-  const user = await helpers.getOne(id, 'biztechUsers');
+  const user = await helpers.getOne(id, USERS_TABLE);
   if(isEmpty(user)) throw helpers.notFoundResponse('user', id);
 
   if(registrationStatus !== 'checkedIn') {
@@ -309,7 +311,7 @@ module.exports.get = async (event, ctx, callback) => {
 
     const eventID = queryString.eventID;
     const params = {
-      TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
+      TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
       FilterExpression: 'eventID = :query',
       ExpressionAttributeValues: {
         ':query': eventID
@@ -358,7 +360,7 @@ module.exports.get = async (event, ctx, callback) => {
     // only has id parameter
     const id = parseInt(queryString.id, 10);
     const params = {
-      TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
+      TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
       KeyConditionExpression: 'id = :query',
       ExpressionAttributeValues: {
         ':query': id

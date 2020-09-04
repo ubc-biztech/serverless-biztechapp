@@ -2,6 +2,7 @@
 const helpers = require('./helpers');
 const crypto = require('crypto');
 const email = require('../utils/email');
+const { USER_INVITE_CODES_TABLE } = require('../constants/tables');
 
 module.exports.invite = async (event, ctx, callback) => {
 
@@ -15,7 +16,7 @@ module.exports.invite = async (event, ctx, callback) => {
     const id = crypto.randomBytes(20).toString('hex');
     const item = { id, email: data.email };
 
-    const res = await helpers.create(item, 'inviteCodes');
+    const res = await helpers.create(item, USER_INVITE_CODES_TABLE);
 
     const msg = {
       to: data.email,

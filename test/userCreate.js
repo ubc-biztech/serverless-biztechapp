@@ -7,6 +7,7 @@ const mochaPlugin = require('serverless-mocha-plugin');
 const expect = mochaPlugin.chai.expect;
 const AWSMock = require('aws-sdk-mock');
 let wrapped = mochaPlugin.getWrapper('userCreate', '/handlers/user.js', 'create');
+const { USER_INVITE_CODES_TABLE } = require('../constants/tables');
 
 const testEntry = {
   id: '6456456464',
@@ -85,7 +86,7 @@ describe('userCreate', () => {
 
     AWSMock.mock('DynamoDB.DocumentClient', 'get', function (params, callback) {
 
-      if (params.TableName == 'inviteCodes' + process.env.ENVIRONMENT) {
+      if (params.TableName == USER_INVITE_CODES_TABLE + process.env.ENVIRONMENT) {
 
         Promise.resolve(
           callback(null, {
@@ -105,7 +106,7 @@ describe('userCreate', () => {
 
     AWSMock.mock('DynamoDB.DocumentClient', 'delete', function (params, callback) {
 
-      if (params.TableName == 'inviteCodes' + process.env.ENVIRONMENT) {
+      if (params.TableName == USER_INVITE_CODES_TABLE + process.env.ENVIRONMENT) {
 
         Promise.resolve(
           callback(null, {
@@ -141,7 +142,7 @@ describe('userCreate', () => {
 
     AWSMock.mock('DynamoDB.DocumentClient', 'get', function (params, callback) {
 
-      if (params.TableName == 'inviteCodes' + process.env.ENVIRONMENT) {
+      if (params.TableName == USER_INVITE_CODES_TABLE + process.env.ENVIRONMENT) {
 
         Promise.resolve(
           callback(null, {

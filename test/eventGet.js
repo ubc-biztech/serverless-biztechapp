@@ -7,6 +7,7 @@ const AWSMock = require('aws-sdk-mock');
 const mochaPlugin = require('serverless-mocha-plugin');
 const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper('eventGet', '/handlers/event.js', 'get');
+const { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } = require('../constants/tables');
 
 const event = require('./data/events.json').Items[0];
 const getEventResponse = { Item: event };
@@ -23,7 +24,7 @@ describe('eventGet', () => {
 
       const { id } = params.Key;
 
-      if(params.TableName.includes('biztechEvents')) {
+      if(params.TableName.includes(EVENTS_TABLE)) {
 
         // if id found
         if(existingEvents.includes(id)) callback(null, { Item: getEventResponse });
@@ -37,7 +38,7 @@ describe('eventGet', () => {
     // event counts from registration table
     AWSMock.mock('DynamoDB.DocumentClient', 'scan', (params, callback) => {
 
-      if(params.TableName.includes('biztechRegistration')) {
+      if(params.TableName.includes(USER_REGISTRATIONS_TABLE)) {
 
         callback(null, getRegistrationResponse);
 
@@ -50,7 +51,7 @@ describe('eventGet', () => {
 
       const tables = Object.keys(params.RequestItems);
 
-      if(tables.includes('biztechUsers')) {
+      if(tables.includes(USERS_TABLE)) {
 
         const table = tables[0];
         const response = { Responses: {} };

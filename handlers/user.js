@@ -2,6 +2,7 @@
 const AWS = require('aws-sdk');
 const helpers = require('./helpers');
 const { isEmpty } = require('../utils/functions');
+const { USERS_TABLE, USER_INVITE_CODES_TABLE } = require('../constants/tables');
 
 module.exports.create = async (event, ctx, callback) => {
 
@@ -44,7 +45,7 @@ module.exports.create = async (event, ctx, callback) => {
       updatedAt: timestamp,
       admin: isBiztechAdmin,
     },
-    TableName: 'biztechUsers' + process.env.ENVIRONMENT,
+    TableName: USERS_TABLE + process.env.ENVIRONMENT,
     ConditionExpression: 'attribute_not_exists(id)'
   };
 
@@ -77,7 +78,7 @@ module.exports.create = async (event, ctx, callback) => {
 
     const inviteCodeParams = {
       Key: { id: data.inviteCode },
-      TableName: 'inviteCodes' + process.env.ENVIRONMENT
+      TableName: USER_INVITE_CODES_TABLE + process.env.ENVIRONMENT
     };
     await docClient
       .get(inviteCodeParams)
@@ -99,7 +100,7 @@ module.exports.create = async (event, ctx, callback) => {
           userParams.Item.paid = true;
           const deleteParams = {
             Key: { id: data.inviteCode },
-            TableName: 'inviteCodes' + process.env.ENVIRONMENT
+            TableName: USER_INVITE_CODES_TABLE + process.env.ENVIRONMENT
           };
           await docClient.delete(deleteParams).promise();
 
@@ -156,7 +157,7 @@ module.exports.get = async (event, ctx, callback) => {
     const id = parseInt(event.pathParameters.id, 10);
     if(isNaN(id)) throw helpers.inputError('Id is not a number!');
 
-    const user = await helpers.getOne(id, 'biztechUsers');
+    const user = await helpers.getOne(id, USERS_TABLE);
     if(isEmpty(user)) throw helpers.notFoundResponse('user', id);
 
     const response = helpers.createResponse(200, user);
@@ -181,12 +182,12 @@ module.exports.update = async (event, ctx, callback) => {
     if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('event');
     const id = event.pathParameters.id;
 
-    const existingUser = await helpers.getOne(id, 'biztechUsers');
+    const existingUser = await helpers.getOne(id, USERS_TABLE);
     if(isEmpty(existingUser)) throw helpers.notFoundResponse('user', id);
 
     const data = JSON.parse(event.body);
 
-    const res = await helpers.updateDB(id, data, 'biztechUsers');
+    const res = await helpers.updateDB(id, data, USERS_TABLE);
     const response = helpers.createResponse(200, {
       message: `Updated event with id ${id}!`,
       response: res
@@ -210,7 +211,7 @@ module.exports.getAll = async (event, ctx, callback) => {
 
   try {
 
-    const users = await helpers.scan('biztechUsers');
+    const users = await helpers.scan(USERS_TABLE);
 
     // create the response
     const response = helpers.createResponse(200, users);
@@ -242,7 +243,7 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
       isFavourite: { required: true, type: 'boolean' }
     });
 
-    const existingEvent = await helpers.getOne(data.eventID, 'biztechUsers');
+    const existingEvent = await helpers.getOne(data.eventID, USERS_TABLE);
     if(isEmpty(existingEvent)) throw helpers.notFoundResponse('user', id);
 
     let updateExpression = '';
@@ -271,7 +272,7 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
 
     const params = {
       Key: { id },
-      TableName: 'biztechUsers' + process.env.ENVIRONMENT,
+      TableName: USERS_TABLE + process.env.ENVIRONMENT,
       ExpressionAttributeValues: expressionAttributeValues,
       UpdateExpression: updateExpression,
       ConditionExpression: conditionExpression

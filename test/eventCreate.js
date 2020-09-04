@@ -7,6 +7,7 @@ const AWSMock = require('aws-sdk-mock');
 const mochaPlugin = require('serverless-mocha-plugin');
 const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper('eventCreate', '/handlers/event.js', 'create');
+const { EVENTS_TABLE } = require('../constants/tables');
 
 const eventPayload = {
   id: 'localTestEvent',
@@ -34,7 +35,7 @@ describe('eventCreate', () => {
 
       const { id } = params.Key;
 
-      if(params.TableName.includes('biztechEvents')) {
+      if(params.TableName.includes(EVENTS_TABLE)) {
 
         // if id found
         if(createdEventIds.includes(id)) callback(null, { Item: eventPayload });

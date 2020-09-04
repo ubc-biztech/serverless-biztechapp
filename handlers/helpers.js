@@ -1,5 +1,6 @@
 const AWS = require('aws-sdk');
 const { RESERVED_WORDS } = require('../constants/dynamodb');
+const { USER_REGISTRATIONS_TABLE } = require('../constants/tables');
 
 module.exports = {
   createResponse: function (statusCode, body) {
@@ -364,7 +365,7 @@ module.exports = {
 
     const docClient = new AWS.DynamoDB.DocumentClient();
     const params = {
-      TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
+      TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
       FilterExpression: 'eventID = :query',
       ExpressionAttributeValues: {
         ':query': eventID

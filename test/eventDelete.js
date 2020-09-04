@@ -7,6 +7,7 @@ const AWSMock = require('aws-sdk-mock');
 const mochaPlugin = require('serverless-mocha-plugin');
 const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper('eventDelete', '/handlers/event.js', 'delete');
+const { EVENTS_TABLE } = require('../constants/tables');
 
 describe('eventDelete', () => {
 
@@ -18,7 +19,7 @@ describe('eventDelete', () => {
 
       const { id } = params.Key;
 
-      if(params.TableName.includes('biztechEvents')) {
+      if(params.TableName.includes(EVENTS_TABLE)) {
 
         // if id found
         if(existingEvents.includes(id)) callback(null, { Item: { id: 'exEv', capac: 100 } });

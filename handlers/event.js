@@ -3,6 +3,7 @@ const helpers = require('./helpers');
 const sorters = require('../utils/sorters');
 const { isEmpty } = require('../utils/functions');
 const { MAX_BATCH_ITEM_COUNT } = require('../constants/dynamodb');
+const { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } = require('../constants/tables');
 
 module.exports.create = async (event, ctx, callback) => {
 
@@ -16,7 +17,7 @@ module.exports.create = async (event, ctx, callback) => {
       capac: { required: true, type: 'number' }
     });
 
-    const existingEvent = await helpers.getOne(data.id, 'biztechEvents');
+    const existingEvent = await helpers.getOne(data.id, EVENTS_TABLE);
     if(!isEmpty(existingEvent)) throw helpers.duplicateResponse('event id', data);
 
     const item = {
@@ -35,7 +36,7 @@ module.exports.create = async (event, ctx, callback) => {
       updatedAt: timestamp
     };
 
-    const res = await helpers.create(item, 'biztechEvents');
+    const res = await helpers.create(item, EVENTS_TABLE);
 
     const response = helpers.createResponse(201, {
       message: `Created event with id ${data.id}!`,
@@ -64,10 +65,10 @@ module.exports.delete = async (event, ctx, callback) => {
     if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('event');
     const id = event.pathParameters.id;
 
-    const existingEvent = await helpers.getOne(id, 'biztechEvents');
+    const existingEvent = await helpers.getOne(id, EVENTS_TABLE);
     if(isEmpty(existingEvent)) throw helpers.notFoundResponse('event', id);
 
-    const res = await helpers.deleteOne(id, 'biztechEvents');
+    const res = await helpers.deleteOne(id, EVENTS_TABLE);
 
     const response = helpers.createResponse(200, {
       message: `Deleted event with id '${id}'!`,
@@ -93,7 +94,7 @@ module.exports.getAll = async (event, ctx, callback) => {
   try {
 
     // scan
-    const events = await helpers.scan('biztechEvents');
+    const events = await helpers.scan(EVENTS_TABLE);
 
     // get event counts
     for(event of events) {
@@ -125,12 +126,12 @@ module.exports.update = async (event, ctx, callback) => {
     if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('event');
     const id = event.pathParameters.id;
 
-    const existingEvent = await helpers.getOne(id, 'biztechEvents');
+    const existingEvent = await helpers.getOne(id, EVENTS_TABLE);
     if(isEmpty(existingEvent)) throw helpers.notFoundResponse('event', id);
 
     const data = JSON.parse(event.body);
 
-    const res = await helpers.updateDB(event.pathParameters.id, data, 'biztechEvents');
+    const res = await helpers.updateDB(event.pathParameters.id, data, EVENTS_TABLE);
     const response = helpers.createResponse(200, {
       message: `Updated event with id ${id}!`,
       response: res
@@ -198,7 +199,7 @@ module.exports.get = async (event, ctx, callback) => {
           registrationStatus: 'registered'
         }
        */
-        registrationList = await helpers.scan('biztechRegistration', filters);
+        registrationList = await helpers.scan(USER_REGISTRATIONS_TABLE, filters);
 
       } catch(err) {
 
@@ -228,12 +229,12 @@ module.exports.get = async (event, ctx, callback) => {
 
       const result = await Promise.all(keyBatches.map(batch => (
 
-        helpers.batchGet(batch, 'biztechUsers' + process.env.ENVIRONMENT)
+        helpers.batchGet(batch, USERS_TABLE + process.env.ENVIRONMENT)
 
       )));
 
       // extract what's inside
-      const flattenResults = result.flatMap(batchResult => batchResult.Responses[`biztechUsers${process.env.ENVIRONMENT}`]);
+      const flattenResults = result.flatMap(batchResult => batchResult.Responses[`${USERS_TABLE}${process.env.ENVIRONMENT}`]);
 
       const resultsWithRegistrationStatus = flattenResults.map(item => {
 
@@ -258,7 +259,7 @@ module.exports.get = async (event, ctx, callback) => {
     } else {
 
       // if none of the optional params are true, then return the event
-      const event = await helpers.getOne(id, 'biztechEvents');
+      const event = await helpers.getOne(id, EVENTS_TABLE);
 
       if(isEmpty(event)) throw helpers.notFoundResponse('event', id);
 
