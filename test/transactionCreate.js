@@ -8,6 +8,8 @@ const mochaPlugin = require('serverless-mocha-plugin');
 const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper('transactionCreate', '/handlers/transaction.js', 'create');
 
+const { USERS_TABLE } = require('../constants/tables');
+
 const transactionPayload = {
   id: 'transaction_id',
   userId: 77777777,
@@ -28,7 +30,7 @@ describe('transactionCreate', () => {
     AWSMock.mock('DynamoDB.DocumentClient', 'get', (params, callback) => {
 
         let returnValue = null;
-        if(params.TableName.includes('biztechUsers') && userCredits[params.Key.id] !== undefined) {
+        if(params.TableName.includes(USERS_TABLE) && userCredits[params.Key.id] !== undefined) {
           // if searching for users
           returnValue = { id: params.Key.id, credits: userCredits[params.Key.id] };
         }
