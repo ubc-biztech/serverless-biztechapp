@@ -11,7 +11,6 @@ let wrapped = mochaPlugin.getWrapper('transactionCreate', '/handlers/transaction
 const { USERS_TABLE } = require('../constants/tables');
 
 const transactionPayload = {
-  id: 'transaction_id',
   userId: 77777777,
   reason: 'ATTENDANCE/EVENT',
   credits: 100
@@ -55,18 +54,6 @@ describe('transactionCreate', () => {
 
     AWSMock.restore('DynamoDB.DocumentClient');
 
-  });
-
-  it('return 406 for trying to create a transaction with no id', async () => {
-
-    const invalidPayload = {
-      ...transactionPayload
-    }
-    delete invalidPayload.id;
-
-    const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
-    expect(response.statusCode).to.be.equal(406);
-    
   });
 
   it('return 406 for trying to create a transaction with no user id', async () => {
@@ -164,7 +151,6 @@ describe('transactionCreate', () => {
 
     const payload = {
       ...transactionPayload,
-      id: 'negative_transaction_id',
       reason: 'PURCHASE/STICKER',
       credits: -100
     }
@@ -178,7 +164,6 @@ describe('transactionCreate', () => {
 
     const payload = {
       ...transactionPayload,
-      id: 'negative_transaction_id',
       userId: 77777771,
       reason: 'PURCHASE/STICKER',
       credits: -100
@@ -186,13 +171,6 @@ describe('transactionCreate', () => {
 
     const response = await wrapped.run({ body: JSON.stringify(payload) });
     expect(response.statusCode).to.be.equal(201);
-    
-  });
-
-  it('return 409 for trying to create a transaction with the same id', async () => {
-
-    const response = await wrapped.run({ body: JSON.stringify(transactionPayload) });
-    expect(response.statusCode).to.be.equal(409);
     
   });
 

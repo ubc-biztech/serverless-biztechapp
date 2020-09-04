@@ -1,4 +1,5 @@
 'use strict';
+const { v4: uuidv4 } = require('uuid');
 const helpers = require('./helpers');
 const { isEmpty } = require('../utils/functions');
 const { TRANSACTIONS_TABLE, USERS_TABLE } = require('../constants/tables');
@@ -61,21 +62,22 @@ module.exports.create = async (event, ctx, callback) => {
 
     // check request body
     helpers.checkPayloadProps(data, {
-      id: { required: true, type: 'string' },
       userId: { required: true, type: 'number' },
       reason: { required: true, type: 'string'},
       credits: { required: true, type: 'number' },
     });
-
-    // check if there are transactions with the given id
+    
     // check that the user id exists
-    const [existingTransaction, existingUser] = await Promise.all([
-        helpers.getOne(data.id, TRANSACTIONS_TABLE),
-        helpers.getOne(data.userId, USERS_TABLE)
-    ]);
-
-    if(!isEmpty(existingTransaction)) throw helpers.duplicateResponse('id', data);
+    const existingUser = await helpers.getOne(data.userId, USERS_TABLE);
     if(isEmpty(existingUser)) throw helpers.notFoundResponse('User', data.userId);
+    
+    // generate a random uuid for the transaction
+    // if by some chance the uuid exists, generate another uuid until a unique one is created
+    let existingTransaction = null;
+    while(!data.id || !isEmpty(existingTransaction)) {
+      data.id = uuidv4();
+      existingTransaction = await helpers.getOne(data.id, TRANSACTIONS_TABLE);
+    }
 
     // if credits is negative value, check if the user has enough credits
     if(data.credits < 0) {
