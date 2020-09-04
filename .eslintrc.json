@@ -20,6 +20,7 @@
         // rules that cause warnings
         "array-bracket-spacing": ["warn", "never"],
         "array-bracket-newline": ["warn", "consistent"],
+        "eol-last": ["warn", "always"],
         "indent": ["warn", 2],
         "no-prototype-builtins": "off",
         "no-trailing-spaces": ["warn", { "ignoreComments": true }],
