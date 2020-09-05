@@ -38,7 +38,9 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
+      # deploy on dev so that dev is up to date with staging
       run: |
+        npx sls deploy --conceal
+        npx mocha integrationTest
         npx sls deploy --stage staging --conceal
         npx sls invoke test --stage staging
-        npx sls test --stage staging
