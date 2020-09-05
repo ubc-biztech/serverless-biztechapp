@@ -1,8 +1,8 @@
-const AWS = require("aws-sdk");
+const AWS = require('aws-sdk');
 const OPTIONS = {
-  region: "us-west-2"
+  region: 'us-west-2'
 };
-const FUNCTION_PREFIX = "biztechApp-dev-";
+const FUNCTION_PREFIX = 'biztechApp-dev-';
 const lambda = new AWS.Lambda(OPTIONS);
 
 module.exports = {
@@ -12,7 +12,7 @@ module.exports = {
    * @param {*} functionName - the lambda function name
    * @param {*} payload - JSON string with function payload. Empty by default
    */
-  invokeLambda: function(functionName, payload = "") {
+  invokeLambda: function(functionName, payload = '') {
     let params = {
       FunctionName: FUNCTION_PREFIX + functionName,
     };
@@ -26,16 +26,13 @@ module.exports = {
         console.log(err);
         reject(err);
       }
-      resolve(data);
+
+      const payload = JSON.parse(data['Payload']);
+      if (!payload.hasOwnProperty('statusCode') && !payload.hasOwnProperty('body')) {
+        resolve([null, null]);
+      }
+      resolve([payload.statusCode, JSON.parse(payload.body)]);
       });
     });
-  },
-
-  extractPayloadData: function(data) {
-    const payload = JSON.parse(data["Payload"]);
-    if (!payload.hasOwnProperty("statusCode") && !payload.hasOwnProperty("body")) {
-      return [null, null];
-    }
-    return [payload.statusCode, JSON.parse(payload.body)];
   },
 }
