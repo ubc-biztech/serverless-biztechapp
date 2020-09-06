@@ -48,4 +48,13 @@ describe('userGetAll', () => {
       expect(response).to.not.be.empty;
       expect(response.statusCode).to.equal(404);
   }) 
+
+  it ('return 502 on database error', async () => {
+    AWSMock.mock('DynamoDB.DocumentClient', 'scan', function (params, callback) {
+      callback('error message')
+    });
+    const response = await wrapped.run();
+    expect(response.statusCode).to.equal(502);
+    expect(response.body).to.equal(`"error message"`);
+  })
 });
