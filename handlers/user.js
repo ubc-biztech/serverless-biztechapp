@@ -290,8 +290,8 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
     .promise()
     .then(async result => {
       let successMsg = "";
-      (isFavourite) ? successMsg = "Favourite" : successMsg = "Unfavourite";
-      successMsg += (" event " + data.eventID + " succeed.");
+      (isFavourite) ? successMsg = "Favouriting" : successMsg = "Unfavouriting";
+      successMsg += (" event '" + data.eventID + "' success.");
       callback(null, helpers.createResponse(200, successMsg));
     })
     .catch(error => {
@@ -304,4 +304,35 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
       }
       callback(null, helpers.createResponse(error.statusCode, errMsg));
     });
+};
+
+// TODO: refactor to abstract delete code among different endpoints
+module.exports.delete = async (event, ctx, callback) => {
+  const docClient = new AWS.DynamoDB.DocumentClient();
+
+  const id = event.pathParameters.id;
+
+  // Check that parameters are valid
+  if (!id) {
+    callback(null, helpers.inputError('id not specified.', 'missing query param'));
+    return null;
+  }
+
+  const params = {
+    Key: { id },
+    TableName: 'biztechUsers' + process.env.ENVIRONMENT
+  };
+
+  await docClient.delete(params).promise()
+    .then(result => {
+      const response = helpers.createResponse(200, {
+        message: 'User Deleted!'
+      })
+      callback(null, response);
+    })
+    .catch(error => {
+      console.error(error);
+      const response = helpers.createResponse(502, error);
+      callback(null, response);
+    })
 };

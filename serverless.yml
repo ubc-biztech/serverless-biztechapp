@@ -124,6 +124,19 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+  userDelete:
+    handler: handlers/user.delete
+    events:
+      - http:
+          path: users/{id}
+          method: delete
+          request:
+            path:
+              id: true
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp    
   eventCreate:
     handler: handlers/event.create
     events:
