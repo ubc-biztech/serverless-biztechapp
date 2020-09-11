@@ -113,7 +113,6 @@ describe('user integration', function () {
   it('user GET exists returns 200 and check PATCH success', async () => {
     return helpers.invokeLambda('userGet', JSON.stringify(defaultPayload))
     .then(([statusCode, body]) => {
-      console.log(body)
       expect(statusCode).to.equal(200);
       // check that update succeeded
       expect(body.fname).to.equal(userPatchBody.fname);
