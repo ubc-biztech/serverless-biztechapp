@@ -40,23 +40,6 @@ describe('events integration', function () {
                     })
             })
 
-            it('event GET with count true and users true returns 406', async () => {
-                const payload = {
-                    pathParameters: {
-                        id: integrationTestId
-                    },
-                    queryStringParameters: {
-                        count: 'true',
-                        users: 'true'
-                    }
-                };
-                return helpers.invokeLambda('eventGet', JSON.stringify(payload))
-                    .then(([statusCode, body]) => {
-                        expect(statusCode).to.equal(406);
-                        expect(body).to.equal('Only one true parameter is permissible at a time');
-                    })
-            });
-
             it('event GET with count true and users false returns 200', async () => {
                 const payload = {
                     pathParameters: {
@@ -102,8 +85,8 @@ describe('events integration', function () {
                 facebookUrl: 'https://www.facebook.com/BizTechUBC/',
                 imageUrl: 'https://www.facebook.com/BizTechUBC/',
                 elocation: 'UBC Sauder',
-                longitude: -120.00,
-                latitude: 78.00,
+                longitude: -120.10,
+                latitude: 78.03,
             }
 
             // fields that are different in the updatePayload: ename, description, capac, elocation, longitude, latitude
@@ -225,36 +208,6 @@ describe('events integration', function () {
                 return helpers.invokeLambda('eventDelete', JSON.stringify(payload))
                     .then(([statusCode, body]) => {
                         expect(statusCode).to.equal(200);
-                    });
-            });
-
-            it('events POST returns 406 when no ID provided', async () => {
-                const payload = {
-                    body: JSON.stringify({
-                        ename: 'test',
-                        capac: 3000,
-                        img: 'someImageUrl'
-                    })
-                }
-                return helpers.invokeLambda('eventCreate', JSON.stringify(payload))
-                    .then(([statusCode, body]) => {
-                        expect(statusCode).to.equal(406);
-                        expect(body.message).to.equal('Event ID not specified.');
-                    })
-            });
-
-            it('events POST returns 406 when no capac provided', async () => {
-                const payload = {
-                    body: JSON.stringify({
-                        id: 'testPostEvent',
-                        ename: 'test',
-                        img: 'someImgUrl'
-                    })
-                };
-                return helpers.invokeLambda('eventCreate', JSON.stringify(payload))
-                    .then(([statusCode, body]) => {
-                        expect(statusCode).to.equal(406);
-                        expect(body.message).to.equal('capac invalid, please provide valid number.')
                     });
             });
 
