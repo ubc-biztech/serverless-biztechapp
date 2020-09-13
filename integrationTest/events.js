@@ -9,7 +9,7 @@ describe('events integration', function () {
 
     this.timeout(10000);
 
-    const integrationTestId = 'integrationTestEvent';
+    const integrationTestId = 'INTEGRATION_TEST_ID';
     const nonExistantEventId = 'someRandomEventThatDoesNotExist123';
 
     describe('events/{id} integration', function () {
