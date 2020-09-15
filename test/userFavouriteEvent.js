@@ -7,10 +7,19 @@ const mochaPlugin = require('serverless-mocha-plugin');
 const expect = mochaPlugin.chai.expect;
 const AWSMock = require('aws-sdk-mock');
 let wrapped = mochaPlugin.getWrapper('userFavEvent', '/handlers/user.js', 'favouriteEvent');
+const { USERS_TABLE, EVENTS_TABLE } = require('../constants/tables');
 
 const testEntry = {
-  eventID: 'some event that exists',
+  eventID: 'some event id',
   isFavourite: true
+};
+
+const userObject = {
+  id: '6456456464',
+  fname: 'insanetest',
+  lname: 'dude',
+  faculty: 'Science',
+  email: 'test@test.com'
 };
 
 describe('userFavEvent', () => {
@@ -19,17 +28,23 @@ describe('userFavEvent', () => {
 
     AWSMock.mock('DynamoDB.DocumentClient', 'get', (params, callback) => {
 
-      callback(null, {
-        Item: { id: params.Key.id }
-      });
+      if(params.TableName.includes(USERS_TABLE) && params.Key.id === 6456456464) {
+
+        callback(null, { Item: userObject });
+
+      }
+      else if(params.TableName.includes(EVENTS_TABLE) && params.Key.id === 'some event id') {
+
+        callback(null, { Item: { id: 'some event id', capac: 100 } });
+
+      }
+      else callback(null, { Item: null });
 
     });
 
     AWSMock.mock('DynamoDB.DocumentClient', 'update', function (params, callback) {
 
-      Promise.resolve(
-        callback(null, { Item: 'not null user' })
-      );
+      callback(null, { Item: 'not null user' });
 
     });
 
@@ -84,6 +99,36 @@ describe('userFavEvent', () => {
 
   });
 
+  it ('returns 404 when user does not exist', async () => {
+
+    const response = await wrapped.run({
+      body: JSON.stringify({
+        eventID: 'some event id',
+        isFavourite: true
+      }),
+      pathParameters: {
+        id: '12345678'
+      }
+    });
+    expect(response.statusCode).to.equal(404);
+
+  });
+
+  it ('returns 404 when event does not exist', async () => {
+
+    const response = await wrapped.run({
+      body: JSON.stringify({
+        eventID: 'some event that does not exist',
+        isFavourite: true
+      }),
+      pathParameters: {
+        id: '6456456464'
+      }
+    });
+    expect(response.statusCode).to.equal(404);
+
+  });
+
   it('returns 200 when given valid data', async () => {
 
     const response = await wrapped.run({
@@ -95,5 +140,6 @@ describe('userFavEvent', () => {
     expect(response.statusCode).to.equal(200);
 
   });
+
 
 });

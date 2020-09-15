@@ -2,7 +2,7 @@
 const AWS = require('aws-sdk');
 const helpers = require('./helpers');
 const { isEmpty } = require('../utils/functions');
-const { USERS_TABLE, USER_INVITE_CODES_TABLE } = require('../constants/tables');
+const { USERS_TABLE, USER_INVITE_CODES_TABLE, EVENTS_TABLE } = require('../constants/tables');
 
 module.exports.create = async (event, ctx, callback) => {
 
@@ -243,8 +243,14 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
       isFavourite: { required: true, type: 'boolean' }
     });
 
-    const existingEvent = await helpers.getOne(data.eventID, USERS_TABLE);
-    if(isEmpty(existingEvent)) throw helpers.notFoundResponse('user', id);
+    const inputEventID = data.eventID;
+    const id = parseInt(event.pathParameters.id, 10);
+
+    const existingEvent = await helpers.getOne(inputEventID, EVENTS_TABLE);
+    if(isEmpty(existingEvent)) throw helpers.notFoundResponse('event', inputEventID);
+
+    const existingUser = await helpers.getOne(id, USERS_TABLE);
+    if(isEmpty(existingUser)) throw helpers.notFoundResponse('user', id);
 
     let updateExpression = '';
     let conditionExpression = '';
@@ -262,8 +268,7 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
         'attribute_exists(id) and contains(favedEventsID, :eventID)'; // if eventID does not exist, don't perform delete operation
 
     }
-    const inputEventID = data.eventID;
-    const id = parseInt(event.pathParameters.id, 10);
+
     let expressionAttributeValues;
     expressionAttributeValues = {
       ':eventsID': docClient.createSet([inputEventID]) // set data type, for updateExpression
@@ -286,6 +291,7 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
       message: successMsg,
       response: res
     }));
+    return null;
 
   }
   catch(err) {
@@ -304,10 +310,15 @@ module.exports.delete = async (event, ctx, callback) => {
 
   try {
 
+    // check that the param was given
     if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('event');
     const id = event.pathParameters.id;
 
-    const res = await helpers.deleteOne(id, PRIZES_TABLE);
+    // check that the user exists
+    const existingUser = await helpers.getOne(id, USERS_TABLE);
+    if(isEmpty(existingUser)) throw helpers.notFoundResponse('User', id);
+
+    const res = await helpers.deleteOne(id, USERS_TABLE);
     const response = helpers.createResponse(200, {
       message: 'User deleted!',
       response: res
