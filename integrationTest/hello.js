@@ -1,5 +1,4 @@
 'use strict';
-const AWS = require('aws-sdk');
 const chai = require('chai');
 const expect = chai.expect;
 

@@ -1,5 +1,4 @@
 'use strict';
-const AWS = require('aws-sdk');
 const chai = require('chai');
 const expect = chai.expect;
 
@@ -42,7 +41,7 @@ describe('events integration', function () {
           }
         };
         return helpers.invokeLambda('eventGet', JSON.stringify(payload))
-          .then(([statusCode, body]) => {
+          .then(([statusCode]) => {
 
             expect(statusCode).to.equal(404);
 
@@ -85,7 +84,7 @@ describe('events integration', function () {
           }
         };
         return helpers.invokeLambda('eventGet', JSON.stringify(payload))
-          .then(([statusCode, body]) => {
+          .then(([statusCode]) => {
 
             expect(statusCode).to.equal(200);
 
@@ -132,7 +131,7 @@ describe('events integration', function () {
           body: JSON.stringify(defaultPayload)
         };
         await helpers.invokeLambda('eventUpdate', JSON.stringify(payload))
-          .then(([statusCode, body]) => {
+          .then(([statusCode]) => {
 
             expect(statusCode).to.equal(200);
 
@@ -165,7 +164,7 @@ describe('events integration', function () {
           body: JSON.stringify(updatePayload)
         };
         await helpers.invokeLambda('eventUpdate', JSON.stringify(payload))
-          .then(([statusCode, body]) => {
+          .then(([statusCode]) => {
 
             expect(statusCode).to.equal(200);
 
@@ -197,7 +196,7 @@ describe('events integration', function () {
         };
 
         return helpers.invokeLambda('eventUpdate', JSON.stringify(payload))
-          .then(([statusCode, body]) => {
+          .then(([statusCode]) => {
 
             expect(statusCode).to.equal(404);
 
@@ -216,7 +215,7 @@ describe('events integration', function () {
       it('events GET returns 200 on success', async () => {
 
         return helpers.invokeLambda('eventGetAll', '')
-          .then(([statusCode, body]) => {
+          .then(([statusCode]) => {
 
             expect(statusCode).to.equal(200);
 
@@ -253,7 +252,7 @@ describe('events integration', function () {
         };
 
         return helpers.invokeLambda('eventDelete', JSON.stringify(payload))
-          .then(([statusCode, body]) => {
+          .then(([statusCode]) => {
 
             expect(statusCode).to.equal(200);
 

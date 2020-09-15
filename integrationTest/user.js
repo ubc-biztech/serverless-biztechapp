@@ -1,5 +1,4 @@
 'use strict';
-const AWS = require('aws-sdk');
 const chai = require('chai');
 const expect = chai.expect;
 
@@ -20,7 +19,7 @@ describe('user integration', function () {
     it('user GET doesn\'t exist returns 404', async () => {
 
       return helpers.invokeLambda('userGet', JSON.stringify(defaultPayload))
-        .then(([statusCode, body]) => {
+        .then(([statusCode]) => {
 
           expect(statusCode).to.equal(404);
 
@@ -61,7 +60,7 @@ describe('user integration', function () {
     it('user POST already exists returns 409', async () => {
 
       return helpers.invokeLambda('userCreate', JSON.stringify(userCreatePayload))
-        .then(([statusCode, body]) => {
+        .then(([statusCode]) => {
 
           expect(statusCode).to.equal(409);
 
@@ -92,7 +91,7 @@ describe('user integration', function () {
     it('user PATCH on user that exists returns 200', async() => {
 
       return helpers.invokeLambda('userUpdate', JSON.stringify(userPatchPayload))
-        .then(([statusCode, body]) => {
+        .then(([statusCode]) => {
 
           expect(statusCode).to.equal(200);
 
@@ -168,7 +167,7 @@ describe('user integration', function () {
     it('user DELETE returns 200', async () => {
 
       return helpers.invokeLambda('userDelete', JSON.stringify(defaultPayload))
-        .then(([statusCode, body]) => {
+        .then(([statusCode]) => {
 
           expect(statusCode).to.equal(200);
 
@@ -179,7 +178,7 @@ describe('user integration', function () {
     it('user GET returns 404 to check DELETE worked', async () => {
 
       return helpers.invokeLambda('userGet', JSON.stringify(defaultPayload))
-        .then(([statusCode, body]) => {
+        .then(([statusCode]) => {
 
           expect(statusCode).to.equal(404);
 
@@ -190,7 +189,7 @@ describe('user integration', function () {
     it('user PATCH on user that does not exist returns 404', async () => {
 
       return helpers.invokeLambda('userGet', JSON.stringify(userPatchPayload))
-        .then(([statusCode, body]) => {
+        .then(([statusCode]) => {
 
           expect(statusCode).to.equal(404);
 

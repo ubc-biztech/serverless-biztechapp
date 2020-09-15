@@ -91,7 +91,7 @@ You also have the option to run specific unit tests by adding the "-f" argument:
 **Integration tests** can be run using the following command:
 
 ```
-mocha integrationTest
+npm run itest
 ```
 
 [Travis CI](https://travis-ci.org) is used to automatically run all our tests for our Pull Requests and when releasing.
