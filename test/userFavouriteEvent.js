@@ -141,5 +141,20 @@ describe('userFavEvent', () => {
 
   });
 
+  it('returns 200 when given valid data (false)', async () => {
+
+    const response = await wrapped.run({
+      body: JSON.stringify({
+        ...testEntry,
+        isFavourite: false
+      }),
+      pathParameters: {
+        id: '6456456464'
+      }
+    });
+    expect(response.statusCode).to.equal(200);
+
+  });
+
 
 });

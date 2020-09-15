@@ -285,8 +285,8 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
 
     const res = await docClient.update(params).promise();
 
-    let successMsg = isFavourite ? 'Favourited' : successMsg = 'Unfavourited';
-    successMsg += `event with id ${id}`;
+    let successMsg = isFavourite ? 'Favourited' : 'Unfavourited';
+    successMsg += ` event with id ${inputEventID}`;
     callback(null, helpers.createResponse(200, {
       message: successMsg,
       response: res

@@ -94,6 +94,8 @@ You also have the option to run specific unit tests by adding the "-f" argument:
 npm run itest
 ```
 
+In order to run integration tests, however, you need to [deploy](#development-(dev)) the API to dev environment first.
+
 [Travis CI](https://travis-ci.org) is used to automatically run all our tests for our Pull Requests and when releasing.
 
 

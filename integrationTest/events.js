@@ -3,13 +3,11 @@ const chai = require('chai');
 const expect = chai.expect;
 
 const helpers = require('./helpers');
+const { INTEGRATION_TEST_EVENT_ID, INTEGRATION_TEST_NON_EXISTANT_EVENT_ID } = require('../constants/test');
 
 describe('events integration', function () {
 
   this.timeout(10000);
-
-  const integrationTestId = 'INTEGRATION_TEST_ID';
-  const nonExistantEventId = 'someRandomEventThatDoesNotExist123';
 
   describe('events/{id} integration', function () {
 
@@ -19,14 +17,14 @@ describe('events integration', function () {
 
         const payload = {
           pathParameters: {
-            id: integrationTestId
+            id: INTEGRATION_TEST_EVENT_ID
           }
         };
         return helpers.invokeLambda('eventGet', JSON.stringify(payload))
           .then(([statusCode, body]) => {
 
             expect(statusCode).to.equal(200);
-            expect(body.id).to.equal(integrationTestId);
+            expect(body.id).to.equal(INTEGRATION_TEST_EVENT_ID);
             expect(body).to.have.property('capac');
 
           });
@@ -37,7 +35,7 @@ describe('events integration', function () {
 
         const payload = {
           pathParameters: {
-            id: nonExistantEventId
+            id: INTEGRATION_TEST_NON_EXISTANT_EVENT_ID
           }
         };
         return helpers.invokeLambda('eventGet', JSON.stringify(payload))
@@ -53,7 +51,7 @@ describe('events integration', function () {
 
         const payload = {
           pathParameters: {
-            id: integrationTestId
+            id: INTEGRATION_TEST_EVENT_ID
           },
           queryStringParameters: {
             count: 'true',
@@ -76,7 +74,7 @@ describe('events integration', function () {
 
         const payload = {
           pathParameters: {
-            id: integrationTestId
+            id: INTEGRATION_TEST_EVENT_ID
           },
           queryStringParameters: {
             count: 'false',
@@ -97,7 +95,6 @@ describe('events integration', function () {
     describe('events/{id} PATCH tests', function () {
 
       const updatePayload = {
-        id: integrationTestId,
         ename: 'Updated Event',
         description: 'Updated test event description',
         capac: 100,
@@ -110,7 +107,6 @@ describe('events integration', function () {
 
       // fields that are different in the updatePayload: ename, description, capac, elocation, longitude, latitude
       const defaultPayload = {
-        id: integrationTestId,
         ename: 'integrationTestEventName',
         description: 'default test event description',
         capac: 50,
@@ -126,7 +122,7 @@ describe('events integration', function () {
         // update integrationTestEvent to defaultPayload
         let payload = {
           pathParameters: {
-            id: integrationTestId
+            id: INTEGRATION_TEST_EVENT_ID
           },
           body: JSON.stringify(defaultPayload)
         };
@@ -139,7 +135,7 @@ describe('events integration', function () {
 
         payload = {
           pathParameters: {
-            id: integrationTestId
+            id: INTEGRATION_TEST_EVENT_ID
           }
         };
         // check that integrationTestEvent was updated
@@ -159,7 +155,7 @@ describe('events integration', function () {
         // update integrationTestEvent to updatePayload
         payload = {
           pathParameters: {
-            id: integrationTestId
+            id: INTEGRATION_TEST_EVENT_ID
           },
           body: JSON.stringify(updatePayload)
         };
@@ -190,7 +186,7 @@ describe('events integration', function () {
 
         const payload = {
           pathParameters: {
-            id: nonExistantEventId
+            id: INTEGRATION_TEST_NON_EXISTANT_EVENT_ID
           },
           body: JSON.stringify(defaultPayload)
         };
@@ -241,7 +237,7 @@ describe('events integration', function () {
           .then(([statusCode, body]) => {
 
             expect(statusCode).to.equal(201);
-            expect(body.message).to.equal('Event Created!');
+            expect(body.message).to.equal(`Created event with id ${'testPostEvent'}!`);
 
           });
 
@@ -264,7 +260,7 @@ describe('events integration', function () {
 
         const payload = {
           body: JSON.stringify({
-            id: integrationTestId,
+            id: INTEGRATION_TEST_EVENT_ID,
             ename: 'test',
             capac: 20000,
             img: 'someImgUrl'
@@ -274,7 +270,7 @@ describe('events integration', function () {
           .then(([statusCode, body]) => {
 
             expect(statusCode).to.equal(409);
-            expect(body).to.equal('Event could not be created because id already exists');
+            expect(body.message).to.equal('A database entry with the same \'event id\' already exists!');
 
           });
 

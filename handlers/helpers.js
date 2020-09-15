@@ -92,7 +92,7 @@ module.exports = {
       criteria.forEach(([key, crit]) => {
 
         // check if property exists
-        if(crit.required && !payload[key]) {
+        if(crit.required && !payload[key] && payload[key] !== false) {
 
           throw `'${key}' is missing from the request body`;
 
@@ -268,7 +268,7 @@ module.exports = {
     let val = 0;
     let updateExpression = 'set ';
     let expressionAttributeValues = {};
-    let expressionAttributeNames = {};
+    let expressionAttributeNames = null;
 
     // TODO: Add a filter for valid object keys
     // loop through keys and create updateExpression string and
@@ -284,6 +284,7 @@ module.exports = {
 
           updateExpression += `#v${val} = :val${val},`;
           expressionAttributeValues[`:val${val}`] = obj[key];
+          if(!expressionAttributeNames) expressionAttributeNames = {};
           expressionAttributeNames[`#v${val}`] = key;
           val++;
 

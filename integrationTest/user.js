@@ -1,6 +1,7 @@
 'use strict';
 const chai = require('chai');
 const expect = chai.expect;
+const { INTEGRATION_TEST_USER_ID, INTEGRATION_TEST_EVENT_ID } = require('../constants/test');
 
 const helpers = require('./helpers');
 
@@ -10,7 +11,7 @@ describe('user integration', function () {
 
   const defaultPayload = {
     pathParameters: {
-      id: -40,
+      id: INTEGRATION_TEST_USER_ID,
     }
   };
 
@@ -31,7 +32,7 @@ describe('user integration', function () {
 
   const userCreatePayload = {
     body: JSON.stringify({
-      id: -40,
+      id: INTEGRATION_TEST_USER_ID,
       fname: 'TESTUSER',
       lname: 'DONOTMODIFY',
       email: 'integration@test.com',
@@ -81,7 +82,7 @@ describe('user integration', function () {
 
   const userPatchPayload = {
     pathParameters: {
-      id: -40,
+      id: INTEGRATION_TEST_USER_ID,
     },
     body: JSON.stringify(userPatchBody)
   };
@@ -103,19 +104,18 @@ describe('user integration', function () {
 
       const payload = {
         pathParameters: {
-          id: -40,
+          id: INTEGRATION_TEST_USER_ID,
         },
         body: JSON.stringify({
           isFavourite: true,
-          eventID: 'randomEvent',
+          eventID: INTEGRATION_TEST_EVENT_ID,
         }),
       };
 
       return helpers.invokeLambda('userFavouriteEvent', JSON.stringify(payload))
-        .then(([statusCode, body]) => {
+        .then(([statusCode]) => {
 
           expect(statusCode).to.equal(200);
-          expect(body).to.equal('Favouriting event \'randomEvent\' success.');
 
         });
 
@@ -125,19 +125,18 @@ describe('user integration', function () {
 
       const payload = {
         pathParameters: {
-          id: -40,
+          id: INTEGRATION_TEST_USER_ID,
         },
         body: JSON.stringify({
           isFavourite: false,
-          eventID: 'bluePrint',
+          eventID: INTEGRATION_TEST_EVENT_ID,
         }),
       };
 
       return helpers.invokeLambda('userFavouriteEvent', JSON.stringify(payload))
-        .then(([statusCode, body]) => {
+        .then(([statusCode]) => {
 
           expect(statusCode).to.equal(200);
-          expect(body).to.equal('Unfavouriting event \'bluePrint\' success.');
 
         });
 
@@ -153,7 +152,7 @@ describe('user integration', function () {
           expect(body.fname).to.equal(userPatchBody.fname);
           expect(body.year).to.equal(userPatchBody.year);
           expect(body.gender).to.equal(userPatchBody.gender);
-          expect(body.favedEventsID).to.contain('randomEvent');
+          expect(body.favedEventsID).to.contain('bluePrint');
           expect(body.favedEventsID).to.contain('someEvent');
 
         });
