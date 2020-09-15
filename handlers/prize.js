@@ -139,6 +139,7 @@ module.exports.delete = async (event, ctx, callback) => {
     });
 
     callback(null, response);
+    return null;
 
   } catch(err) {
 

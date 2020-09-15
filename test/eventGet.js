@@ -119,7 +119,6 @@ describe('eventGet', () => {
 
     const response = await wrapped.run({ queryStringParameters: { users: 'true' }, pathParameters: { id: validId } });
     expect(response.statusCode).to.be.equal(200);
-    console.log(response);
 
     const body = JSON.parse(response.body);
     expect(body).to.have.length(3);

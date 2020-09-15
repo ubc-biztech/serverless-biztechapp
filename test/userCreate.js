@@ -59,16 +59,6 @@ describe('userCreate', () => {
 
   it('returns 201 and sets user as admin', async () => {
 
-    AWSMock.mock('DynamoDB.DocumentClient', 'put', function (params, callback){
-
-      Promise.resolve(
-        callback(null, {
-          Item: 'not null user'
-        }
-        ));
-
-    });
-
     const body = {
       ...testEntry,
       email: 'adminUser@ubcbiztech.com'

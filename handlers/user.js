@@ -298,3 +298,29 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
   }
 
 };
+
+// TODO: refactor to abstract delete code among different endpoints
+module.exports.delete = async (event, ctx, callback) => {
+
+  try {
+
+    if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('event');
+    const id = event.pathParameters.id;
+
+    const res = await helpers.deleteOne(id, PRIZES_TABLE);
+    const response = helpers.createResponse(200, {
+      message: 'User deleted!',
+      response: res
+    });
+
+    callback(null, response);
+    return null;
+
+  } catch(err) {
+
+    callback(null, err);
+    return null;
+
+  }
+
+};
