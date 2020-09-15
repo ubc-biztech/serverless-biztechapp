@@ -28,7 +28,7 @@ These instructions will get you a copy of the project up and running on your loc
 4. Log into the serverless dashboard
 
     ```
-    $ npm install -g serverless
+    $ serverless login
     ```
     
     > Use our Google Account, dev@ubcbiztech.com
@@ -94,7 +94,7 @@ You also have the option to run specific unit tests by adding the "-f" argument:
 npm run itest
 ```
 
-In order to run integration tests, however, you need to [deploy](#development-(dev)) the API to dev environment first.
+In order to run integration tests, however, you need to [deploy](#development-dev) the API to dev environment first.
 
 [Travis CI](https://travis-ci.org) is used to automatically run all our tests for our Pull Requests and when releasing.
 
