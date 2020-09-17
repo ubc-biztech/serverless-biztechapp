@@ -1,0 +1,32 @@
+{
+    "Items": [
+        {
+            "id": "prize001",
+            "name": "Nintendo Switch",
+            "price": 500,
+            "imageHash": "bf9f97372c2ebbb3",
+            "links": {
+                "sponsor": "https://www.nintendo.com"
+            }
+        },
+        {
+            "id": "prize002",
+            "name": "Xbox 360",
+            "price": 1000,
+            "imageHash": "bf9f97372c2ebbb3",
+            "links": {
+                "sponsor": "https://www.microsoft.com/en-ca"
+            }
+        },
+        {
+            "id": "prize003",
+            "name": "Amazon $50 Gift Card",
+            "price": 300,
+            "imageHash": "bf9f97372c2ebbb3",
+            "links": {
+                "sponsor": "https://www.amazon.ca"
+            }
+        }
+    ]
+  }
+  
