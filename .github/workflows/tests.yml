@@ -38,4 +38,4 @@ jobs:
       run: |
         npx sls deploy --conceal
         npx sls invoke test
-        npx sls test
+        npx mocha integrationTest

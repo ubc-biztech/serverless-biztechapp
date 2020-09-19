@@ -146,7 +146,6 @@ module.exports.update = async (event, ctx, callback) => {
       callback(null, helpers.createResponse(200, "Update succeeded."));
     })
     .catch(error => {
-      console.error(error);
       callback(null, helpers.createResponse(404, "Event not found."));
     })
 

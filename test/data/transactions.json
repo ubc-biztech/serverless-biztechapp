@@ -1,0 +1,22 @@
+{
+    "Items": [
+        {
+            "id": "transaction_id_0",
+            "userId": 77777771,
+            "reason": "PURCHASE/NINTENDO",
+            "credits": -100
+        },
+        {
+            "id": "transaction_id_1",
+            "userId": 77777777,
+            "reason": "ATTENDANCE/BLUEPRINT",
+            "credits": 100
+        },
+        {
+            "id": "transaction_id_2",
+            "userId": 77777771,
+            "reason": "ATTENDANCE/BLUEPRINT",
+            "credits": 100
+        }
+    ]
+}

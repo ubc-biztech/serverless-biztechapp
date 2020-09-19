@@ -30,7 +30,7 @@ describe('userFavEvent', () => {
         }
     });
     expect(response.statusCode).to.equal(200);
-    expect(response.body).to.equal(`"Favourite event ${testEntry.eventID} succeed."`)
+    expect(response.body).to.equal(`"Favouriting event '${testEntry.eventID}' success."`)
     AWSMock.restore('DynamoDB.DocumentClient');
     });
 
