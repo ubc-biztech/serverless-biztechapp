@@ -1,6 +1,5 @@
 'use strict';
 const AWS = require('aws-sdk');
-const docClient = new AWS.DynamoDB.DocumentClient();
 const helpers = require('./helpers');
 const email = require('../utils/email');
 const { isEmpty } = require('../utils/functions');
@@ -73,6 +72,8 @@ async function updateHelper(data, createNew, idString) {
 async function createRegistration(registrationStatus, data, id, eventID, createNew) {
 
   try {
+
+    const docClient = new AWS.DynamoDB.DocumentClient();
 
     const updateObject = {
       registrationStatus

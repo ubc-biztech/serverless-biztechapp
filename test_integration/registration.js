@@ -106,7 +106,7 @@ describe('registration integration', function () {
 
       const payload = createPayload(INTEGRATION_TEST_PERSISTENT_USER_ID, INTEGRATION_TEST_PERSISTENT_EVENT_ID, 'checkedIn');
       return helpers.invokeLambda('registrationPost', JSON.stringify(payload))
-        .then(([statusCode, body]) => {
+        .then(([statusCode]) => {
 
           expect(statusCode).to.equal(409);
 
@@ -191,7 +191,7 @@ describe('registration integration', function () {
         })
       };
       return helpers.invokeLambda('registrationDelete', JSON.stringify(payload))
-        .then(([statusCode, body]) => {
+        .then(([statusCode]) => {
 
           expect(statusCode).to.equal(200);
 
@@ -210,7 +210,7 @@ describe('registration integration', function () {
         })
       };
       return helpers.invokeLambda('registrationDelete', JSON.stringify(payload))
-        .then(([statusCode, body]) => {
+        .then(([statusCode]) => {
 
           expect(statusCode).to.equal(200);
 
