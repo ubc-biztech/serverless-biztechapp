@@ -296,3 +296,44 @@ module.exports.get = async (event, ctx, callback) => {
       });
   }
 }
+
+// TODO: refactor to abstract delete code among different endpoints
+// (used for testing)
+module.exports.delete = async (event, ctx, callback) => {
+  const docClient = new AWS.DynamoDB.DocumentClient();
+
+  const id = event.pathParameters.id;
+  const data = JSON.parse(event.body);
+
+  // Check that parameters are valid
+  if (!id) {
+    callback(null, helpers.inputError('id not specified.', 'missing query param'));
+    return null;
+  }
+
+  if (!data.hasOwnProperty('eventID')) {
+    callback(null, helpers.inputError('eventID not specified.', 'missing query param'));
+    return null;
+  }
+
+  const params = {
+    TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
+    Key: {
+      id,
+      eventID: data.eventID
+    }
+  };
+
+  await docClient.delete(params).promise()
+    .then(result => {
+      const response = helpers.createResponse(200, {
+        message: 'Registration entry Deleted!'
+      })
+      callback(null, response);
+    })
+    .catch(error => {
+      console.error(error);
+      const response = helpers.createResponse(502, error);
+      callback(null, response);
+    })
+};
