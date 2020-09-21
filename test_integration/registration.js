@@ -1,7 +1,13 @@
 'use strict';
 const chai = require('chai');
 const expect = chai.expect;
-const { INTEGRATION_TEST_PERSISTENT_USER_ID, INTEGRATION_TEST_PERSISTENT_EVENT_ID } = require('../constants/test');
+const {
+  INTEGRATION_TEST_PERSISTENT_USER_ID,
+  INTEGRATION_TEST_NON_EXISTANT_USER_ID,
+  INTEGRATION_TEST_PERSISTENT_EVENT_ID,
+  INTEGRATION_TEST_PERSISTENT_EVENT_ID_2,
+  INTEGRATION_TEST_NON_EXISTANT_EVENT_ID
+} = require('../constants/test');
 
 const helpers = require('./helpers');
 
@@ -11,7 +17,7 @@ describe('registration integration', function () {
 
   describe('registrations/ GET', function() {
 
-    it('entry GET doesn\'t exist returns 404', async () => {
+    it('entry GET event ID scan doesn\'t exist returns 200', async () => {
 
       const payload = {
         queryStringParameters: {
@@ -22,19 +28,22 @@ describe('registration integration', function () {
       return helpers.invokeLambda('registrationGet', JSON.stringify(payload))
         .then(([statusCode, body]) => {
 
-          expect(statusCode).to.equal(404);
+          expect(statusCode).to.equal(200);
+          expect(body.size).to.equal(0);
+          expect(body.data).to.have.length(0);
 
         });
 
     });
 
-    it('entry GET event ID scan returns 200', async () => {
+    it('entry GET event ID scan exists returns 200', async () => {
 
       const payload = {
         queryStringParameters: {
-          eventID: INTEGRATION_TEST_PERSISTENT_EVENT_ID,
+          eventID: INTEGRATION_TEST_PERSISTENT_EVENT_ID_2,
         }
       };
+
       return helpers.invokeLambda('registrationGet', JSON.stringify(payload))
         .then(([statusCode, body]) => {
 
@@ -42,7 +51,7 @@ describe('registration integration', function () {
           expect(body.size).to.equal(3);
           for (const entry of body.data) {
 
-            expect(entry.eventID).to.equal(INTEGRATION_TEST_PERSISTENT_EVENT_ID);
+            expect(entry.eventID).to.equal(INTEGRATION_TEST_PERSISTENT_EVENT_ID_2);
 
           }
 
@@ -54,6 +63,32 @@ describe('registration integration', function () {
 
   describe('registrations/ POST', function() {
 
+    it('entry POST no such event returns 404', async () => {
+
+      const payload = createPayload(INTEGRATION_TEST_PERSISTENT_USER_ID, INTEGRATION_TEST_NON_EXISTANT_EVENT_ID, 'registered');
+      return helpers.invokeLambda('registrationPost', JSON.stringify(payload))
+        .then(([statusCode, body]) => {
+
+          expect(statusCode).to.equal(404);
+          expect(body.message).to.equal(`Event with id '${INTEGRATION_TEST_NON_EXISTANT_EVENT_ID}' could not be found. Make sure you have provided the correct id.`);
+
+        });
+
+    });
+
+    it('entry POST no such user returns 404', async () => {
+
+      const payload = createPayload(INTEGRATION_TEST_NON_EXISTANT_USER_ID, INTEGRATION_TEST_PERSISTENT_EVENT_ID, 'registered');
+      return helpers.invokeLambda('registrationPost', JSON.stringify(payload))
+        .then(([statusCode, body]) => {
+
+          expect(statusCode).to.equal(404);
+          expect(body.message).to.equal(`User with id '${INTEGRATION_TEST_NON_EXISTANT_USER_ID}' could not be found. Make sure you have provided the correct id.`);
+
+        });
+
+    });
+
     it('entry POST success returns 201', async () => {
 
       const payload = createPayload(INTEGRATION_TEST_PERSISTENT_USER_ID, INTEGRATION_TEST_PERSISTENT_EVENT_ID, 'registered');
@@ -62,32 +97,6 @@ describe('registration integration', function () {
 
           expect(statusCode).to.equal(201);
           expect(body.registrationStatus).to.equal('registered');
-
-        });
-
-    });
-
-    it('entry POST no such event returns 403', async () => {
-
-      const payload = createPayload(INTEGRATION_TEST_PERSISTENT_USER_ID, 'randomNonExistantEventIntegrations', 'registered');
-      return helpers.invokeLambda('registrationPost', JSON.stringify(payload))
-        .then(([statusCode, body]) => {
-
-          expect(statusCode).to.equal(403);
-          expect(body).to.equal('Event with eventID: randomNonExistantEventIntegrations was not found.');
-
-        });
-
-    });
-
-    it('entry POST no such user returns 403', async () => {
-
-      const payload = createPayload(-598765230, INTEGRATION_TEST_PERSISTENT_EVENT_ID, 'registered');
-      return helpers.invokeLambda('registrationPost', JSON.stringify(payload))
-        .then(([statusCode, body]) => {
-
-          expect(statusCode).to.equal(403);
-          expect(body).to.equal('User with user id: -598765230 was not found.');
 
         });
 
@@ -107,7 +116,7 @@ describe('registration integration', function () {
 
     it('entry POST event at capacity returns 201', async () => {
 
-      const payload = createPayload(INTEGRATION_TEST_PERSISTENT_USER_ID, INTEGRATION_TEST_PERSISTENT_EVENT_ID, 'registered');
+      const payload = createPayload(INTEGRATION_TEST_PERSISTENT_USER_ID, INTEGRATION_TEST_PERSISTENT_EVENT_ID_2, 'registered');
       return helpers.invokeLambda('registrationPost', JSON.stringify(payload))
         .then(([statusCode, body]) => {
 

@@ -14,7 +14,7 @@ const { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } = require('../cons
    returns 200 when entry is updated successfully, error 409 if a registration with the same id/eventID DNE
    sends an email to the user if they are registered, waitlisted, or cancelled, but not if checkedIn
 */
-async function updateHelper(event, callback, data, createNew, idString) {
+async function updateHelper(data, createNew, idString) {
 
   const id = parseInt(idString, 10);
   const eventID = data.eventID;
@@ -42,18 +42,14 @@ async function updateHelper(event, callback, data, createNew, idString) {
 
     }
 
-    if (counts.registeredCount >= existingEvent.Item.capac) {
-
-      registrationStatus = 'waitlist';
-
-    }
+    if (counts.registeredCount >= existingEvent.capac) registrationStatus = 'waitlist';
 
   }
 
   // try to send the registration email
   try {
 
-    await sendEmail(id, existingEvent.ename, registrationStatus);
+    await sendEmail(existingUser, existingEvent.ename, registrationStatus);
 
   }
   catch(err) {
@@ -67,8 +63,9 @@ async function updateHelper(event, callback, data, createNew, idString) {
 
   }
 
-  const response = await createRegistration(registrationStatus, data, id, eventID, createNew);
+  if(existingUser.heardFrom) data.heardFrom = existingUser.heardFrom;
 
+  const response = await createRegistration(registrationStatus, data, id, eventID, createNew);
   return response;
 
 }
@@ -91,7 +88,7 @@ async function createRegistration(registrationStatus, data, id, eventID, createN
       updateExpression,
       expressionAttributeValues,
       expressionAttributeNames
-    } = this.createUpdateExpression(updateObject);
+    } = helpers.createUpdateExpression(updateObject);
 
     // Because biztechRegistration table has a sort key, we cannot use helpers.updateDB()
     let params = {
@@ -119,6 +116,7 @@ async function createRegistration(registrationStatus, data, id, eventID, createN
     }
 
     const response = helpers.createResponse(statusCode, {
+      registrationStatus,
       message,
       response: res
     });
@@ -127,14 +125,18 @@ async function createRegistration(registrationStatus, data, id, eventID, createN
 
   } catch(err) {
 
-    let errorResponse = this.dynamoErrorResponse(err);
+    let errorResponse = helpers.dynamoErrorResponse(err);
+    console.log('KABOOM', errorResponse);
+    const errBody = JSON.parse(errorResponse.body);
 
     // customize the error messsage if it is caused by the 'ConditionExpression' check
-    if(err.code === 'ConditionalCheckFailedException') {
+    if(errBody.code === 'ConditionalCheckFailedException') {
 
       errorResponse.statusCode = 409;
-      if(createNew) errorResponse.message = `Create error because the registration entry for user ${id} and with event id ${eventID} already exists`;
-      else errorResponse.message = `Update error because the registration entry for user ${id} and with event id ${eventID} does not exist`;
+      errBody.statusCode = 409;
+      if(createNew) errBody.message = `Create error because the registration entry for user ${id} and with event id ${eventID} already exists`;
+      else errBody.message = `Update error because the registration entry for user ${id} and with event id ${eventID} does not exist`;
+      errorResponse.body = JSON.stringify(errBody);
 
     }
     throw errorResponse;
@@ -196,9 +198,9 @@ module.exports.post = async (event, ctx, callback) => {
       registrationStatus: { required: true , type: 'string' },
     });
 
-    const response = await updateHelper(event, callback, data, true, data.id);
+    const response = await updateHelper(data, true, data.id);
 
-    callback(response.statusCode, response);
+    callback(null, response);
     return null;
 
   }
@@ -227,9 +229,9 @@ module.exports.put = async (event, ctx, callback) => {
       registrationStatus: { required: true , type: 'string' },
     });
 
-    const response = await updateHelper(event, callback, data, false, id);
+    const response = await updateHelper(data, false, id);
 
-    callback(response.statusCode, response);
+    callback(null, response);
     return null;
 
   }
