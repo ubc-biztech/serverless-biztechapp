@@ -25,7 +25,7 @@ describe('registrationPost', () => {
     })
    
     AWSMock.mock('DynamoDB.DocumentClient', 'update', (params, callback) => {
-      callback(null, "UpdatedQ")
+      callback(null, "Updated!")
     });
 
   });
@@ -35,6 +35,8 @@ describe('registrationPost', () => {
     AWSMock.restore('DynamoDB.DocumentClient');
 
   });
+
+  // NEED A TEST FOR WHEN THE EVENT IS FULL
 
   it('should return 406 when id is not given ', async () => {
     const response = await wrapped.run({

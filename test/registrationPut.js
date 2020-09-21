@@ -7,99 +7,83 @@ const mochaPlugin = require('serverless-mocha-plugin');
 const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper('registrationPut', '/handlers/registration.js', 'put');
 const AWSMock = require('aws-sdk-mock');
-const event = require('./data/events.json').Items[0];
-const getEventResponse = { Item: event }; 
 
-
-
+const userPayload = {
+  id: '6456456464',
+  fname: 'user',
+  lname: 'man',
+  faculty: 'Science',
+  email: 'test@test.com'
+};
 
 describe('registrationPut', () => {
-  //   before(() => {
-  //     AWSMock.mock('DynamoDB.DocumentClient', 'get', function (params, callback) {
-  //       if(params.TableName.includes('biztechEvents')) {
-  //         Promise.resolve(
-  //           callback(null, getEventResponse)
-  //       )} else {
-  //         Promise.resolve(
-  //         callback(null, {
-  //           Item: 'not a null item'
-  //         }))
-  //       }
-  //     });
-      
-  //     AWSMock.mock('DynamoDB.DocumentClient', 'get', function (params, callback) {
-  //         if (params.TableName.includes('biztechUsers')) {
-  //           Promise.resolve(
-  //             callback(null, {
-  //               Item: "not a null item"
-  //             }))
-  //           } else {
-  //             Promise.resolve(
-  //               callback(null, {
-  //                 Item: "not a null item"
-  //               }))
-  //             }
-  //     }); 
+  before(() => {
 
-  //     AWSMock.mock('DynamoDB.DocumentClient', 'update', (params, callback) => {
-  //       callback(null, {
-  //         Item: "not null"
-  //       })
-  // });
-
-
-
-
-  //   });
-  //   after(() => {
-  //     AWSMock.restore('DynamoDB.DocumentClient');
-  //   });
-
-  it('should return 406 for no id', async () => {
-    const response = await wrapped.run({
-      body: JSON.stringify({
-        eventID: "event", 
-        registrationStatus: "status"
-      }),
-      pathParameters: {
-      }
+    AWSMock.mock('DynamoDB.DocumentClient', 'get', (params, callback) => {
+      callback(null, { Item: userPayload })
+    })
+   
+    AWSMock.mock('DynamoDB.DocumentClient', 'update', (params, callback) => {
+      callback(null, "Updated!")
     });
-    expect(response.statusCode).to.equal(406);
+
   });
 
-  it('should return 406 for no eventID provided', async () => {
+  after(() => {
+
+    AWSMock.restore('DynamoDB.DocumentClient');
+
+  });
+
+  // *** refactor the handler checks for id and data
+  // it('should return 406 when id is not given ', async () => {
+  //   const response = await wrapped.run({
+  //     body: JSON.stringify({
+  //       eventID: "event"
+  //     })
+  //   });
+  //   expect(response.statusCode).to.be.equal(406);
+  // });
+
+  // NEED A TEST FOR WHEN THE EVENT IS FULL
+
+  it('should return 406 when no eventID is provided', async () => {
     const response = await wrapped.run({
       body: JSON.stringify({
-        registrationStatus: "status"
+        id: '12200034', 
+        registrationStatus: "registered"
       }),
       pathParameters: {
         id: "12345342"
       }
     });
-    expect(response.statusCode).to.equal(406);
+    expect(response.statusCode).to.be.equal(406);
   });
 
-  it('should return 406 for no registration status provided', async () => {
+  it('should return 406 when no registrationStatus is provided', async () => {
     const response = await wrapped.run({
       body: JSON.stringify({
+        id: '12200034', 
         eventID: "event"
       }),
       pathParameters: {
         id: "12345342"
       }
     });
-    expect(response.statusCode).to.equal(406);
-  });
+    expect(response.statusCode).to.be.equal(406);
+  }); 
 
-  it('should return 406 for no eventBody', async () => {
-    const response = await wrapped.run({
-      body: JSON.stringify({
-      }),
-      pathParameters: {
-        id: "12345342"
-      }
+  it('should return 200 for successful update of registration', async () => {
+    const response = await wrapped.run({ 
+        body: JSON.stringify({
+          id: '12200034', 
+          eventID: "event", 
+          registrationStatus: "not"
+        }),
+        pathParameters: {
+          id: "12345342"
+        }
     });
-    expect(response.statusCode).to.equal(406);
-  });
-
+    expect(response.statusCode).to.equal(200);
+    });
 });
