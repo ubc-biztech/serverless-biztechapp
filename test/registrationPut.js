@@ -55,22 +55,7 @@ describe('registrationPut', () => {
   //     AWSMock.restore('DynamoDB.DocumentClient');
   //   });
 
-  // it('return 403 when event not found', async () => {
-  //   AWSMock.mock('DynamoDB.DocumentClient', 'get', function (params, callback){
-  //       Promise.resolve(
-  //           callback(null, {
-  //               Item: null
-  //           })
-  //       )
-  //     });
-  //     const response = await wrapped.run();
-  //     expect(response).to.not.be.empty;
-  //     expect(response.statusCode).to.equal(403);
-  //     AWSMock.restore('DynamoDB.DocumentClient')
-  // }) 
-
-
-  it('return 406 for no id', async () => {
+  it('should return 406 for no id', async () => {
     const response = await wrapped.run({
       body: JSON.stringify({
         eventID: "event", 
@@ -82,7 +67,7 @@ describe('registrationPut', () => {
     expect(response.statusCode).to.equal(406);
   });
 
-  it('return 406 for no eventID provided', async () => {
+  it('should return 406 for no eventID provided', async () => {
     const response = await wrapped.run({
       body: JSON.stringify({
         registrationStatus: "status"
@@ -94,7 +79,7 @@ describe('registrationPut', () => {
     expect(response.statusCode).to.equal(406);
   });
 
-  it('return 406 for no registration status provided', async () => {
+  it('should return 406 for no registration status provided', async () => {
     const response = await wrapped.run({
       body: JSON.stringify({
         eventID: "event"
@@ -106,7 +91,7 @@ describe('registrationPut', () => {
     expect(response.statusCode).to.equal(406);
   });
 
-  it('return 406 for no eventBody', async () => {
+  it('should return 406 for no eventBody', async () => {
     const response = await wrapped.run({
       body: JSON.stringify({
       }),
@@ -116,20 +101,5 @@ describe('registrationPut', () => {
     });
     expect(response.statusCode).to.equal(406);
   });
-
-  // it('return 403 for null event.Item', async () => {
-  //   const response = await wrapped.run({
-  //     body: JSON.stringify({
-  //       eventID: "event", 
-  //       registrationStatus: "status"
-  //     }),
-  //     pathParameters: {
-  //       id: "12345342"
-  //     }
-  //   });
-  //   expect(response.statusCode).to.equal(406);
-  // });
-  
-
 
 });

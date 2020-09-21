@@ -9,19 +9,28 @@ const AWSMock = require('aws-sdk-mock');
 let wrapped = mochaPlugin.getWrapper('registrationGet', '/handlers/registration.js', 'get')
 
 describe('registrationUpdateHelper', () => {
-  
-    before(() => {
 
-        AWSMock.mock('DynamoDB.DocumentClient', 'get', (params, callback) => {  
+  before(() => {
 
-        }); 
+    const callbackReturn = { Items: [{ id: 12345678, updatedAt: 1600669844493 }, { id: 12345678, updatedAt: 1600669844493 }] };
+
+    AWSMock.mock('DynamoDB.DocumentClient', 'scan', function (params, callback) {
+      callback(null, callbackReturn);
+      return null;
     });
-after(() => {
+
+    AWSMock.mock('DynamoDB.DocumentClient', 'query', function (params, callback) {
+      callback(null, callbackReturn);
+      return null;
+    });
+
+  })
+  
+  after(() => {
 
     AWSMock.restore('DynamoDB.DocumentClient');
 
   });
-
 
   it('return 406 when queryString is not given ', async () => {
     const response = await wrapped.run({
@@ -38,22 +47,64 @@ after(() => {
     expect(response.statusCode).to.be.equal(406);
   });
 
-  it('return 404 when users not found', async () => {
-    AWSMock.mock('DynamoDB.DocumentClient', 'scan', function (params, callback){
-        Promise.resolve(
-            callback(null, {
-                Items: []
-            })
-        )
-      });
+  it('return 200 for successful get with eventID and no id', async () => {
       const response = await wrapped.run({
         queryStringParameters: {
           eventID: 'event', 
         }
       });
-      expect(response.statusCode).to.equal(404);
-      AWSMock.restore('DynamoDB.DocumentClient');
+      expect(response.statusCode).to.equal(200);
   }) 
+
+  it('return 200 for successful get with id and no eventID', async () => {
+
+      const response = await wrapped.run({
+        queryStringParameters: {
+          id: 12345678
+        }
+      });
+
+      expect(response.statusCode).to.equal(200);
+  })
+
+  it('return 200 for successful get with both eventID and id', async () => {
+
+      const response = await wrapped.run({
+        queryStringParameters: {
+          eventID: 'event',
+          id: 12345678
+        }
+      });
+
+      expect(response.statusCode).to.equal(200);
+  })
+
+  it('return 404 for successful get with id, eventID and recent timestamp', async () => {
+
+      const response = await wrapped.run({
+        queryStringParameters: {
+          eventID: 'event',
+          id: 12345678,
+          afterTimestamp: 1600669844494
+        }
+      });
+
+      expect(response.statusCode).to.equal(404);
+  })
+  
+
+  it('return 200 for successful get with id, eventID and timestamp', async () => {
+
+      const response = await wrapped.run({
+        queryStringParameters: {
+          eventID: 'event',
+          id: 12345678,
+          afterTimestamp: 1600669844492
+        }
+      });
+
+      expect(response.statusCode).to.equal(200);
+  })
   
 
 }); 

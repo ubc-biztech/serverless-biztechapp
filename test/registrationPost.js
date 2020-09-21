@@ -8,27 +8,35 @@ const mochaPlugin = require('serverless-mocha-plugin');
 const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper('registrationPost', '/handlers/registration.js', 'post');
 
+const userPayload = {
+  id: '6456456464',
+  fname: 'user',
+  lname: 'man',
+  faculty: 'Science',
+  email: 'test@test.com'
+};
 
 describe('registrationPost', () => {
 
   before(() => {
 
     AWSMock.mock('DynamoDB.DocumentClient', 'get', (params, callback) => {
-          callback(null, {
-            Item: 'not null user'
-          })
+      callback(null, { Item: userPayload })
     })
    
     AWSMock.mock('DynamoDB.DocumentClient', 'update', (params, callback) => {
-          callback(new Error("error"))
+      callback(null, "UpdatedQ")
     });
 
   });
+
   after(() => {
+
     AWSMock.restore('DynamoDB.DocumentClient');
+
   });
 
-  it('return 406 when id is not given ', async () => {
+  it('should return 406 when id is not given ', async () => {
     const response = await wrapped.run({
       body: JSON.stringify({
         eventID: "event"
@@ -37,7 +45,7 @@ describe('registrationPost', () => {
     expect(response.statusCode).to.be.equal(406);
   });
 
-  it('return 406 when no eventID is provided', async () => {
+  it('should return 406 when no eventID is provided', async () => {
     const response = await wrapped.run({
       body: JSON.stringify({
         id: '12200034', 
@@ -47,7 +55,7 @@ describe('registrationPost', () => {
     expect(response.statusCode).to.be.equal(406);
   });
 
-  it('return 406 when no registrationStatus is provided', async () => {
+  it('should return 406 when no registrationStatus is provided', async () => {
     const response = await wrapped.run({
       body: JSON.stringify({
         id: '12200034', 
@@ -57,7 +65,7 @@ describe('registrationPost', () => {
     expect(response.statusCode).to.be.equal(406);
   }); 
 
-  it('returns 502 when registration status is registered', async () => {
+  it('should return 201 for successful creation of registration', async () => {
     const response = await wrapped.run({ 
         body: JSON.stringify({
           id: '12200034', 
@@ -65,7 +73,6 @@ describe('registrationPost', () => {
           registrationStatus: "not"
         }),
     });
-    expect(response.statusCode).to.equal(502);
-    }); 
-
+    expect(response.statusCode).to.equal(201);
+    });
 });
