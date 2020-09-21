@@ -290,7 +290,7 @@ module.exports.get = async (event, ctx, callback) => {
 
       const id = parseInt(queryString.id, 10);
       const filterExpression = {
-        KeyConditionExpression: 'id = :query',
+        FilterExpression: 'id = :query',
         ExpressionAttributeValues: {
           ':query': id
         }

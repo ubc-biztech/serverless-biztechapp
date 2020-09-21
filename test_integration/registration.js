@@ -144,7 +144,7 @@ describe('registration integration', function () {
 
     });
 
-    it('entry GET to verify put returns 200', async () => {
+    it('entry GET to verify put - returns 200', async () => {
 
       const payload = {
         queryStringParameters: {
@@ -164,7 +164,7 @@ describe('registration integration', function () {
               expect(entry.registrationStatus).to.equal('checkedIn');
 
             }
-            if (entry.eventID == INTEGRATION_TEST_PERSISTENT_EVENT_ID) {
+            if (entry.eventID == INTEGRATION_TEST_PERSISTENT_EVENT_ID_2) {
 
               expect(entry.registrationStatus).to.equal('waitlist');
 
@@ -187,7 +187,7 @@ describe('registration integration', function () {
           id: INTEGRATION_TEST_PERSISTENT_USER_ID,
         },
         body: JSON.stringify({
-          eventID: INTEGRATION_TEST_PERSISTENT_EVENT_ID
+          eventID: INTEGRATION_TEST_PERSISTENT_EVENT_ID_2
         })
       };
       return helpers.invokeLambda('registrationDelete', JSON.stringify(payload))
@@ -225,7 +225,7 @@ describe('registration integration', function () {
         .then(([statusCode, body]) => {
 
           expect(statusCode).to.equal(409);
-          expect(body.message).to.equal('Entry with given id and eventID doesn\'t exist.');
+          expect(body.message).to.equal(`Update error because the registration entry for user '${INTEGRATION_TEST_PERSISTENT_USER_ID}' and with event id '${INTEGRATION_TEST_PERSISTENT_EVENT_ID}' does not exist`);
 
         });
 
