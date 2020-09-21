@@ -54,7 +54,7 @@ These instructions will get you a copy of the project up and running on your loc
 * `utils/` - Any other miscellaneous functions
 
 * `test/` - Unit tests.
-* `integrationTest/` - Integration tests.
+* `test_integration/` - Integration tests.
 
 See [testing](#testing) for information on how to run them.
 
@@ -83,21 +83,30 @@ See our [notion doc](https://www.notion.so/ubcbiztech/Unit-Testing-Notes-a7016cc
 **Unit tests** can be run using the following command:
 
 ```
-sls invoke test
+npm run utest <function_name>
 ```
+This command runs a shell script that indirectly runs the real command: `sls invoke test -f <function_name>`
 
-You also have the option to run specific unit tests by adding the "-f" argument: `sls invoke test -f functionName`
+Not specifying a `function_name` will run all the tests instead.
 
 **Integration tests** can be run using the following command:
 
 ```
-npm run itest
+npm run itest <test_name>
 ```
+This command runs a shell script that indirectly runs the real command: `mocha ./test_integration`
+
+Not specifying a `test_name` will run all the tests instead.
 
 In order to run integration tests, however, you need to [deploy](#development-dev) the API to dev environment first.
 
 [Travis CI](https://travis-ci.org) is used to automatically run all our tests for our Pull Requests and when releasing.
 
+
+Both integration and unit tests can be run at the same time by:
+```
+npm run test
+```
 
 ## Deployment
 

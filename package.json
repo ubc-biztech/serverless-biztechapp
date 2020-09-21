@@ -7,7 +7,11 @@
     "uuid": "^8.3.0"
   },
   "scripts": {
-    "itest": "mocha ./integrationTest",
+    "preitest": "chmod +x ./test_integration/_run.sh",
+    "itest": "./test_integration/_run.sh",
+    "preutest": "chmod +x ./test/_run.sh",
+    "utest": "./test/_run.sh",
+    "test": "npm run utest && npm run itest",
     "lint": "eslint . --fix",
     "pre-commit-msg": "echo 'Fixing lint problems'..."
   },

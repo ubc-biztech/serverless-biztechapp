@@ -1,7 +1,7 @@
 'use strict';
 const chai = require('chai');
 const expect = chai.expect;
-const { INTEGRATION_TEST_USER_ID, INTEGRATION_TEST_EVENT_ID } = require('../constants/test');
+const { INTEGRATION_TEST_USER_ID, INTEGRATION_TEST_PERSISTENT_EVENT_ID } = require('../constants/test');
 
 const helpers = require('./helpers');
 
@@ -108,7 +108,7 @@ describe('user integration', function () {
         },
         body: JSON.stringify({
           isFavourite: true,
-          eventID: INTEGRATION_TEST_EVENT_ID,
+          eventID: INTEGRATION_TEST_PERSISTENT_EVENT_ID,
         }),
       };
 
@@ -129,7 +129,7 @@ describe('user integration', function () {
         },
         body: JSON.stringify({
           isFavourite: false,
-          eventID: INTEGRATION_TEST_EVENT_ID,
+          eventID: INTEGRATION_TEST_PERSISTENT_EVENT_ID,
         }),
       };
 

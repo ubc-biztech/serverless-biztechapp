@@ -3,7 +3,11 @@ const chai = require('chai');
 const expect = chai.expect;
 
 const helpers = require('./helpers');
-const { INTEGRATION_TEST_EVENT_ID, INTEGRATION_TEST_NON_EXISTANT_EVENT_ID } = require('../constants/test');
+const {
+  INTEGRATION_TEST_EVENT_ID,
+  INTEGRATION_TEST_PERSISTENT_EVENT_ID,
+  INTEGRATION_TEST_NON_EXISTANT_EVENT_ID
+} = require('../constants/test');
 
 describe('events integration', function () {
 
@@ -17,14 +21,14 @@ describe('events integration', function () {
 
         const payload = {
           pathParameters: {
-            id: INTEGRATION_TEST_EVENT_ID
+            id: INTEGRATION_TEST_PERSISTENT_EVENT_ID
           }
         };
         return helpers.invokeLambda('eventGet', JSON.stringify(payload))
           .then(([statusCode, body]) => {
 
             expect(statusCode).to.equal(200);
-            expect(body.id).to.equal(INTEGRATION_TEST_EVENT_ID);
+            expect(body.id).to.equal(INTEGRATION_TEST_PERSISTENT_EVENT_ID);
             expect(body).to.have.property('capac');
 
           });
@@ -51,7 +55,7 @@ describe('events integration', function () {
 
         const payload = {
           pathParameters: {
-            id: INTEGRATION_TEST_EVENT_ID
+            id: INTEGRATION_TEST_PERSISTENT_EVENT_ID
           },
           queryStringParameters: {
             count: 'true',
@@ -74,7 +78,7 @@ describe('events integration', function () {
 
         const payload = {
           pathParameters: {
-            id: INTEGRATION_TEST_EVENT_ID
+            id: INTEGRATION_TEST_PERSISTENT_EVENT_ID
           },
           queryStringParameters: {
             count: 'false',
@@ -122,7 +126,7 @@ describe('events integration', function () {
         // update integrationTestEvent to defaultPayload
         let payload = {
           pathParameters: {
-            id: INTEGRATION_TEST_EVENT_ID
+            id: INTEGRATION_TEST_PERSISTENT_EVENT_ID
           },
           body: JSON.stringify(defaultPayload)
         };
@@ -135,7 +139,7 @@ describe('events integration', function () {
 
         payload = {
           pathParameters: {
-            id: INTEGRATION_TEST_EVENT_ID
+            id: INTEGRATION_TEST_PERSISTENT_EVENT_ID
           }
         };
         // check that integrationTestEvent was updated
@@ -155,7 +159,7 @@ describe('events integration', function () {
         // update integrationTestEvent to updatePayload
         payload = {
           pathParameters: {
-            id: INTEGRATION_TEST_EVENT_ID
+            id: INTEGRATION_TEST_PERSISTENT_EVENT_ID
           },
           body: JSON.stringify(updatePayload)
         };
@@ -227,7 +231,7 @@ describe('events integration', function () {
 
         let payload = {
           body: JSON.stringify({
-            id: 'testPostEvent',
+            id: INTEGRATION_TEST_EVENT_ID,
             ename: 'test',
             capac: 200000,
             img: 'someImageUrl'
@@ -237,13 +241,13 @@ describe('events integration', function () {
           .then(([statusCode, body]) => {
 
             expect(statusCode).to.equal(201);
-            expect(body.message).to.equal(`Created event with id ${'testPostEvent'}!`);
+            expect(body.message).to.equal(`Created event with id ${INTEGRATION_TEST_EVENT_ID}!`);
 
           });
 
         payload = {
           pathParameters: {
-            id: 'testPostEvent'
+            id: INTEGRATION_TEST_EVENT_ID
           }
         };
 
@@ -260,7 +264,7 @@ describe('events integration', function () {
 
         const payload = {
           body: JSON.stringify({
-            id: INTEGRATION_TEST_EVENT_ID,
+            id: INTEGRATION_TEST_PERSISTENT_EVENT_ID,
             ename: 'test',
             capac: 20000,
             img: 'someImgUrl'

@@ -41,6 +41,6 @@ jobs:
       # deploy on dev so that dev is up to date with staging
       run: |
         npx sls deploy --conceal
-        npx mocha integrationTest
+        npx mocha test_integration
         npx sls deploy --stage staging --conceal
         npx sls invoke test --stage staging
