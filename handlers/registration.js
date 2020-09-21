@@ -135,8 +135,8 @@ async function createRegistration(registrationStatus, data, id, eventID, createN
 
       errorResponse.statusCode = 409;
       errBody.statusCode = 409;
-      if(createNew) errBody.message = `Create error because the registration entry for user ${id} and with event id ${eventID} already exists`;
-      else errBody.message = `Update error because the registration entry for user ${id} and with event id ${eventID} does not exist`;
+      if(createNew) errBody.message = `Create error because the registration entry for user '${id}' and with event id '${eventID}' already exists`;
+      else errBody.message = `Update error because the registration entry for user '${id}' and with event id '${eventID}' does not exist`;
       errorResponse.body = JSON.stringify(errBody);
 
     }
@@ -219,7 +219,7 @@ module.exports.put = async (event, ctx, callback) => {
 
   try {
 
-    if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('event');
+    if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('user');
     const id = event.pathParameters.id;
 
     const data = JSON.parse(event.body);

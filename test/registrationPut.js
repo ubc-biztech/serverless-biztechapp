@@ -7,24 +7,87 @@ const mochaPlugin = require('serverless-mocha-plugin');
 const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper('registrationPut', '/handlers/registration.js', 'put');
 const AWSMock = require('aws-sdk-mock');
+const { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } = require('../constants/tables');
 
-const userPayload = {
-  id: '6456456464',
+const userResponse = {
+  id: 12200034,
   fname: 'user',
   lname: 'man',
   faculty: 'Science',
   email: 'test@test.com'
 };
 
+const eventResponse = {
+  'id': 'event',
+  'capac': 2,
+  'createdAt': 1581227718674,
+  'description':	'I am a description',
+  'elocation': 'UBC',
+  'ename': 'Existing Event',
+  'startDate': '2020-02-09T05:55:11.131Z',
+  'endDate':	'2020-02-09T05:55:11.131Z',
+  'imageUrl':	'https://i.picsum.photos/id/236/700/400.jpg',
+  'updatedAt': 1581227718674
+};
+
+const registrationsResponse = [
+  {
+    id: 12345677,
+    eventID: 'event',
+    updatedAt: 1600669844493,
+    registrationStatus: 'registered'
+  },
+  {
+    id: 12345678,
+    eventID: 'event',
+    updatedAt: 1600669844493,
+    registrationStatus: 'registered'
+  }
+];
+
 describe('registrationPut', () => {
+
   before(() => {
 
     AWSMock.mock('DynamoDB.DocumentClient', 'get', (params, callback) => {
-      callback(null, { Item: userPayload })
-    })
-   
+
+      if(params.TableName.includes(EVENTS_TABLE)) {
+
+        if(params.Key.id === 'event') callback(null, { Item: eventResponse });
+        else callback(null, { Item: null });
+
+      }
+      else if(params.TableName.includes(USERS_TABLE)) {
+
+        if(params.Key.id === 12200034) callback(null, { Item: userResponse });
+        else if(params.Key.id === 12345678) callback(null, { Item: { ...userResponse, id: 12345678 } });
+        else callback(null, { Item: null });
+
+      }
+      return null;
+
+    });
+
+    AWSMock.mock('DynamoDB.DocumentClient', 'scan', (params, callback) => {
+
+      if(params.TableName.includes(USER_REGISTRATIONS_TABLE)) {
+
+        callback(null, { Items: registrationsResponse });
+        return null;
+
+      }
+
+    });
+
     AWSMock.mock('DynamoDB.DocumentClient', 'update', (params, callback) => {
-      callback(null, "Updated!")
+
+      // for PUT (different from POST)
+      // throw error if doesnt exist (only check for 87654321)
+      if(params.Key.id === 12345678 && params.Key.eventID === 'event') callback({ code: 'ConditionalCheckFailedException' });
+      else callback(null, 'Updated!');
+
+      return null;
+
     });
 
   });
@@ -35,55 +98,125 @@ describe('registrationPut', () => {
 
   });
 
-  // *** refactor the handler checks for id and data
-  // it('should return 406 when id is not given ', async () => {
-  //   const response = await wrapped.run({
-  //     body: JSON.stringify({
-  //       eventID: "event"
-  //     })
-  //   });
-  //   expect(response.statusCode).to.be.equal(406);
-  // });
+  it('should return 400 when id parameter is not given ', async () => {
 
-  // NEED A TEST FOR WHEN THE EVENT IS FULL
-
-  it('should return 406 when no eventID is provided', async () => {
     const response = await wrapped.run({
       body: JSON.stringify({
-        id: '12200034', 
-        registrationStatus: "registered"
+        eventID: 'event',
+        registrationStatus: 'registered'
+      })
+    });
+    expect(response.statusCode).to.be.equal(400);
+
+  });
+
+  it('should return 406 when no eventID is provided', async () => {
+
+    const response = await wrapped.run({
+      body: JSON.stringify({
+        registrationStatus: 'registered'
       }),
       pathParameters: {
-        id: "12345342"
+        id: '12200034'
       }
     });
     expect(response.statusCode).to.be.equal(406);
+
   });
 
   it('should return 406 when no registrationStatus is provided', async () => {
+
     const response = await wrapped.run({
       body: JSON.stringify({
-        id: '12200034', 
-        eventID: "event"
+        eventID: 'event'
       }),
       pathParameters: {
-        id: "12345342"
+        id: '12200034'
       }
     });
     expect(response.statusCode).to.be.equal(406);
-  }); 
 
-  it('should return 200 for successful update of registration', async () => {
-    const response = await wrapped.run({ 
-        body: JSON.stringify({
-          id: '12200034', 
-          eventID: "event", 
-          registrationStatus: "not"
-        }),
-        pathParameters: {
-          id: "12345342"
-        }
+  });
+
+  it('should return 404 when unknown event id is provided', async () => {
+
+    const response = await wrapped.run({
+      body: JSON.stringify({
+        eventID: 'unknownevent',
+        registrationStatus: 'registered'
+      }),
+      pathParameters: {
+        id: '12200034'
+      }
     });
+    expect(response.statusCode).to.be.equal(404);
+
+  });
+
+  it('should return 404 when unknown id is provided', async () => {
+
+    const response = await wrapped.run({
+      body: JSON.stringify({
+        eventID: 'event',
+        registrationStatus: 'registered'
+      }),
+      pathParameters: {
+        id: '1111111111'
+      }
+    });
+    expect(response.statusCode).to.be.equal(404);
+
+  });
+
+  it('should return 200 for successful update of registration as waitlist', async () => {
+
+    const response = await wrapped.run({
+      body: JSON.stringify({
+        eventID: 'event',
+        registrationStatus: 'waitlist'
+      }),
+      pathParameters: {
+        id: '12200034'
+      }
+    });
+
+    const body = JSON.parse(response.body);
     expect(response.statusCode).to.equal(200);
+    expect(body.registrationStatus).to.equal('waitlist');
+
+  });
+
+  it('should return 200 for successful update of registration with maximum capac', async () => {
+
+    const response = await wrapped.run({
+      body: JSON.stringify({
+        eventID: 'event',
+        registrationStatus: 'registered'
+      }),
+      pathParameters: {
+        id: '12200034'
+      }
     });
+
+    const body = JSON.parse(response.body);
+    expect(response.statusCode).to.equal(200);
+    expect(body.registrationStatus).to.equal('waitlist');
+
+  });
+
+  it('should return 409 for trying to update registration entry that doesn\'t exist', async () => {
+
+    const response = await wrapped.run({
+      body: JSON.stringify({
+        eventID: 'event',
+        registrationStatus: 'registered'
+      }),
+      pathParameters: {
+        id: '12345678'
+      }
+    });
+    expect(response.statusCode).to.equal(409);
+
+  });
+
 });
