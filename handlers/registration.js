@@ -8,8 +8,7 @@ const { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } = require('../cons
 
 // const CHECKIN_COUNT_SANITY_CHECK = 500;
 
-/* returns an error if id, eventID, or registrationStatus is not provided
-   returns error 403 if the given id/eventID DNE in database
+/* returns error 403 if the given id/eventID DNE in database
    returns error 502 if there is a problem with processing data or sending an email
    returns 201 when entry is created successfully, error 409 if a registration with the same id/eventID exists 
    returns 200 when entry is updated successfully, error 409 if a registration with the same id/eventID DNE
@@ -17,191 +16,143 @@ const { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } = require('../cons
 */
 async function updateHelper(event, callback, data, createNew, idString) {
 
-  if (data == null || !data.hasOwnProperty('eventID')) {
-
-    return callback(null, helpers.inputError('Registration event ID not specified.', data));
-
-  } else if (!data.hasOwnProperty('registrationStatus')) {
-
-    return callback(null, helpers.inputError('Status not specified.', data));
-
-  }
   const id = parseInt(idString, 10);
   const eventID = data.eventID;
   let registrationStatus = data.registrationStatus;
 
+  // Check if the user exists
+  const existingUser = await helpers.getOne(id, USERS_TABLE);
+  if(isEmpty(existingUser)) throw helpers.notFoundResponse('User', id);
+
+  // Check if the event exists
+  const existingEvent = await helpers.getOne(eventID, EVENTS_TABLE);
+  if(isEmpty(existingEvent)) throw helpers.notFoundResponse('Event', eventID);
+
   // Check if the event is full
-  // TODO: Refactor this nicely into a promise or something
+  if (registrationStatus == 'registered') {
 
-  const eventParams = {
-    Key: { id: eventID },
-    TableName: EVENTS_TABLE + process.env.ENVIRONMENT
-  };
+    const counts = await helpers.getEventCounts(eventID);
 
-  await docClient.get(eventParams).promise()
-    .then(async (event) => {
+    if (counts == null) {
 
-      if (event.Item == null) {
+      throw helpers.dynamoErrorResponse({
+        code: 'DYNAMODB ERROR',
+        time: new Date().getTime(),
+      });
 
-        throw 'event';
+    }
 
-      }
+    if (counts.registeredCount >= existingEvent.Item.capac) {
 
-      if (registrationStatus == 'registered') {
+      registrationStatus = 'waitlist';
 
-        const counts = await helpers.getEventCounts(eventID);
-
-        if (counts == null) {
-
-          throw 'error getting event counts';
-
-        }
-
-        if (counts.registeredCount >= event.Item.capac) {
-
-          registrationStatus = 'waitlist';
-
-        }
-
-      }
-      return event.Item.ename;
-
-    })
-    .then(async (eventName) => {
-
-      // if send email is resolved, then update the database since both email and user exists
-
-      await sendEmail(id, eventName, registrationStatus)
-        .then(async () => {
-
-          await createRegistration(registrationStatus, data, id, eventID, createNew, callback);
-
-        });
-
-    })
-    .catch(error => {
-
-      let response;
-      let message;
-      switch (error) {
-
-      case 'event':
-        response = helpers.createResponse(403, 'Event with eventID: ' + eventID + ' was not found.');
-        break;
-      case 'user':
-        response = helpers.createResponse(403, 'User with user id: ' + id + ' was not found.');
-        break;
-      case 'exists':
-        message = 'Entry with given id and eventID already exists.';
-        response = helpers.createResponse(409, { message });
-        break;
-      case 'DNE':
-        message = 'Entry with given id and eventID doesn\'t exist.';
-        response = helpers.createResponse(409, { message });
-        break;
-      default:
-        response = helpers.createResponse(502, error);
-
-      }
-      callback(null, response);
-
-    });
-
-}
-
-async function createRegistration(registrationStatus, data, id, eventID, createNew, callback) {
-
-  const updateObject = { registrationStatus };
-  if (data.heardFrom) {
-
-    updateObject.heardFrom = data.heardFrom;
-
-  }
-  console.log(updateObject);
-
-  const {
-    updateExpression,
-    expressionAttributeValues
-  } = helpers.createUpdateExpression(updateObject);
-
-  // Because biztechRegistration table has a sort key we cannot use updateDB()
-  let params = {
-    Key: {
-      id,
-      eventID
-    },
-    TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
-    ExpressionAttributeValues: expressionAttributeValues,
-    UpdateExpression: updateExpression,
-    ReturnValues: 'UPDATED_NEW'
-  };
-
-  if (createNew) {
-
-    params['ConditionExpression'] = 'attribute_not_exists(id) and attribute_not_exists(eventID)';
-
-  } else {
-
-    params['ConditionExpression'] = 'attribute_exists(id) and attribute_exists(eventID)';
+    }
 
   }
 
-  // call dynamoDb
-  await docClient.update(params).promise()
-    .then(() => {
+  // try to send the registration email
+  try {
 
-      let response;
-      if (createNew) {
+    await sendEmail(id, existingEvent.ename, registrationStatus);
 
-        response = helpers.createResponse(201, {
-          message: 'Entry created',
-          registrationStatus
-        });
+  }
+  catch(err) {
 
-      } else {
-
-        response = helpers.createResponse(200, {
-          message: 'Update succeeded',
-          registrationStatus
-        });
-
-      }
-      callback(null, response);
-
-    })
-    .catch(error => {
-
-      console.error(error);
-      if (error.code === 'ConditionalCheckFailedException') {
-
-        if (createNew) {
-
-          throw 'exists';
-
-        } else {
-
-          throw 'DNE';
-
-        }
-
-      }
-      throw '502';
-
+    // if email sending failed, that user's email probably does not exist
+    throw helpers.createResponse(500, {
+      statusCode: 500,
+      code: 'SENDGRID ERROR',
+      message: `Sending Email Error!: ${err.message}`
     });
+
+  }
+
+  const response = await createRegistration(registrationStatus, data, id, eventID, createNew);
+
+  return response;
 
 }
 
-async function sendEmail(id, eventName, registrationStatus) {
+async function createRegistration(registrationStatus, data, id, eventID, createNew) {
 
-  const user = await helpers.getOne(id, USERS_TABLE);
-  if(isEmpty(user)) throw helpers.notFoundResponse('user', id);
+  try {
+
+    const updateObject = {
+      registrationStatus
+    };
+    if (data.heardFrom) updateObject.heardFrom = data.heardFrom;
+
+    let conditionExpression = 'attribute_exists(id) and attribute_exists(eventID)';
+    // if we are creating a new object, the condition expression needs to be different
+    if (createNew) conditionExpression = 'attribute_not_exists(id) and attribute_not_exists(eventID)';
+
+    // construct the update expressions
+    const {
+      updateExpression,
+      expressionAttributeValues,
+      expressionAttributeNames
+    } = this.createUpdateExpression(updateObject);
+
+    // Because biztechRegistration table has a sort key, we cannot use helpers.updateDB()
+    let params = {
+      Key: { id, eventID },
+      TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
+      ExpressionAttributeValues: expressionAttributeValues,
+      ExpressionAttributeNames: expressionAttributeNames,
+      UpdateExpression: updateExpression,
+      ReturnValues: 'UPDATED_NEW',
+      ConditionExpression: conditionExpression
+    };
+
+    // do the magic
+    const res = await docClient.update(params).promise();
+
+    let message = `User with id ${id} successfully registered (through update) to status '${registrationStatus}'!`;
+    let statusCode = 200;
+
+    // different status code if created new entry
+    if(createNew) {
+
+      message = `User with id ${id} successfully registered (created) to status '${registrationStatus}'!`;
+      statusCode = 201;
+
+    }
+
+    const response = helpers.createResponse(statusCode, {
+      message,
+      response: res
+    });
+
+    return response;
+
+  } catch(err) {
+
+    let errorResponse = this.dynamoErrorResponse(err);
+
+    // customize the error messsage if it is caused by the 'ConditionExpression' check
+    if(err.code === 'ConditionalCheckFailedException') {
+
+      errorResponse.statusCode = 409;
+      if(createNew) errorResponse.message = `Create error because the registration entry for user ${id} and with event id ${eventID} already exists`;
+      else errorResponse.message = `Update error because the registration entry for user ${id} and with event id ${eventID} does not exist`;
+
+    }
+    throw errorResponse;
+
+  }
+
+}
+
+async function sendEmail(user, eventName, registrationStatus) {
 
   if(registrationStatus !== 'checkedIn') {
 
-    const userEmail = user.Item.email;
-    const userName = user.Item.fname;
+    const userEmail = user.email;
+    const userName = user.fname;
 
-    //template id for registered and waitlist
+    if(!userEmail) throw { message: 'User does not have an e-mail address!' };
+
+    // template id for registered and waitlist
     let tempId = 'd-99da9013c9a04ef293e10f0d73e9b49c';
     if (registrationStatus == 'cancelled') {
 
@@ -226,6 +177,7 @@ async function sendEmail(id, eventName, registrationStatus) {
         eventName: eventName
       }
     };
+
     await email.send(msg);
 
   }
@@ -239,16 +191,14 @@ module.exports.post = async (event, ctx, callback) => {
     const data = JSON.parse(event.body);
 
     helpers.checkPayloadProps(data, {
-      id: { required: true }
+      id: { required: true, type: 'number' },
+      eventID: { required: true, type: 'string' },
+      registrationStatus: { required: true , type: 'string' },
     });
 
-    const res = await updateHelper(event, callback, data, true, data.id);
-    const response = {
-      message: `User with id ${data.id} successfully registered!`,
-      response: res
-    };
+    const response = await updateHelper(event, callback, data, true, data.id);
 
-    callback(200, response);
+    callback(response.statusCode, response);
     return null;
 
   }
@@ -272,10 +222,15 @@ module.exports.put = async (event, ctx, callback) => {
     const data = JSON.parse(event.body);
 
     // Check that parameters are valid
-    // TODO: Turn into using "checkPayloadProps"
-    if (data == null) return callback(null, helpers.inputError('Registration data not specified.', data));
+    helpers.checkPayloadProps(data, {
+      eventID: { required: true, type: 'string' },
+      registrationStatus: { required: true , type: 'string' },
+    });
 
-    await updateHelper(event, callback, data, false, id);
+    const response = await updateHelper(event, callback, data, false, id);
+
+    callback(response.statusCode, response);
+    return null;
 
   }
   catch(err) {
@@ -292,115 +247,108 @@ module.exports.put = async (event, ctx, callback) => {
 // Return list of entries with the matching id
 module.exports.get = async (event, ctx, callback) => {
 
-  const queryString = event.queryStringParameters;
-  if (queryString == null || (!queryString.hasOwnProperty('eventID') && !queryString.hasOwnProperty('id'))) {
+  try {
 
-    callback(null, helpers.inputError('User and/or Event ID not specified.', queryString));
-    return;
+    const queryString = event.queryStringParameters;
+    if(!queryString || (!queryString.eventID && !queryString.id)) throw helpers.missingIdQueryResponse('event/user');
+
+    let timeStampFilter = undefined;
+    if (queryString.hasOwnProperty('afterTimestamp')) {
+
+      timeStampFilter = Number(queryString.afterTimestamp);
+      const d = new Date(timeStampFilter);
+      console.log('Getting registration on and after ', d.toLocaleString());
+
+    }
+
+    let registrations = [];
+
+    // if eventID was given
+    if (queryString.hasOwnProperty('eventID')) {
+
+      const eventID = queryString.eventID;
+      const filterExpression = {
+        FilterExpression: 'eventID = :query',
+        ExpressionAttributeValues: {
+          ':query': eventID
+        }
+      };
+
+      registrations = await helpers.scan(USER_REGISTRATIONS_TABLE, filterExpression);
+
+      // filter by id query, if given 
+      if(queryString.hasOwnProperty('id')) {
+
+        registrations = registrations.filter(entry => entry.id === parseInt(queryString.id, 10));
+
+      }
+
+    } else { // if eventID was not given (only id)
+
+      const id = parseInt(queryString.id, 10);
+      const filterExpression = {
+        KeyConditionExpression: 'id = :query',
+        ExpressionAttributeValues: {
+          ':query': id
+        }
+      };
+
+      registrations = await helpers.scan(USER_REGISTRATIONS_TABLE, filterExpression);
+
+    }
+
+    // filter by timestamp, if given
+    if(timeStampFilter !== undefined) {
+
+      registrations = registrations.filter(entry => entry.updatedAt > timeStampFilter);
+
+    }
+
+    const response = helpers.createResponse(200, {
+      size: registrations.length,
+      data: registrations
+    });
+
+    callback(null, response);
+    return null;
+
+  } catch(err) {
+
+    callback(null, err);
+    return null;
 
   }
-  let timeStampFilter = undefined;
-  if (queryString.hasOwnProperty('afterTimestamp')) {
 
-    timeStampFilter = Number(queryString.afterTimestamp);
-    const d = new Date(timeStampFilter);
-    console.log('Get registration on and after ', d.getHours() + ':' + d.getMinutes() + '/' + d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear());
+};
 
-  }
-  if (queryString.hasOwnProperty('eventID')) {
+// (used for testing)
+module.exports.delete = async (event, ctx, callback) => {
 
-    const eventID = queryString.eventID;
-    const params = {
-      TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
-      FilterExpression: 'eventID = :query',
-      ExpressionAttributeValues: {
-        ':query': eventID
-      }
-    };
-    await docClient.scan(params).promise()
-      .then(result => {
+  try {
 
-        let data = result.Items;
-        if (queryString.hasOwnProperty('id')) {
+    const data = JSON.parse(event.body);
 
-          data = data.filter(entry => entry.id === parseInt(queryString.id, 10));
+    if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('registration');
+    const id = event.pathParameters.id;
 
-        }
-        if (timeStampFilter !== undefined) {
+    helpers.checkPayloadProps(data, {
+      eventID: { required: true , type: 'string' },
+    });
 
-          data = data.filter(entry => entry.updatedAt > timeStampFilter);
+    const res = await helpers.deleteOne(id, USER_REGISTRATIONS_TABLE, { eventID: data.eventID });
 
-        }
-        let response;
-        if (data.length == 0) {
+    const response = helpers.createResponse(200, {
+      message: 'Registration entry Deleted!',
+      response: res
+    });
 
-          response = helpers.notFoundResponse();
+    callback(null, response);
+    return null;
 
-        } else {
+  } catch(err) {
 
-          response = helpers.createResponse(200, {
-            size: data.length,
-            data: data
-          });
-
-        }
-        callback(null, response);
-
-      })
-      .catch(error => {
-
-        console.error(error);
-        const response = helpers.createResponse(502, error);
-        callback(null, response);
-
-      });
-
-  } else {
-
-    // only has id parameter
-    const id = parseInt(queryString.id, 10);
-    const params = {
-      TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
-      KeyConditionExpression: 'id = :query',
-      ExpressionAttributeValues: {
-        ':query': id
-      }
-    };
-
-    await docClient.query(params).promise()
-      .then(result => {
-
-        console.log('Query success.');
-        let data = result.Items;
-        if (timeStampFilter !== undefined) {
-
-          data = data.filter(entry => entry.updatedAt > timeStampFilter);
-
-        }
-        let response;
-        if (data.length == 0) {
-
-          response = helpers.notFoundResponse();
-
-        } else {
-
-          response = helpers.createResponse(200, {
-            size: data.length,
-            data: data
-          });
-
-        }
-        callback(null, response);
-
-      })
-      .catch(error => {
-
-        console.error(error);
-        helpers.createResponse(502, error);
-        callback(null, error);
-        return null;
-
-      });
+    callback(null, err);
+    return null;
 
   }
 

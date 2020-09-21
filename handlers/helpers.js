@@ -235,8 +235,9 @@ module.exports = {
    * Deletes one item from db
    * @param {Number} id - The id of the item to delete
    * @param {String} table - Name of the table
+   * @param {String} extraKeys - Optional extra keys
    */
-  deleteOne: async function (id, table) {
+  deleteOne: async function (id, table, extraKeys = {}) {
 
     const docClient = new AWS.DynamoDB.DocumentClient();
 
@@ -244,7 +245,7 @@ module.exports = {
 
       // construct the param object
       const params = {
-        Key: { id },
+        Key: { id, ...extraKeys },
         TableName: table + process.env.ENVIRONMENT,
       };
 
