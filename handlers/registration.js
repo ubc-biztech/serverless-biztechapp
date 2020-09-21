@@ -1,6 +1,5 @@
 'use strict';
 const AWS = require('aws-sdk');
-const docClient = new AWS.DynamoDB.DocumentClient();
 const helpers = require('./helpers');
 const email = require('../utils/email')
 const CHECKIN_COUNT_SANITY_CHECK = 500;
@@ -13,6 +12,7 @@ const CHECKIN_COUNT_SANITY_CHECK = 500;
    sends an email to the user if they are registered, waitlisted, or cancelled, but not if checkedIn
 */
 async function updateHelper(event, callback, data, createNew, idString) {
+  const docClient = new AWS.DynamoDB.DocumentClient();
 
   if (data == null || !data.hasOwnProperty('eventID')) {
     return callback(null, helpers.inputError('Registration event ID not specified.', data));
@@ -85,6 +85,7 @@ async function updateHelper(event, callback, data, createNew, idString) {
 }
 
 async function createRegistration(registrationStatus, data, id, eventID, createNew, callback) {
+  const docClient = new AWS.DynamoDB.DocumentClient();
   const updateObject = { registrationStatus };
   if (data.heardFrom) {
     updateObject.heardFrom = data.heardFrom
@@ -145,6 +146,7 @@ async function createRegistration(registrationStatus, data, id, eventID, createN
 }
 
 async function sendEmail(id, eventName, registrationStatus) {
+  const docClient = new AWS.DynamoDB.DocumentClient();
   return new Promise(async (resolve, reject) => {
     const userParams = {
       Key: { id: id },
@@ -215,6 +217,7 @@ module.exports.put = async (event, ctx, callback) => {
 
 // Return list of entries with the matching id
 module.exports.get = async (event, ctx, callback) => {
+  const docClient = new AWS.DynamoDB.DocumentClient();
   const queryString = event.queryStringParameters;
   if (queryString == null || (!queryString.hasOwnProperty('eventID') && !queryString.hasOwnProperty('id'))) {
     callback(null, helpers.inputError('User and/or Event ID not specified.', queryString));
