@@ -29,7 +29,7 @@ module.exports = {
         if (err) {
 
           // something went wrong when invoking function!
-          console.log(err);
+          console.error(err);
           reject(err);
 
         }

@@ -127,7 +127,6 @@ async function createRegistration(registrationStatus, data, id, eventID, createN
   } catch(err) {
 
     let errorResponse = helpers.dynamoErrorResponse(err);
-    console.log('KABOOM', errorResponse);
     const errBody = JSON.parse(errorResponse.body);
 
     // customize the error messsage if it is caused by the 'ConditionExpression' check

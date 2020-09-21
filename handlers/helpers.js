@@ -42,7 +42,7 @@ module.exports = {
       message: `A database entry with the same '${prop}' already exists!`,
       data: data
     });
-    console.log('DUPLICATE ERROR', response);
+    console.error('DUPLICATE ERROR', response);
     return response;
 
   },
@@ -57,7 +57,7 @@ module.exports = {
       retryable: err.retryable,
       retryDelay: err.retryDelay
     });
-    console.log('DYNAMO DB ERROR', err);
+    console.error('DYNAMO DB ERROR', err);
     return response;
 
   },
@@ -68,7 +68,7 @@ module.exports = {
       message: message,
       data: data
     });
-    console.log('INPUT ERROR', response);
+    console.error('INPUT ERROR', response);
     return response;
 
   },
@@ -407,7 +407,7 @@ module.exports = {
       })
       .catch(error => {
 
-        console.log(error);
+        console.error(error);
         return null;
 
       });
