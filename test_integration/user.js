@@ -1,9 +1,9 @@
 'use strict';
-const AWS = require('aws-sdk');
 const chai = require('chai');
 const expect = chai.expect;
+const { INTEGRATION_TEST_USER_ID, INTEGRATION_TEST_PERSISTENT_EVENT_ID } = require('../constants/test');
 
-const helpers = require('./helpers')
+const helpers = require('./helpers');
 
 describe('user integration', function () {
 
@@ -11,23 +11,28 @@ describe('user integration', function () {
 
   const defaultPayload = {
     pathParameters: {
-      id: -40,
+      id: INTEGRATION_TEST_USER_ID,
     }
   };
 
   describe('user/{id} GET setup', function () {
 
     it('user GET doesn\'t exist returns 404', async () => {
+
       return helpers.invokeLambda('userGet', JSON.stringify(defaultPayload))
-      .then(([statusCode, body]) => {
-        expect(statusCode).to.equal(404);
-      });
+        .then(([statusCode]) => {
+
+          expect(statusCode).to.equal(404);
+
+        });
+
     });
+
   });
 
   const userCreatePayload = {
     body: JSON.stringify({
-      id: -40,
+      id: INTEGRATION_TEST_USER_ID,
       fname: 'TESTUSER',
       lname: 'DONOTMODIFY',
       email: 'integration@test.com',
@@ -42,19 +47,28 @@ describe('user integration', function () {
   describe('user/ POST', function () {
 
     it('user POST returns 201', async () => {
+
       return helpers.invokeLambda('userCreate', JSON.stringify(userCreatePayload))
-      .then(([statusCode, body]) => {
-        expect(statusCode).to.equal(201);
-        expect(body.message).to.equal('Created!');
-      });
+        .then(([statusCode, body]) => {
+
+          expect(statusCode).to.equal(201);
+          expect(body.message).to.equal('Created!');
+
+        });
+
     });
 
     it('user POST already exists returns 409', async () => {
+
       return helpers.invokeLambda('userCreate', JSON.stringify(userCreatePayload))
-      .then(([statusCode, body]) => {
-        expect(statusCode).to.equal(409);
-      });
+        .then(([statusCode]) => {
+
+          expect(statusCode).to.equal(409);
+
+        });
+
     });
+
   });
 
   const userPatchBody = {
@@ -68,93 +82,122 @@ describe('user integration', function () {
 
   const userPatchPayload = {
     pathParameters: {
-      id: -40,
+      id: INTEGRATION_TEST_USER_ID,
     },
     body: JSON.stringify(userPatchBody)
-  }
+  };
 
   describe('user/{id} PATCH', function () {
 
     it('user PATCH on user that exists returns 200', async() => {
+
       return helpers.invokeLambda('userUpdate', JSON.stringify(userPatchPayload))
-      .then(([statusCode, body]) => {
-        expect(statusCode).to.equal(200);
-      });
+        .then(([statusCode]) => {
+
+          expect(statusCode).to.equal(200);
+
+        });
+
     });
 
     it('user favouriteEvent PATCH returns 200', async () => {
+
       const payload = {
         pathParameters: {
-          id: -40,
+          id: INTEGRATION_TEST_USER_ID,
         },
         body: JSON.stringify({
           isFavourite: true,
-          eventID: 'randomEvent',
+          eventID: INTEGRATION_TEST_PERSISTENT_EVENT_ID,
         }),
-      }
+      };
 
       return helpers.invokeLambda('userFavouriteEvent', JSON.stringify(payload))
-      .then(([statusCode, body]) => {
-        expect(statusCode).to.equal(200);
-        expect(body).to.equal('Favouriting event \'randomEvent\' success.')
-      });
+        .then(([statusCode]) => {
+
+          expect(statusCode).to.equal(200);
+
+        });
+
     });
 
     it('user unfavouriteEvent PATCH returns 200', async () => {
+
       const payload = {
         pathParameters: {
-          id: -40,
+          id: INTEGRATION_TEST_USER_ID,
         },
         body: JSON.stringify({
           isFavourite: false,
-          eventID: 'bluePrint',
+          eventID: INTEGRATION_TEST_PERSISTENT_EVENT_ID,
         }),
-      }
+      };
 
       return helpers.invokeLambda('userFavouriteEvent', JSON.stringify(payload))
-      .then(([statusCode, body]) => {
-        expect(statusCode).to.equal(200);
-        expect(body).to.equal('Unfavouriting event \'bluePrint\' success.')
-      });
+        .then(([statusCode]) => {
+
+          expect(statusCode).to.equal(200);
+
+        });
+
     });
 
     it('user GET exists returns 200 and check PATCH success', async () => {
+
       return helpers.invokeLambda('userGet', JSON.stringify(defaultPayload))
-      .then(([statusCode, body]) => {
-        expect(statusCode).to.equal(200);
-        // check that update succeeded
-        expect(body.fname).to.equal(userPatchBody.fname);
-        expect(body.year).to.equal(userPatchBody.year);
-        expect(body.gender).to.equal(userPatchBody.gender);
-        expect(body.favedEventsID).to.contain('randomEvent');
-        expect(body.favedEventsID).to.contain('someEvent');
-      });
+        .then(([statusCode, body]) => {
+
+          expect(statusCode).to.equal(200);
+          // check that update succeeded
+          expect(body.fname).to.equal(userPatchBody.fname);
+          expect(body.year).to.equal(userPatchBody.year);
+          expect(body.gender).to.equal(userPatchBody.gender);
+          expect(body.favedEventsID).to.contain('bluePrint');
+          expect(body.favedEventsID).to.contain('someEvent');
+
+        });
+
     });
+
   });
 
   describe('user/{id} DELETE and wrapup', function () {
 
     it('user DELETE returns 200', async () => {
+
       return helpers.invokeLambda('userDelete', JSON.stringify(defaultPayload))
-      .then(([statusCode, body]) => {
-        expect(statusCode).to.equal(200);
-      });
+        .then(([statusCode]) => {
+
+          expect(statusCode).to.equal(200);
+
+        });
+
     });
 
     it('user GET returns 404 to check DELETE worked', async () => {
+
       return helpers.invokeLambda('userGet', JSON.stringify(defaultPayload))
-      .then(([statusCode, body]) => {
-        expect(statusCode).to.equal(404);
-      });
+        .then(([statusCode]) => {
+
+          expect(statusCode).to.equal(404);
+
+        });
+
     });
 
     it('user PATCH on user that does not exist returns 404', async () => {
+
       return helpers.invokeLambda('userGet', JSON.stringify(userPatchPayload))
-      .then(([statusCode, body]) => {
-        expect(statusCode).to.equal(404);
-      });
+        .then(([statusCode]) => {
+
+          expect(statusCode).to.equal(404);
+
+        });
+
     });
+
   });
+
 });
 
 // TODO: fix userGetAll and add getAll test

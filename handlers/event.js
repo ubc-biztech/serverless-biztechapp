@@ -1,26 +1,26 @@
 'use strict';
-const AWS = require('aws-sdk');
-const helpers = require('./helpers')
-const sorters = require('../utils/sorters')
+const helpers = require('./helpers');
+const sorters = require('../utils/sorters');
+const { isEmpty } = require('../utils/functions');
+const { MAX_BATCH_ITEM_COUNT } = require('../constants/dynamodb');
+const { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } = require('../constants/tables');
 
 module.exports.create = async (event, ctx, callback) => {
-  const docClient = new AWS.DynamoDB.DocumentClient();
 
-  const timestamp = new Date().getTime();
-  const data = JSON.parse(event.body);
+  try {
 
-  if (!data.hasOwnProperty('id')) {
-    callback(null, helpers.inputError('Event ID not specified.', data));
-    return null;
-  }
+    const timestamp = new Date().getTime();
+    const data = JSON.parse(event.body);
 
-  if (data.capac == null || isNaN(data.capac)) {
-    callback(null, helpers.inputError('capac invalid, please provide valid number.', data));
-    return null;
-  }
+    helpers.checkPayloadProps(data, {
+      id: { required: true },
+      capac: { required: true, type: 'number' }
+    });
 
-  const params = {
-    Item: {
+    const existingEvent = await helpers.getOne(data.id, EVENTS_TABLE);
+    if(!isEmpty(existingEvent)) throw helpers.duplicateResponse('event id', data);
+
+    const item = {
       id: data.id,
       ename: data.ename,
       description: data.description,
@@ -34,218 +34,253 @@ module.exports.create = async (event, ctx, callback) => {
       latitude: data.latitude,
       createdAt: timestamp,
       updatedAt: timestamp
-    },
-    TableName: 'biztechEvents' + process.env.ENVIRONMENT,
-    ConditionExpression: 'attribute_not_exists(id)'
-  };
+    };
 
-  await docClient.put(params).promise()
-    .then(result => {
-      const response = helpers.createResponse(201, {
-        message: 'Event Created!',
-        params: params
-      })
-      callback(null, response);
-    })
-    .catch(error => {
-      const response = helpers.createResponse(409, "Event could not be created because id already exists");
-      callback(null, response);
-    })
+    const res = await helpers.create(item, EVENTS_TABLE);
+
+    const response = helpers.createResponse(201, {
+      message: `Created event with id ${data.id}!`,
+      response: res,
+      item
+    });
+
+    callback(null, response);
+    return null;
+
+  }
+  catch(err) {
+
+    console.error(err);
+    callback(null, err);
+    return null;
+
+  }
 
 };
 
 module.exports.delete = async (event, ctx, callback) => {
-  const docClient = new AWS.DynamoDB.DocumentClient();
 
-  const id = event.pathParameters.id;
+  try {
 
-  // Check that parameters are valid
-  if (!id) {
-    callback(null, helpers.inputError('id not specified.', 'missing query param'));
+    if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('event');
+    const id = event.pathParameters.id;
+
+    const existingEvent = await helpers.getOne(id, EVENTS_TABLE);
+    if(isEmpty(existingEvent)) throw helpers.notFoundResponse('event', id);
+
+    const res = await helpers.deleteOne(id, EVENTS_TABLE);
+
+    const response = helpers.createResponse(200, {
+      message: `Deleted event with id '${id}'!`,
+      response: res
+    });
+
+    callback(null, response);
     return null;
+
   }
+  catch(err) {
 
-  const params = {
-    Key: { id },
-    TableName: 'biztechEvents' + process.env.ENVIRONMENT
-  };
+    console.error(err);
+    callback(null, err);
+    return null;
 
-  await docClient.delete(params).promise()
-    .then(result => {
-      const response = helpers.createResponse(200, {
-        message: 'Event Deleted!'
-      })
-      callback(null, response);
-    })
-    .catch(error => {
-      console.error(error);
-      const response = helpers.createResponse(502, error);
-      callback(null, response);
-    })
+  }
 
 };
 
 module.exports.getAll = async (event, ctx, callback) => {
-  const docClient = new AWS.DynamoDB.DocumentClient();
 
-  const params = {
-    TableName: 'biztechEvents' + process.env.ENVIRONMENT
-  };
+  try {
 
-  await docClient.scan(params).promise()
-    .then(async (result) => {
-      var events = result.Items
-      for (const event of events) {
-        event.counts = await helpers.getEventCounts(event.id)
-      }
-      events.sort(sorters.alphabeticalComparer('startDate')) // sort by startDate
-      const response = helpers.createResponse(200, events)
-      callback(null, response);
-    })
-    .catch(error => {
-      console.error(error);
-      const response = helpers.createResponse(502, error);
-      callback(null, response);
-    })
+    // scan
+    const events = await helpers.scan(EVENTS_TABLE);
+
+    // get event counts
+    for(event of events) {
+
+      event.counts = await helpers.getEventCounts(event.id);
+
+    }
+    // sort the events by startDate
+    events.sort(sorters.alphabeticalComparer('startDate'));
+
+    const response = helpers.createResponse(200, events);
+    callback(null, response);
+
+  }
+  catch(err) {
+
+    console.error(err);
+    callback(null, err);
+    return null;
+
+  }
 
 };
 
 module.exports.update = async (event, ctx, callback) => {
-  const docClient = new AWS.DynamoDB.DocumentClient();
 
-  const data = JSON.parse(event.body);
-  var updateExpression = "set ";
-  var expressionAttributeValues = {};
+  try {
 
-  for (var key in data) {
-    if (data.hasOwnProperty(key)) {
-      if (key != "id") {
-        updateExpression += key + "= :" + key + ",";
-        expressionAttributeValues[":" + key] = data[key];
-      }
-    }
+    if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('event');
+    const id = event.pathParameters.id;
+
+    const existingEvent = await helpers.getOne(id, EVENTS_TABLE);
+    if(isEmpty(existingEvent)) throw helpers.notFoundResponse('event', id);
+
+    const data = JSON.parse(event.body);
+
+    const res = await helpers.updateDB(event.pathParameters.id, data, EVENTS_TABLE);
+    const response = helpers.createResponse(200, {
+      message: `Updated event with id ${id}!`,
+      response: res
+    });
+
+    callback(null, response);
+    return null;
+
   }
+  catch(err) {
 
-  const timestamp = new Date().getTime();
-  updateExpression += "updatedAt = :updatedAt";
-  expressionAttributeValues[":updatedAt"] = timestamp;
+    console.error(err);
+    callback(null, err);
+    return null;
 
-  const id = event.pathParameters.id;
-
-  const params = {
-    Key: { id },
-    TableName: 'biztechEvents' + process.env.ENVIRONMENT,
-    ExpressionAttributeValues: expressionAttributeValues,
-    UpdateExpression: updateExpression,
-    ReturnValues: "UPDATED_NEW",
-    ConditionExpression: "attribute_exists(id)"
-  };
-
-  await docClient.update(params).promise()
-    .then(async (result) => {
-      callback(null, helpers.createResponse(200, "Update succeeded."));
-    })
-    .catch(error => {
-      callback(null, helpers.createResponse(404, "Event not found."));
-    })
+  }
 
 };
 
 module.exports.get = async (event, ctx, callback) => {
-  const docClient = new AWS.DynamoDB.DocumentClient();
 
-  const id = event.pathParameters.id;
-  const queryString = event.queryStringParameters;
+  try {
 
-  // if both count and users are true, throw error 
-  if (queryString && queryString.count == "true" && queryString.users == "true") {
-    const response = helpers.createResponse(406, 'Only one true parameter is permissible at a time');
-    callback(null, response);
-  } else if (queryString && queryString.count == "true") {
-    //return counts
-    const counts = await helpers.getEventCounts(id)
+    if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('event');
+    const id = event.pathParameters.id;
 
-    const response = helpers.createResponse(200, counts)
-    callback(null, response);
-  } else if (queryString && queryString.users == "true") {
-    //return users
-    const params = {
-      TableName: 'biztechRegistration' + process.env.ENVIRONMENT,
-      FilterExpression: 'eventID = :query',
-      ExpressionAttributeValues: {
-        ':query': id
-      }
-    };
+    const queryString = event.queryStringParameters;
 
-    await docClient.scan(params).promise()
-      .then(async result => {
-        console.log('Scan success.');
-        const registrationList = result.Items;
+    // if both count and users are true, throw error 
+    if (queryString && queryString.count == 'true' && queryString.users == 'true') {
+
+      throw helpers.createResponse(406, {
+        message: 'Only one true parameter is permissible at a time'
+      });
+
+    } else if (queryString && queryString.count == 'true') {
+
+      // return counts
+      const counts = await helpers.getEventCounts(id);
+
+      const response = helpers.createResponse(200, counts);
+      callback(null, response);
+      return null;
+
+    } else if (queryString && queryString.users == 'true') {
+
+      let registrationList = [];
+
+      try {
+
+        const filters = {
+          FilterExpression: 'eventID = :query',
+          ExpressionAttributeValues: {
+            ':query': id
+          }
+        };
 
         /**
-         * Example registration obj:
-         * { eventID: 'blueprint',
-         *   id: 123,
-         *   updatedAt: 1580007893340,
-         *   registrationStatus: 'registered'
-         * }
-         */
-        let keysForRequest = registrationList.map(registrationObj => {
-          let keyEntry = {}
-          keyEntry.id = parseInt(registrationObj.id)
-          return keyEntry
-        })
-        console.log('Keys:', keysForRequest)
-
-        let keyBatches = [];
-        const size = 100 // max BatchGetItem count
-        while (keysForRequest.length > 0) {
-          keyBatches.push(keysForRequest.splice(0, size))
+       * Get user registrations
+       * Example of a registration object:
+        {
+          eventID: 'blueprint',
+          id: 123,
+          updatedAt: 1580007893340,
+          registrationStatus: 'registered'
         }
+       */
+        registrationList = await helpers.scan(USER_REGISTRATIONS_TABLE, filters);
 
-        await Promise.all(keyBatches.map(batch => {
-          return helpers.batchGet(batch, 'biztechUsers' + process.env.ENVIRONMENT)
-        })).then(result => {
-          const results = result.flatMap(batchResult => batchResult.Responses[`biztechUsers${process.env.ENVIRONMENT}`]) // extract what's inside
+      } catch(err) {
 
-          const resultsWithRegistrationStatus = results.map(item => {
-            const registrationObj = registrationList.filter(registrationObject => {
-              return registrationObject.id === item.id  // find the same user in 'registrationList' and attach the registrationStatus
-            })
-            if (registrationObj[0]) item.registrationStatus = registrationObj[0].registrationStatus
-            else item.registrationStatus = '';
-            return item
-          });
-          resultsWithRegistrationStatus.sort(sorters.alphabeticalComparer('lname'));
-          const response = helpers.createResponse(200, resultsWithRegistrationStatus)
-          callback(null, response);
-        })
-      })
-      .catch(error => {
-        console.error(error);
-        callback(new Error('Unable to scan registration table.'));
+        throw helpers.createResponse(500, {
+          message: 'Unable to scan registration table.'
+        });
+
+      }
+
+      let keysForRequest = registrationList.map(registrationObj => {
+
+        const keyEntry = {};
+        keyEntry.id = parseInt(registrationObj.id);
+        return keyEntry;
+
       });
-  } else {
-    //if none of the optional params are true, then return event
-    const params = {
-      Key: { id },
-      TableName: 'biztechEvents' + process.env.ENVIRONMENT
-    };
 
-    await docClient.get(params).promise()
-      .then(result => {
-        if (result.Item == null) {
-          const response = helpers.createResponse(404, 'Event not found');
-          callback(null, response);
-        } else {
-          const response = helpers.createResponse(200, result.Item);
-          callback(null, response);
-        }
-      })
-      .catch(error => {
-        console.error(error);
-        const response = helpers.createResponse(502, error);
-        callback(null, response);
-      })
+      console.log('Keys:', keysForRequest);
+
+      let keyBatches = [];
+
+      while (keysForRequest.length > 0) {
+
+        keyBatches.push(keysForRequest.splice(0, MAX_BATCH_ITEM_COUNT));
+
+      }
+
+      const result = await Promise.all(keyBatches.map(batch => (
+
+        helpers.batchGet(batch, USERS_TABLE + process.env.ENVIRONMENT)
+
+      )));
+
+      // extract what's inside
+      const flattenResults = result.flatMap(batchResult => batchResult.Responses[`${USERS_TABLE}${process.env.ENVIRONMENT}`]);
+
+      const resultsWithRegistrationStatus = flattenResults.map(item => {
+
+        const registrationObj = registrationList.filter(registrationObject => {
+
+          // find the same user in 'registrationList' and attach the registrationStatus
+          return registrationObject.id === item.id;
+
+        });
+
+        if (registrationObj[0]) item.registrationStatus = registrationObj[0].registrationStatus;
+        else item.registrationStatus = '';
+        return item;
+
+      });
+
+      resultsWithRegistrationStatus.sort(sorters.alphabeticalComparer('lname'));
+      const response = helpers.createResponse(200, resultsWithRegistrationStatus);
+      callback(null, response);
+      return null;
+
+    } else {
+
+      // if none of the optional params are true, then return the event
+      const event = await helpers.getOne(id, EVENTS_TABLE);
+
+      if(isEmpty(event)) throw helpers.notFoundResponse('event', id);
+
+      const response = helpers.createResponse(200, event);
+      callback(null, response);
+      return null;
+
+    }
+
   }
-}
+  catch(err) {
+
+    console.error(err);
+
+    // need a way to come up with a proper response in case any logic throws errors
+    let response = err;
+    if(!response || !response.statusCode || !response.headers) response = helpers.createResponse(502,);
+
+    callback(null, err);
+    return null;
+
+  }
+
+};

@@ -7,6 +7,7 @@ const AWSMock = require('aws-sdk-mock');
 const mochaPlugin = require('serverless-mocha-plugin');
 const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper('eventUpdate', '/handlers/event.js', 'update');
+const { EVENTS_TABLE } = require('../constants/tables');
 
 const updatePayload = {
   id: 'existingEvent1',
@@ -22,7 +23,7 @@ const updatePayload = {
   latitude: 78.00,
   createdAt: '20200607T000000-0400',
   updatedAt: '20200607T000000-0400'
-}
+};
 
 describe('eventUpdate', () => {
 
@@ -30,13 +31,32 @@ describe('eventUpdate', () => {
 
   before(() => {
 
-    AWSMock.mock('DynamoDB.DocumentClient', 'update', (params, callback) => {
-      if(params.Key.id && existingEvents.includes(params.Key.id)) {
-        callback(null, "successfully updated item in database");
+    AWSMock.mock('DynamoDB.DocumentClient', 'get', (params, callback) => {
+
+      const { id } = params.Key;
+
+      if(params.TableName.includes(EVENTS_TABLE)) {
+
+        // if id found
+        if(existingEvents.includes(id)) callback(null, { Item: updatePayload });
+        // if id not found
+        else callback(null, { Item: null });
+
       }
-      else callback(new Error(""));
+
     });
-    
+
+    AWSMock.mock('DynamoDB.DocumentClient', 'update', (params, callback) => {
+
+      if(params.Key.id && existingEvents.includes(params.Key.id)) {
+
+        callback(null, 'successfully updated item in database');
+
+      }
+      else callback(new Error(''));
+
+    });
+
   });
   after(() => {
 
@@ -44,14 +64,13 @@ describe('eventUpdate', () => {
 
   });
 
-  // TODO: This should probably be a check in the endpoint
-  // it('return 406 for trying to update an event with no id', async () => {
+  it('return 400 for trying to update an event with no id', async () => {
 
 
-  //   const response = await wrapped.run({ pathParameters: {} });
-  //   expect(response.statusCode).to.be.equal(406);
-    
-  // });
+    const response = await wrapped.run({ pathParameters: {} });
+    expect(response.statusCode).to.be.equal(400);
+
+  });
 
   it('return 404 for trying to update an event that doesn\'t exist', async () => {
 
@@ -62,7 +81,7 @@ describe('eventUpdate', () => {
       body: JSON.stringify(updatePayload)
     });
     expect(response.statusCode).to.be.equal(404);
-    
+
   });
 
   it('return 200 for successfully updating an event', async () => {
@@ -74,7 +93,7 @@ describe('eventUpdate', () => {
       body: JSON.stringify(updatePayload)
     });
     expect(response.statusCode).to.be.equal(200);
-    
+
   });
 
 });

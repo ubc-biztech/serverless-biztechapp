@@ -15,9 +15,11 @@ describe('prizeGetAll', () => {
   before(() => {
 
     AWSMock.mock('DynamoDB.DocumentClient', 'scan', (params, callback) => {
-        callback(null, getPrizesResponse);
+
+      callback(null, getPrizesResponse);
+
     });
-    
+
   });
 
   after(() => {
@@ -38,7 +40,7 @@ describe('prizeGetAll', () => {
     expect(event).to.have.property('id');
     expect(event).to.have.property('name');
     expect(event).to.have.property('price');
-    
+
   });
 
 });

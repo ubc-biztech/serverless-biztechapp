@@ -1,8 +1,10 @@
-const AWS = require("aws-sdk");
+const AWS = require('aws-sdk');
 const { RESERVED_WORDS } = require('../constants/dynamodb');
+const { USER_REGISTRATIONS_TABLE } = require('../constants/tables');
 
 module.exports = {
   createResponse: function (statusCode, body) {
+
     const response = {
       statusCode,
       headers: {
@@ -15,32 +17,39 @@ module.exports = {
         : JSON.stringify(body)
     };
     return response;
+
   },
 
-  missingIdResponse: function (type) {
+  missingIdQueryResponse: function (type) {
+
     return this.createResponse(400, {
-      message: `A ${type} id was not provided. Check query params`
+      message: `A(n) ${type} id was not provided. Check query params`
     });
+
   },
 
   notFoundResponse: function(type = null, id = null) {
+
     return this.createResponse(404, {
       message: (type && id) ? `${type} with id '${id}' could not be found. Make sure you have provided the correct id.`: 'No entries found.'
     });
+
   },
 
   duplicateResponse: function(prop, data) {
+
     const response = this.createResponse(409, {
       message: `A database entry with the same '${prop}' already exists!`,
       data: data
     });
-    console.log("DUPLICATE ERROR", response);
+    console.error('DUPLICATE ERROR', response);
     return response;
+
   },
 
   dynamoErrorResponse: function (err) {
 
-    const response = this.createResponse(err.statusCode || 500, {
+    const response = this.createResponse(err.statusCode || 502, {
       code: err.code,
       time: err.time,
       requestId: err.requestId,
@@ -48,18 +57,20 @@ module.exports = {
       retryable: err.retryable,
       retryDelay: err.retryDelay
     });
-    console.log("DYNAMO DB ERROR", err);
+    console.error('DYNAMO DB ERROR', err);
     return response;
 
   },
 
   inputError: function(message, data) {
+
     const response = this.createResponse(406, {
-        message: message,
-        data: data
-      })
-    console.log("INPUT ERROR", response);
+      message: message,
+      data: data
+    });
+    console.error('INPUT ERROR', response);
     return response;
+
   },
 
   /**
@@ -73,6 +84,7 @@ module.exports = {
    * }
    */
   checkPayloadProps: function(payload, check = {}) {
+
     try {
 
       const criteria = Object.entries(check);
@@ -80,20 +92,26 @@ module.exports = {
       criteria.forEach(([key, crit]) => {
 
         // check if property exists
-        if(crit.required && !payload[key]) {
+        if(crit.required && !payload[key] && payload[key] !== false) {
+
           throw `'${key}' is missing from the request body`;
+
         }
         // check for the property's type
         if(crit.type && payload[key] && typeof payload[key] !== crit.type) {
+
           throw `'${key}' in the request body is invalid, expected type '${crit.type}' but got '${typeof payload[key]}'`;
+
         }
 
-      })
+      });
+
     } catch(errMsg) {
 
       throw this.inputError(errMsg, payload);
 
     }
+
   },
 
   /**
@@ -113,14 +131,14 @@ module.exports = {
         TableName: table + process.env.ENVIRONMENT,
         ConditionExpression: 'attribute_not_exists(id)'
       };
-  
+
       // put into db
       const res = await docClient.put(params).promise();
       return res;
 
     }
     catch(err) {
-      
+
       const errorResponse = this.dynamoErrorResponse(err);
       throw errorResponse;
 
@@ -151,7 +169,7 @@ module.exports = {
 
     }
     catch(err) {
-      
+
       const errorResponse = this.dynamoErrorResponse(err);
       throw errorResponse;
 
@@ -174,11 +192,11 @@ module.exports = {
       const params = {
         TableName: table + process.env.ENVIRONMENT,
         ...filters
-      }
-      
+      };
+
       // scan the db
       const results = await docClient.scan(params).promise();
-      return results.Items || {};
+      return results.Items || [];
 
     }
     catch(err) {
@@ -187,6 +205,7 @@ module.exports = {
       throw errorResponse;
 
     }
+
   },
 
   /**
@@ -195,6 +214,7 @@ module.exports = {
    * @param {String} tableName - Name of table to call batchGet
    */
   batchGet: function (batch, tableName) {
+
     const docClient = new AWS.DynamoDB.DocumentClient();
 
     const batchRequestParams = {
@@ -205,17 +225,19 @@ module.exports = {
       }
     };
 
-    console.log("BatchRequestParams", batchRequestParams);
+    console.log('BatchRequestParams', batchRequestParams);
 
     return docClient.batchGet(batchRequestParams).promise();
+
   },
 
   /**
    * Deletes one item from db
    * @param {Number} id - The id of the item to delete
    * @param {String} table - Name of the table
+   * @param {String} extraKeys - Optional extra keys
    */
-  deleteOne: async function (id, table) {
+  deleteOne: async function (id, table, extraKeys = {}) {
 
     const docClient = new AWS.DynamoDB.DocumentClient();
 
@@ -223,7 +245,7 @@ module.exports = {
 
       // construct the param object
       const params = {
-        Key: { id },
+        Key: { id, ...extraKeys },
         TableName: table + process.env.ENVIRONMENT,
       };
 
@@ -234,7 +256,7 @@ module.exports = {
 
     }
     catch(err) {
-      
+
       const errorResponse = this.dynamoErrorResponse(err);
       throw errorResponse;
 
@@ -243,42 +265,52 @@ module.exports = {
   },
 
   createUpdateExpression: function (obj) {
+
     let val = 0;
-    let updateExpression = "set ";
+    let updateExpression = 'set ';
     let expressionAttributeValues = {};
-    let expressionAttributeNames = {};
+    let expressionAttributeNames = null;
 
     // TODO: Add a filter for valid object keys
     // loop through keys and create updateExpression string and
     // expressionAttributeValues object
     for (const key in obj) {
-      
+
       if (obj.hasOwnProperty(key)) {
+
         // skip if "id" or "createdAt"
-        if(key === "id" || key === "createdAt") continue;
+        if(key === 'id' || key === 'createdAt') continue;
         // use expressionAttributeNames if a reserved dynamodb word
         else if(RESERVED_WORDS.includes(key.toUpperCase())) {
+
           updateExpression += `#v${val} = :val${val},`;
           expressionAttributeValues[`:val${val}`] = obj[key];
+          if(!expressionAttributeNames) expressionAttributeNames = {};
           expressionAttributeNames[`#v${val}`] = key;
           val++;
+
         }
         // else do the normal
         else {
-          updateExpression += key + "= :" + key + ",";
-          expressionAttributeValues[":" + key] = obj[key];
+
+          updateExpression += key + '= :' + key + ',';
+          expressionAttributeValues[':' + key] = obj[key];
+
         }
+
       }
+
     }
     const timestamp = new Date().getTime();
-    updateExpression += "updatedAt = :updatedAt";
-    expressionAttributeValues[":updatedAt"] = timestamp;
+    updateExpression += 'updatedAt = :updatedAt';
+    expressionAttributeValues[':updatedAt'] = timestamp;
 
     return {
       updateExpression,
       expressionAttributeValues,
       expressionAttributeNames
     };
+
   },
 
   /**
@@ -299,16 +331,16 @@ module.exports = {
         expressionAttributeValues,
         expressionAttributeNames
       } = this.createUpdateExpression(obj);
-  
+
       // construct the param object
-      var params = {
+      let params = {
         Key: { id },
         TableName: table + process.env.ENVIRONMENT,
         ExpressionAttributeValues: expressionAttributeValues,
         ExpressionAttributeNames: expressionAttributeNames,
         UpdateExpression: updateExpression,
-        ReturnValues: "UPDATED_NEW",
-        ConditionExpression: "attribute_exists(id)"
+        ReturnValues: 'UPDATED_NEW',
+        ConditionExpression: 'attribute_exists(id)'
       };
 
       // do the magic
@@ -332,18 +364,20 @@ module.exports = {
    * @return {registeredCount checkedInCount waitlistCount}
    */
   getEventCounts: async function (eventID) {
+
     const docClient = new AWS.DynamoDB.DocumentClient();
     const params = {
-      TableName: "biztechRegistration" + process.env.ENVIRONMENT,
-      FilterExpression: "eventID = :query",
+      TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
+      FilterExpression: 'eventID = :query',
       ExpressionAttributeValues: {
-        ":query": eventID
+        ':query': eventID
       }
     };
     return await docClient
       .scan(params)
       .promise()
       .then(result => {
+
         let counts = {
           registeredCount: 0,
           checkedInCount: 0,
@@ -351,24 +385,32 @@ module.exports = {
         };
 
         result.Items.forEach(item => {
+
           switch (item.registrationStatus) {
-            case "registered":
-              counts.registeredCount++;
-              break;
-            case "checkedIn":
-              counts.checkedInCount++;
-              break;
-            case "waitlist":
-              counts.waitlistCount++;
-              break;
+
+          case 'registered':
+            counts.registeredCount++;
+            break;
+          case 'checkedIn':
+            counts.checkedInCount++;
+            break;
+          case 'waitlist':
+            counts.waitlistCount++;
+            break;
+
           }
+
         });
 
         return counts;
+
       })
       .catch(error => {
-        console.log(error);
+
+        console.error(error);
         return null;
+
       });
+
   }
 };

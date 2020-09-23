@@ -6,105 +6,122 @@
 const mochaPlugin = require('serverless-mocha-plugin');
 const expect = mochaPlugin.chai.expect;
 const AWSMock = require('aws-sdk-mock');
-let wrapped = mochaPlugin.getWrapper('registrationGet', '/handlers/registration.js', 'get')
+let wrapped = mochaPlugin.getWrapper('registrationGet', '/handlers/registration.js', 'get');
+
+const registrationPayload = [{ id: 12345678, eventID: 'event', updatedAt: 1600669844493 }, { id: 12345678, eventID: 'event', updatedAt: 1600669844493 }];
 
 describe('registrationUpdateHelper', () => {
 
   before(() => {
 
-    const callbackReturn = { Items: [{ id: 12345678, updatedAt: 1600669844493 }, { id: 12345678, updatedAt: 1600669844493 }] };
+    const callbackReturn = { Items: registrationPayload };
 
     AWSMock.mock('DynamoDB.DocumentClient', 'scan', function (params, callback) {
+
       callback(null, callbackReturn);
       return null;
+
     });
 
-    AWSMock.mock('DynamoDB.DocumentClient', 'query', function (params, callback) {
-      callback(null, callbackReturn);
-      return null;
-    });
+  });
 
-  })
-  
   after(() => {
 
     AWSMock.restore('DynamoDB.DocumentClient');
 
   });
 
-  it('return 406 when queryString is not given ', async () => {
+  it('return 400 when queryString is not given ', async () => {
+
     const response = await wrapped.run({
     });
-    expect(response.statusCode).to.be.equal(406);
+    expect(response.statusCode).to.be.equal(400);
+
   });
 
-  it('return 406 when queryString is missing eventID and id ', async () => {
+  it('return 400 when queryString is missing both eventID and id ', async () => {
+
     const response = await wrapped.run({
       queryStringParameters: {
         registrationStatus: 'status'
       }
     });
-    expect(response.statusCode).to.be.equal(406);
+    expect(response.statusCode).to.be.equal(400);
+
   });
 
   it('return 200 for successful get with eventID and no id', async () => {
-      const response = await wrapped.run({
-        queryStringParameters: {
-          eventID: 'event', 
-        }
-      });
-      expect(response.statusCode).to.equal(200);
-  }) 
+
+    const response = await wrapped.run({
+      queryStringParameters: {
+        eventID: 'event',
+      }
+    });
+    expect(response.statusCode).to.equal(200);
+
+  });
 
   it('return 200 for successful get with id and no eventID', async () => {
 
-      const response = await wrapped.run({
-        queryStringParameters: {
-          id: 12345678
-        }
-      });
+    const response = await wrapped.run({
+      queryStringParameters: {
+        id: 12345678
+      }
+    });
 
-      expect(response.statusCode).to.equal(200);
-  })
+    expect(response.statusCode).to.equal(200);
+
+  });
 
   it('return 200 for successful get with both eventID and id', async () => {
 
-      const response = await wrapped.run({
-        queryStringParameters: {
-          eventID: 'event',
-          id: 12345678
-        }
-      });
+    const response = await wrapped.run({
+      queryStringParameters: {
+        eventID: 'event',
+        id: 12345678
+      }
+    });
 
-      expect(response.statusCode).to.equal(200);
-  })
+    const body = JSON.parse(response.body);
+    expect(response.statusCode).to.equal(200);
+    expect(body.size).to.equal(2);
+    expect(body.data).to.have.length(2);
 
-  it('return 404 for successful get with id, eventID and recent timestamp', async () => {
+  });
 
-      const response = await wrapped.run({
-        queryStringParameters: {
-          eventID: 'event',
-          id: 12345678,
-          afterTimestamp: 1600669844494
-        }
-      });
+  it('return 200 for successful get with id, eventID and recent timestamp', async () => {
 
-      expect(response.statusCode).to.equal(404);
-  })
-  
+    const response = await wrapped.run({
+      queryStringParameters: {
+        eventID: 'event',
+        id: 12345678,
+        afterTimestamp: 1600669844494
+      }
+    });
+
+    const body = JSON.parse(response.body);
+    expect(response.statusCode).to.equal(200);
+    expect(body.size).to.equal(0);
+    expect(body.data).to.have.length(0);
+
+  });
+
 
   it('return 200 for successful get with id, eventID and timestamp', async () => {
 
-      const response = await wrapped.run({
-        queryStringParameters: {
-          eventID: 'event',
-          id: 12345678,
-          afterTimestamp: 1600669844492
-        }
-      });
+    const response = await wrapped.run({
+      queryStringParameters: {
+        eventID: 'event',
+        id: 12345678,
+        afterTimestamp: 1600669844492
+      }
+    });
 
-      expect(response.statusCode).to.equal(200);
-  })
-  
+    const body = JSON.parse(response.body);
+    expect(response.statusCode).to.equal(200);
+    expect(body.size).to.equal(2);
+    expect(body.data).to.have.length(2);
 
-}); 
+  });
+
+});

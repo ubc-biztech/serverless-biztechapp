@@ -9,35 +9,41 @@ module.exports.getAll = async (event, ctx, callback) => {
   try {
 
     const filters = {};
-    
+
     // check if a query was provided
     const userId = event && event.queryStringParameters && event.queryStringParameters.userId;
-    
+
     // construct the filter params if needed
     if (userId) {
+
       filters.FilterExpression = 'userId = :query';
       filters.ExpressionAttributeValues = {
         ':query': parseInt(userId, 10)
-      }
+      };
+
     }
 
     // scan the table
     const transaction = await helpers.scan(TRANSACTIONS_TABLE, filters);
 
     let items = {};
-    
+
     // re-organize the response
     if(userId && transaction !== null) {
+
       items.count = transaction.length;
       items.transactions = transaction;
       items.totalCredits = transaction.reduce((accumulator, item) => accumulator + item.credits, 0);
+
     }
     else if(userId) {
+
       items.count = 0;
       items.transactions = {};
       items.totalCredits = 0;
+
     }
-    else if(transaction !== null) items = transaction
+    else if(transaction !== null) items = transaction;
 
     const response = helpers.createResponse(200, items);
 
@@ -49,6 +55,7 @@ module.exports.getAll = async (event, ctx, callback) => {
 
     callback(null, err);
     return null;
+
   }
 
 };
@@ -63,20 +70,22 @@ module.exports.create = async (event, ctx, callback) => {
     // check request body
     helpers.checkPayloadProps(data, {
       userId: { required: true, type: 'number' },
-      reason: { required: true, type: 'string'},
+      reason: { required: true, type: 'string' },
       credits: { required: true, type: 'number' },
     });
-    
+
     // check that the user id exists
     const existingUser = await helpers.getOne(data.userId, USERS_TABLE);
     if(isEmpty(existingUser)) throw helpers.notFoundResponse('User', data.userId);
-    
+
     // generate a random uuid for the transaction
     // if by some chance the uuid exists, generate another uuid until a unique one is created
     let existingTransaction = null;
     while(!data.id || !isEmpty(existingTransaction)) {
+
       data.id = uuidv4();
       existingTransaction = await helpers.getOne(data.id, TRANSACTIONS_TABLE);
+
     }
 
     // if credits is negative value, check if the user has enough credits
@@ -115,6 +124,7 @@ module.exports.create = async (event, ctx, callback) => {
 
     callback(null, err);
     return null;
+
   }
 
 };

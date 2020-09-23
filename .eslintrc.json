@@ -1,0 +1,34 @@
+{
+    "env": {
+        "commonjs": true,
+        "es6": true,
+        "node": true,
+        "mocha": true
+    },
+    "extends": "eslint:recommended",
+    "globals": {
+        "Atomics": "readonly",
+        "SharedArrayBuffer": "readonly"
+    },
+    "parserOptions": {
+        "ecmaVersion": 2018
+    },
+    "rules": {
+        // rules that cause errors
+        "no-var": "error",
+
+        // rules that cause warnings
+        "array-bracket-spacing": ["warn", "never"],
+        "array-bracket-newline": ["warn", "consistent"],
+        "eol-last": ["warn", "always"],
+        "indent": ["warn", 2],
+        "no-prototype-builtins": "off",
+        "no-trailing-spaces": ["warn", { "ignoreComments": true }],
+        "no-unused-vars": "warn",
+        "object-curly-spacing": ["warn", "always"],
+        "padded-blocks": ["warn", "always"],
+        "quotes": ["warn", "single"],
+        "semi": ["warn", "always"],
+        "space-in-parens": ["warn", "never"]
+    }
+}
