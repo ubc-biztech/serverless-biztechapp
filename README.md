@@ -36,12 +36,19 @@ These instructions will get you a copy of the project up and running on your loc
 5. Set the directory's AWS keys for serverless:
 
    ```
-   $ serverless config credentials --provider aws --key <AWS_SERVERLESS_KEY> --secret <AWS_SERVERLESS_SECRET>
+   $ serverless config credentials --provider aws --key <AWS_ACCESS_KEY_ID> --secret <AWS_SECRET_ACCESS_KEY>
    ```
    
    > Obtain the AWS_SERVERLESS_KEY and AWS_SERVERLESS_SECRET from Notion, or from one of the other devs
+   
+6. Set AWS keys for AWS SDK to run things like integration tests:
 
-6. Your setup is ready for development!
+    ```
+    $ export AWS_ACCESS_KEY_ID= <AWS_ACCESS_KEY_ID>
+    $ export AWS_SECRET_ACCESS_KEY = <AWS_SECRET_ACCESS_KEY>
+    ```
+
+7. Your setup is ready for development!
 
 
 ## Development
