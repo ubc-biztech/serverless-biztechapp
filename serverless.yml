@@ -273,7 +273,7 @@ functions:
     handler: handlers/prize.create
     events:
       - http:
-          path: prize/
+          path: prizes/
           method: post
           cors: true
           authorizer:
@@ -283,7 +283,7 @@ functions:
     handler: handlers/prize.update
     events:
       - http:
-          path: prize/{id}
+          path: prizes/{id}
           method: patch
           request:
             path:
@@ -296,7 +296,7 @@ functions:
     handler: handlers/prize.delete
     events:
       - http:
-          path: prize/{id}
+          path: prizes/{id}
           method: delete
           request:
             path:
