@@ -1,0 +1,93 @@
+openapi: 3.0.0
+info:
+  version: 1.0.0
+  title: bizTechBackend
+paths:
+  /users:
+    get:
+      summary: Returns list of users
+      operationId: usersGetAll
+      tags:
+        - user
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items: 
+                  $ref: '#/components/schemas/User'
+        '404':
+          description: 404 No users found
+        '502':
+          description: 502 Internal Server Error
+    post:
+        summary: Creates a new user
+        operationId: userCreate
+        tags:
+            - user
+        requestBody:
+            content:
+                application/json:
+                    schema:
+                        $ref: '#/components/schemas/User'
+        responses:
+            '201':
+                description: 201 User successfully created
+            '406':
+                description: 406 User id not specified
+            '409':
+                description: 409 User with id already exists
+            '502':
+                description: 502 Internal Server Error
+  /users/{id}:
+    get:
+        summary: Get a user by id
+        operationId: userGet
+        tags:
+            - user
+        responses:
+            '200':
+                description: 200 User successfully retrieved
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/User'
+            '404':
+                description: 404 User not found
+            '406':
+                description: 406 Given id was not a number
+            '502':
+                description: 502 Internal Server Error
+
+components:
+  schemas:
+    User:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: integer
+          format: int64
+        fname:
+          type: string
+        lname:
+          type: string
+        email:
+          type: string
+        faculty:
+          type: string
+        year:
+          type: string
+        gender:
+          type: string
+        diet:
+          type: string
+        admin:
+          type: boolean
+        favedEventsArray:
+            type: array
+            items:
+                type: string
