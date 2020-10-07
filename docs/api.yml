@@ -50,10 +50,10 @@ paths:
       responses:
         '200':
           description: 200 User successfully retrieved
-            content:
-              application/json:
-                  schema:
-                      $ref: '#/components/schemas/User'
+          content:
+            application/json:
+                schema:
+                    $ref: '#/components/schemas/User'
         '404':
           description: 404 User not found
         '406':
