@@ -26,40 +26,40 @@ paths:
         summary: Creates a new user
         operationId: userCreate
         tags:
-            - user
+          - user
         requestBody:
-            content:
-                application/json:
-                    schema:
-                        $ref: '#/components/schemas/User'
+          content:
+            application/json:
+              schema:
+                  $ref: '#/components/schemas/User'
         responses:
-            '201':
-                description: 201 User successfully created
-            '406':
-                description: 406 User id not specified
-            '409':
-                description: 409 User with id already exists
-            '502':
-                description: 502 Internal Server Error
+          '201':
+            description: 201 User successfully created
+          '406':
+            description: 406 User id not specified
+          '409':
+            description: 409 User with id already exists
+          '502':
+            description: 502 Internal Server Error
   /users/{id}:
     get:
-        summary: Get a user by id
-        operationId: userGet
-        tags:
-            - user
-        responses:
-            '200':
-                description: 200 User successfully retrieved
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/User'
-            '404':
-                description: 404 User not found
-            '406':
-                description: 406 Given id was not a number
-            '502':
-                description: 502 Internal Server Error
+      summary: Get a user by id
+      operationId: userGet
+      tags:
+        - user
+      responses:
+        '200':
+          description: 200 User successfully retrieved
+            content:
+              application/json:
+                  schema:
+                      $ref: '#/components/schemas/User'
+        '404':
+          description: 404 User not found
+        '406':
+          description: 406 Given id was not a number
+        '502':
+          description: 502 Internal Server Error
 
 components:
   schemas:
