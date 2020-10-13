@@ -49,7 +49,7 @@ paths:
         - user
       responses:
         '200':
-          description: 200 User successfully retrieved
+          description: 200 User retrieved
           content:
             application/json:
                 schema:
