@@ -40,24 +40,6 @@ describe('prizes integration', function () {
       })
     };
 
-    it('prizes POST returns 406 on missing name in request body', async () => {
-
-      const invalidPayload = {
-        body: JSON.stringify({
-          id: INTEGRATION_TEST_PRIZE_ID,
-          price: 200000,
-        })
-      };
-
-      await helpers.invokeLambda('prizeCreate', JSON.stringify(invalidPayload))
-        .then(([statusCode]) => {
-
-          expect(statusCode).to.equal(406);
-
-        });
-
-    });
-
     it('prizes POST returns 201 on success', async () => {
 
       await helpers.invokeLambda('prizeCreate', JSON.stringify(prizePayload))
@@ -129,7 +111,7 @@ describe('prizes integration', function () {
 
   describe('prizes/{id} DELETE tests', function () {
 
-    it('prize DELETE returns 404 when event not found', async () => {
+    it('prizes DELETE returns 404 when event not found', async () => {
 
       const payload = {
         pathParameters: {
@@ -146,7 +128,7 @@ describe('prizes integration', function () {
 
     });
 
-    it('prize DELETE returns 200 on update success', async () => {
+    it('prizes DELETE returns 200 on update success', async () => {
 
       let payload = {
         pathParameters: {
