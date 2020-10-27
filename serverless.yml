@@ -38,6 +38,7 @@ provider:
         - dynamodb:DeleteItem
         - dynamodb:UpdateItem
       Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechStickers${file(./config.${self:provider.stage}.json):ENVIRONMENT}"
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechUsers${file(./config.${self:provider.stage}.json):ENVIRONMENT}"
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechEvents${file(./config.${self:provider.stage}.json):ENVIRONMENT}"
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechRegistration${file(./config.${self:provider.stage}.json):ENVIRONMENT}"
@@ -305,6 +306,26 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+  stickerGetAll:
+    handler: handlers/sticker.getAll
+    events:
+      - http:
+          path: stickers/
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+  # stickerCreate:
+  #   handler: handlers/sticker.create
+  #   events:
+  #     - http:
+  #         path: stickers/
+  #         method: post
+  #         cors: true
+  #         authorizer:
+  #           type: COGNITO_USER_POOLS
+  #           arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   transactionGetAll:
     handler: handlers/transaction.getAll
     events:
