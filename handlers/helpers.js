@@ -28,11 +28,31 @@ module.exports = {
 
   },
 
-  notFoundResponse: function(type = null, id = null) {
+  missingPathParamResponse: function (type, paramName) {
 
-    return this.createResponse(404, {
-      message: (type && id) ? `${type} with id '${id}' could not be found. Make sure you have provided the correct id.`: 'No entries found.'
+    return this.createResponse(400, {
+      message: `A(n) ${paramName} path parameter was not provided for this ${type}. Check path params`
     });
+
+  },
+
+  notFoundResponse: function(type = null, id = null, secondaryKey = null) {
+
+    let message;
+
+    if(type && id) {
+
+      message = secondaryKey ?
+        `${type} with id '${id}' and secondaryKey '${secondaryKey}' could not be found. Make sure you have provided them correctly.`:
+        `${type} with id '${id}' could not be found. Make sure you have provided the correct id.`;
+
+    } else {
+
+      message = 'No entries found';
+
+    }
+
+    return this.createResponse(404, { message });
 
   },
 
@@ -150,8 +170,9 @@ module.exports = {
    * Gets one item from db
    * @param {Number} id - The id of the item to get
    * @param {String} table - Name of the table
+   * @param {String} extraKeys - Optional extra keys
    */
-  getOne: async function (id, table) {
+  getOne: async function (id, table, extraKeys = {}) {
 
     const docClient = new AWS.DynamoDB.DocumentClient();
 
@@ -159,7 +180,7 @@ module.exports = {
 
       // construct the param object
       const params = {
-        Key: { id },
+        Key: { id, ...extraKeys },
         TableName: table + process.env.ENVIRONMENT,
       };
 

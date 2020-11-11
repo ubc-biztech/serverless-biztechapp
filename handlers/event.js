@@ -1,4 +1,5 @@
 'use strict';
+const AWS = require('aws-sdk');
 const helpers = require('./helpers');
 const sorters = require('../utils/sorters');
 const { isEmpty } = require('../utils/functions');
@@ -14,14 +15,16 @@ module.exports.create = async (event, ctx, callback) => {
 
     helpers.checkPayloadProps(data, {
       id: { required: true },
+      year: { required: true, type: 'number' },
       capac: { required: true, type: 'number' }
     });
 
-    const existingEvent = await helpers.getOne(data.id, EVENTS_TABLE);
-    if(!isEmpty(existingEvent)) throw helpers.duplicateResponse('event id', data);
+    const existingEvent = await helpers.getOne(data.id, EVENTS_TABLE, { year: data.year });
+    if(!isEmpty(existingEvent)) throw helpers.duplicateResponse('event id and year', data);
 
     const item = {
       id: data.id,
+      year: data.year,
       ename: data.ename,
       description: data.description,
       startDate: data.startDate,
@@ -39,7 +42,7 @@ module.exports.create = async (event, ctx, callback) => {
     const res = await helpers.create(item, EVENTS_TABLE);
 
     const response = helpers.createResponse(201, {
-      message: `Created event with id ${data.id}!`,
+      message: `Created event with id ${data.id} for the year ${data.year}!`,
       response: res,
       item
     });
@@ -58,20 +61,23 @@ module.exports.create = async (event, ctx, callback) => {
 
 };
 
+//access from DELETE /events/year/id
 module.exports.delete = async (event, ctx, callback) => {
 
   try {
 
     if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('event');
     const id = event.pathParameters.id;
+    if(!event.pathParameters.year) throw helpers.missingPathParamResponse('event', 'year');
+    const year = event.pathParameters.year;
 
-    const existingEvent = await helpers.getOne(id, EVENTS_TABLE);
+    const existingEvent = await helpers.getOne(id, EVENTS_TABLE, { year });
     if(isEmpty(existingEvent)) throw helpers.notFoundResponse('event', id);
 
-    const res = await helpers.deleteOne(id, EVENTS_TABLE);
+    const res = await helpers.deleteOne(id, EVENTS_TABLE, { year });
 
     const response = helpers.createResponse(200, {
-      message: `Deleted event with id '${id}'!`,
+      message: `Deleted event with id '${id}' for the year ${year}!`,
       response: res
     });
 
@@ -89,17 +95,43 @@ module.exports.delete = async (event, ctx, callback) => {
 
 };
 
+//Modify to add query params (year, id, eventName...)
 module.exports.getAll = async (event, ctx, callback) => {
 
   try {
 
+    const queryString = event.queryStringParameters;
+    let filterExpression = {};
+
+    //Set up query by year if exists
+    if(queryString.hasOwnProperty('year')) {
+
+      const year = parseInt(queryString.year, 10);
+      filterExpression = {
+        FilterExpression: '#vyear = :query',
+        ExpressionAttributeNames: {
+          '#vyear': 'year'
+        },
+        ExpressionAttributeValues: {
+          ':query': year
+        }
+      };
+
+    }
+
     // scan
-    const events = await helpers.scan(EVENTS_TABLE);
+    let events = await helpers.scan(EVENTS_TABLE, filterExpression);
+
+    if(queryString.hasOwnProperty('id')) {
+
+      events = events.filter(event => event.id === queryString.id);
+
+    }
 
     // get event counts
     for(event of events) {
 
-      event.counts = await helpers.getEventCounts(event.id);
+      event.counts = await helpers.getEventCounts(event.id); //Will need to modify this - require year as a param
 
     }
     // sort the events by startDate
@@ -119,21 +151,47 @@ module.exports.getAll = async (event, ctx, callback) => {
 
 };
 
+//Modify to require both id and year param
 module.exports.update = async (event, ctx, callback) => {
 
   try {
 
     if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('event');
     const id = event.pathParameters.id;
+    if(!event.pathParameters.year) throw helpers.missingPathParamResponse('event', 'year');
+    const year = event.pathParameters.year;
 
-    const existingEvent = await helpers.getOne(id, EVENTS_TABLE);
-    if(isEmpty(existingEvent)) throw helpers.notFoundResponse('event', id);
+    const existingEvent = await helpers.getOne(id, EVENTS_TABLE, { year });
+    if(isEmpty(existingEvent)) throw helpers.notFoundResponse('event', id, year);
 
     const data = JSON.parse(event.body);
+    //Since we have a sort key, can't use helpers.updateDB()
+    const docClient = new AWS.DynamoDB.DocumentClient();
 
+    const {
+      updateExpression,
+      expressionAttributeValues,
+      expressionAttributeNames
+    } = helpers.createUpdateExpression(data);
+
+    // construct the param object
+    let params = {
+      Key: { id, year },
+      TableName: EVENTS_TABLE + process.env.ENVIRONMENT,
+      ExpressionAttributeValues: expressionAttributeValues,
+      ExpressionAttributeNames: expressionAttributeNames,
+      UpdateExpression: updateExpression,
+      ReturnValues: 'UPDATED_NEW',
+      ConditionExpression: 'attribute_exists(id) and attribute_exists(#vyear)'
+    };
+
+    const res = await docClient.update(params).promise();
+
+    /*
     const res = await helpers.updateDB(event.pathParameters.id, data, EVENTS_TABLE);
+    */
     const response = helpers.createResponse(200, {
-      message: `Updated event with id ${id}!`,
+      message: `Updated event with id ${id} and year ${year}!`,
       response: res
     });
 
@@ -151,15 +209,19 @@ module.exports.update = async (event, ctx, callback) => {
 
 };
 
+//Modify to require both id and year path Param
 module.exports.get = async (event, ctx, callback) => {
 
   try {
 
     if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('event');
     const id = event.pathParameters.id;
+    if(!event.pathParameters.year) throw helpers.missingPathParamResponse('event', 'year');
+    const year = event.pathParameters.year;
 
     const queryString = event.queryStringParameters;
 
+    //TODO: fix the else-if conditions
     // if both count and users are true, throw error 
     if (queryString && queryString.count == 'true' && queryString.users == 'true') {
 
@@ -170,7 +232,7 @@ module.exports.get = async (event, ctx, callback) => {
     } else if (queryString && queryString.count == 'true') {
 
       // return counts
-      const counts = await helpers.getEventCounts(id);
+      const counts = await helpers.getEventCounts(id); //Will need to modify
 
       const response = helpers.createResponse(200, counts);
       callback(null, response);
@@ -183,9 +245,9 @@ module.exports.get = async (event, ctx, callback) => {
       try {
 
         const filters = {
-          FilterExpression: 'eventID = :query',
+          FilterExpression: 'eventId;year = :query',
           ExpressionAttributeValues: {
-            ':query': id
+            ':query': `${id};${year}`
           }
         };
 
@@ -259,9 +321,9 @@ module.exports.get = async (event, ctx, callback) => {
     } else {
 
       // if none of the optional params are true, then return the event
-      const event = await helpers.getOne(id, EVENTS_TABLE);
+      const event = await helpers.getOne(id, EVENTS_TABLE, { year });
 
-      if(isEmpty(event)) throw helpers.notFoundResponse('event', id);
+      if(isEmpty(event)) throw helpers.notFoundResponse('event', id, year);
 
       const response = helpers.createResponse(200, event);
       callback(null, response);
