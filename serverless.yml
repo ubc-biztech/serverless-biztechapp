@@ -208,6 +208,16 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+  membershipsGetAll:
+    handler: handlers/memberships.getAll
+    events:
+      - http:
+          path: memberships/
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   registrationPost:
     handler: handlers/registration.post
     events:

@@ -4,24 +4,24 @@ const { MEMBERSHIPS_TABLE } = require('../constants/tables');
 
 module.exports.getAll = async(event, ctx, callback) => {
 
-    try {
+  try {
 
-        // scan the table
-        const memberships = await helpers.scan(MEMBERSHIPS_TABLE);
+    // scan the table
+    const memberships = await helpers.scan(MEMBERSHIPS_TABLE);
 
-        // re-organize the response
-        let response = {};
-        if (memberships !== null) response = helpers.createResponse(200, memberships);
+    // re-organize the response
+    let response = {};
+    if (memberships !== null) response = helpers.createResponse(200, memberships);
 
-        // return the response object
-        callback(null, response);
-        return null;
+    // return the response object
+    callback(null, response);
+    return null;
 
-    } catch (err) {
+  } catch (err) {
 
-        callback(null, err);
-        return null;
+    callback(null, err);
+    return null;
 
-    }
+  }
 
 };

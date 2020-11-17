@@ -1,0 +1,66 @@
+{
+  "Items": [{
+    "id": 1,
+    "education": "UBC",
+    "email": "dev@ubcbiztech.com",
+    "faculty": "Commerce",
+    "first_name": "bizbot",
+    "heard_from": "Facebook",
+    "high_school": "BLJ DAV CENTENARY PUBLIC SCHOOL",
+    "last_name": "is so cute",
+    "major": "BUCS",
+    "pronouns": "robot",
+    "student_number": 12345678,
+    "timestamp": 1234567890,
+    "topics": [
+      { "S" : "AI" },
+      { "S" : "Tech Startups" },
+      { "S" : "Careers in the Tech Industry" }
+    ],
+    "university": "University of British Columbia",
+    "year": "1",
+    "international": false,
+    "prev_member": true
+  }, {
+    "id": 0,
+    "education": "HS",
+    "email": "test@ubcbiztech.com",
+    "faculty": "",
+    "first_name": "Test",
+    "heard_from": "Friends",
+    "high_school": "BLJ DAV CENTENARY PUBLIC SCHOOL",
+    "last_name": "2",
+    "major": "BUCS",
+    "pronouns": "He/Him/His",
+    "student_number": 0,
+    "timestamp": 1234568790,
+    "topics": [
+    ],
+    "university": "University of British Columbia",
+    "year": "0",
+    "international": false,
+    "prev_member": false
+  }, {
+    "id": 1000000,
+    "education": "N/A",
+    "email": "junk@ubcbiztech.com",
+    "faculty": "Commerce",
+    "first_name": "Test",
+    "heard_from": "Insta",
+    "high_school": "BLJ DAV CENTENARY PUBLIC SCHOOL",
+    "last_name": "3",
+    "major": "BUCS",
+    "pronouns": "She/Her/Hers",
+    "student_number": 123467890,
+    "timestamp": 1243567890,
+    "topics": [
+      { "S" : "I" },
+      { "S" : "Love" },
+      { "S" : "BizTech" }
+    ],
+    "university": "University of British Columbia",
+    "year": "1",
+    "international": false,
+    "prev_member": true
+  }]
+}

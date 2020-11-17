@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="BranchesTreeState">
+    <expand>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="LOCAL_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="REMOTE_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="REMOTE_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="GROUP_NODE:origin" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+    </expand>
+    <select />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="05f7ee5d-0b27-42fe-8876-cacecb86f708" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/codeStyles/codeStyleConfig.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/serverless-biztechapp.iml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test/data/memberships.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test/membershipsGetAll.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_integration/memberships.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/constants/tables.js" beforeDir="false" afterPath="$PROJECT_DIR$/constants/tables.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/handlers/memberships.js" beforeDir="false" afterPath="$PROJECT_DIR$/handlers/memberships.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/handlers/sticker.js" beforeDir="false" afterPath="$PROJECT_DIR$/handlers/sticker.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/serverless.yml" beforeDir="false" afterPath="$PROJECT_DIR$/serverless.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/stickerCreate.js" beforeDir="false" afterPath="$PROJECT_DIR$/test/stickerCreate.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/stickerGetAll.js" beforeDir="false" afterPath="$PROJECT_DIR$/test/stickerGetAll.js" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="JavaScript File" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectId" id="1kLn2O1VNLqrO6QujIC8S7gzRi3" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="node.js.detected.package.eslint" value="true" />
+    <property name="node.js.path.for.package.eslint" value="project" />
+    <property name="node.js.selected.package.eslint" value="(autodetect)" />
+    <property name="nodejs.mocha.mocha_node_package_dir" value="$PROJECT_DIR$/node_modules/mocha" />
+    <property name="nodejs_package_manager_path" value="npm" />
+    <property name="vue.rearranger.settings.migration" value="true" />
+  </component>
+  <component name="RunManager">
+    <configuration name="membershipsGetAll" type="mocha-javascript-test-runner" temporary="true" nameIsGenerated="true">
+      <node-interpreter>project</node-interpreter>
+      <node-options />
+      <mocha-package>$PROJECT_DIR$/node_modules/mocha</mocha-package>
+      <working-directory>$PROJECT_DIR$</working-directory>
+      <pass-parent-env>true</pass-parent-env>
+      <ui>bdd</ui>
+      <extra-mocha-options />
+      <test-kind>SUITE</test-kind>
+      <test-file>$PROJECT_DIR$/test/membershipsGetAll.js</test-file>
+      <test-names>
+        <name value="membershipsGetAll" />
+      </test-names>
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Mocha.membershipsGetAll" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="05f7ee5d-0b27-42fe-8876-cacecb86f708" name="Default Changelist" comment="" />
+      <created>1605488531501</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1605488531501</updated>
+      <workItem from="1605488532841" duration="4255000" />
+      <workItem from="1605594160907" duration="8000" />
+      <workItem from="1605641007884" duration="4256000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+    <option name="oldMeFiltersMigrated" value="true" />
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="711" y="535" key="FileChooserDialogImpl" timestamp="1605594167621">
+      <screen x="0" y="0" width="2560" height="1560" />
+    </state>
+    <state x="711" y="535" key="FileChooserDialogImpl/-1920.1014.1536.928/0.0.2560.1560@0.0.2560.1560" timestamp="1605594167621" />
+    <state width="1254" height="453" key="GridCell.Tab.0.bottom" timestamp="1605643527635">
+      <screen x="0" y="0" width="2560" height="1560" />
+    </state>
+    <state width="1254" height="453" key="GridCell.Tab.0.bottom/-1920.1014.1536.928/0.0.2560.1560@0.0.2560.1560" timestamp="1605643527635" />
+    <state width="1254" height="453" key="GridCell.Tab.0.center" timestamp="1605643527634">
+      <screen x="0" y="0" width="2560" height="1560" />
+    </state>
+    <state width="1254" height="453" key="GridCell.Tab.0.center/-1920.1014.1536.928/0.0.2560.1560@0.0.2560.1560" timestamp="1605643527634" />
+    <state width="1254" height="453" key="GridCell.Tab.0.left" timestamp="1605643527634">
+      <screen x="0" y="0" width="2560" height="1560" />
+    </state>
+    <state width="1254" height="453" key="GridCell.Tab.0.left/-1920.1014.1536.928/0.0.2560.1560@0.0.2560.1560" timestamp="1605643527634" />
+    <state width="1254" height="453" key="GridCell.Tab.0.right" timestamp="1605643527635">
+      <screen x="0" y="0" width="2560" height="1560" />
+    </state>
+    <state width="1254" height="453" key="GridCell.Tab.0.right/-1920.1014.1536.928/0.0.2560.1560@0.0.2560.1560" timestamp="1605643527635" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="javascript">
+          <url>file://$PROJECT_DIR$/test/membershipsGetAll.js</url>
+          <line>12</line>
+          <properties lambdaOrdinal="-1" />
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+  </component>
+</project>

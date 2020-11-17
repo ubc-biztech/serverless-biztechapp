@@ -5,63 +5,64 @@ const { STICKERS_TABLE } = require('../constants/tables');
 
 module.exports.getAll = async(event, ctx, callback) => {
 
-    try {
+  try {
 
-        // scan the table
-        const stickers = await helpers.scan(STICKERS_TABLE);
+    // scan the table
+    const stickers = await helpers.scan(STICKERS_TABLE);
 
-        // re-organize the response
-        let response = {};
-        if (stickers !== null) response = helpers.createResponse(200, stickers);
+    // re-organize the response
+    let response = {};
+    if (stickers !== null) response = helpers.createResponse(200, stickers);
 
-        // return the response object
-        callback(null, response);
-        return null;
+    // return the response object
+    callback(null, response);
+    return null;
 
-    } catch (err) {
+  } catch (err) {
 
-        callback(null, err);
-        return null;
+    callback(null, err);
+    return null;
 
-    }
+  }
 
 };
 module.exports.create = async(event, ctx, callback) => {
 
-    try {
-        const data = JSON.parse(event.body);
+  try {
 
-        helpers.checkPayloadProps(data, {
-            id: { required: true, type: 'string' },
-            name: { required: true, type: 'string' },
-            url: { required: true, type: 'string' }
-        });
+    const data = JSON.parse(event.body);
 
-        const existingSticker = await helpers.getOne(data.id, STICKERS_TABLE);
-        if (!isEmpty(existingSticker)) throw helpers.duplicateResponse('sticker id', data);
+    helpers.checkPayloadProps(data, {
+      id: { required: true, type: 'string' },
+      name: { required: true, type: 'string' },
+      url: { required: true, type: 'string' }
+    });
 
-        const item = {
-            id: data.id,
-            name: data.name,
-            url: data.url
-        };
-        const res = await helpers.create(item, STICKERS_TABLE);
+    const existingSticker = await helpers.getOne(data.id, STICKERS_TABLE);
+    if (!isEmpty(existingSticker)) throw helpers.duplicateResponse('sticker id', data);
 
-        const response = helpers.createResponse(201, {
-            message: `Created sticker with id ${data.id}!`,
-            response: res,
-            item
-        });
+    const item = {
+      id: data.id,
+      name: data.name,
+      url: data.url
+    };
+    const res = await helpers.create(item, STICKERS_TABLE);
 
-        callback(null, response);
-        return null;
+    const response = helpers.createResponse(201, {
+      message: `Created sticker with id ${data.id}!`,
+      response: res,
+      item
+    });
 
-    } catch (err) {
+    callback(null, response);
+    return null;
 
-        console.error(err);
-        callback(null, err);
-        return null;
+  } catch (err) {
 
-    }
+    console.error(err);
+    callback(null, err);
+    return null;
+
+  }
 
 };
