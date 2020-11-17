@@ -20,21 +20,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="05f7ee5d-0b27-42fe-8876-cacecb86f708" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/codeStyles/codeStyleConfig.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/serverless-biztechapp.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test/data/memberships.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test/membershipsGetAll.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_integration/memberships.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/constants/tables.js" beforeDir="false" afterPath="$PROJECT_DIR$/constants/tables.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/handlers/memberships.js" beforeDir="false" afterPath="$PROJECT_DIR$/handlers/memberships.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/handlers/sticker.js" beforeDir="false" afterPath="$PROJECT_DIR$/handlers/sticker.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/serverless.yml" beforeDir="false" afterPath="$PROJECT_DIR$/serverless.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/stickerCreate.js" beforeDir="false" afterPath="$PROJECT_DIR$/test/stickerCreate.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/stickerGetAll.js" beforeDir="false" afterPath="$PROJECT_DIR$/test/stickerGetAll.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/membershipsGetAll.js" beforeDir="false" afterPath="$PROJECT_DIR$/test/membershipsGetAll.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_integration/memberships.js" beforeDir="false" afterPath="$PROJECT_DIR$/test_integration/memberships.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -99,7 +86,7 @@
       <updated>1605488531501</updated>
       <workItem from="1605488532841" duration="4255000" />
       <workItem from="1605594160907" duration="8000" />
-      <workItem from="1605641007884" duration="4256000" />
+      <workItem from="1605641007884" duration="4646000" />
     </task>
     <servers />
   </component>

@@ -6,21 +6,21 @@ const helpers = require('./helpers');
 
 describe('prizes integration', function () {
 
-    this.timeout(10000);
+  this.timeout(10000);
 
-    describe('prizes/ GET tests', function () {
+  describe('prizes/ GET tests', function () {
 
-        it('prizes GET returns 200 on success', async () => {
+    it('prizes GET returns 200 on success', async () => {
 
-            return helpers.invokeLambda('prizeGetAll', '')
-                .then(([statusCode]) => {
+      return helpers.invokeLambda('prizeGetAll', '')
+        .then(([statusCode]) => {
 
-                    expect(statusCode).to.equal(200);
-
-                });
+          expect(statusCode).to.equal(200);
 
         });
 
     });
+
+  });
 
 });
