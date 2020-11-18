@@ -4,15 +4,15 @@ const expect = chai.expect;
 
 const helpers = require('./helpers');
 
-describe('prizes integration', function () {
+describe('memberships integration', function () {
 
   this.timeout(10000);
 
-  describe('prizes/ GET tests', function () {
+  describe('memberships/ GET tests', function () {
 
-    it('prizes GET returns 200 on success', async () => {
+    it('memberships GET returns 200 on success', async () => {
 
-      return helpers.invokeLambda('prizeGetAll', '')
+      return helpers.invokeLambda('membershipsGetAll', '')
         .then(([statusCode]) => {
 
           expect(statusCode).to.equal(200);

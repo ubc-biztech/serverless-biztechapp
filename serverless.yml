@@ -326,16 +326,16 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
-  # stickerCreate:
-  #   handler: handlers/sticker.create
-  #   events:
-  #     - http:
-  #         path: stickers/
-  #         method: post
-  #         cors: true
-  #         authorizer:
-  #           type: COGNITO_USER_POOLS
-  #           arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+  stickerCreate:
+   handler: handlers/sticker.create
+   events:
+     - http:
+         path: stickers/
+         method: post
+         cors: true
+         authorizer:
+           type: COGNITO_USER_POOLS
+           arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   transactionGetAll:
     handler: handlers/transaction.getAll
     events:
