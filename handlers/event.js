@@ -131,7 +131,7 @@ module.exports.getAll = async (event, ctx, callback) => {
     // get event counts
     for(event of events) {
 
-      event.counts = await helpers.getEventCounts(event.id); //Will need to modify this - require year as a param
+      event.counts = await helpers.getEventCounts(`${event.id};${event.year}`); //Will need to modify this - require year as a param
 
     }
     // sort the events by startDate
@@ -232,7 +232,7 @@ module.exports.get = async (event, ctx, callback) => {
     } else if (queryString && queryString.count == 'true') {
 
       // return counts
-      const counts = await helpers.getEventCounts(id); //Will need to modify
+      const counts = await helpers.getEventCounts(`${id};${year}`); //Will need to modify
 
       const response = helpers.createResponse(200, counts);
       callback(null, response);

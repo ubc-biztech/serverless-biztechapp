@@ -379,19 +379,19 @@ module.exports = {
   },
 
   /**
-   * Takes an event ID and returns an object containing
-   * registeredCount, checkedInCount and waitlistCount
-   * @param {String} eventID
+   * Takes a semicolon separated event ID and year and returns an object containing
+   * registeredCount, checkedInCount and waitlistCount for that event
+   * @param {String} eventIDAndYear
    * @return {registeredCount checkedInCount waitlistCount}
    */
-  getEventCounts: async function (eventID) {
+  getEventCounts: async function (eventIDAndYear) {
 
     const docClient = new AWS.DynamoDB.DocumentClient();
     const params = {
       TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
-      FilterExpression: 'eventID = :query',
+      FilterExpression: 'eventID;year = :query',
       ExpressionAttributeValues: {
-        ':query': eventID
+        ':query': eventIDAndYear
       }
     };
     return await docClient

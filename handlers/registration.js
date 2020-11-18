@@ -16,7 +16,19 @@ const { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } = require('../cons
 async function updateHelper(data, createNew, idString) {
 
   const id = parseInt(idString, 10);
-  const eventID = data.eventID;
+  const eventIDAndYear = data['eventID;year'];
+
+  let arr = eventIDAndYear.split(';');
+
+  let eventID = arr[0];
+  /*In case the split function returns more than two elements, 
+  the eventID should be the concatenation of all elements except the last one (which is the year)
+  */
+  for(let index = 0; index < arr.size - 1; index++) {
+    eventID = eventID + ';' + arr[index];
+  }
+  const year = parseInt(arr[arr.size - 1], 10);
+
   let registrationStatus = data.registrationStatus;
 
   // Check if the user exists
@@ -24,13 +36,13 @@ async function updateHelper(data, createNew, idString) {
   if(isEmpty(existingUser)) throw helpers.notFoundResponse('User', id);
 
   // Check if the event exists
-  const existingEvent = await helpers.getOne(eventID, EVENTS_TABLE);
-  if(isEmpty(existingEvent)) throw helpers.notFoundResponse('Event', eventID);
+  const existingEvent = await helpers.getOne(eventID, EVENTS_TABLE, {year});
+  if(isEmpty(existingEvent)) throw helpers.notFoundResponse('Event', eventID, year);
 
   // Check if the event is full
   if (registrationStatus == 'registered') {
 
-    const counts = await helpers.getEventCounts(eventID);
+    const counts = await helpers.getEventCounts(eventIDAndYear); //TODO: refactor to require year param
 
     if (counts == null) {
 
@@ -64,12 +76,12 @@ async function updateHelper(data, createNew, idString) {
 
   if(existingUser.heardFrom) data.heardFrom = existingUser.heardFrom;
 
-  const response = await createRegistration(registrationStatus, data, id, eventID, createNew);
+  const response = await createRegistration(registrationStatus, data, id, eventIDAndYear, createNew);
   return response;
 
 }
 
-async function createRegistration(registrationStatus, data, id, eventID, createNew) {
+async function createRegistration(registrationStatus, data, id, eventIDAndYear, createNew) {
 
   try {
 
@@ -80,9 +92,9 @@ async function createRegistration(registrationStatus, data, id, eventID, createN
     };
     if (data.heardFrom) updateObject.heardFrom = data.heardFrom;
 
-    let conditionExpression = 'attribute_exists(id) and attribute_exists(eventID)';
+    let conditionExpression = 'attribute_exists(id) and attribute_exists(eventID;year)';
     // if we are creating a new object, the condition expression needs to be different
-    if (createNew) conditionExpression = 'attribute_not_exists(id) and attribute_not_exists(eventID)';
+    if (createNew) conditionExpression = 'attribute_not_exists(id) and attribute_not_exists(eventID;year)';
 
     // construct the update expressions
     const {
@@ -93,7 +105,7 @@ async function createRegistration(registrationStatus, data, id, eventID, createN
 
     // Because biztechRegistration table has a sort key, we cannot use helpers.updateDB()
     let params = {
-      Key: { id, eventID },
+      Key: { id, eventIDAndYear },
       TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
       ExpressionAttributeValues: expressionAttributeValues,
       ExpressionAttributeNames: expressionAttributeNames,
@@ -194,7 +206,7 @@ module.exports.post = async (event, ctx, callback) => {
 
     helpers.checkPayloadProps(data, {
       id: { required: true, type: 'number' },
-      eventID: { required: true, type: 'string' },
+      ['eventID;year']: { required: true, type: 'string' },
       registrationStatus: { required: true , type: 'string' },
     });
 
@@ -225,7 +237,7 @@ module.exports.put = async (event, ctx, callback) => {
 
     // Check that parameters are valid
     helpers.checkPayloadProps(data, {
-      eventID: { required: true, type: 'string' },
+      ['eventID;year']: { required: true, type: 'string' },
       registrationStatus: { required: true , type: 'string' },
     });
 
@@ -252,7 +264,7 @@ module.exports.get = async (event, ctx, callback) => {
   try {
 
     const queryString = event.queryStringParameters;
-    if(!queryString || (!queryString.eventID && !queryString.id)) throw helpers.missingIdQueryResponse('event/user');
+    if(!queryString || ((!queryString['eventID;year']) && !queryString.id)) throw helpers.missingIdQueryResponse('event/user');
 
     let timeStampFilter = undefined;
     if (queryString.hasOwnProperty('afterTimestamp')) {
@@ -265,27 +277,26 @@ module.exports.get = async (event, ctx, callback) => {
 
     let registrations = [];
 
-    // if eventID was given
-    if (queryString.hasOwnProperty('eventID')) {
+    // if eventID and year was given
+    if (queryString.hasOwnProperty('eventID;year')) {
+        const eventIDAndYear = queryString['eventID;year'];
+        const filterExpression = {
+          FilterExpression: 'eventID;year = :query',
+          ExpressionAttributeValues: {
+            ':query': eventIDAndYear
+          }
+        };
 
-      const eventID = queryString.eventID;
-      const filterExpression = {
-        FilterExpression: 'eventID = :query',
-        ExpressionAttributeValues: {
-          ':query': eventID
+        registrations = await helpers.scan(USER_REGISTRATIONS_TABLE, filterExpression);
+
+        // filter by id query, if given 
+        if(queryString.hasOwnProperty('id')) {
+
+          registrations = registrations.filter(entry => entry.id === parseInt(queryString.id, 10));
+
         }
-      };
-
-      registrations = await helpers.scan(USER_REGISTRATIONS_TABLE, filterExpression);
-
-      // filter by id query, if given 
-      if(queryString.hasOwnProperty('id')) {
-
-        registrations = registrations.filter(entry => entry.id === parseInt(queryString.id, 10));
-
-      }
-
-    } else { // if eventID was not given (only id)
+      
+    } else { // if eventID and year was not given (only id)
 
       const id = parseInt(queryString.id, 10);
       const filterExpression = {
@@ -334,10 +345,10 @@ module.exports.delete = async (event, ctx, callback) => {
     const id = event.pathParameters.id;
 
     helpers.checkPayloadProps(data, {
-      eventID: { required: true , type: 'string' },
+      ['eventID;year'] : { required: true , type: 'string' },
     });
 
-    const res = await helpers.deleteOne(id, USER_REGISTRATIONS_TABLE, { eventID: data.eventID });
+    const res = await helpers.deleteOne(id, USER_REGISTRATIONS_TABLE, { ['eventID;year']: data['eventID;year'] });
 
     const response = helpers.createResponse(200, {
       message: 'Registration entry Deleted!',
