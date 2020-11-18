@@ -29,6 +29,7 @@ module.exports.getAll = async(event, ctx, callback) => {
 module.exports.create = async(event, ctx, callback) => {
 
   try {
+
     const data = JSON.parse(event.body);
 
     helpers.checkPayloadProps(data, {

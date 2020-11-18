@@ -239,7 +239,7 @@ module.exports.put = async (event, ctx, callback) => {
 
     // Check that parameters are valid
     helpers.checkPayloadProps(data, {
-      ['eventID;year']: {required: true, type: 'string'},
+      ['eventID;year']: { required: true, type: 'string' },
       registrationStatus: { required: true , type: 'string' },
     });
 

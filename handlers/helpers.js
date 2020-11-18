@@ -179,7 +179,7 @@ module.exports = {
 
       // construct the param object
       const params = {
-        Key: { id, ...extraKeys },
+        Key: { id },
         TableName: table + process.env.ENVIRONMENT,
       };
 
@@ -212,10 +212,10 @@ module.exports = {
       const params = {
         Key: { id },
         TableName: table + process.env.ENVIRONMENT,
-        KeyConditionExpression: `id = :id and #name = :secondaryKey`,
+        KeyConditionExpression: 'id = :id and #name = :secondaryKey',
         ExpressionAttributeNames: {
           '#name': secondaryKeyName
-        }, 
+        },
         ExpressionAttributeValues: {
           ':id': id,
           ':secondaryKey': secondaryKeyVal

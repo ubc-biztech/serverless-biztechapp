@@ -31,8 +31,9 @@ describe('eventCreate', () => {
   let createdEventsIdAndYear = [];
 
   before(() => {
-    
+
     AWSMock.mock('DynamoDB.DocumentClient', 'get', (params, callback) => {
+
       const { id, year } = params.Key;
       const idAndYear = `${id}${year}`;
 
@@ -51,11 +52,11 @@ describe('eventCreate', () => {
 
       if(params.Item.id && params.Item.year && createdEventsIdAndYear.includes(`${params.Item.id}${params.Item.year}`)) callback(new Error('event already exists!'));
       else {
-        
+
         createdEventsIdAndYear.push(`${params.Item.id}${params.Item.year}`);
-        console.log("GOING TO ADD ITEM ")
-        console.log(`${params.Item.id}${params.Item.year}`)
-        console.log(createdEventsIdAndYear)
+        console.log('GOING TO ADD ITEM ');
+        console.log(`${params.Item.id}${params.Item.year}`);
+        console.log(createdEventsIdAndYear);
         callback(null, 'successfully put item in database');
 
       }
@@ -70,7 +71,8 @@ describe('eventCreate', () => {
   });
 
   it('return 406 for trying to create an event with no id', async () => {
-    console.log("It");
+
+    console.log('It');
     const invalidPayload = {
       ...eventPayload
     };
@@ -106,20 +108,22 @@ describe('eventCreate', () => {
   });
 
   it('return 201 for successfully creating an event', async () => {
-    console.log("TEST CASE SHOULD PASS")
+
+    console.log('TEST CASE SHOULD PASS');
     const payload = {
       ...eventPayload,
     };
 
     const response = await wrapped.run({ body: JSON.stringify(payload) });
     expect(response.statusCode).to.be.equal(201);
-    console.log("FINISHED TEST CASE SHOULD")
+    console.log('FINISHED TEST CASE SHOULD');
 
 
   });
 
   it('return 409 for trying to create an event with the same id and year', async () => {
-    console.log("Whats going on?");
+
+    console.log('Whats going on?');
     const payload = {
       ...eventPayload,
     };
