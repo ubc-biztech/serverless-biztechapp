@@ -170,9 +170,8 @@ module.exports = {
    * Gets one item from db
    * @param {Number} id - The id of the item to get
    * @param {String} table - Name of the table
-   * @param {String} extraKeys - Optional extra keys
    */
-  getOne: async function (id, table, extraKeys = {}) {
+  getOne: async function (id, table) {
 
     const docClient = new AWS.DynamoDB.DocumentClient();
 
@@ -182,6 +181,45 @@ module.exports = {
       const params = {
         Key: { id, ...extraKeys },
         TableName: table + process.env.ENVIRONMENT,
+      };
+
+      // get the item from db
+      const item = await docClient.get(params).promise();
+      return item.Item || null;
+
+    }
+    catch(err) {
+
+      const errorResponse = this.dynamoErrorResponse(err);
+      throw errorResponse;
+
+    }
+
+  },
+
+  /**
+   * Gets one item from db
+   * @param {Number} id - The id of the item to get
+   * @param {String} table - Name of the table
+   */
+  getOneWithSecondaryKey: async function (id, table, secondaryKeyName, secondaryKeyVal) {
+
+    const docClient = new AWS.DynamoDB.DocumentClient();
+
+    try {
+
+      // construct the param object
+      const params = {
+        Key: { id },
+        TableName: table + process.env.ENVIRONMENT,
+        KeyConditionExpression: `id = :id and #name = :secondaryKey`,
+        ExpressionAttributeNames: {
+          '#name': secondaryKeyName
+        }, 
+        ExpressionAttributeValues: {
+          ':id': id,
+          ':secondaryKey': secondaryKeyVal
+        }
       };
 
       // get the item from db

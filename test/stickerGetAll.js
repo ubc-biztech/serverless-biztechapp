@@ -12,35 +12,35 @@ const getStickersResponse = require('./data/stickers.json');
 
 describe('stickerGetAll', () => {
 
-    before(() => {
+  before(() => {
 
-        AWSMock.mock('DynamoDB.DocumentClient', 'scan', (params, callback) => {
+    AWSMock.mock('DynamoDB.DocumentClient', 'scan', (params, callback) => {
 
-            callback(null, getStickersResponse);
-
-        });
+      callback(null, getStickersResponse);
 
     });
 
-    after(() => {
+  });
 
-        AWSMock.restore('DynamoDB.DocumentClient');
+  after(() => {
 
-    });
+    AWSMock.restore('DynamoDB.DocumentClient');
 
-    it('return 200 response for getting all stickers', async() => {
+  });
 
-        const response = await wrapped.run();
-        expect(response.statusCode).to.be.equal(200);
+  it('return 200 response for getting all stickers', async() => {
 
-        const body = JSON.parse(response.body);
-        expect(body).to.have.length(3);
+    const response = await wrapped.run();
+    expect(response.statusCode).to.be.equal(200);
 
-        const event = body[0];
-        expect(event).to.have.property('id');
-        expect(event).to.have.property('name');
-        expect(event).to.have.property('url');
+    const body = JSON.parse(response.body);
+    expect(body).to.have.length(3);
 
-    });
+    const event = body[0];
+    expect(event).to.have.property('id');
+    expect(event).to.have.property('name');
+    expect(event).to.have.property('url');
+
+  });
 
 });

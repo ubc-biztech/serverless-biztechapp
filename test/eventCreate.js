@@ -11,6 +11,7 @@ const { EVENTS_TABLE } = require('../constants/tables');
 
 const eventPayload = {
   id: 'localTestEvent',
+  year: 2020,
   ename: 'Local Test Event',
   description: 'Local test event description',
   startDate: '20200607T000000-0400',
@@ -27,18 +28,18 @@ const eventPayload = {
 
 describe('eventCreate', () => {
 
-  let createdEventIds = [];
+  let createdEventsIdAndYear = [];
 
   before(() => {
-
+    
     AWSMock.mock('DynamoDB.DocumentClient', 'get', (params, callback) => {
-
-      const { id } = params.Key;
+      const { id, year } = params.Key;
+      const idAndYear = `${id}${year}`;
 
       if(params.TableName.includes(EVENTS_TABLE)) {
 
         // if id found
-        if(createdEventIds.includes(id)) callback(null, { Item: eventPayload });
+        if(createdEventsIdAndYear.includes(idAndYear)) callback(null, { Item: eventPayload });
         // if id not found
         else callback(null, { Item: null });
 
@@ -48,10 +49,13 @@ describe('eventCreate', () => {
 
     AWSMock.mock('DynamoDB.DocumentClient', 'put', (params, callback) => {
 
-      if(params.Item.id && createdEventIds.includes(params.Item.id)) callback(new Error('event already exists!'));
+      if(params.Item.id && params.Item.year && createdEventsIdAndYear.includes(`${params.Item.id}${params.Item.year}`)) callback(new Error('event already exists!'));
       else {
-
-        createdEventIds.push(params.Item.id);
+        
+        createdEventsIdAndYear.push(`${params.Item.id}${params.Item.year}`);
+        console.log("GOING TO ADD ITEM ")
+        console.log(`${params.Item.id}${params.Item.year}`)
+        console.log(createdEventsIdAndYear)
         callback(null, 'successfully put item in database');
 
       }
@@ -66,11 +70,23 @@ describe('eventCreate', () => {
   });
 
   it('return 406 for trying to create an event with no id', async () => {
-
+    console.log("It");
     const invalidPayload = {
       ...eventPayload
     };
     delete invalidPayload.id;
+
+    const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
+    expect(response.statusCode).to.be.equal(406);
+
+  });
+
+  it('return 406 for trying to create an event with no year', async () => {
+
+    const invalidPayload = {
+      ...eventPayload
+    };
+    delete invalidPayload.year;
 
     const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
     expect(response.statusCode).to.be.equal(406);
@@ -90,24 +106,39 @@ describe('eventCreate', () => {
   });
 
   it('return 201 for successfully creating an event', async () => {
-
+    console.log("TEST CASE SHOULD PASS")
     const payload = {
       ...eventPayload,
     };
 
     const response = await wrapped.run({ body: JSON.stringify(payload) });
     expect(response.statusCode).to.be.equal(201);
+    console.log("FINISHED TEST CASE SHOULD")
+
 
   });
 
-  it('return 409 for trying to create an event with the same id', async () => {
-
+  it('return 409 for trying to create an event with the same id and year', async () => {
+    console.log("Whats going on?");
     const payload = {
       ...eventPayload,
     };
 
     const response = await wrapped.run({ body: JSON.stringify(payload) });
     expect(response.statusCode).to.be.equal(409);
+
+  });
+
+  it('return 201 for successfully creating another event with same id but different year', async () => {
+
+    const payload = {
+      ...eventPayload,
+      year: 6969,
+      id: 'localTestEvent'
+    };
+
+    const response = await wrapped.run({ body: JSON.stringify(payload) });
+    expect(response.statusCode).to.be.equal(201);
 
   });
 

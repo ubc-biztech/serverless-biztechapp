@@ -25,7 +25,9 @@ async function updateHelper(data, createNew, idString) {
   the eventID should be the concatenation of all elements except the last one (which is the year)
   */
   for(let index = 0; index < arr.size - 1; index++) {
+
     eventID = eventID + ';' + arr[index];
+
   }
   const year = parseInt(arr[arr.size - 1], 10);
 
@@ -36,13 +38,13 @@ async function updateHelper(data, createNew, idString) {
   if(isEmpty(existingUser)) throw helpers.notFoundResponse('User', id);
 
   // Check if the event exists
-  const existingEvent = await helpers.getOne(eventID, EVENTS_TABLE, {year});
+  const existingEvent = await helpers.getOne(eventID, EVENTS_TABLE, { year });
   if(isEmpty(existingEvent)) throw helpers.notFoundResponse('Event', eventID, year);
 
   // Check if the event is full
   if (registrationStatus == 'registered') {
 
-    const counts = await helpers.getEventCounts(eventIDAndYear); //TODO: refactor to require year param
+    const counts = await helpers.getEventCounts(eventIDAndYear);
 
     if (counts == null) {
 
@@ -146,8 +148,8 @@ async function createRegistration(registrationStatus, data, id, eventIDAndYear, 
 
       errorResponse.statusCode = 409;
       errBody.statusCode = 409;
-      if(createNew) errBody.message = `Create error because the registration entry for user '${id}' and with event id '${eventID}' already exists`;
-      else errBody.message = `Update error because the registration entry for user '${id}' and with event id '${eventID}' does not exist`;
+      if(createNew) errBody.message = `Create error because the registration entry for user '${id}' and with eventID;year'${eventIDAndYear}' already exists`;
+      else errBody.message = `Update error because the registration entry for user '${id}' and with eventID;year '${eventIDAndYear}' does not exist`;
       errorResponse.body = JSON.stringify(errBody);
 
     }
@@ -237,7 +239,7 @@ module.exports.put = async (event, ctx, callback) => {
 
     // Check that parameters are valid
     helpers.checkPayloadProps(data, {
-      ['eventID;year']: { required: true, type: 'string' },
+      ['eventID;year']: {required: true, type: 'string'},
       registrationStatus: { required: true , type: 'string' },
     });
 
@@ -279,23 +281,24 @@ module.exports.get = async (event, ctx, callback) => {
 
     // if eventID and year was given
     if (queryString.hasOwnProperty('eventID;year')) {
-        const eventIDAndYear = queryString['eventID;year'];
-        const filterExpression = {
-          FilterExpression: 'eventID;year = :query',
-          ExpressionAttributeValues: {
-            ':query': eventIDAndYear
-          }
-        };
 
-        registrations = await helpers.scan(USER_REGISTRATIONS_TABLE, filterExpression);
-
-        // filter by id query, if given 
-        if(queryString.hasOwnProperty('id')) {
-
-          registrations = registrations.filter(entry => entry.id === parseInt(queryString.id, 10));
-
+      const eventIDAndYear = queryString['eventID;year'];
+      const filterExpression = {
+        FilterExpression: 'eventID;year = :query',
+        ExpressionAttributeValues: {
+          ':query': eventIDAndYear
         }
-      
+      };
+
+      registrations = await helpers.scan(USER_REGISTRATIONS_TABLE, filterExpression);
+
+      // filter by id query, if given 
+      if(queryString.hasOwnProperty('id')) {
+
+        registrations = registrations.filter(entry => entry.id === parseInt(queryString.id, 10));
+
+      }
+
     } else { // if eventID and year was not given (only id)
 
       const id = parseInt(queryString.id, 10);
