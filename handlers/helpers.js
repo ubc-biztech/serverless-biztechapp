@@ -166,7 +166,7 @@ module.exports = {
 
   },
 
-  
+
 
   /**
    * Gets one item from db
@@ -215,8 +215,8 @@ module.exports = {
 
       // construct the param object
       const params = {
-        Key: (secondaryKeyName !== undefined && secondaryKeyVal !== undefined) ? 
-          { id, [secondaryKeyName]: secondaryKeyVal } : {id},
+        Key: (secondaryKeyName !== undefined && secondaryKeyVal !== undefined) ?
+          { id, [secondaryKeyName]: secondaryKeyVal } : { id },
         TableName: table + process.env.ENVIRONMENT,
       };
 

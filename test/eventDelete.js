@@ -52,7 +52,7 @@ describe('eventDelete', () => {
 
     const validId = existingEvents[0];
 
-    const response = await wrapped.run({ pathParameters: { id: validId} });
+    const response = await wrapped.run({ pathParameters: { id: validId } });
     expect(response.statusCode).to.be.equal(400);
 
   });
