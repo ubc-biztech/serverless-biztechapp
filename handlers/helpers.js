@@ -166,11 +166,15 @@ module.exports = {
 
   },
 
+  
+
   /**
    * Gets one item from db
    * @param {Number} id - The id of the item to get
    * @param {String} table - Name of the table
    */
+
+  /*
   getOne: async function (id, table) {
 
     const docClient = new AWS.DynamoDB.DocumentClient();
@@ -196,13 +200,14 @@ module.exports = {
     }
 
   },
+  */
 
   /**
    * Gets one item from db
    * @param {Number} id - The id of the item to get
    * @param {String} table - Name of the table
    */
-  getOneWithSecondaryKey: async function (id, table, secondaryKeyName, secondaryKeyVal) {
+  getOne: async function (id, table, secondaryKeyName = undefined, secondaryKeyVal = undefined) {
 
     const docClient = new AWS.DynamoDB.DocumentClient();
 
@@ -210,16 +215,9 @@ module.exports = {
 
       // construct the param object
       const params = {
-        Key: { id },
+        Key: (secondaryKeyName !== undefined && secondaryKeyVal !== undefined) ? 
+          { id, [secondaryKeyName]: secondaryKeyVal } : {id},
         TableName: table + process.env.ENVIRONMENT,
-        KeyConditionExpression: 'id = :id and #name = :secondaryKey',
-        ExpressionAttributeNames: {
-          '#name': secondaryKeyName
-        },
-        ExpressionAttributeValues: {
-          ':id': id,
-          ':secondaryKey': secondaryKeyVal
-        }
       };
 
       // get the item from db

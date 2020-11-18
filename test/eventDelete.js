@@ -22,7 +22,7 @@ describe('eventDelete', () => {
       if(params.TableName.includes(EVENTS_TABLE)) {
 
         // if id found
-        if(existingEvents.includes(id)) callback(null, { Item: { id: 'exEv', capac: 100 } });
+        if(existingEvents.includes(id)) callback(null, { Item: { id: 'exEv', year: 2020, capac: 100 } });
         // if id not found
         else callback(null, { Item: null });
 
@@ -48,10 +48,20 @@ describe('eventDelete', () => {
 
   });
 
+  it('return 400 for trying to delete an event with no year', async () => {
+
+    const validId = existingEvents[0];
+
+    const response = await wrapped.run({ pathParameters: { id: validId} });
+    expect(response.statusCode).to.be.equal(400);
+
+  });
+
   it('return 400 for trying to delete an event with no id', async () => {
 
+    const validId = existingEvents[0];
 
-    const response = await wrapped.run({ pathParameters: {} });
+    const response = await wrapped.run({ pathParameters: { year: 2020 } });
     expect(response.statusCode).to.be.equal(400);
 
   });
@@ -60,7 +70,7 @@ describe('eventDelete', () => {
 
     const unknownId = 'nonExistingEvent';
 
-    const response = await wrapped.run({ pathParameters: { id: unknownId } });
+    const response = await wrapped.run({ pathParameters: { id: unknownId, year: 2020 } });
     expect(response.statusCode).to.be.equal(404);
 
   });
@@ -69,7 +79,7 @@ describe('eventDelete', () => {
 
     const validId = existingEvents[0];
 
-    const response = await wrapped.run({ pathParameters: { id: validId } });
+    const response = await wrapped.run({ pathParameters: { id: validId, year: 2020 } });
     expect(response.statusCode).to.be.equal(200);
 
   });

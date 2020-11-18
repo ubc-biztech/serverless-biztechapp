@@ -19,7 +19,7 @@ module.exports.create = async (event, ctx, callback) => {
       capac: { required: true, type: 'number' }
     });
 
-    const existingEvent = await helpers.getOneWithSecondaryKey(data.id, EVENTS_TABLE, 'year', data.year);
+    const existingEvent = await helpers.getOne(data.id, EVENTS_TABLE, 'year', data.year);
     if(!isEmpty(existingEvent)) throw helpers.duplicateResponse('event id and year', data);
 
     const item = {
@@ -71,7 +71,7 @@ module.exports.delete = async (event, ctx, callback) => {
     if(!event.pathParameters.year) throw helpers.missingPathParamResponse('event', 'year');
     const year = event.pathParameters.year;
 
-    const existingEvent = await helpers.getOneWithSecondaryKey(id, EVENTS_TABLE, 'year', year);
+    const existingEvent = await helpers.getOne(id, EVENTS_TABLE, 'year', year);
     if(isEmpty(existingEvent)) throw helpers.notFoundResponse('event', id);
 
     const res = await helpers.deleteOne(id, EVENTS_TABLE, { year });
