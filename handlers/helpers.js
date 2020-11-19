@@ -212,6 +212,7 @@ module.exports = {
     const docClient = new AWS.DynamoDB.DocumentClient();
 
     try {
+
       // construct the param object
       const params = {
         Key: Object.keys(extraKeys).length===0 ? { id } : { id, ...extraKeys },

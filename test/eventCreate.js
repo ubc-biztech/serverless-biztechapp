@@ -46,6 +46,7 @@ describe('eventCreate', () => {
         else callback(null, { Item: null });
 
       }
+
     });
 
     // Mocks the PUT request to DynamoDB
@@ -56,14 +57,17 @@ describe('eventCreate', () => {
 
       // Created this new entry in our table
       else {
+
         createdEventsIdAndYear.push({ id: params.Item.id, year: params.Item.year });
         callback(null, 'Successfully put item in DynamoDB');
+
       }
 
     });
 
   });
   after(() => {
+
     // Restore our DynamoDB Table
     AWSMock.restore('DynamoDB.DocumentClient');
 
@@ -134,7 +138,7 @@ describe('eventCreate', () => {
       year: 1000,
       id: 'localTestEvent'
     };
-    console.log(payload)
+    console.log(payload);
 
     const response = await wrapped.run({ body: JSON.stringify(payload) });
     expect(response.statusCode).to.be.equal(201);
@@ -148,7 +152,7 @@ describe('eventCreate', () => {
       year: 1000,
       id: 'localTestEvent10000'
     };
-    console.log(payload)
+    console.log(payload);
 
     const response = await wrapped.run({ body: JSON.stringify(payload) });
     expect(response.statusCode).to.be.equal(201);

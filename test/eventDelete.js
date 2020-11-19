@@ -18,7 +18,7 @@ describe('eventDelete', () => {
 
     // Mocks the GET request to DyanmoDB
     AWSMock.mock('DynamoDB.DocumentClient', 'get', (params, callback) => {
-      
+
       // Check if the table exists first
       if (params.TableName.includes(EVENTS_TABLE)) {
 
@@ -37,10 +37,11 @@ describe('eventDelete', () => {
 
       // Check if an entry with the same id and year already exists in our table
       if (params.Key.id && params.Key.year && existingEvents.some(key => key.id === params.Key.id && key.year === params.Key.year)) {
-        
+
         // Remove this entry from our table
-        existingEvents.splice(existingEvents.indexOf({ id: params.Key.id, year: params.Key.year }),1)
+        existingEvents.splice(existingEvents.indexOf({ id: params.Key.id, year: params.Key.year }),1);
         callback(null, 'successfully deleted item in database');
+
       }
       else callback(new Error(''));
 

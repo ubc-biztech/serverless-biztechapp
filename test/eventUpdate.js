@@ -49,7 +49,7 @@ describe('eventUpdate', () => {
     });
 
     AWSMock.mock('DynamoDB.DocumentClient', 'update', (params, callback) => {
-      
+
       // Check if an entry with the same id and year already exists in our table
       if (params.Key.id && params.Key.year && existingEvents.some(key => key.id === params.Key.id && key.year === params.Key.year)) {
 

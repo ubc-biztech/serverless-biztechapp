@@ -19,7 +19,7 @@ module.exports.create = async (event, ctx, callback) => {
       capac: { required: true, type: 'number' }
     });
 
-    const existingEvent = await helpers.getOne(data.id, EVENTS_TABLE, {'year':data.year});
+    const existingEvent = await helpers.getOne(data.id, EVENTS_TABLE, { 'year':data.year });
     if(!isEmpty(existingEvent)) throw helpers.duplicateResponse('event id and year', data);
 
     const item = {
@@ -63,13 +63,15 @@ module.exports.create = async (event, ctx, callback) => {
 
 //access from DELETE /events/year/id
 module.exports.delete = async (event, ctx, callback) => {
+
   try {
+
     if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('event');
     const id = event.pathParameters.id;
     if(!event.pathParameters.year) throw helpers.missingPathParamResponse('event', 'year');
     const year = event.pathParameters.year;
 
-    const existingEvent = await helpers.getOne(id, EVENTS_TABLE, {'year':year});
+    const existingEvent = await helpers.getOne(id, EVENTS_TABLE, { 'year':year });
     if(isEmpty(existingEvent)) throw helpers.notFoundResponse('event', id);
     const res = await helpers.deleteOne(id, EVENTS_TABLE, { year });
 
@@ -96,6 +98,7 @@ module.exports.delete = async (event, ctx, callback) => {
 module.exports.getAll = async (event, ctx, callback) => {
 
   try {
+
     let filterExpression = {};
 
     //Set up query by year if exists
@@ -119,7 +122,7 @@ module.exports.getAll = async (event, ctx, callback) => {
 
     if(event!== undefined && event.queryStringParameters !== undefined && event.queryStringParameters.hasOwnProperty('id')) {
 
-      events = events.filter(event => event.id === queryStringParameters.id);
+      events = events.filter(event => event.id === event.queryStringParameters.id);
 
     }
 
