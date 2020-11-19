@@ -15,25 +15,26 @@ const getRegistrationResponse = require('./data/eventRegistration.json');
 
 describe('eventGet', () => {
 
-  const existingEvents = ['existingEvent1', 'existingEvent2'];
+  const existingEvents = [{ id: 'existingEvent1', year: 2020 }];
 
   before(() => {
 
-    // get event
+    // Mocks the GET request to DyanmoDB
     AWSMock.mock('DynamoDB.DocumentClient', 'get', (params, callback) => {
 
-      const { id } = params.Key;
+      // Check if the table exists first
+      if (params.TableName.includes(EVENTS_TABLE)) {
 
-      if(params.TableName.includes(EVENTS_TABLE)) {
+        // Check if an entry with the same id and year already exists in our table
+        if (params.Key.id && params.Key.year && existingEvents.some(key => key.id === params.Key.id && key.year === params.Key.year)) callback(null, getEventResponse);
 
-        // if id found
-        if(existingEvents.includes(id)) callback(null, { Item: getEventResponse });
-        // if id not found
+        // Id and year does not exist in our table
         else callback(null, { Item: null });
 
       }
 
     });
+
 
     // event counts from registration table
     AWSMock.mock('DynamoDB.DocumentClient', 'scan', (params, callback) => {
@@ -75,35 +76,47 @@ describe('eventGet', () => {
   it('return 404 for trying to get an event with unknown id', async () => {
 
     const unknownId = 'nonExistingEvent';
+    const validYear = existingEvents[0].year;
+    const response = await wrapped.run({ pathParameters: { id: unknownId, year:validYear } });
+    expect(response.statusCode).to.be.equal(404);
 
-    const response = await wrapped.run({ pathParameters: { id: unknownId } });
+  });
+
+  it('return 404 for trying to get an event with unknown year', async () => {
+
+    const validId = existingEvents[0].id;
+    const unknownYear = 12345;
+    const response = await wrapped.run({ pathParameters: { id: validId, year:unknownYear } });
     expect(response.statusCode).to.be.equal(404);
 
   });
 
   it('return 200 for successfully getting an event', async () => {
 
-    const validId = existingEvents[0];
+    const validId = existingEvents[0].id;
+    const validYear = existingEvents[0].year;
 
-    const response = await wrapped.run({ pathParameters: { id: validId } });
+    const response = await wrapped.run({ pathParameters: { id: validId, year:validYear } });
     expect(response.statusCode).to.be.equal(200);
 
   });
 
   it('return 406 for trying to get an event with both count and users', async () => {
 
-    const validId = existingEvents[0];
+    const validId = existingEvents[0].id;
+    const validYear = existingEvents[0].year;
 
-    const response = await wrapped.run({ queryStringParameters: { count: 'true', users: 'true' }, pathParameters: { id: validId } });
+    const response = await wrapped.run({ queryStringParameters: { count: 'true', users: 'true' }, pathParameters: { id: validId,year: validYear } });
     expect(response.statusCode).to.be.equal(406);
 
   });
 
   it('return 200 for successfully getting an event with count', async () => {
 
-    const validId = existingEvents[0];
+    const validId = existingEvents[0].id;
+    const validYear = existingEvents[0].year;
 
-    const response = await wrapped.run({ queryStringParameters: { count: 'true' }, pathParameters: { id: validId } });
+    const response = await wrapped.run({ queryStringParameters: { count: 'true' }, pathParameters: { id: validId,year: validYear } });
     expect(response.statusCode).to.be.equal(200);
 
     const body = JSON.parse(response.body);
@@ -115,9 +128,10 @@ describe('eventGet', () => {
 
   it('return 200 for successfully getting an event with users', async () => {
 
-    const validId = existingEvents[0];
+    const validId = existingEvents[0].id;
+    const validYear = existingEvents[0].year;
 
-    const response = await wrapped.run({ queryStringParameters: { users: 'true' }, pathParameters: { id: validId } });
+    const response = await wrapped.run({ queryStringParameters: { users: 'true' }, pathParameters: { id: validId,year: validYear } });
     expect(response.statusCode).to.be.equal(200);
 
     const body = JSON.parse(response.body);

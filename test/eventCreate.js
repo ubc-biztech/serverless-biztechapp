@@ -28,51 +28,49 @@ const eventPayload = {
 
 describe('eventCreate', () => {
 
+  // Stores the id and year of our current created events in a dictionary
   let createdEventsIdAndYear = [];
 
   before(() => {
 
+    // Mocks the GET request to DynamoDB
     AWSMock.mock('DynamoDB.DocumentClient', 'get', (params, callback) => {
 
-      const { id, year } = params.Key;
-      const idAndYear = `${id}${year}`;
+      // Check if the table exists first
+      if (params.TableName.includes(EVENTS_TABLE)) {
 
-      if(params.TableName.includes(EVENTS_TABLE)) {
+        // Check if an entry with the same id and year already exists in our table
+        if (params.Key.id && params.Key.year && createdEventsIdAndYear.some(key => key.id === params.Key.id && key.year === params.Key.year)) callback(null, { Item: eventPayload });
 
-        // if id found
-        if(createdEventsIdAndYear.includes(idAndYear)) callback(null, { Item: eventPayload });
-        // if id not found
+        // Id and year does not exist in our table
         else callback(null, { Item: null });
 
       }
-
     });
 
+    // Mocks the PUT request to DynamoDB
     AWSMock.mock('DynamoDB.DocumentClient', 'put', (params, callback) => {
 
-      if(params.Item.id && params.Item.year && createdEventsIdAndYear.includes(`${params.Item.id}${params.Item.year}`)) callback(new Error('event already exists!'));
+      // Check if an entry with the same id and year already exists in our table
+      if (params.Item.id && params.Item.year && createdEventsIdAndYear.some(key => key.id === params.Item.id && key.year === params.Item.year)) callback(new Error('event already exists!'));
+
+      // Created this new entry in our table
       else {
-
-        createdEventsIdAndYear.push(`${params.Item.id}${params.Item.year}`);
-        console.log('GOING TO ADD ITEM ');
-        console.log(`${params.Item.id}${params.Item.year}`);
-        console.log(createdEventsIdAndYear);
-        callback(null, 'successfully put item in database');
-
+        createdEventsIdAndYear.push({ id: params.Item.id, year: params.Item.year });
+        callback(null, 'Successfully put item in DynamoDB');
       }
 
     });
 
   });
   after(() => {
-
+    // Restore our DynamoDB Table
     AWSMock.restore('DynamoDB.DocumentClient');
 
   });
 
   it('return 406 for trying to create an event with no id', async () => {
 
-    console.log('It');
     const invalidPayload = {
       ...eventPayload
     };
@@ -109,21 +107,17 @@ describe('eventCreate', () => {
 
   it('return 201 for successfully creating an event', async () => {
 
-    console.log('TEST CASE SHOULD PASS');
     const payload = {
       ...eventPayload,
     };
 
     const response = await wrapped.run({ body: JSON.stringify(payload) });
     expect(response.statusCode).to.be.equal(201);
-    console.log('FINISHED TEST CASE SHOULD');
-
 
   });
 
   it('return 409 for trying to create an event with the same id and year', async () => {
 
-    console.log('Whats going on?');
     const payload = {
       ...eventPayload,
     };
@@ -137,9 +131,24 @@ describe('eventCreate', () => {
 
     const payload = {
       ...eventPayload,
-      year: 6969,
+      year: 1000,
       id: 'localTestEvent'
     };
+    console.log(payload)
+
+    const response = await wrapped.run({ body: JSON.stringify(payload) });
+    expect(response.statusCode).to.be.equal(201);
+
+  });
+
+  it('return 201 for successfully creating another event with same year but different id', async () => {
+
+    const payload = {
+      ...eventPayload,
+      year: 1000,
+      id: 'localTestEvent10000'
+    };
+    console.log(payload)
 
     const response = await wrapped.run({ body: JSON.stringify(payload) });
     expect(response.statusCode).to.be.equal(201);

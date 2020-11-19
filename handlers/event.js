@@ -19,7 +19,7 @@ module.exports.create = async (event, ctx, callback) => {
       capac: { required: true, type: 'number' }
     });
 
-    const existingEvent = await helpers.getOne(data.id, EVENTS_TABLE, 'year', data.year);
+    const existingEvent = await helpers.getOne(data.id, EVENTS_TABLE, {'year':data.year});
     if(!isEmpty(existingEvent)) throw helpers.duplicateResponse('event id and year', data);
 
     const item = {
@@ -63,17 +63,14 @@ module.exports.create = async (event, ctx, callback) => {
 
 //access from DELETE /events/year/id
 module.exports.delete = async (event, ctx, callback) => {
-
   try {
-
     if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('event');
     const id = event.pathParameters.id;
     if(!event.pathParameters.year) throw helpers.missingPathParamResponse('event', 'year');
     const year = event.pathParameters.year;
 
-    const existingEvent = await helpers.getOne(id, EVENTS_TABLE, 'year', year);
+    const existingEvent = await helpers.getOne(id, EVENTS_TABLE, {'year':year});
     if(isEmpty(existingEvent)) throw helpers.notFoundResponse('event', id);
-
     const res = await helpers.deleteOne(id, EVENTS_TABLE, { year });
 
     const response = helpers.createResponse(200, {
@@ -99,14 +96,12 @@ module.exports.delete = async (event, ctx, callback) => {
 module.exports.getAll = async (event, ctx, callback) => {
 
   try {
-
-    const queryString = event.queryStringParameters;
     let filterExpression = {};
 
     //Set up query by year if exists
-    if(queryString.hasOwnProperty('year')) {
+    if(event!== undefined && event.queryStringParameters !== undefined && event.queryStringParameters.hasOwnProperty('year')) {
 
-      const year = parseInt(queryString.year, 10);
+      const year = parseInt(event.queryStringParameters.year, 10);
       filterExpression = {
         FilterExpression: '#vyear = :query',
         ExpressionAttributeNames: {
@@ -122,9 +117,9 @@ module.exports.getAll = async (event, ctx, callback) => {
     // scan
     let events = await helpers.scan(EVENTS_TABLE, filterExpression);
 
-    if(queryString.hasOwnProperty('id')) {
+    if(event!== undefined && event.queryStringParameters !== undefined && event.queryStringParameters.hasOwnProperty('id')) {
 
-      events = events.filter(event => event.id === queryString.id);
+      events = events.filter(event => event.id === queryStringParameters.id);
 
     }
 

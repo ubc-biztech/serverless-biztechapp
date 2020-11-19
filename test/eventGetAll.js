@@ -17,6 +17,7 @@ describe('eventGetAll', () => {
   before(() => {
 
     AWSMock.mock('DynamoDB.DocumentClient', 'scan', (params, callback) => {
+      console.log(params)
 
       // event counts
       if(params.TableName.includes(USER_REGISTRATIONS_TABLE)) {
@@ -48,8 +49,8 @@ describe('eventGetAll', () => {
 
     const body = JSON.parse(response.body);
     const event = body[0];
+    
     expect(event).to.have.property('id');
-
     expect(event.counts).to.have.property('registeredCount', 2);
     expect(event.counts).to.have.property('checkedInCount', 3);
     expect(event.counts).to.have.property('waitlistCount', 1);
