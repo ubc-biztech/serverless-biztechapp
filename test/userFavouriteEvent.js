@@ -89,7 +89,7 @@ describe('userFavEvent', () => {
 
     const response = await wrapped.run({
       body: JSON.stringify({
-        ['eventID;year']: 'some event id;year is not a number',
+        ['eventID;year']: 'some event id;year cannot be parsed into a number',
         isFavourite: true
       }),
       pathParameters: {

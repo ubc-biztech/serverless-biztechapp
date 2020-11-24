@@ -125,6 +125,36 @@ describe('registrationPut', () => {
 
   });
 
+  it('should return 406 when year is not provided in eventID;year', async () => {
+
+    const response = await wrapped.run({
+      body: JSON.stringify({
+        ['eventID;year']: 'event',
+        registrationStatus: 'registered'
+      }),
+      pathParameters: {
+        id: '12200034'
+      }
+    });
+    expect(response.statusCode).to.be.equal(406);
+
+  });
+
+  it('should return 406 when year is malformed in eventID;year', async () => {
+
+    const response = await wrapped.run({
+      body: JSON.stringify({
+        ['eventID;year']: 'event;year cannot be parsed into number',
+        registrationStatus: 'registered'
+      }),
+      pathParameters: {
+        id: '12200034'
+      }
+    });
+    expect(response.statusCode).to.be.equal(406);
+
+  });
+
   it('should return 406 when no registrationStatus is provided', async () => {
 
     const response = await wrapped.run({
