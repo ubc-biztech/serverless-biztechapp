@@ -10,7 +10,7 @@ let wrapped = mochaPlugin.getWrapper('userFavEvent', '/handlers/user.js', 'favou
 const { USERS_TABLE, EVENTS_TABLE } = require('../constants/tables');
 
 const testEntry = {
-  eventID: 'some event id',
+  ['eventID;year']: 'some event id;2020',
   isFavourite: true
 };
 
@@ -33,9 +33,9 @@ describe('userFavEvent', () => {
         callback(null, { Item: userObject });
 
       }
-      else if(params.TableName.includes(EVENTS_TABLE) && params.Key.id === 'some event id') {
+      else if(params.TableName.includes(EVENTS_TABLE) && params.Key.id === 'some event id' && params.Key.year === 2020) {
 
-        callback(null, { Item: { id: 'some event id', capac: 100 } });
+        callback(null, { Item: { id: 'some event id', year: 2020, capac: 100 } });
 
       }
       else callback(null, { Item: null });
@@ -56,10 +56,40 @@ describe('userFavEvent', () => {
 
   });
 
-  it('returns 406 when eventID not provided', async () => {
+  it('returns 406 when eventID;year not provided', async () => {
 
     const response = await wrapped.run({
       body: JSON.stringify({
+        isFavourite: true
+      }),
+      pathParameters: {
+        id: '6456456464'
+      }
+    });
+    expect(response.statusCode).to.equal(406);
+
+  });
+
+  it('returns 406 when year is omitted from eventID;year ', async () => {
+
+    const response = await wrapped.run({
+      body: JSON.stringify({
+        ['eventID;year']: 'some event id',
+        isFavourite: true
+      }),
+      pathParameters: {
+        id: '6456456464'
+      }
+    });
+    expect(response.statusCode).to.equal(406);
+
+  });
+
+  it('returns 406 when year is malformed in eventID;year ', async () => {
+
+    const response = await wrapped.run({
+      body: JSON.stringify({
+        ['eventID;year']: 'some event id;year is not a number',
         isFavourite: true
       }),
       pathParameters: {
@@ -74,7 +104,7 @@ describe('userFavEvent', () => {
 
     const response = await wrapped.run({
       body: JSON.stringify({
-        eventID: 'some event id'
+        ['eventID;year']: 'some event id;2020'
       }),
       pathParameters: {
         id: '6456456464'
@@ -88,7 +118,7 @@ describe('userFavEvent', () => {
 
     const response = await wrapped.run({
       body: JSON.stringify({
-        eventID: 'some event id',
+        ['eventID;year']: 'some event id;2020',
         isFavourite: 'not a boolean'
       }),
       pathParameters: {
@@ -103,7 +133,7 @@ describe('userFavEvent', () => {
 
     const response = await wrapped.run({
       body: JSON.stringify({
-        eventID: 'some event id',
+        ['eventID;year']: 'some event id;2020',
         isFavourite: true
       }),
       pathParameters: {
@@ -118,7 +148,7 @@ describe('userFavEvent', () => {
 
     const response = await wrapped.run({
       body: JSON.stringify({
-        eventID: 'some event that does not exist',
+        ['eventID;year']: 'some event that does not exist;2020',
         isFavourite: true
       }),
       pathParameters: {

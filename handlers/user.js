@@ -59,7 +59,7 @@ module.exports.create = async (event, ctx, callback) => {
       callback(null, helpers.inputError('the favedEventsArray is empty', data));
 
     }
-    if (!favedEventsArray.every(eventID => (typeof eventID === 'string'))) {
+    if (!favedEventsArray.every(eventIDAndYear => (typeof eventIDAndYear === 'string'))) {
 
       callback(null, helpers.inputError('the favedEventsArray contains non-string element(s)', data));
 
@@ -70,7 +70,7 @@ module.exports.create = async (event, ctx, callback) => {
 
     }
     //if all conditions met, add favedEventsArray as a Set to userParams
-    userParams.Item['favedEventsID'] = docClient.createSet(favedEventsArray);
+    userParams.Item['favedEventsID;year'] = docClient.createSet(favedEventsArray);
 
   }
 
@@ -239,15 +239,23 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
     const data = JSON.parse(event.body);
 
     helpers.checkPayloadProps(data, {
-      eventID: { required: true, type: 'string' },
+      ['eventID;year']: { required: true, type: 'string' },
       isFavourite: { required: true, type: 'boolean' }
     });
 
-    const inputEventID = data.eventID;
+    const eventIDAndYear = data['eventID;year'];
+    const eventObj = helpers.parseEventIDAndYear(eventIDAndYear);
+    const {eventID, year} = eventObj;
+
+    //Check if eventID exists and is string. Check if year exists and is number.
+    if(typeof eventID !== 'string' || typeof year !== 'number' || isNaN(year)) {
+      throw helpers.inputError("'eventID;year' could not be parsed into eventID and year in user.favoriteEvent", eventObj);
+    }
+
     const id = parseInt(event.pathParameters.id, 10);
 
-    const existingEvent = await helpers.getOne(inputEventID, EVENTS_TABLE);
-    if(isEmpty(existingEvent)) throw helpers.notFoundResponse('event', inputEventID);
+    const existingEvent = await helpers.getOne(eventID, EVENTS_TABLE, {year});
+    if(isEmpty(existingEvent)) throw helpers.notFoundResponse('event', eventID);
 
     const existingUser = await helpers.getOne(id, USERS_TABLE);
     if(isEmpty(existingUser)) throw helpers.notFoundResponse('user', id);
@@ -257,23 +265,23 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
     const isFavourite = data.isFavourite;
     if (isFavourite) {
 
-      updateExpression = 'add favedEventsID :eventsID';
+      updateExpression = 'add favedEventsID;year :eventsID;year';
       conditionExpression =
-        'attribute_exists(id) and (not contains(favedEventsID, :eventID))'; // if eventID already exists, don't perform add operation
+        'attribute_exists(id) and (not contains(favedEventsID;year, :eventID;year))'; // if eventID already exists, don't perform add operation
 
     } else {
 
-      updateExpression = 'delete favedEventsID :eventsID';
+      updateExpression = 'delete favedEventsID;year :eventsID;year';
       conditionExpression =
-        'attribute_exists(id) and contains(favedEventsID, :eventID)'; // if eventID does not exist, don't perform delete operation
+        'attribute_exists(id) and contains(favedEventsID;year, :eventID;year)'; // if eventID does not exist, don't perform delete operation
 
     }
 
     let expressionAttributeValues;
     expressionAttributeValues = {
-      ':eventsID': docClient.createSet([inputEventID]) // set data type, for updateExpression
+      ':eventsID;year': docClient.createSet([eventIDAndYear]) // set data type, for updateExpression
     };
-    expressionAttributeValues[':eventID'] = inputEventID; // string data type, for conditionExpression
+    expressionAttributeValues[':eventID;year'] = eventIDAndYear; // string data type, for conditionExpression
 
     const params = {
       Key: { id },
@@ -286,7 +294,7 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
     const res = await docClient.update(params).promise();
 
     let successMsg = isFavourite ? 'Favourited' : 'Unfavourited';
-    successMsg += ` event with id ${inputEventID}`;
+    successMsg += ` event with id and year ${eventIDAndYear}`;
     callback(null, helpers.createResponse(200, {
       message: successMsg,
       response: res
