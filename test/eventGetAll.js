@@ -34,13 +34,14 @@ describe('eventGetAll', () => {
       }
       // events itself
       else if(params.TableName.includes(EVENTS_TABLE)){
+
         if(params.ExpressionAttributeNames && params.ExpressionAttributeNames['#vyear'] === 'year') {
 
           //If filtering event query by year, scan only returns events for given year
           let getEventsResponseFiltered = {
-            "Items": getEventsResponse['Items'].filter(item => 
-            item.year === params.ExpressionAttributeValues[':query'])
-          }
+            'Items': getEventsResponse['Items'].filter(item =>
+              item.year === params.ExpressionAttributeValues[':query'])
+          };
           callback(null, getEventsResponseFiltered);
 
         } else {
@@ -89,14 +90,16 @@ describe('eventGetAll', () => {
     expect(body.length).to.be.equal(NUM_EVENTS_TEST_YEAR);
 
     for(let event of body) {
+
       expect(event).to.have.property('year', 2020);
+
     }
 
   });
 
-    it('return 200 response for getting all events with id "existingEvent3"', async () => {
+  it('return 200 response for getting all events with id "existingEvent3"', async () => {
 
-    const response = await wrapped.run({ queryStringParameters: { id: TEST_ID} });
+    const response = await wrapped.run({ queryStringParameters: { id: TEST_ID } });
     expect(response.statusCode).to.be.equal(200);
 
     const body = JSON.parse(response.body);
@@ -104,7 +107,9 @@ describe('eventGetAll', () => {
     expect(body.length).to.be.equal(NUM_EVENTS_TEST_ID);
 
     for(let event of body) {
+
       expect(event).to.have.property('id', TEST_ID);
+
     }
 
   });
