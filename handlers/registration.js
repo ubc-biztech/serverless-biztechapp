@@ -29,7 +29,7 @@ async function updateHelper(data, createNew, idString) {
     eventID = eventID + ';' + arr[index];
 
   }
-  const year = parseInt(arr[arr.size - 1], 10);
+  const year = parseInt(arr[arr.length - 1], 10);
 
   let registrationStatus = data.registrationStatus;
 
@@ -107,7 +107,7 @@ async function createRegistration(registrationStatus, data, id, eventIDAndYear, 
 
     // Because biztechRegistration table has a sort key, we cannot use helpers.updateDB()
     let params = {
-      Key: { id, eventIDAndYear },
+      Key: { id, ['eventID;year']: eventIDAndYear },
       TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
       ExpressionAttributeValues: expressionAttributeValues,
       ExpressionAttributeNames: expressionAttributeNames,

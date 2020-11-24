@@ -38,6 +38,19 @@
             "endDate": "2020-02-09T05:55:11.131Z",
             "imageUrl":	"https://i.picsum.photos/id/237/700/400.jpg",
             "updatedAt": 1581227718555
+        },
+                {
+            "id": "existingEvent3",
+            "year":2018,
+            "capac": 20,
+            "createdAt": 1581227718555,
+            "description":	"I am also a description",
+            "elocation": "Vancouver",   
+            "ename": "Existing Event Number 2",   
+            "startDate": "2020-02-09T05:55:11.131Z",
+            "endDate": "2020-02-09T05:55:11.131Z",
+            "imageUrl":	"https://i.picsum.photos/id/237/700/400.jpg",
+            "updatedAt": 1581227718555
         }
     ]
   }

@@ -9,6 +9,12 @@ const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper('eventGetAll', '/handlers/event.js', 'getAll');
 const { EVENTS_TABLE, USER_REGISTRATIONS_TABLE } = require('../constants/tables');
 
+//Number of events in 2020, from './data/events.json'
+const TEST_YEAR = 2020;
+const NUM_EVENTS_TEST_YEAR = 2;
+const TEST_ID = 'existingEvent3';
+const NUM_EVENTS_TEST_ID = 2;
+
 const getEventsResponse = require('./data/events.json');
 const getRegistrationResponse = require('./data/eventRegistration.json');
 
@@ -28,8 +34,22 @@ describe('eventGetAll', () => {
       }
       // events itself
       else if(params.TableName.includes(EVENTS_TABLE)){
+        if(params.ExpressionAttributeNames && params.ExpressionAttributeNames['#vyear'] === 'year') {
 
-        callback(null, getEventsResponse);
+          //If filtering event query by year, scan only returns events for given year
+          let getEventsResponseFiltered = {
+            "Items": getEventsResponse['Items'].filter(item => 
+            item.year === params.ExpressionAttributeValues[':query'])
+          }
+          callback(null, getEventsResponseFiltered);
+
+        } else {
+
+          //Otherwise scan returns all events 
+          // (Even if we're filtering by eventID -> filtering by ID is done on our end, not dynamoDB)
+          callback(null, getEventsResponse);
+
+        }
 
       }
 
@@ -55,6 +75,37 @@ describe('eventGetAll', () => {
     expect(event.counts).to.have.property('registeredCount', 2);
     expect(event.counts).to.have.property('checkedInCount', 3);
     expect(event.counts).to.have.property('waitlistCount', 1);
+
+  });
+
+  it('return 200 response for getting all events for year 2020', async () => {
+
+
+    const response = await wrapped.run({ queryStringParameters: { year: TEST_YEAR } });
+    expect(response.statusCode).to.be.equal(200);
+
+    const body = JSON.parse(response.body);
+
+    expect(body.length).to.be.equal(NUM_EVENTS_TEST_YEAR);
+
+    for(let event of body) {
+      expect(event).to.have.property('year', 2020);
+    }
+
+  });
+
+    it('return 200 response for getting all events with id "existingEvent3"', async () => {
+
+    const response = await wrapped.run({ queryStringParameters: { id: TEST_ID} });
+    expect(response.statusCode).to.be.equal(200);
+
+    const body = JSON.parse(response.body);
+
+    expect(body.length).to.be.equal(NUM_EVENTS_TEST_ID);
+
+    for(let event of body) {
+      expect(event).to.have.property('id', TEST_ID);
+    }
 
   });
 

@@ -19,6 +19,7 @@ const userResponse = {
 
 const eventResponse = {
   'id': 'event',
+  'year': 2020,
   'capac': 2,
   'createdAt': 1581227718674,
   'description':	'I am a description',
@@ -33,13 +34,13 @@ const eventResponse = {
 const registrationsResponse = [
   {
     id: 12345677,
-    eventID: 'event',
+    ['eventID;year']: 'event;2020',
     updatedAt: 1600669844493,
     registrationStatus: 'registered'
   },
   {
     id: 12345678,
-    eventID: 'event',
+    ['eventID;year']: 'event;2020',
     updatedAt: 1600669844493,
     registrationStatus: 'registered'
   }
@@ -53,7 +54,7 @@ describe('registrationPost', () => {
 
       if(params.TableName.includes(EVENTS_TABLE)) {
 
-        if(params.Key.id === 'event') callback(null, { Item: eventResponse });
+        if(params.Key.id === 'event' && params.Key.year === 2020) callback(null, { Item: eventResponse });
         else callback(null, { Item: null });
 
       }
@@ -83,7 +84,7 @@ describe('registrationPost', () => {
 
       // for POST
       // throw error if already exists (only check for 12345678)
-      if(params.Key.id === 12345678 && params.Key.eventID === 'event') callback({ code: 'ConditionalCheckFailedException' });
+      if(params.Key.id === 12345678 && params.Key['eventID;year'] === 'event;2020') callback({ code: 'ConditionalCheckFailedException' });
       else callback(null, 'Created!');
 
       return null;
@@ -102,14 +103,14 @@ describe('registrationPost', () => {
 
     const response = await wrapped.run({
       body: JSON.stringify({
-        eventID: 'event'
+        ['eventID;year']: 'event;2020',
       })
     });
     expect(response.statusCode).to.be.equal(406);
 
   });
 
-  it('should return 406 when no eventID is provided', async () => {
+  it('should return 406 when no eventID;year is provided', async () => {
 
     const response = await wrapped.run({
       body: JSON.stringify({
@@ -126,7 +127,7 @@ describe('registrationPost', () => {
     const response = await wrapped.run({
       body: JSON.stringify({
         id: 12200034,
-        eventID: 'event'
+        ['eventID;year']: 'event;2020',
       })
     });
     expect(response.statusCode).to.be.equal(406);
@@ -138,7 +139,7 @@ describe('registrationPost', () => {
     const response = await wrapped.run({
       body: JSON.stringify({
         id: 12200034,
-        eventID: 'unknownevent',
+        ['eventID;year']: 'unknownEvent;2020',
         registrationStatus: 'registered'
       })
     });
@@ -151,7 +152,7 @@ describe('registrationPost', () => {
     const response = await wrapped.run({
       body: JSON.stringify({
         id: 1220003424657,
-        eventID: 'event',
+        ['eventID;year']: 'event;2020',
         registrationStatus: 'registered'
       })
     });
@@ -164,7 +165,7 @@ describe('registrationPost', () => {
     const response = await wrapped.run({
       body: JSON.stringify({
         id: 12200034,
-        eventID: 'event',
+        ['eventID;year']: 'event;2020',
         registrationStatus: 'waitlist'
       }),
     });
@@ -180,7 +181,7 @@ describe('registrationPost', () => {
     const response = await wrapped.run({
       body: JSON.stringify({
         id: 12200034,
-        eventID: 'event',
+        ['eventID;year']: 'event;2020',
         registrationStatus: 'registered'
       }),
     });
@@ -196,7 +197,7 @@ describe('registrationPost', () => {
     const response = await wrapped.run({
       body: JSON.stringify({
         id: 12345678,
-        eventID: 'event',
+        ['eventID;year']: 'event;2020',
         registrationStatus: 'registered'
       }),
     });

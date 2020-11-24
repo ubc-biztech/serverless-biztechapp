@@ -122,7 +122,7 @@ module.exports.getAll = async (event, ctx, callback) => {
 
     if(event!== undefined && event.queryStringParameters !== undefined && event.queryStringParameters.hasOwnProperty('id')) {
 
-      events = events.filter(event => event.id === event.queryStringParameters.id);
+      events = events.filter(eventItem => eventItem.id === event.queryStringParameters.id);
 
     }
 
