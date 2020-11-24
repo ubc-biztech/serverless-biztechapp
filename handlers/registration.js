@@ -19,11 +19,13 @@ async function updateHelper(data, createNew, idString) {
   const eventIDAndYear = data['eventID;year'];
   const eventObj = helpers.parseEventIDAndYear(eventIDAndYear);
 
-  const {eventID, year} = eventObj;
+  const { eventID, year } = eventObj;
 
   //Check if eventID exists and is string. Check if year exists and is number.
   if(typeof eventID !== 'string' || typeof year !== 'number' || isNaN(year)) {
-    throw helpers.inputError("'eventID;year' could not be parsed into eventID and year in registration.updateHelper", eventObj);
+
+    throw helpers.inputError('\'eventID;year\' could not be parsed into eventID and year in registration.updateHelper', eventObj);
+
   }
 
 

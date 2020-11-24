@@ -478,6 +478,7 @@ module.exports = {
   parseEventIDAndYear: function(eventIDAndYear) {
 
     if(typeof eventIDAndYear === 'string') {
+
       let arr = eventIDAndYear.split(';');
 
       if(arr.length < 2) return {};
@@ -488,13 +489,19 @@ module.exports = {
       the eventID should be the concatenation of all elements except the last one (which is the year)
       */
       for(let index = 0; index < arr.size - 1; index++) {
+
         eventID = eventID + ';' + arr[index];
+
       }
 
       const year = parseInt(arr[arr.length - 1], 10);
-      return {eventID, year};
+      return { eventID, year };
+
     } else {
+
       return {};
+
     }
+
   },
 };

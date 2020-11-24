@@ -245,16 +245,18 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
 
     const eventIDAndYear = data['eventID;year'];
     const eventObj = helpers.parseEventIDAndYear(eventIDAndYear);
-    const {eventID, year} = eventObj;
+    const { eventID, year } = eventObj;
 
     //Check if eventID exists and is string. Check if year exists and is number.
     if(typeof eventID !== 'string' || typeof year !== 'number' || isNaN(year)) {
-      throw helpers.inputError("'eventID;year' could not be parsed into eventID and year in user.favoriteEvent", eventObj);
+
+      throw helpers.inputError('\'eventID;year\' could not be parsed into eventID and year in user.favoriteEvent', eventObj);
+
     }
 
     const id = parseInt(event.pathParameters.id, 10);
 
-    const existingEvent = await helpers.getOne(eventID, EVENTS_TABLE, {year});
+    const existingEvent = await helpers.getOne(eventID, EVENTS_TABLE, { year });
     if(isEmpty(existingEvent)) throw helpers.notFoundResponse('event', eventID);
 
     const existingUser = await helpers.getOne(id, USERS_TABLE);
