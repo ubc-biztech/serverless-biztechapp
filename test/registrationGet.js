@@ -8,7 +8,7 @@ const expect = mochaPlugin.chai.expect;
 const AWSMock = require('aws-sdk-mock');
 let wrapped = mochaPlugin.getWrapper('registrationGet', '/handlers/registration.js', 'get');
 
-const registrationPayload = [{ id: 12345678, eventID: 'event', updatedAt: 1600669844493 }, { id: 12345678, eventID: 'event', updatedAt: 1600669844493 }];
+const registrationPayload = [{ id: 12345678, ['eventID;year']: 'event;2020', updatedAt: 1600669844493 }, { id: 12345678, ['eventID;year']: 'event;2020', updatedAt: 1600669844493 }];
 
 describe('registrationUpdateHelper', () => {
 
@@ -50,18 +50,18 @@ describe('registrationUpdateHelper', () => {
 
   });
 
-  it('return 200 for successful get with eventID and no id', async () => {
+  it('return 200 for successful get with eventID;year and no id', async () => {
 
     const response = await wrapped.run({
       queryStringParameters: {
-        eventID: 'event',
+        ['eventID;year']: 'event;2020',
       }
     });
     expect(response.statusCode).to.equal(200);
 
   });
 
-  it('return 200 for successful get with id and no eventID', async () => {
+  it('return 200 for successful get with id and no eventID;year', async () => {
 
     const response = await wrapped.run({
       queryStringParameters: {
@@ -77,7 +77,7 @@ describe('registrationUpdateHelper', () => {
 
     const response = await wrapped.run({
       queryStringParameters: {
-        eventID: 'event',
+        ['eventID;year']: 'event;2020',
         id: 12345678
       }
     });
@@ -89,11 +89,11 @@ describe('registrationUpdateHelper', () => {
 
   });
 
-  it('return 200 for successful get with id, eventID and recent timestamp', async () => {
+  it('return 200 for successful get with id, eventID;year, and recent timestamp', async () => {
 
     const response = await wrapped.run({
       queryStringParameters: {
-        eventID: 'event',
+        ['eventID;year']: 'event;2020',
         id: 12345678,
         afterTimestamp: 1600669844494
       }
@@ -107,11 +107,11 @@ describe('registrationUpdateHelper', () => {
   });
 
 
-  it('return 200 for successful get with id, eventID and timestamp', async () => {
+  it('return 200 for successful get with id, eventID;year, and timestamp', async () => {
 
     const response = await wrapped.run({
       queryStringParameters: {
-        eventID: 'event',
+        ['eventID;year']: 'event;2020',
         id: 12345678,
         afterTimestamp: 1600669844492
       }
