@@ -107,7 +107,7 @@ async function createRegistration(registrationStatus, data, id, eventIDAndYear, 
       Key: { id, ['eventID;year']: eventIDAndYear },
       TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
       ExpressionAttributeValues: expressionAttributeValues,
-      ExpressionAttributeNames: {...expressionAttributeNames, '#eventIDYear': 'eventID;year'},
+      ExpressionAttributeNames: { ...expressionAttributeNames, '#eventIDYear': 'eventID;year' },
       UpdateExpression: updateExpression,
       ReturnValues: 'UPDATED_NEW',
       ConditionExpression: conditionExpression
@@ -286,7 +286,7 @@ module.exports.get = async (event, ctx, callback) => {
     if (queryString.hasOwnProperty('eventID') && queryString.hasOwnProperty('year')) {
 
       const eventIDAndYear = queryString.eventID + ';' + queryString.year;
-      console.log("Querying by eventID and year:");
+      console.log('Querying by eventID and year:');
       console.log(eventIDAndYear);
       const filterExpression = {
         FilterExpression: '#eventIDyear = :query',
@@ -302,7 +302,8 @@ module.exports.get = async (event, ctx, callback) => {
 
       // filter by id query, if given 
       if(queryString.hasOwnProperty('id')) {
-        console.log("Filtering by ID");
+
+        console.log('Filtering by ID');
         console.log(queryString.id);
         registrations = registrations.filter(entry => entry.id === parseInt(queryString.id, 10));
 
@@ -310,7 +311,7 @@ module.exports.get = async (event, ctx, callback) => {
 
     } else { // if eventID and year was not given (only id)
 
-      console.log("Querying by id:");
+      console.log('Querying by id:');
       console.log(queryString.id);
 
       const id = parseInt(queryString.id, 10);
@@ -328,7 +329,7 @@ module.exports.get = async (event, ctx, callback) => {
     // filter by timestamp, if given
     if(timeStampFilter !== undefined) {
 
-      console.log("Filtering by timestamps");
+      console.log('Filtering by timestamps');
       console.log(timeStampFilter);
 
       registrations = registrations.filter(entry => entry.updatedAt > timeStampFilter);
