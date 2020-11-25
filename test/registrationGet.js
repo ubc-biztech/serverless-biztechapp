@@ -50,18 +50,19 @@ describe('registrationUpdateHelper', () => {
 
   });
 
-  it('return 200 for successful get with eventID;year and no id', async () => {
+  it('return 200 for successful get with eventID and year but no id', async () => {
 
     const response = await wrapped.run({
       queryStringParameters: {
-        ['eventID;year']: 'event;2020',
+        eventID: 'event',
+        year: 2020,
       }
     });
     expect(response.statusCode).to.equal(200);
 
   });
 
-  it('return 200 for successful get with id and no eventID;year', async () => {
+  it('return 200 for successful get with id and no eventID or year', async () => {
 
     const response = await wrapped.run({
       queryStringParameters: {
@@ -77,7 +78,8 @@ describe('registrationUpdateHelper', () => {
 
     const response = await wrapped.run({
       queryStringParameters: {
-        ['eventID;year']: 'event;2020',
+        eventID: 'event',
+        year: 2020,
         id: 12345678
       }
     });
@@ -93,7 +95,8 @@ describe('registrationUpdateHelper', () => {
 
     const response = await wrapped.run({
       queryStringParameters: {
-        ['eventID;year']: 'event;2020',
+        eventID: 'event',
+        year: 2020,
         id: 12345678,
         afterTimestamp: 1600669844494
       }
@@ -111,7 +114,8 @@ describe('registrationUpdateHelper', () => {
 
     const response = await wrapped.run({
       queryStringParameters: {
-        ['eventID;year']: 'event;2020',
+        eventID: 'event',
+        year: 2020,
         id: 12345678,
         afterTimestamp: 1600669844492
       }

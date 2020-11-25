@@ -16,15 +16,14 @@ const { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } = require('../cons
 async function updateHelper(data, createNew, idString) {
 
   const id = parseInt(idString, 10);
-  const eventIDAndYear = data['eventID;year'];
-  const eventObj = helpers.parseEventIDAndYear(eventIDAndYear);
 
-  const { eventID, year } = eventObj;
+  const { eventID, year } = data;
+  const eventIDAndYear = eventID + ';' + year;
 
   //Check if eventID exists and is string. Check if year exists and is number.
   if(typeof eventID !== 'string' || typeof year !== 'number' || isNaN(year)) {
 
-    throw helpers.inputError('\'eventID;year\' could not be parsed into eventID and year in registration.updateHelper', eventObj);
+    throw helpers.inputError('\'eventID;year\' could not be parsed into eventID and year in registration.updateHelper', data);
 
   }
 
@@ -206,7 +205,8 @@ module.exports.post = async (event, ctx, callback) => {
 
     helpers.checkPayloadProps(data, {
       id: { required: true, type: 'number' },
-      ['eventID;year']: { required: true, type: 'string' },
+      eventID: { required: true, type: 'string' },
+      year: { required: true, type: 'number' },
       registrationStatus: { required: true , type: 'string' },
     });
 
@@ -237,7 +237,8 @@ module.exports.put = async (event, ctx, callback) => {
 
     // Check that parameters are valid
     helpers.checkPayloadProps(data, {
-      ['eventID;year']: { required: true, type: 'string' },
+      eventID: { required: true, type: 'string' },
+      year: { required: true, type: 'number' },
       registrationStatus: { required: true , type: 'string' },
     });
 
@@ -264,7 +265,7 @@ module.exports.get = async (event, ctx, callback) => {
   try {
 
     const queryString = event.queryStringParameters;
-    if(!queryString || ((!queryString['eventID;year']) && !queryString.id)) throw helpers.missingIdQueryResponse('event/user');
+    if(!queryString || (!(queryString.eventID && queryString.year) && !queryString.id)) throw helpers.missingIdQueryResponse('event/user');
 
     let timeStampFilter = undefined;
     if (queryString.hasOwnProperty('afterTimestamp')) {
@@ -278,9 +279,9 @@ module.exports.get = async (event, ctx, callback) => {
     let registrations = [];
 
     // if eventID and year was given
-    if (queryString.hasOwnProperty('eventID;year')) {
+    if (queryString.hasOwnProperty('eventID') && queryString.hasOwnProperty('year')) {
 
-      const eventIDAndYear = queryString['eventID;year'];
+      const eventIDAndYear = queryString.eventID + ';' + queryString.year;
       const filterExpression = {
         FilterExpression: 'eventID;year = :query',
         ExpressionAttributeValues: {
@@ -346,10 +347,13 @@ module.exports.delete = async (event, ctx, callback) => {
     const id = event.pathParameters.id;
 
     helpers.checkPayloadProps(data, {
-      ['eventID;year'] : { required: true , type: 'string' },
+      eventID : { required: true , type: 'string' },
+      year : { required: true, type: 'number' }
     });
 
-    const res = await helpers.deleteOne(id, USER_REGISTRATIONS_TABLE, { ['eventID;year']: data['eventID;year'] });
+    const eventIDAndYear = data.eventID + ';' + data.year;
+
+    const res = await helpers.deleteOne(id, USER_REGISTRATIONS_TABLE, { ['eventID;year']: eventIDAndYear });
 
     const response = helpers.createResponse(200, {
       message: 'Registration entry Deleted!',

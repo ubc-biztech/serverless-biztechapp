@@ -69,11 +69,13 @@ module.exports.delete = async (event, ctx, callback) => {
     if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('event');
     const id = event.pathParameters.id;
     if(!event.pathParameters.year) throw helpers.missingPathParamResponse('event', 'year');
-    const year = event.pathParameters.year;
+
+    const year = parseInt(event.pathParameters.year, 10);
+    if(isNaN(year)) throw helpers.inputError('Year path parameter must be a number');
 
     const existingEvent = await helpers.getOne(id, EVENTS_TABLE, { 'year':year });
     if(isEmpty(existingEvent)) throw helpers.notFoundResponse('event', id);
-    const res = await helpers.deleteOne(id, EVENTS_TABLE, { year });
+    const res = await helpers.deleteOne(id, EVENTS_TABLE, { 'year': year });
 
     const response = helpers.createResponse(200, {
       message: `Deleted event with id '${id}' for the year ${year}!`,
@@ -102,9 +104,11 @@ module.exports.getAll = async (event, ctx, callback) => {
     let filterExpression = {};
 
     //Set up query by year if exists
-    if(event!== undefined && event.queryStringParameters !== undefined && event.queryStringParameters.hasOwnProperty('year')) {
+    if(event && event.queryStringParameters && event.queryStringParameters.hasOwnProperty('year')) {
 
       const year = parseInt(event.queryStringParameters.year, 10);
+      if(isNaN(year)) throw helpers.inputError('Year path parameter must be a number');
+
       filterExpression = {
         FilterExpression: '#vyear = :query',
         ExpressionAttributeNames: {
@@ -120,7 +124,7 @@ module.exports.getAll = async (event, ctx, callback) => {
     // scan
     let events = await helpers.scan(EVENTS_TABLE, filterExpression);
 
-    if(event!== undefined && event.queryStringParameters !== undefined && event.queryStringParameters.hasOwnProperty('id')) {
+    if(event && event.queryStringParameters && event.queryStringParameters.hasOwnProperty('id')) {
 
       events = events.filter(eventItem => eventItem.id === event.queryStringParameters.id);
 
@@ -157,9 +161,11 @@ module.exports.update = async (event, ctx, callback) => {
     if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('event');
     const id = event.pathParameters.id;
     if(!event.pathParameters.year) throw helpers.missingPathParamResponse('event', 'year');
-    const year = event.pathParameters.year;
 
-    const existingEvent = await helpers.getOne(id, EVENTS_TABLE, { year });
+    const year = parseInt(event.pathParameters.year, 10);
+    if(isNaN(year)) throw helpers.inputError('Year path parameter must be a number');
+
+    const existingEvent = await helpers.getOne(id, EVENTS_TABLE, { 'year': year });
     if(isEmpty(existingEvent)) throw helpers.notFoundResponse('event', id, year);
 
     const data = JSON.parse(event.body);
@@ -207,7 +213,7 @@ module.exports.update = async (event, ctx, callback) => {
 
 };
 
-// GET events/{year}/{id}
+// GET events/{id}{year}
 module.exports.get = async (event, ctx, callback) => {
 
   try {
@@ -215,7 +221,9 @@ module.exports.get = async (event, ctx, callback) => {
     if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('event');
     const id = event.pathParameters.id;
     if(!event.pathParameters.year) throw helpers.missingPathParamResponse('event', 'year');
-    const year = event.pathParameters.year;
+
+    const year = parseInt(event.pathParameters.year, 10);
+    if(isNaN(year)) throw helpers.inputError('Year path parameter must be a number');
 
     const queryString = event.queryStringParameters;
 
@@ -319,7 +327,7 @@ module.exports.get = async (event, ctx, callback) => {
     } else {
 
       // if none of the optional params are true, then return the event
-      const event = await helpers.getOne(id, EVENTS_TABLE, { year });
+      const event = await helpers.getOne(id, EVENTS_TABLE, { 'year': year });
 
       if(isEmpty(event)) throw helpers.notFoundResponse('event', id, year);
 

@@ -152,7 +152,7 @@ functions:
     handler: handlers/event.delete
     events:
       - http:
-          path: events/{year}/{id}
+          path: events/{id}/{year}
           method: delete
           request:
             path:
@@ -178,7 +178,7 @@ functions:
     handler: handlers/event.update
     events:
       - http:
-          path: events/{year}/{id}
+          path: events/{id}/{year}
           method: patch
           request:
             path:
@@ -192,7 +192,7 @@ functions:
     handler: handlers/event.get
     events:
       - http:
-          path: events/{year}/{id}
+          path: events/{id}/{year}
           method: get
           request:
             parameters:
@@ -248,7 +248,8 @@ functions:
           request:
             parameters:
               querystrings:
-                eventID;year: false
+                eventID: false
+                year: false
                 id: false
                 afterTimestamp: false
           cors: true

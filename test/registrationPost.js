@@ -34,13 +34,15 @@ const eventResponse = {
 const registrationsResponse = [
   {
     id: 12345677,
-    ['eventID;year']: 'event;2020',
+    eventID: 'event',
+    year: 2020,
     updatedAt: 1600669844493,
     registrationStatus: 'registered'
   },
   {
     id: 12345678,
-    ['eventID;year']: 'event;2020',
+    eventID: 'event',
+    year: 2020,
     updatedAt: 1600669844493,
     registrationStatus: 'registered'
   }
@@ -103,18 +105,21 @@ describe('registrationPost', () => {
 
     const response = await wrapped.run({
       body: JSON.stringify({
-        ['eventID;year']: 'event;2020',
+        eventID: 'event',
+        year: 2020,
+        registrationStatus: 'registered'
       })
     });
     expect(response.statusCode).to.be.equal(406);
 
   });
 
-  it('should return 406 when no eventID;year is provided', async () => {
+  it('should return 406 when no eventID is provided', async () => {
 
     const response = await wrapped.run({
       body: JSON.stringify({
         id: 12200034,
+        year: 2020,
         registrationStatus: 'registered'
       })
     });
@@ -128,20 +133,7 @@ describe('registrationPost', () => {
       body: JSON.stringify({
         id: 12200034,
         registrationStatus: 'registered',
-        ['eventID;year']: 'event',
-      })
-    });
-    expect(response.statusCode).to.be.equal(406);
-
-  });
-
-  it('should return 406 when year is malformed in eventID;year', async () => {
-
-    const response = await wrapped.run({
-      body: JSON.stringify({
-        id: 12200034,
-        registrationStatus: 'registered',
-        ['eventID;year']: 'event;year cannot be parsed into number',
+        eventID: 'event',
       })
     });
     expect(response.statusCode).to.be.equal(406);
@@ -165,7 +157,8 @@ describe('registrationPost', () => {
     const response = await wrapped.run({
       body: JSON.stringify({
         id: 12200034,
-        ['eventID;year']: 'unknownEvent;2020',
+        eventID: 'unknownEvent',
+        year: 2020,
         registrationStatus: 'registered'
       })
     });
@@ -178,7 +171,8 @@ describe('registrationPost', () => {
     const response = await wrapped.run({
       body: JSON.stringify({
         id: 1220003424657,
-        ['eventID;year']: 'event;2020',
+        eventID: 'event',
+        year: 2020,
         registrationStatus: 'registered'
       })
     });
@@ -191,7 +185,8 @@ describe('registrationPost', () => {
     const response = await wrapped.run({
       body: JSON.stringify({
         id: 12200034,
-        ['eventID;year']: 'event;2020',
+        eventID: 'event',
+        year: 2020,
         registrationStatus: 'waitlist'
       }),
     });
@@ -207,7 +202,8 @@ describe('registrationPost', () => {
     const response = await wrapped.run({
       body: JSON.stringify({
         id: 12200034,
-        ['eventID;year']: 'event;2020',
+        eventID: 'event',
+        year: 2020,
         registrationStatus: 'registered'
       }),
     });
@@ -223,7 +219,8 @@ describe('registrationPost', () => {
     const response = await wrapped.run({
       body: JSON.stringify({
         id: 12345678,
-        ['eventID;year']: 'event;2020',
+        eventID: 'event',
+        year: 2020,
         registrationStatus: 'registered'
       }),
     });
