@@ -178,12 +178,16 @@ module.exports.update = async (event, ctx, callback) => {
       expressionAttributeNames
     } = helpers.createUpdateExpression(data);
 
+    console.log(expressionAttributeNames);
+    console.log("Values: ")
+    console.log(expressionAttributeValues);
+
     // construct the param object
     let params = {
       Key: { id, year },
       TableName: EVENTS_TABLE + process.env.ENVIRONMENT,
       ExpressionAttributeValues: expressionAttributeValues,
-      ExpressionAttributeNames: expressionAttributeNames,
+      ExpressionAttributeNames: {...expressionAttributeNames, '#vyear': 'year'},
       UpdateExpression: updateExpression,
       ReturnValues: 'UPDATED_NEW',
       ConditionExpression: 'attribute_exists(id) and attribute_exists(#vyear)'
@@ -213,7 +217,7 @@ module.exports.update = async (event, ctx, callback) => {
 
 };
 
-// GET events/{id}{year}
+// GET events/{id}/{year}
 module.exports.get = async (event, ctx, callback) => {
 
   try {
@@ -251,7 +255,10 @@ module.exports.get = async (event, ctx, callback) => {
       try {
 
         const filters = {
-          FilterExpression: 'eventId;year = :query',
+          FilterExpression: '#idyear = :query',
+          ExpressionAttributeNames: {
+            '#idyear':'eventID;year'
+          },
           ExpressionAttributeValues: {
             ':query': `${id};${year}`
           }

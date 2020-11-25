@@ -91,9 +91,9 @@ async function createRegistration(registrationStatus, data, id, eventIDAndYear, 
     };
     if (data.heardFrom) updateObject.heardFrom = data.heardFrom;
 
-    let conditionExpression = 'attribute_exists(id) and attribute_exists(eventID;year)';
+    let conditionExpression = 'attribute_exists(id) and attribute_exists(#eventIDYear)';
     // if we are creating a new object, the condition expression needs to be different
-    if (createNew) conditionExpression = 'attribute_not_exists(id) and attribute_not_exists(eventID;year)';
+    if (createNew) conditionExpression = 'attribute_not_exists(id) and attribute_not_exists(#eventIDYear)';
 
     // construct the update expressions
     const {
@@ -107,7 +107,7 @@ async function createRegistration(registrationStatus, data, id, eventIDAndYear, 
       Key: { id, ['eventID;year']: eventIDAndYear },
       TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
       ExpressionAttributeValues: expressionAttributeValues,
-      ExpressionAttributeNames: expressionAttributeNames,
+      ExpressionAttributeNames: {...expressionAttributeNames, '#eventIDYear': 'eventID;year'},
       UpdateExpression: updateExpression,
       ReturnValues: 'UPDATED_NEW',
       ConditionExpression: conditionExpression
@@ -267,6 +267,10 @@ module.exports.get = async (event, ctx, callback) => {
     const queryString = event.queryStringParameters;
     if(!queryString || (!(queryString.eventID && queryString.year) && !queryString.id)) throw helpers.missingIdQueryResponse('event/user');
 
+    console.log(queryString);
+    console.log(queryString.eventID);
+    console.log(queryString.year);
+
     let timeStampFilter = undefined;
     if (queryString.hasOwnProperty('afterTimestamp')) {
 
@@ -282,8 +286,13 @@ module.exports.get = async (event, ctx, callback) => {
     if (queryString.hasOwnProperty('eventID') && queryString.hasOwnProperty('year')) {
 
       const eventIDAndYear = queryString.eventID + ';' + queryString.year;
+      console.log("Querying by eventID and year:");
+      console.log(eventIDAndYear);
       const filterExpression = {
-        FilterExpression: 'eventID;year = :query',
+        FilterExpression: '#eventIDyear = :query',
+        ExpressionAttributeNames: {
+          '#eventIDyear': 'eventID;year'
+        },
         ExpressionAttributeValues: {
           ':query': eventIDAndYear
         }
@@ -293,12 +302,16 @@ module.exports.get = async (event, ctx, callback) => {
 
       // filter by id query, if given 
       if(queryString.hasOwnProperty('id')) {
-
+        console.log("Filtering by ID");
+        console.log(queryString.id);
         registrations = registrations.filter(entry => entry.id === parseInt(queryString.id, 10));
 
       }
 
     } else { // if eventID and year was not given (only id)
+
+      console.log("Querying by id:");
+      console.log(queryString.id);
 
       const id = parseInt(queryString.id, 10);
       const filterExpression = {
@@ -315,9 +328,14 @@ module.exports.get = async (event, ctx, callback) => {
     // filter by timestamp, if given
     if(timeStampFilter !== undefined) {
 
+      console.log("Filtering by timestamps");
+      console.log(timeStampFilter);
+
       registrations = registrations.filter(entry => entry.updatedAt > timeStampFilter);
 
     }
+
+    console.log(registrations);
 
     const response = helpers.createResponse(200, {
       size: registrations.length,

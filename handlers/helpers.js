@@ -333,8 +333,8 @@ module.exports = {
 
       if (obj.hasOwnProperty(key)) {
 
-        // skip if "id" or "createdAt"
-        if(key === 'id' || key === 'createdAt') continue;
+        // skip if "id" or "createdAt" or "year" or "eventID;year"
+        if(key === 'id' || key === 'year' || key === 'eventID;year' || key === 'createdAt') continue;
         // use expressionAttributeNames if a reserved dynamodb word
         else if(RESERVED_WORDS.includes(key.toUpperCase())) {
 
