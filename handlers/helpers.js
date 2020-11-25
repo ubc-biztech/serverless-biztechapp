@@ -423,7 +423,10 @@ module.exports = {
     const docClient = new AWS.DynamoDB.DocumentClient();
     const params = {
       TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
-      FilterExpression: 'eventID;year = :query',
+      FilterExpression: '#eventIDYear = :query',
+      ExpressionAttributeNames: {
+        '#eventIDYear': 'eventID;year'
+      },
       ExpressionAttributeValues: {
         ':query': eventIDAndYear
       }

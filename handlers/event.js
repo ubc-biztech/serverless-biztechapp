@@ -178,10 +178,6 @@ module.exports.update = async (event, ctx, callback) => {
       expressionAttributeNames
     } = helpers.createUpdateExpression(data);
 
-    console.log(expressionAttributeNames);
-    console.log('Values: ');
-    console.log(expressionAttributeValues);
-
     // construct the param object
     let params = {
       Key: { id, year },

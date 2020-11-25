@@ -267,10 +267,6 @@ module.exports.get = async (event, ctx, callback) => {
     const queryString = event.queryStringParameters;
     if(!queryString || (!(queryString.eventID && queryString.year) && !queryString.id)) throw helpers.missingIdQueryResponse('event/user');
 
-    console.log(queryString);
-    console.log(queryString.eventID);
-    console.log(queryString.year);
-
     let timeStampFilter = undefined;
     if (queryString.hasOwnProperty('afterTimestamp')) {
 
@@ -286,8 +282,6 @@ module.exports.get = async (event, ctx, callback) => {
     if (queryString.hasOwnProperty('eventID') && queryString.hasOwnProperty('year')) {
 
       const eventIDAndYear = queryString.eventID + ';' + queryString.year;
-      console.log('Querying by eventID and year:');
-      console.log(eventIDAndYear);
       const filterExpression = {
         FilterExpression: '#eventIDyear = :query',
         ExpressionAttributeNames: {
@@ -303,16 +297,11 @@ module.exports.get = async (event, ctx, callback) => {
       // filter by id query, if given 
       if(queryString.hasOwnProperty('id')) {
 
-        console.log('Filtering by ID');
-        console.log(queryString.id);
         registrations = registrations.filter(entry => entry.id === parseInt(queryString.id, 10));
 
       }
 
     } else { // if eventID and year was not given (only id)
-
-      console.log('Querying by id:');
-      console.log(queryString.id);
 
       const id = parseInt(queryString.id, 10);
       const filterExpression = {
@@ -329,14 +318,9 @@ module.exports.get = async (event, ctx, callback) => {
     // filter by timestamp, if given
     if(timeStampFilter !== undefined) {
 
-      console.log('Filtering by timestamps');
-      console.log(timeStampFilter);
-
       registrations = registrations.filter(entry => entry.updatedAt > timeStampFilter);
 
     }
-
-    console.log(registrations);
 
     const response = helpers.createResponse(200, {
       size: registrations.length,
@@ -363,7 +347,9 @@ module.exports.delete = async (event, ctx, callback) => {
     const data = JSON.parse(event.body);
 
     if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('registration');
-    const id = event.pathParameters.id;
+
+    const id = parseInt(event.pathParameters.id, 10);
+    if(isNaN(id)) throw helpers.inputError('Id path parameter must be a number');
 
     helpers.checkPayloadProps(data, {
       eventID : { required: true , type: 'string' },
