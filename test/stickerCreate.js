@@ -9,96 +9,96 @@ const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper('stickerCreate', '/handlers/sticker.js', 'create');
 
 const stickerPayload = {
-    "id": "sticker001",
-    "name": "BluePrint Sticker",
-    "url": "http://google.ca"
+  'id': 'sticker001',
+  'name': 'BluePrint Sticker',
+  'url': 'http://google.ca'
 };
 
 describe('stickerCreate', () => {
 
-    let createdStickerIds = [];
+  let createdStickerIds = [];
 
-    before(() => {
+  before(() => {
 
-        AWSMock.mock('DynamoDB.DocumentClient', 'get', (params, callback) => {
+    AWSMock.mock('DynamoDB.DocumentClient', 'get', (params, callback) => {
 
-            let returnValue = null;
-            if (createdStickerIds.includes(params.Key.id)) returnValue = {
-                ...stickerPayload,
-                id: params.Key.id
-            };
-            callback(null, { Item: returnValue });
-
-        });
-
-        AWSMock.mock('DynamoDB.DocumentClient', 'put', (params, callback) => {
-
-            if (params.Item.id && createdStickerIds.includes(params.Item.id)) callback('Sticker already exists!');
-            else {
-
-                createdStickerIds.push(params.Item.id);
-                callback(null, 'Successfully put item in database');
-
-            }
-
-        });
+      let returnValue = null;
+      if (createdStickerIds.includes(params.Key.id)) returnValue = {
+        ...stickerPayload,
+        id: params.Key.id
+      };
+      callback(null, { Item: returnValue });
 
     });
 
-    after(() => {
+    AWSMock.mock('DynamoDB.DocumentClient', 'put', (params, callback) => {
 
-        AWSMock.restore('DynamoDB.DocumentClient');
+      if (params.Item.id && createdStickerIds.includes(params.Item.id)) callback('Sticker already exists!');
+      else {
 
-    });
+        createdStickerIds.push(params.Item.id);
+        callback(null, 'Successfully put item in database');
 
-    it('return 406 for trying to create a sticker with no id', async() => {
-
-        const invalidPayload = {
-            ...stickerPayload
-        };
-        delete invalidPayload.id;
-
-        const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
-        expect(response.statusCode).to.be.equal(406);
+      }
 
     });
 
-    it('return 406 for trying to create a sticker with no name', async() => {
+  });
 
-        const invalidPayload = {
-            ...stickerPayload
-        };
-        delete invalidPayload.name;
+  after(() => {
 
-        const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
-        expect(response.statusCode).to.be.equal(406);
+    AWSMock.restore('DynamoDB.DocumentClient');
 
-    });
+  });
 
-    it('return 406 for trying to create a sticker with no url', async() => {
+  it('return 406 for trying to create a sticker with no id', async() => {
 
-        const invalidPayload = {
-            ...stickerPayload
-        };
-        delete invalidPayload.url;
+    const invalidPayload = {
+      ...stickerPayload
+    };
+    delete invalidPayload.id;
 
-        const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
-        expect(response.statusCode).to.be.equal(406);
+    const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
+    expect(response.statusCode).to.be.equal(406);
 
-    });
+  });
 
-    it('return 201 for successfully creating a sticker', async() => {
+  it('return 406 for trying to create a sticker with no name', async() => {
 
-        const response = await wrapped.run({ body: JSON.stringify(stickerPayload) });
-        expect(response.statusCode).to.be.equal(201);
+    const invalidPayload = {
+      ...stickerPayload
+    };
+    delete invalidPayload.name;
 
-    });
+    const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
+    expect(response.statusCode).to.be.equal(406);
 
-    it('return 409 for trying to create a sticker with the same id', async() => {
+  });
 
-        const response = await wrapped.run({ body: JSON.stringify(stickerPayload) });
-        expect(response.statusCode).to.be.equal(409);
+  it('return 406 for trying to create a sticker with no url', async() => {
 
-    });
+    const invalidPayload = {
+      ...stickerPayload
+    };
+    delete invalidPayload.url;
+
+    const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
+    expect(response.statusCode).to.be.equal(406);
+
+  });
+
+  it('return 201 for successfully creating a sticker', async() => {
+
+    const response = await wrapped.run({ body: JSON.stringify(stickerPayload) });
+    expect(response.statusCode).to.be.equal(201);
+
+  });
+
+  it('return 409 for trying to create a sticker with the same id', async() => {
+
+    const response = await wrapped.run({ body: JSON.stringify(stickerPayload) });
+    expect(response.statusCode).to.be.equal(409);
+
+  });
 
 });

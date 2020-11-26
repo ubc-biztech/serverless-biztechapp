@@ -19,6 +19,7 @@ const userResponse = {
 
 const eventResponse = {
   'id': 'event',
+  'year':2020,
   'capac': 2,
   'createdAt': 1581227718674,
   'description':	'I am a description',
@@ -33,13 +34,13 @@ const eventResponse = {
 const registrationsResponse = [
   {
     id: 12345677,
-    eventID: 'event',
+    ['eventID;year']: 'event;2020',
     updatedAt: 1600669844493,
     registrationStatus: 'registered'
   },
   {
     id: 12345678,
-    eventID: 'event',
+    ['eventID;year']: 'event;2020',
     updatedAt: 1600669844493,
     registrationStatus: 'registered'
   }
@@ -53,7 +54,7 @@ describe('registrationPut', () => {
 
       if(params.TableName.includes(EVENTS_TABLE)) {
 
-        if(params.Key.id === 'event') callback(null, { Item: eventResponse });
+        if(params.Key.id === 'event' && params.Key.year === 2020) callback(null, { Item: eventResponse });
         else callback(null, { Item: null });
 
       }
@@ -83,7 +84,7 @@ describe('registrationPut', () => {
 
       // for PUT (different from POST)
       // throw error if doesnt exist (only check for 87654321)
-      if(params.Key.id === 12345678 && params.Key.eventID === 'event') callback({ code: 'ConditionalCheckFailedException' });
+      if(params.Key.id === 12345678 && params.Key['eventID;year'] === 'event;2020') callback({ code: 'ConditionalCheckFailedException' });
       else callback(null, 'Updated!');
 
       return null;
@@ -103,6 +104,7 @@ describe('registrationPut', () => {
     const response = await wrapped.run({
       body: JSON.stringify({
         eventID: 'event',
+        year: 2020,
         registrationStatus: 'registered'
       })
     });
@@ -114,6 +116,22 @@ describe('registrationPut', () => {
 
     const response = await wrapped.run({
       body: JSON.stringify({
+        registrationStatus: 'registered',
+        year: 2020,
+      }),
+      pathParameters: {
+        id: '12200034'
+      }
+    });
+    expect(response.statusCode).to.be.equal(406);
+
+  });
+
+  it('should return 406 when year is not provided', async () => {
+
+    const response = await wrapped.run({
+      body: JSON.stringify({
+        eventID: 'event',
         registrationStatus: 'registered'
       }),
       pathParameters: {
@@ -128,7 +146,8 @@ describe('registrationPut', () => {
 
     const response = await wrapped.run({
       body: JSON.stringify({
-        eventID: 'event'
+        eventID: 'event',
+        year: 2020,
       }),
       pathParameters: {
         id: '12200034'
@@ -138,11 +157,12 @@ describe('registrationPut', () => {
 
   });
 
-  it('should return 404 when unknown event id is provided', async () => {
+  it('should return 404 when unknown eventID is provided', async () => {
 
     const response = await wrapped.run({
       body: JSON.stringify({
         eventID: 'unknownevent',
+        year: 2020,
         registrationStatus: 'registered'
       }),
       pathParameters: {
@@ -158,6 +178,7 @@ describe('registrationPut', () => {
     const response = await wrapped.run({
       body: JSON.stringify({
         eventID: 'event',
+        year: 2020,
         registrationStatus: 'registered'
       }),
       pathParameters: {
@@ -173,6 +194,7 @@ describe('registrationPut', () => {
     const response = await wrapped.run({
       body: JSON.stringify({
         eventID: 'event',
+        year: 2020,
         registrationStatus: 'waitlist'
       }),
       pathParameters: {
@@ -191,6 +213,7 @@ describe('registrationPut', () => {
     const response = await wrapped.run({
       body: JSON.stringify({
         eventID: 'event',
+        year: 2020,
         registrationStatus: 'registered'
       }),
       pathParameters: {
@@ -209,6 +232,7 @@ describe('registrationPut', () => {
     const response = await wrapped.run({
       body: JSON.stringify({
         eventID: 'event',
+        year: 2020,
         registrationStatus: 'registered'
       }),
       pathParameters: {

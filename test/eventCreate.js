@@ -11,6 +11,7 @@ const { EVENTS_TABLE } = require('../constants/tables');
 
 const eventPayload = {
   id: 'localTestEvent',
+  year: 2020,
   ename: 'Local Test Event',
   description: 'Local test event description',
   startDate: '20200607T000000-0400',
@@ -27,32 +28,38 @@ const eventPayload = {
 
 describe('eventCreate', () => {
 
-  let createdEventIds = [];
+  // Stores the id and year of our current created events in a dictionary
+  let createdEventsIdAndYear = [];
 
   before(() => {
 
+    // Mocks the GET request to DynamoDB
     AWSMock.mock('DynamoDB.DocumentClient', 'get', (params, callback) => {
 
-      const { id } = params.Key;
+      // Check if the table exists first
+      if (params.TableName.includes(EVENTS_TABLE)) {
 
-      if(params.TableName.includes(EVENTS_TABLE)) {
+        // Check if an entry with the same id and year already exists in our table
+        if (params.Key.id && params.Key.year && createdEventsIdAndYear.some(key => key.id === params.Key.id && key.year === params.Key.year)) callback(null, { Item: eventPayload });
 
-        // if id found
-        if(createdEventIds.includes(id)) callback(null, { Item: eventPayload });
-        // if id not found
+        // Id and year does not exist in our table
         else callback(null, { Item: null });
 
       }
 
     });
 
+    // Mocks the PUT request to DynamoDB
     AWSMock.mock('DynamoDB.DocumentClient', 'put', (params, callback) => {
 
-      if(params.Item.id && createdEventIds.includes(params.Item.id)) callback(new Error('event already exists!'));
+      // Check if an entry with the same id and year already exists in our table
+      if (params.Item.id && params.Item.year && createdEventsIdAndYear.some(key => key.id === params.Item.id && key.year === params.Item.year)) callback(new Error('event already exists!'));
+
+      // Created this new entry in our table
       else {
 
-        createdEventIds.push(params.Item.id);
-        callback(null, 'successfully put item in database');
+        createdEventsIdAndYear.push({ id: params.Item.id, year: params.Item.year });
+        callback(null, 'Successfully put item in DynamoDB');
 
       }
 
@@ -61,6 +68,7 @@ describe('eventCreate', () => {
   });
   after(() => {
 
+    // Restore our DynamoDB Table
     AWSMock.restore('DynamoDB.DocumentClient');
 
   });
@@ -71,6 +79,18 @@ describe('eventCreate', () => {
       ...eventPayload
     };
     delete invalidPayload.id;
+
+    const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
+    expect(response.statusCode).to.be.equal(406);
+
+  });
+
+  it('return 406 for trying to create an event with no year', async () => {
+
+    const invalidPayload = {
+      ...eventPayload
+    };
+    delete invalidPayload.year;
 
     const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
     expect(response.statusCode).to.be.equal(406);
@@ -100,7 +120,7 @@ describe('eventCreate', () => {
 
   });
 
-  it('return 409 for trying to create an event with the same id', async () => {
+  it('return 409 for trying to create an event with the same id and year', async () => {
 
     const payload = {
       ...eventPayload,
@@ -108,6 +128,34 @@ describe('eventCreate', () => {
 
     const response = await wrapped.run({ body: JSON.stringify(payload) });
     expect(response.statusCode).to.be.equal(409);
+
+  });
+
+  it('return 201 for successfully creating another event with same id but different year', async () => {
+
+    const payload = {
+      ...eventPayload,
+      year: 1000,
+      id: 'localTestEvent'
+    };
+    console.log(payload);
+
+    const response = await wrapped.run({ body: JSON.stringify(payload) });
+    expect(response.statusCode).to.be.equal(201);
+
+  });
+
+  it('return 201 for successfully creating another event with same year but different id', async () => {
+
+    const payload = {
+      ...eventPayload,
+      year: 1000,
+      id: 'localTestEvent10000'
+    };
+    console.log(payload);
+
+    const response = await wrapped.run({ body: JSON.stringify(payload) });
+    expect(response.statusCode).to.be.equal(201);
 
   });
 

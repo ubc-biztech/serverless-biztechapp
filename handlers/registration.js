@@ -16,7 +16,18 @@ const { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } = require('../cons
 async function updateHelper(data, createNew, idString) {
 
   const id = parseInt(idString, 10);
-  const eventID = data.eventID;
+
+  const { eventID, year } = data;
+  const eventIDAndYear = eventID + ';' + year;
+
+  //Check if eventID exists and is string. Check if year exists and is number.
+  if(typeof eventID !== 'string' || typeof year !== 'number' || isNaN(year)) {
+
+    throw helpers.inputError('Incorrect types for eventID and year in registration.updateHelper', data);
+
+  }
+
+
   let registrationStatus = data.registrationStatus;
 
   // Check if the user exists
@@ -24,13 +35,13 @@ async function updateHelper(data, createNew, idString) {
   if(isEmpty(existingUser)) throw helpers.notFoundResponse('User', id);
 
   // Check if the event exists
-  const existingEvent = await helpers.getOne(eventID, EVENTS_TABLE);
-  if(isEmpty(existingEvent)) throw helpers.notFoundResponse('Event', eventID);
+  const existingEvent = await helpers.getOne(eventID, EVENTS_TABLE, { year });
+  if(isEmpty(existingEvent)) throw helpers.notFoundResponse('Event', eventID, year);
 
   // Check if the event is full
   if (registrationStatus == 'registered') {
 
-    const counts = await helpers.getEventCounts(eventID);
+    const counts = await helpers.getEventCounts(eventIDAndYear);
 
     if (counts == null) {
 
@@ -64,12 +75,12 @@ async function updateHelper(data, createNew, idString) {
 
   if(existingUser.heardFrom) data.heardFrom = existingUser.heardFrom;
 
-  const response = await createRegistration(registrationStatus, data, id, eventID, createNew);
+  const response = await createRegistration(registrationStatus, data, id, eventIDAndYear, createNew);
   return response;
 
 }
 
-async function createRegistration(registrationStatus, data, id, eventID, createNew) {
+async function createRegistration(registrationStatus, data, id, eventIDAndYear, createNew) {
 
   try {
 
@@ -80,9 +91,9 @@ async function createRegistration(registrationStatus, data, id, eventID, createN
     };
     if (data.heardFrom) updateObject.heardFrom = data.heardFrom;
 
-    let conditionExpression = 'attribute_exists(id) and attribute_exists(eventID)';
+    let conditionExpression = 'attribute_exists(id) and attribute_exists(#eventIDYear)';
     // if we are creating a new object, the condition expression needs to be different
-    if (createNew) conditionExpression = 'attribute_not_exists(id) and attribute_not_exists(eventID)';
+    if (createNew) conditionExpression = 'attribute_not_exists(id) and attribute_not_exists(#eventIDYear)';
 
     // construct the update expressions
     const {
@@ -93,10 +104,10 @@ async function createRegistration(registrationStatus, data, id, eventID, createN
 
     // Because biztechRegistration table has a sort key, we cannot use helpers.updateDB()
     let params = {
-      Key: { id, eventID },
+      Key: { id, ['eventID;year']: eventIDAndYear },
       TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
       ExpressionAttributeValues: expressionAttributeValues,
-      ExpressionAttributeNames: expressionAttributeNames,
+      ExpressionAttributeNames: { ...expressionAttributeNames, '#eventIDYear': 'eventID;year' },
       UpdateExpression: updateExpression,
       ReturnValues: 'UPDATED_NEW',
       ConditionExpression: conditionExpression
@@ -134,8 +145,8 @@ async function createRegistration(registrationStatus, data, id, eventID, createN
 
       errorResponse.statusCode = 409;
       errBody.statusCode = 409;
-      if(createNew) errBody.message = `Create error because the registration entry for user '${id}' and with event id '${eventID}' already exists`;
-      else errBody.message = `Update error because the registration entry for user '${id}' and with event id '${eventID}' does not exist`;
+      if(createNew) errBody.message = `Create error because the registration entry for user '${id}' and with eventID;year'${eventIDAndYear}' already exists`;
+      else errBody.message = `Update error because the registration entry for user '${id}' and with eventID;year '${eventIDAndYear}' does not exist`;
       errorResponse.body = JSON.stringify(errBody);
 
     }
@@ -195,6 +206,7 @@ module.exports.post = async (event, ctx, callback) => {
     helpers.checkPayloadProps(data, {
       id: { required: true, type: 'number' },
       eventID: { required: true, type: 'string' },
+      year: { required: true, type: 'number' },
       registrationStatus: { required: true , type: 'string' },
     });
 
@@ -226,6 +238,7 @@ module.exports.put = async (event, ctx, callback) => {
     // Check that parameters are valid
     helpers.checkPayloadProps(data, {
       eventID: { required: true, type: 'string' },
+      year: { required: true, type: 'number' },
       registrationStatus: { required: true , type: 'string' },
     });
 
@@ -252,7 +265,12 @@ module.exports.get = async (event, ctx, callback) => {
   try {
 
     const queryString = event.queryStringParameters;
-    if(!queryString || (!queryString.eventID && !queryString.id)) throw helpers.missingIdQueryResponse('event/user');
+    if(!queryString || (!queryString.eventID && !queryString.year && !queryString.id)) throw helpers.missingIdQueryResponse('eventID/year/user ');
+    if((queryString.eventID && !queryString.year) || (!queryString.eventID && queryString.year)) {
+
+      throw helpers.missingIdQueryResponse('eventID or year (must have both or neither)');
+
+    }
 
     let timeStampFilter = undefined;
     if (queryString.hasOwnProperty('afterTimestamp')) {
@@ -265,14 +283,17 @@ module.exports.get = async (event, ctx, callback) => {
 
     let registrations = [];
 
-    // if eventID was given
-    if (queryString.hasOwnProperty('eventID')) {
+    // if eventID and year was given
+    if (queryString.hasOwnProperty('eventID') && queryString.hasOwnProperty('year')) {
 
-      const eventID = queryString.eventID;
+      const eventIDAndYear = queryString.eventID + ';' + queryString.year;
       const filterExpression = {
-        FilterExpression: 'eventID = :query',
+        FilterExpression: '#eventIDyear = :query',
+        ExpressionAttributeNames: {
+          '#eventIDyear': 'eventID;year'
+        },
         ExpressionAttributeValues: {
-          ':query': eventID
+          ':query': eventIDAndYear
         }
       };
 
@@ -285,7 +306,7 @@ module.exports.get = async (event, ctx, callback) => {
 
       }
 
-    } else { // if eventID was not given (only id)
+    } else { // if eventID and year was not given (only id)
 
       const id = parseInt(queryString.id, 10);
       const filterExpression = {
@@ -331,13 +352,18 @@ module.exports.delete = async (event, ctx, callback) => {
     const data = JSON.parse(event.body);
 
     if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('registration');
-    const id = event.pathParameters.id;
+
+    const id = parseInt(event.pathParameters.id, 10);
+    if(isNaN(id)) throw helpers.inputError('Id path parameter must be a number', event.pathParameters);
 
     helpers.checkPayloadProps(data, {
-      eventID: { required: true , type: 'string' },
+      eventID : { required: true , type: 'string' },
+      year : { required: true, type: 'number' }
     });
 
-    const res = await helpers.deleteOne(id, USER_REGISTRATIONS_TABLE, { eventID: data.eventID });
+    const eventIDAndYear = data.eventID + ';' + data.year;
+
+    const res = await helpers.deleteOne(id, USER_REGISTRATIONS_TABLE, { ['eventID;year']: eventIDAndYear });
 
     const response = helpers.createResponse(200, {
       message: 'Registration entry Deleted!',
