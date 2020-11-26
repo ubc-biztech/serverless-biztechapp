@@ -470,41 +470,6 @@ module.exports = {
 
       });
 
-  },
+  }
 
-  /**
-   * Takes a semicolon separated event ID and year string and returns an object containing the eventID and year. 
-   * Returns an empty object if eventIDAndYear is not a string, or there is no semicolon separator.
-   * @param {String} eventIDAndYear
-   * @return {{eventID, year}}
-   */
-  parseEventIDAndYear: function(eventIDAndYear) {
-
-    if(typeof eventIDAndYear === 'string') {
-
-      let arr = eventIDAndYear.split(';');
-
-      if(arr.length < 2) return {};
-
-      let eventID = arr[0];
-
-      /*In case the split function returns more than two elements, 
-      the eventID should be the concatenation of all elements except the last one (which is the year)
-      */
-      for(let index = 0; index < arr.size - 1; index++) {
-
-        eventID = eventID + ';' + arr[index];
-
-      }
-
-      const year = parseInt(arr[arr.length - 1], 10);
-      return { eventID, year };
-
-    } else {
-
-      return {};
-
-    }
-
-  },
 };

@@ -23,7 +23,7 @@ async function updateHelper(data, createNew, idString) {
   //Check if eventID exists and is string. Check if year exists and is number.
   if(typeof eventID !== 'string' || typeof year !== 'number' || isNaN(year)) {
 
-    throw helpers.inputError('\'eventID;year\' could not be parsed into eventID and year in registration.updateHelper', data);
+    throw helpers.inputError('Incorrect types for eventID and year in registration.updateHelper', data);
 
   }
 
@@ -265,7 +265,7 @@ module.exports.get = async (event, ctx, callback) => {
   try {
 
     const queryString = event.queryStringParameters;
-    if(!queryString || (!(queryString.eventID && queryString.year) && !queryString.id)) throw helpers.missingIdQueryResponse('event/user');
+    if(!queryString || (!(queryString.eventID && queryString.year) && !queryString.id)) throw helpers.missingIdQueryResponse('eventID and year, or user ');
 
     let timeStampFilter = undefined;
     if (queryString.hasOwnProperty('afterTimestamp')) {
@@ -349,7 +349,7 @@ module.exports.delete = async (event, ctx, callback) => {
     if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('registration');
 
     const id = parseInt(event.pathParameters.id, 10);
-    if(isNaN(id)) throw helpers.inputError('Id path parameter must be a number');
+    if(isNaN(id)) throw helpers.inputError('Id path parameter must be a number', event.pathParameters);
 
     helpers.checkPayloadProps(data, {
       eventID : { required: true , type: 'string' },

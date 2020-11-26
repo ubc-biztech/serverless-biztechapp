@@ -239,55 +239,53 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
     const data = JSON.parse(event.body);
 
     helpers.checkPayloadProps(data, {
-      ['eventID;year']: { required: true, type: 'string' },
+      eventID: { required: true, type: 'string'},
+      year: {required: true, type: 'number'},
       isFavourite: { required: true, type: 'boolean' }
     });
 
-    const eventIDAndYear = data['eventID;year'];
-    const eventObj = helpers.parseEventIDAndYear(eventIDAndYear);
-    const { eventID, year } = eventObj;
-
-    //Check if eventID exists and is string. Check if year exists and is number.
-    if(typeof eventID !== 'string' || typeof year !== 'number' || isNaN(year)) {
-
-      throw helpers.inputError('\'eventID;year\' could not be parsed into eventID and year in user.favoriteEvent', eventObj);
-
-    }
+    const { eventID, year, isFavourite } = data;
+    const eventIDAndYear = eventID + ';' + year;
 
     const id = parseInt(event.pathParameters.id, 10);
 
     const existingEvent = await helpers.getOne(eventID, EVENTS_TABLE, { year });
-    if(isEmpty(existingEvent)) throw helpers.notFoundResponse('event', eventID);
+    if(isEmpty(existingEvent)) throw helpers.notFoundResponse('event', eventID, year);
 
     const existingUser = await helpers.getOne(id, USERS_TABLE);
     if(isEmpty(existingUser)) throw helpers.notFoundResponse('user', id);
 
     let updateExpression = '';
     let conditionExpression = '';
-    const isFavourite = data.isFavourite;
     if (isFavourite) {
 
-      updateExpression = 'add favedEventsID;year :eventsID;year';
+      updateExpression = 'add #favedEvents :eventsIDAndYear';
       conditionExpression =
-        'attribute_exists(id) and (not contains(favedEventsID;year, :eventID;year))'; // if eventID already exists, don't perform add operation
+        'attribute_exists(id) and (not contains(#favedEvents, :eventIDAndYear))'; // if eventID already exists, don't perform add operation
 
     } else {
 
-      updateExpression = 'delete favedEventsID;year :eventsID;year';
+      updateExpression = 'delete #favedEvents :eventsIDAndYear';
       conditionExpression =
-        'attribute_exists(id) and contains(favedEventsID;year, :eventID;year)'; // if eventID does not exist, don't perform delete operation
+        'attribute_exists(id) and contains(#favedEvents, :eventIDAndYear)'; // if eventID does not exist, don't perform delete operation
 
+    }
+
+    let expressionAttributeNames;
+    expressionAttributeNames = {
+      '#favedEvents': 'favedEventsID;year'
     }
 
     let expressionAttributeValues;
     expressionAttributeValues = {
-      ':eventsID;year': docClient.createSet([eventIDAndYear]) // set data type, for updateExpression
+      ':eventsIDAndYear': docClient.createSet([eventIDAndYear]) // set data type, for updateExpression
     };
-    expressionAttributeValues[':eventID;year'] = eventIDAndYear; // string data type, for conditionExpression
+    expressionAttributeValues[':eventIDAndYear'] = eventIDAndYear; // string data type, for conditionExpression
 
     const params = {
       Key: { id },
       TableName: USERS_TABLE + process.env.ENVIRONMENT,
+      ExpressionAttributeNames: expressionAttributeNames,
       ExpressionAttributeValues: expressionAttributeValues,
       UpdateExpression: updateExpression,
       ConditionExpression: conditionExpression
@@ -296,7 +294,7 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
     const res = await docClient.update(params).promise();
 
     let successMsg = isFavourite ? 'Favourited' : 'Unfavourited';
-    successMsg += ` event with id and year ${eventIDAndYear}`;
+    successMsg += ` event with eventID ${eventID} for the year ${year}`;
     callback(null, helpers.createResponse(200, {
       message: successMsg,
       response: res
