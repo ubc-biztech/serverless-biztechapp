@@ -239,8 +239,8 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
     const data = JSON.parse(event.body);
 
     helpers.checkPayloadProps(data, {
-      eventID: { required: true, type: 'string'},
-      year: {required: true, type: 'number'},
+      eventID: { required: true, type: 'string' },
+      year: { required: true, type: 'number' },
       isFavourite: { required: true, type: 'boolean' }
     });
 
@@ -274,7 +274,7 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
     let expressionAttributeNames;
     expressionAttributeNames = {
       '#favedEvents': 'favedEventsID;year'
-    }
+    };
 
     let expressionAttributeValues;
     expressionAttributeValues = {
