@@ -265,7 +265,10 @@ module.exports.get = async (event, ctx, callback) => {
   try {
 
     const queryString = event.queryStringParameters;
-    if(!queryString || (!(queryString.eventID && queryString.year) && !queryString.id)) throw helpers.missingIdQueryResponse('eventID and year, or user ');
+    if(!queryString || (!queryString.eventID && !queryString.year && !queryString.id)) throw helpers.missingIdQueryResponse('eventID/year/user ');
+    if((queryString.eventID && !queryString.year) || (!queryString.eventID && queryString.year)) {
+      throw helpers.missingIdQueryResponse('eventID or year (must have both or neither)');
+    }
 
     let timeStampFilter = undefined;
     if (queryString.hasOwnProperty('afterTimestamp')) {
