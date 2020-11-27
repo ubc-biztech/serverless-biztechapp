@@ -5,23 +5,27 @@ const expect = chai.expect;
 const helpers = require('./helpers');
 const {
   INTEGRATION_TEST_EVENT_ID,
+  INTEGRATION_TEST_YEAR,
   INTEGRATION_TEST_PERSISTENT_EVENT_ID,
-  INTEGRATION_TEST_NON_EXISTANT_EVENT_ID
+  INTEGRATION_TEST_PERSISTENT_YEAR,
+  INTEGRATION_TEST_NON_EXISTANT_EVENT_ID,
+  INTEGRATION_TEST_NON_EXISTANT_YEAR,
 } = require('../constants/test');
 
 describe('events integration', function () {
 
   this.timeout(10000);
 
-  describe('events/{id} integration', function () {
+  describe('events/{id}/{year} integration', function () {
 
-    describe('events/{id} GET tests', function () {
+    describe('events/{id}/{year} GET tests', function () {
 
       it('event GET with no additional params returns 200 on an event that exists', async () => {
 
         const payload = {
           pathParameters: {
-            id: INTEGRATION_TEST_PERSISTENT_EVENT_ID
+            id: INTEGRATION_TEST_PERSISTENT_EVENT_ID,
+            year: INTEGRATION_TEST_PERSISTENT_YEAR
           }
         };
         return helpers.invokeLambda('eventGet', JSON.stringify(payload))
@@ -39,7 +43,25 @@ describe('events integration', function () {
 
         const payload = {
           pathParameters: {
-            id: INTEGRATION_TEST_NON_EXISTANT_EVENT_ID
+            id: INTEGRATION_TEST_NON_EXISTANT_EVENT_ID,
+            year: INTEGRATION_TEST_PERSISTENT_YEAR
+          }
+        };
+        return helpers.invokeLambda('eventGet', JSON.stringify(payload))
+          .then(([statusCode]) => {
+
+            expect(statusCode).to.equal(404);
+
+          });
+
+      });
+
+      it('event GET when year doesn\'t exist returns 404', async () => {
+
+        const payload = {
+          pathParameters: {
+            id: INTEGRATION_TEST_PERSISTENT_EVENT_ID,
+            year: INTEGRATION_TEST_NON_EXISTANT_YEAR
           }
         };
         return helpers.invokeLambda('eventGet', JSON.stringify(payload))
@@ -55,7 +77,8 @@ describe('events integration', function () {
 
         const payload = {
           pathParameters: {
-            id: INTEGRATION_TEST_PERSISTENT_EVENT_ID
+            id: INTEGRATION_TEST_PERSISTENT_EVENT_ID,
+            year: INTEGRATION_TEST_PERSISTENT_YEAR
           },
           queryStringParameters: {
             count: 'true',
@@ -78,7 +101,8 @@ describe('events integration', function () {
 
         const payload = {
           pathParameters: {
-            id: INTEGRATION_TEST_PERSISTENT_EVENT_ID
+            id: INTEGRATION_TEST_PERSISTENT_EVENT_ID,
+            year: INTEGRATION_TEST_PERSISTENT_YEAR
           },
           queryStringParameters: {
             count: 'false',
@@ -96,7 +120,7 @@ describe('events integration', function () {
 
     });
 
-    describe('events/{id} PATCH tests', function () {
+    describe('events/{id}/{year} PATCH tests', function () {
 
       const updatePayload = {
         ename: 'Updated Event',
@@ -126,7 +150,8 @@ describe('events integration', function () {
         // update integrationTestEvent to defaultPayload
         let payload = {
           pathParameters: {
-            id: INTEGRATION_TEST_PERSISTENT_EVENT_ID
+            id: INTEGRATION_TEST_PERSISTENT_EVENT_ID,
+            year: INTEGRATION_TEST_PERSISTENT_YEAR
           },
           body: JSON.stringify(defaultPayload)
         };
@@ -139,7 +164,8 @@ describe('events integration', function () {
 
         payload = {
           pathParameters: {
-            id: INTEGRATION_TEST_PERSISTENT_EVENT_ID
+            id: INTEGRATION_TEST_PERSISTENT_EVENT_ID,
+            year: INTEGRATION_TEST_PERSISTENT_YEAR
           }
         };
         // check that integrationTestEvent was updated
@@ -159,7 +185,8 @@ describe('events integration', function () {
         // update integrationTestEvent to updatePayload
         payload = {
           pathParameters: {
-            id: INTEGRATION_TEST_PERSISTENT_EVENT_ID
+            id: INTEGRATION_TEST_PERSISTENT_EVENT_ID,
+            year: INTEGRATION_TEST_PERSISTENT_YEAR
           },
           body: JSON.stringify(updatePayload)
         };
@@ -190,7 +217,8 @@ describe('events integration', function () {
 
         const payload = {
           pathParameters: {
-            id: INTEGRATION_TEST_NON_EXISTANT_EVENT_ID
+            id: INTEGRATION_TEST_NON_EXISTANT_EVENT_ID,
+            year: INTEGRATION_TEST_PERSISTENT_YEAR
           },
           body: JSON.stringify(defaultPayload)
         };
@@ -232,6 +260,7 @@ describe('events integration', function () {
         let payload = {
           body: JSON.stringify({
             id: INTEGRATION_TEST_EVENT_ID,
+            year: INTEGRATION_TEST_YEAR,
             ename: 'test',
             capac: 200000,
             img: 'someImageUrl'
@@ -241,13 +270,14 @@ describe('events integration', function () {
           .then(([statusCode, body]) => {
 
             expect(statusCode).to.equal(201);
-            expect(body.message).to.equal(`Created event with id ${INTEGRATION_TEST_EVENT_ID}!`);
+            expect(body.message).to.equal(`Created event with id ${INTEGRATION_TEST_EVENT_ID} for the year ${INTEGRATION_TEST_YEAR}!`);
 
           });
 
         payload = {
           pathParameters: {
-            id: INTEGRATION_TEST_EVENT_ID
+            id: INTEGRATION_TEST_EVENT_ID,
+            year: INTEGRATION_TEST_YEAR
           }
         };
 
@@ -265,6 +295,7 @@ describe('events integration', function () {
         const payload = {
           body: JSON.stringify({
             id: INTEGRATION_TEST_PERSISTENT_EVENT_ID,
+            year: INTEGRATION_TEST_PERSISTENT_YEAR,
             ename: 'test',
             capac: 20000,
             img: 'someImgUrl'
@@ -274,7 +305,7 @@ describe('events integration', function () {
           .then(([statusCode, body]) => {
 
             expect(statusCode).to.equal(409);
-            expect(body.message).to.equal('A database entry with the same \'event id\' already exists!');
+            expect(body.message).to.equal('A database entry with the same \'event id and year\' already exists!');
 
           });
 

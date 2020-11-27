@@ -11,6 +11,7 @@ const { USERS_TABLE, EVENTS_TABLE } = require('../constants/tables');
 
 const testEntry = {
   eventID: 'some event id',
+  year: 2020,
   isFavourite: true
 };
 
@@ -33,9 +34,9 @@ describe('userFavEvent', () => {
         callback(null, { Item: userObject });
 
       }
-      else if(params.TableName.includes(EVENTS_TABLE) && params.Key.id === 'some event id') {
+      else if(params.TableName.includes(EVENTS_TABLE) && params.Key.id === 'some event id' && params.Key.year === 2020) {
 
-        callback(null, { Item: { id: 'some event id', capac: 100 } });
+        callback(null, { Item: { id: 'some event id', year: 2020, capac: 100 } });
 
       }
       else callback(null, { Item: null });
@@ -56,10 +57,41 @@ describe('userFavEvent', () => {
 
   });
 
-  it('returns 406 when eventID not provided', async () => {
+  it('returns 406 when eventID and year not provided', async () => {
 
     const response = await wrapped.run({
       body: JSON.stringify({
+        isFavourite: true
+      }),
+      pathParameters: {
+        id: '6456456464'
+      }
+    });
+    expect(response.statusCode).to.equal(406);
+
+  });
+
+  it('returns 406 when year is not provided ', async () => {
+
+    const response = await wrapped.run({
+      body: JSON.stringify({
+        eventID: 'some event id',
+        isFavourite: true
+      }),
+      pathParameters: {
+        id: '6456456464'
+      }
+    });
+    expect(response.statusCode).to.equal(406);
+
+  });
+
+  it('returns 406 when year is not a number ', async () => {
+
+    const response = await wrapped.run({
+      body: JSON.stringify({
+        eventID: 'some event id',
+        year: 'not a number',
         isFavourite: true
       }),
       pathParameters: {
@@ -74,7 +106,8 @@ describe('userFavEvent', () => {
 
     const response = await wrapped.run({
       body: JSON.stringify({
-        eventID: 'some event id'
+        eventID: 'some event id',
+        year: 2020
       }),
       pathParameters: {
         id: '6456456464'
@@ -89,6 +122,7 @@ describe('userFavEvent', () => {
     const response = await wrapped.run({
       body: JSON.stringify({
         eventID: 'some event id',
+        year: 2020,
         isFavourite: 'not a boolean'
       }),
       pathParameters: {
@@ -104,6 +138,7 @@ describe('userFavEvent', () => {
     const response = await wrapped.run({
       body: JSON.stringify({
         eventID: 'some event id',
+        year: 2020,
         isFavourite: true
       }),
       pathParameters: {
@@ -119,6 +154,7 @@ describe('userFavEvent', () => {
     const response = await wrapped.run({
       body: JSON.stringify({
         eventID: 'some event that does not exist',
+        year: 2020,
         isFavourite: true
       }),
       pathParameters: {

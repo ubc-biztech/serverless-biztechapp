@@ -152,10 +152,11 @@ functions:
     handler: handlers/event.delete
     events:
       - http:
-          path: events/{id}
+          path: events/{id}/{year}
           method: delete
           request:
             path:
+              year: true
               id: true
           cors: true
           authorizer:
@@ -167,16 +168,22 @@ functions:
       - http:
           path: events/
           method: get
+          request:
+            parameters:
+              querystrings:
+                id: false
+                year: false
           cors: true
   eventUpdate:
     handler: handlers/event.update
     events:
       - http:
-          path: events/{id}
+          path: events/{id}/{year}
           method: patch
           request:
             path:
               id: true
+              year: true
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS
@@ -185,12 +192,13 @@ functions:
     handler: handlers/event.get
     events:
       - http:
-          path: events/{id}
+          path: events/{id}/{year}
           method: get
           request:
             parameters:
               path:
                 id: true
+                year: true
               querystrings:
                 count: false
                 users: false
@@ -251,6 +259,7 @@ functions:
             parameters:
               querystrings:
                 eventID: false
+                year: false
                 id: false
                 afterTimestamp: false
           cors: true

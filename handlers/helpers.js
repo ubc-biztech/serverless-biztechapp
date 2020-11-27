@@ -28,11 +28,31 @@ module.exports = {
 
   },
 
-  notFoundResponse: function(type = null, id = null) {
+  missingPathParamResponse: function (type, paramName) {
 
-    return this.createResponse(404, {
-      message: (type && id) ? `${type} with id '${id}' could not be found. Make sure you have provided the correct id.`: 'No entries found.'
+    return this.createResponse(400, {
+      message: `A(n) ${paramName} path parameter was not provided for this ${type}. Check path params`
     });
+
+  },
+
+  notFoundResponse: function(type = null, id = null, secondaryKey = null) {
+
+    let message;
+
+    if(type && id) {
+
+      message = secondaryKey ?
+        `${type} with id '${id}' and secondaryKey '${secondaryKey}' could not be found. Make sure you have provided them correctly.`:
+        `${type} with id '${id}' could not be found. Make sure you have provided the correct id.`;
+
+    } else {
+
+      message = 'No entries found';
+
+    }
+
+    return this.createResponse(404, { message });
 
   },
 
@@ -146,11 +166,15 @@ module.exports = {
 
   },
 
+
+
   /**
    * Gets one item from db
    * @param {Number} id - The id of the item to get
    * @param {String} table - Name of the table
    */
+
+  /*
   getOne: async function (id, table) {
 
     const docClient = new AWS.DynamoDB.DocumentClient();
@@ -163,6 +187,37 @@ module.exports = {
         TableName: table + process.env.ENVIRONMENT,
       };
 
+      // get the item from db
+      const item = await docClient.get(params).promise();
+      return item.Item || null;
+
+    }
+    catch(err) {
+
+      const errorResponse = this.dynamoErrorResponse(err);
+      throw errorResponse;
+
+    }
+
+  },
+  */
+
+  /**
+   * Gets one item from db
+   * @param {Number} id - The id of the item to get
+   * @param {String} table - Name of the table
+   */
+  getOne: async function (id, table, extraKeys = {}) {
+
+    const docClient = new AWS.DynamoDB.DocumentClient();
+
+    try {
+
+      // construct the param object
+      const params = {
+        Key: Object.keys(extraKeys).length===0 ? { id } : { id, ...extraKeys },
+        TableName: table + process.env.ENVIRONMENT,
+      };
       // get the item from db
       const item = await docClient.get(params).promise();
       return item.Item || null;
@@ -245,7 +300,7 @@ module.exports = {
 
       // construct the param object
       const params = {
-        Key: { id, ...extraKeys },
+        Key: Object.keys(extraKeys).length===0 ? { id } : { id, ...extraKeys },
         TableName: table + process.env.ENVIRONMENT,
       };
 
@@ -278,8 +333,8 @@ module.exports = {
 
       if (obj.hasOwnProperty(key)) {
 
-        // skip if "id" or "createdAt"
-        if(key === 'id' || key === 'createdAt') continue;
+        // skip if "id" or "createdAt" or "year" or "eventID;year"
+        if(key === 'id' || key === 'year' || key === 'eventID;year' || key === 'createdAt') continue;
         // use expressionAttributeNames if a reserved dynamodb word
         else if(RESERVED_WORDS.includes(key.toUpperCase())) {
 
@@ -358,19 +413,22 @@ module.exports = {
   },
 
   /**
-   * Takes an event ID and returns an object containing
-   * registeredCount, checkedInCount and waitlistCount
-   * @param {String} eventID
+   * Takes a semicolon separated event ID and year and returns an object containing
+   * registeredCount, checkedInCount and waitlistCount for that event
+   * @param {String} eventIDAndYear
    * @return {registeredCount checkedInCount waitlistCount}
    */
-  getEventCounts: async function (eventID) {
+  getEventCounts: async function (eventIDAndYear) {
 
     const docClient = new AWS.DynamoDB.DocumentClient();
     const params = {
       TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
-      FilterExpression: 'eventID = :query',
+      FilterExpression: '#eventIDYear = :query',
+      ExpressionAttributeNames: {
+        '#eventIDYear': 'eventID;year'
+      },
       ExpressionAttributeValues: {
-        ':query': eventID
+        ':query': eventIDAndYear
       }
     };
     return await docClient
@@ -413,4 +471,5 @@ module.exports = {
       });
 
   }
+
 };

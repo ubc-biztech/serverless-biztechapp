@@ -11,6 +11,7 @@ const { EVENTS_TABLE } = require('../constants/tables');
 
 const updatePayload = {
   id: 'existingEvent1',
+  year: 2020,
   ename: 'Updated Event',
   description: 'Updated test event description',
   startDate: '20200607T000000-0400',
@@ -27,19 +28,20 @@ const updatePayload = {
 
 describe('eventUpdate', () => {
 
-  const existingEvents = ['existingEvent1', 'existingEvent2'];
+  const existingEvents = [{ id: 'existingEvent1', year: 2020 }];
 
   before(() => {
 
+    // Mocks the GET request to DyanmoDB
     AWSMock.mock('DynamoDB.DocumentClient', 'get', (params, callback) => {
 
-      const { id } = params.Key;
+      // Check if the table exists first
+      if (params.TableName.includes(EVENTS_TABLE)) {
 
-      if(params.TableName.includes(EVENTS_TABLE)) {
+        // Check if an entry with the same id and year already exists in our table
+        if (params.Key.id && params.Key.year && existingEvents.some(key => key.id === params.Key.id && key.year === params.Key.year)) callback(null, { Item: { id: params.Key.id, year: params.Key.year, capac: 100 } });
 
-        // if id found
-        if(existingEvents.includes(id)) callback(null, { Item: updatePayload });
-        // if id not found
+        // Id and year does not exist in our table
         else callback(null, { Item: null });
 
       }
@@ -48,7 +50,8 @@ describe('eventUpdate', () => {
 
     AWSMock.mock('DynamoDB.DocumentClient', 'update', (params, callback) => {
 
-      if(params.Key.id && existingEvents.includes(params.Key.id)) {
+      // Check if an entry with the same id and year already exists in our table
+      if (params.Key.id && params.Key.year && existingEvents.some(key => key.id === params.Key.id && key.year === params.Key.year)) {
 
         callback(null, 'successfully updated item in database');
 
@@ -75,9 +78,21 @@ describe('eventUpdate', () => {
   it('return 404 for trying to update an event that doesn\'t exist', async () => {
 
     const unknownId = 'nonExistingEvent';
-
+    const validYear = existingEvents[0].year;
     const response = await wrapped.run({
-      pathParameters: { id: unknownId },
+      pathParameters: { id: unknownId, year: validYear },
+      body: JSON.stringify(updatePayload)
+    });
+    expect(response.statusCode).to.be.equal(404);
+
+  });
+
+  it('return 404 for trying to update an year that doesn\'t exist', async () => {
+
+    const validId = existingEvents[0].id;
+    const unknownYear = 12345;
+    const response = await wrapped.run({
+      pathParameters: { id: validId, year: unknownYear },
       body: JSON.stringify(updatePayload)
     });
     expect(response.statusCode).to.be.equal(404);
@@ -86,10 +101,11 @@ describe('eventUpdate', () => {
 
   it('return 200 for successfully updating an event', async () => {
 
-    const validId = existingEvents[0];
+    const validId = existingEvents[0].id;
+    const validYear = existingEvents[0].year;
 
     const response = await wrapped.run({
-      pathParameters: { id: validId },
+      pathParameters: { id: validId, year: validYear },
       body: JSON.stringify(updatePayload)
     });
     expect(response.statusCode).to.be.equal(200);
