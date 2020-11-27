@@ -138,7 +138,6 @@ describe('eventCreate', () => {
       year: 1000,
       id: 'localTestEvent'
     };
-    console.log(payload);
 
     const response = await wrapped.run({ body: JSON.stringify(payload) });
     expect(response.statusCode).to.be.equal(201);

@@ -1,7 +1,7 @@
 'use strict';
 const chai = require('chai');
 const expect = chai.expect;
-const { INTEGRATION_TEST_USER_ID, INTEGRATION_TEST_PERSISTENT_EVENT_ID } = require('../constants/test');
+const { INTEGRATION_TEST_USER_ID, INTEGRATION_TEST_PERSISTENT_EVENT_ID, INTEGRATION_TEST_PERSISTENT_YEAR } = require('../constants/test');
 
 const helpers = require('./helpers');
 
@@ -37,10 +37,10 @@ describe('user integration', function () {
       lname: 'DONOTMODIFY',
       email: 'integration@test.com',
       faculty: 'science',
-      year: '2',
+      userYear: 1,
       gender: 'Male',
       diet: 'vegan',
-      favedEventsArray: ['someEvent', 'bluePrint'],
+      favedEventsArray: ['someEvent;2020', 'bluePrint;2020'],
     })
   };
 
@@ -74,7 +74,7 @@ describe('user integration', function () {
   const userPatchBody = {
     fname: 'STILLTESTUSER',
     lname: 'DONOTMODIFYSTILL',
-    year: '3',
+    userYear: 3,
     faculty: 'arts',
     gender: 'Female',
     diet: 'none',
@@ -109,6 +109,7 @@ describe('user integration', function () {
         body: JSON.stringify({
           isFavourite: true,
           eventID: INTEGRATION_TEST_PERSISTENT_EVENT_ID,
+          year: INTEGRATION_TEST_PERSISTENT_YEAR
         }),
       };
 
@@ -130,6 +131,7 @@ describe('user integration', function () {
         body: JSON.stringify({
           isFavourite: false,
           eventID: INTEGRATION_TEST_PERSISTENT_EVENT_ID,
+          year: INTEGRATION_TEST_PERSISTENT_YEAR
         }),
       };
 
@@ -152,8 +154,8 @@ describe('user integration', function () {
           expect(body.fname).to.equal(userPatchBody.fname);
           expect(body.year).to.equal(userPatchBody.year);
           expect(body.gender).to.equal(userPatchBody.gender);
-          expect(body.favedEventsID).to.contain('bluePrint');
-          expect(body.favedEventsID).to.contain('someEvent');
+          expect(body['favedEventsID;year']).to.contain('bluePrint;2020');
+          expect(body['favedEventsID;year']).to.contain('someEvent;2020');
 
         });
 
@@ -199,15 +201,3 @@ describe('user integration', function () {
   });
 
 });
-
-// TODO: fix userGetAll and add getAll test
-// params = {
-//     FunctionName: 'biztechApp-dev-userGetAll',
-//   }
-//   await lambda.invoke(params, function(err, data) {
-//     if (err) {
-//       console.log(err);
-//       throw err;
-//     }
-//     else console.log(data);
-//   });
