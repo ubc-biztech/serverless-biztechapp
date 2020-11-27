@@ -24,7 +24,6 @@ describe('eventGetAll', () => {
 
     AWSMock.mock('DynamoDB.DocumentClient', 'scan', (params, callback) => {
 
-      console.log(params);
 
       // event counts
       if(params.TableName.includes(USER_REGISTRATIONS_TABLE)) {

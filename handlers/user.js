@@ -186,7 +186,6 @@ module.exports.update = async (event, ctx, callback) => {
     if(isEmpty(existingUser)) throw helpers.notFoundResponse('user', id);
 
     const data = JSON.parse(event.body);
-
     const res = await helpers.updateDB(id, data, USERS_TABLE);
     const response = helpers.createResponse(200, {
       message: `Updated event with id ${id}!`,
