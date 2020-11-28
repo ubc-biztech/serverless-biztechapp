@@ -1,72 +1,783 @@
 openapi: 3.0.0
 info:
-  version: 1.0.0
   title: bizTechBackend
+  description: 'This is the API Documentation for the bizTechBackend. The function
+    implementations can be found here: https://github.com/ubc-biztech/serverless-biztechapp.'
+  contact:
+    name: Biztech Developers
+    email: dev@ubcbiztech.com
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.0
+servers:
+- url: https://j4deuy9o31.execute-api.us-west-2.amazonaws.com/dev
+  description: Development Server
+- url: https://rfibhoze52.execute-api.us-west-2.amazonaws.com/staging
+  description: Staging Server
+- url: https://iva9ozj4zd.execute-api.us-west-2.amazonaws.com/prod
+  description: Production Server
 paths:
-  /users:
+  /events:
     get:
-      summary: Returns list of users
-      operationId: usersGetAll
       tags:
-        - user
+      - Events
+      summary: Returns list of events
+      operationId: getEvents
+      parameters:
+      - name: id
+        in: header
+        description: The id of the event
+        required: false
+        style: simple
+        explode: false
+        schema:
+          type: string
+      - name: year
+        in: header
+        description: The year of the event
+        required: false
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          format: int64
       responses:
-        '200':
-          description: List of users
+        "200":
+          description: OK
           content:
             application/json:
               schema:
                 type: array
-                items: 
-                  $ref: '#/components/schemas/User'
-        '404':
-          description: 404 No users found
-        '502':
-          description: 502 Internal Server Error
+                items:
+                  $ref: '#/components/schemas/EventsGetResponse'
+                x-content-type: application/json
+        "403":
+          description: Forbidden
+        "406":
+          description: Year query parameter must be a number
+        "502":
+          description: Internal Server Error
+      x-swagger-router-controller: Events
     post:
-        summary: Creates a new user
-        operationId: userCreate
-        tags:
-          - user
-        requestBody:
+      tags:
+      - Events
+      summary: Creates a new event
+      operationId: postEvent
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventsPostBody'
+        required: true
+      responses:
+        "201":
+          description: Created event with id {string} for the year {integer}!
           content:
             application/json:
               schema:
-                  $ref: '#/components/schemas/User'
-        responses:
-          '201':
-            description: 201 User successfully created
-          '406':
-            description: 406 User id not specified
-          '409':
-            description: 409 User with id already exists
-          '502':
-            description: 502 Internal Server Error
-  /users/{id}:
+                $ref: '#/components/schemas/EventsPostResponse'
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "406":
+          description: '{object} is missing from request body'
+        "409":
+          description: A database entry with the same event id and yearalready exists
+        "502":
+          description: Internal Server Error
+      x-swagger-router-controller: Events
+  /events/{id}/{year}:
     get:
-      summary: Get a user by id
-      operationId: userGet
       tags:
-        - user
+      - Events
+      summary: Returns an event based on id and year
+      operationId: getEvent
+      parameters:
+      - name: id
+        in: path
+        description: The id of the event
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      - name: year
+        in: path
+        description: The year of the event
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          format: int64
+      - name: users
+        in: query
+        description: Returns all users who signed up for the event
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: boolean
+      - name: count
+        in: query
+        description: Returns the registered, checkedIn, and waistlist count for an
+          event
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: boolean
       responses:
-        '200':
-          description: 200 User successfully retrieved
+        "200":
+          description: OK
           content:
             application/json:
-                schema:
-                    $ref: '#/components/schemas/User'
-        '404':
-          description: 404 User not found
-        '406':
-          description: 406 Given id was not a number
-        '502':
-          description: 502 Internal Server Error
-
+              schema:
+                $ref: '#/components/schemas/inline_response_200'
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: event with id {string} and secondaryKey {integer} could not
+            be found. Make sure you have provided them correctly.
+        "406":
+          description: Year query parameter must be a number \\\\\ Only one true parameter
+            is permissible at a time.
+        "502":
+          description: Internal Server Error
+      x-swagger-router-controller: Events
+    delete:
+      tags:
+      - Events
+      summary: Deletes an event based on id and year
+      operationId: deleteEvent
+      parameters:
+      - name: id
+        in: path
+        description: The id of the event
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      - name: year
+        in: path
+        description: The year of the event
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: Deleted event with id {string} and year {integer}!
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: event with id {string} and secondaryKey {integer} could not
+            be found. Make sure you have provided them correctly.
+        "406":
+          description: Year query parameter must be a number \\\\\ Only one true parameter
+            is permissible at a time.
+        "502":
+          description: Internal Server Error
+      x-swagger-router-controller: Events
+    patch:
+      tags:
+      - Events
+      summary: Updates or replaces an event based on id and year
+      operationId: patchEvent
+      parameters:
+      - name: id
+        in: path
+        description: The id of the event
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      - name: year
+        in: path
+        description: The year of the event
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventsPatchBody'
+        required: false
+      responses:
+        "200":
+          description: Updated event with id {string} and year {integer}!
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventsPatchResponse'
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: event with id {string} and secondaryKey {integer} could not
+            be found. Make sure you have provided them correctly.
+        "406":
+          description: Year query parameter must be a number \\\\\ Only one true parameter
+            is permissible at a time.
+        "502":
+          description: Internal Server Error
+      x-swagger-router-controller: Events
+  /users:
+    get:
+      tags:
+      - Users
+      summary: Returns list of users
+      operationId: getUsers
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UsersGetResponse'
+                x-content-type: application/json
+        "401":
+          description: Unauthorized
+        "502":
+          description: Internal Server Error
+      x-swagger-router-controller: Users
+    post:
+      tags:
+      - Users
+      summary: Creates a new user
+      operationId: postUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsersPostBody'
+        required: true
+      responses:
+        "201":
+          description: Created!
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsersPostResponse'
+        "401":
+          description: Unauthorized
+        "406":
+          description: '{object} not specified'
+        "409":
+          description: User could not be created because {object} already exists
+        "502":
+          description: Internal Server Error
+      x-swagger-router-controller: Users
+  /users/{id}:
+    get:
+      tags:
+      - Users
+      summary: Returns a user based on id
+      operationId: getUser
+      parameters:
+      - name: id
+        in: path
+        description: The id of the user
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_200_1'
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: user with id {integer} could not be found. Make sure you have
+            provided the correct id.
+        "406":
+          description: (object) is not a (object)!
+        "502":
+          description: Internal Server Error
+      x-swagger-router-controller: Users
+    delete:
+      tags:
+      - Users
+      summary: Deletes a user based on id
+      operationId: deleteUser
+      parameters:
+      - name: id
+        in: path
+        description: The id of the user
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Deleted user with id {string}!
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: user with id {integer} could not be found. Make sure you have
+            provided the correct id.
+        "406":
+          description: (object) is not a (object)!
+        "502":
+          description: Internal Server Error
+      x-swagger-router-controller: Users
+    patch:
+      tags:
+      - Users
+      summary: Updates or replaces a user based on id
+      operationId: patchUser
+      parameters:
+      - name: id
+        in: path
+        description: The id of the user
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsersPostBody'
+        required: false
+      responses:
+        "200":
+          description: Updated user with id {string}!
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsersPostResponse'
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: user with id {integer} could not be found. Make sure you have
+            provided the correct id.
+        "406":
+          description: (object) is not a (object)!
+        "502":
+          description: Internal Server Error
+      x-swagger-router-controller: Users
+  /users/favEvent/{id}:
+    patch:
+      tags:
+      - Users
+      summary: Update event in user's favourite event based on id
+      operationId: patchFavEventUser
+      parameters:
+      - name: id
+        in: path
+        description: The id of the user
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FavEventPatchBody'
+        required: true
+      responses:
+        "200":
+          description: Favourited event with eventID {string} for the year {integer}
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: user with id {integer} could not be found. Make sure you have
+            provided the correct id.
+        "406":
+          description: (object) is not a (object)!
+        "502":
+          description: Internal Server Error
+      x-swagger-router-controller: Users
+  /registrations:
+    get:
+      tags:
+      - Registrations
+      summary: Returns list of registrations
+      operationId: getRegistrations
+      parameters:
+      - name: eventID
+        in: header
+        description: The id of the event (Only required if year is also provided)
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      - name: year
+        in: header
+        description: The year of the event (Only required if eventID is also provided)
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          format: int64
+      - name: id
+        in: header
+        description: The id of the user (Only required if eventID and year are not
+          provided)
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RegistrationsGetResponse'
+                x-content-type: application/json
+        "400":
+          description: A(n) eventID or year (must have both or neither) id was not
+            provided. Check query params
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "406":
+          description: Year query parameter must be a number
+        "502":
+          description: Internal Server Error
+      x-swagger-router-controller: Registrations
+    post:
+      tags:
+      - Registrations
+      summary: Creates a new registration
+      operationId: postRegistration
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrationsPostBody'
+        required: true
+      responses:
+        "201":
+          description: Created event with id {string} for the year {integer}!
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationsPostResponse'
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "406":
+          description: '{object} is missing from request body'
+        "409":
+          description: Create error because the registration entry for user {integer}
+            and with eventID;year {string} already exists
+        "502":
+          description: Internal Server Error
+      x-swagger-router-controller: Registrations
+  /registrations/{id}:
+    put:
+      tags:
+      - Registrations
+      summary: Update registration entry based on id
+      operationId: putRegistration
+      parameters:
+      - name: id
+        in: path
+        description: The id of the user
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrationsPostBody'
+        required: true
+      responses:
+        "200":
+          description: User with id {integer} successfully registered (through update)
+            to status {string}!
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationsPostResponse'
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: User with id {integer} could not be found. Make sure you have
+            provided the correct id.
+        "406":
+          description: '{object} is missing from request body'
+        "502":
+          description: Internal Server Error
+      x-swagger-router-controller: Registrations
+  /memberships:
+    get:
+      tags:
+      - Memberships
+      summary: Returns all users who signed up for membership
+      operationId: getMemberships
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MembershipsGetResponse'
+                x-content-type: application/json
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "502":
+          description: Internal Server Error
+      x-swagger-router-controller: Memberships
 components:
   schemas:
-    User:
-      type: object
+    EventsGetResponse:
       required:
-        - id
+      - capac
+      - id
+      - year
+      type: object
+      properties:
+        id:
+          type: string
+        year:
+          type: integer
+          format: int64
+        capac:
+          type: integer
+          format: int64
+        createdAt:
+          type: integer
+          format: int64
+        updatedAt:
+          type: integer
+          format: int64
+        description:
+          type: string
+        elocation:
+          type: string
+        ename:
+          type: string
+        startDate:
+          type: string
+        endDate:
+          type: string
+        imageUrl:
+          type: string
+      example:
+        createdAt: 1
+        ename: ename
+        capac: 6
+        year: 0
+        elocation: elocation
+        endDate: endDate
+        imageUrl: imageUrl
+        description: description
+        id: id
+        startDate: startDate
+        updatedAt: 5
+    EventsGetUserResponse:
+      type: array
+      items:
+        $ref: '#/components/schemas/UsersGetResponse'
+    EventsGetCountResponse:
+      required:
+      - checkedInCount
+      - registeredCount
+      - waitlistCount
+      type: object
+      properties:
+        registeredCount:
+          type: integer
+          format: int64
+        checkedInCount:
+          type: integer
+          format: int64
+        waitlistCount:
+          type: integer
+          format: int64
+    EventsPostBody:
+      required:
+      - capac
+      - id
+      - year
+      type: object
+      properties:
+        id:
+          type: string
+        year:
+          type: integer
+          format: int64
+        capac:
+          type: integer
+          format: int64
+        createdAt:
+          type: integer
+          format: int64
+        updatedAt:
+          type: integer
+          format: int64
+        description:
+          type: string
+        elocation:
+          type: string
+        ename:
+          type: string
+        startDate:
+          type: string
+        endDate:
+          type: string
+        imageUrl:
+          type: string
+      example:
+        createdAt: 1
+        ename: ename
+        capac: 6
+        year: 0
+        elocation: elocation
+        endDate: endDate
+        imageUrl: imageUrl
+        description: description
+        id: id
+        startDate: startDate
+        updatedAt: 5
+    EventsPostResponse:
+      required:
+      - item
+      - message
+      - response
+      type: object
+      properties:
+        message:
+          type: string
+        response:
+          type: object
+        item:
+          $ref: '#/components/schemas/EventsPostBody'
+      example:
+        item:
+          createdAt: 1
+          ename: ename
+          capac: 6
+          year: 0
+          elocation: elocation
+          endDate: endDate
+          imageUrl: imageUrl
+          description: description
+          id: id
+          startDate: startDate
+          updatedAt: 5
+        response: {}
+        message: message
+    EventsPatchBody:
+      type: object
+      properties:
+        id:
+          type: string
+        year:
+          type: integer
+          format: int64
+        capac:
+          type: integer
+          format: int64
+        createdAt:
+          type: integer
+          format: int64
+        description:
+          type: string
+        elocation:
+          type: string
+        ename:
+          type: string
+        startDate:
+          type: string
+        endDate:
+          type: string
+        imageUrl:
+          type: string
+      example:
+        createdAt: 1
+        ename: ename
+        capac: 6
+        year: 0
+        elocation: elocation
+        endDate: endDate
+        imageUrl: imageUrl
+        description: description
+        id: id
+        startDate: startDate
+    EventsPatchResponse:
+      required:
+      - message
+      - response
+      type: object
+      properties:
+        message:
+          type: string
+        response:
+          $ref: '#/components/schemas/EventsPatchResponse_response'
+      example:
+        response:
+          Attributes:
+            createdAt: 1
+            ename: ename
+            capac: 6
+            year: 0
+            elocation: elocation
+            endDate: endDate
+            imageUrl: imageUrl
+            description: description
+            id: id
+            startDate: startDate
+        message: message
+    UsersGetResponse:
+      required:
+      - id
+      type: object
       properties:
         id:
           type: integer
@@ -79,7 +790,7 @@ components:
           type: string
         faculty:
           type: string
-        year:
+        userYear:
           type: string
         gender:
           type: string
@@ -88,6 +799,321 @@ components:
         admin:
           type: boolean
         favedEventsArray:
-            type: array
-            items:
-                type: string
+          type: array
+          items:
+            type: string
+      example:
+        fname: fname
+        lname: lname
+        gender: gender
+        userYear: userYear
+        admin: true
+        id: 0
+        diet: diet
+        favedEventsArray:
+        - favedEventsArray
+        - favedEventsArray
+        email: email
+        faculty: faculty
+    UsersPostBody:
+      required:
+      - id
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        fname:
+          type: string
+        lname:
+          type: string
+        email:
+          type: string
+        faculty:
+          type: string
+        userYear:
+          type: string
+        gender:
+          type: string
+        diet:
+          type: string
+        admin:
+          type: boolean
+        favedEventsArray:
+          type: array
+          items:
+            type: string
+      example:
+        fname: fname
+        lname: lname
+        gender: gender
+        userYear: userYear
+        admin: true
+        id: 0
+        diet: diet
+        favedEventsArray:
+        - favedEventsArray
+        - favedEventsArray
+        email: email
+        faculty: faculty
+    UsersPostResponse:
+      required:
+      - message
+      - params
+      type: object
+      properties:
+        message:
+          type: string
+        params:
+          $ref: '#/components/schemas/UsersPostResponse_params'
+      example:
+        message: message
+        params:
+          Item:
+            fname: fname
+            lname: lname
+            gender: gender
+            userYear: userYear
+            admin: true
+            id: 0
+            diet: diet
+            favedEventsArray:
+            - favedEventsArray
+            - favedEventsArray
+            email: email
+            faculty: faculty
+    FavEventPatchBody:
+      required:
+      - eventID
+      - isFavourite
+      - year
+      type: object
+      properties:
+        eventID:
+          type: string
+        year:
+          type: integer
+          format: int64
+        isFavourite:
+          type: boolean
+    RegistrationsGetResponse:
+      required:
+      - data
+      - size
+      type: object
+      properties:
+        size:
+          type: integer
+          format: int64
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/UsersGetResponse'
+      example:
+        size: 0
+        data:
+        - fname: fname
+          lname: lname
+          gender: gender
+          userYear: userYear
+          admin: true
+          id: 0
+          diet: diet
+          favedEventsArray:
+          - favedEventsArray
+          - favedEventsArray
+          email: email
+          faculty: faculty
+        - fname: fname
+          lname: lname
+          gender: gender
+          userYear: userYear
+          admin: true
+          id: 0
+          diet: diet
+          favedEventsArray:
+          - favedEventsArray
+          - favedEventsArray
+          email: email
+          faculty: faculty
+    RegistrationsPostBody:
+      required:
+      - eventID
+      - id
+      - registrationStatus
+      - year
+      type: object
+      properties:
+        eventID:
+          type: string
+        year:
+          type: integer
+          format: int64
+        id:
+          type: integer
+          format: int64
+        registrationStatus:
+          type: string
+          enum:
+          - registered, checkedIn, waitlisted
+      example:
+        eventID: eventID
+        registrationStatus: registered, checkedIn, waitlisted
+        year: 0
+        id: 6
+    RegistrationsPostResponse:
+      required:
+      - message
+      - registrationStatus
+      - response
+      type: object
+      properties:
+        registrationStatus:
+          type: string
+          enum:
+          - registered, checkedIn, waitlisted
+        message:
+          type: string
+        response:
+          $ref: '#/components/schemas/RegistrationsPostResponse_response'
+      example:
+        registrationStatus: registered, checkedIn, waitlisted
+        response:
+          Attributes:
+            eventID: eventID
+            registrationStatus: registered, checkedIn, waitlisted
+            year: 0
+            id: 6
+        message: message
+    MembershipsGetResponse:
+      required:
+      - education
+      - email
+      - first_name
+      - heard_from
+      - id
+      - last_name
+      - pronouns
+      - timestamp
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        timestamp:
+          type: integer
+          format: int64
+        email:
+          type: string
+        education:
+          type: string
+        first_name:
+          type: string
+        last_name:
+          type: string
+        pronouns:
+          type: string
+        student_number:
+          type: integer
+          format: int64
+        year:
+          type: string
+        faculty:
+          type: string
+        major:
+          type: string
+        prev_member:
+          type: boolean
+        international:
+          type: boolean
+        topics:
+          type: array
+          items:
+            type: string
+        heard_from:
+          type: string
+        university:
+          type: string
+        high_school:
+          type: string
+      example:
+        education: education
+        year: year
+        topics:
+        - topics
+        - topics
+        university: university
+        last_name: last_name
+        high_school: high_school
+        heard_from: heard_from
+        faculty: faculty
+        student_number: 1
+        major: major
+        prev_member: true
+        pronouns: pronouns
+        id: 0
+        international: true
+        first_name: first_name
+        email: email
+        timestamp: 6
+    inline_response_200:
+      oneOf:
+      - $ref: '#/components/schemas/EventsGetResponse'
+      - $ref: '#/components/schemas/EventsGetUserResponse'
+      - $ref: '#/components/schemas/EventsGetCountResponse'
+    inline_response_200_1:
+      oneOf:
+      - $ref: '#/components/schemas/UsersGetResponse'
+    EventsPatchResponse_response:
+      required:
+      - Attributes
+      type: object
+      properties:
+        Attributes:
+          $ref: '#/components/schemas/EventsPatchBody'
+      example:
+        Attributes:
+          createdAt: 1
+          ename: ename
+          capac: 6
+          year: 0
+          elocation: elocation
+          endDate: endDate
+          imageUrl: imageUrl
+          description: description
+          id: id
+          startDate: startDate
+    UsersPostResponse_params:
+      required:
+      - Item
+      type: object
+      properties:
+        Item:
+          $ref: '#/components/schemas/UsersPostBody'
+      example:
+        Item:
+          fname: fname
+          lname: lname
+          gender: gender
+          userYear: userYear
+          admin: true
+          id: 0
+          diet: diet
+          favedEventsArray:
+          - favedEventsArray
+          - favedEventsArray
+          email: email
+          faculty: faculty
+    RegistrationsPostResponse_response:
+      required:
+      - Attributes
+      type: object
+      properties:
+        Attributes:
+          $ref: '#/components/schemas/RegistrationsPostBody'
+      example:
+        Attributes:
+          eventID: eventID
+          registrationStatus: registered, checkedIn, waitlisted
+          year: 0
+          id: 6
