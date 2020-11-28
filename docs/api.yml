@@ -838,9 +838,3 @@ components:
           type: string
         high_school:
           type: string
-          
-          
-        
-      
-      
-    
