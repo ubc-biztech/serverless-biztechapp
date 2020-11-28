@@ -1,5 +1,6 @@
 module.exports = {
   EVENTS_TABLE: 'biztechEvents',
+  MEMBERSHIPS_TABLE: 'biztechMemberships2021',
   PRIZES_TABLE: 'biztechPrizes',
   STICKERS_TABLE: 'biztechStickers',
   TRANSACTIONS_TABLE: 'biztechTransactions',
