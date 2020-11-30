@@ -335,23 +335,4 @@ functions:
          authorizer:
            type: COGNITO_USER_POOLS
            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
-  transactionGetAll:
-    handler: handlers/transaction.getAll
-    events:
-      - http:
-          path: transactions/
-          method: get
-          cors: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
-  transactionCreate:
-    handler: handlers/transaction.create
-    events:
-      - http:
-          path: transaction/
-          method: post
-          cors: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+  
