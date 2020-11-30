@@ -45,16 +45,6 @@ provider:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/inviteCodes${file(./config.${self:provider.stage}.json):ENVIRONMENT}"
 
 functions:
-  hello:
-    handler: handlers/default.hello
-    events:
-      - http:
-          path: /hello
-          method: get
-          cors: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   admin:
     handler: handlers/admin.create
     events:
