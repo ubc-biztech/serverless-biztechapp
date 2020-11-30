@@ -3,10 +3,14 @@
 # By default, use "all"
 service=${1:-all}
 function=${2:-all}
+SERVICES_PATH=./services/*
 
 if [ $service == all ]
 then # run unit tests for all services
-    sls invoke test --compilers js:babel-core/register --path services/*/test --root services/*
+    for f in $SERVICES_PATH
+    do
+        sls invoke test --compilers js:babel-core/register --path $f/test --root $f
+    done
 elif [ $function == all ]
 then # run unit tests for all functions in a service
     sls invoke test --compilers js:babel-core/register --path services/${service}/test --root services/${service}
