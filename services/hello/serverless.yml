@@ -1,0 +1,22 @@
+service: biztechApi
+tenant: ianmh
+app: biztechapp
+
+plugins:
+  - serverless-domain-manager
+  - serverless-bundle
+  - serverless-prune-plugin
+  - serverless-mocha-plugin
+
+provider: ${file(../../serverless.common.yml):provider}
+
+custom: ${file(../../serverless.common.yml):custom}
+
+functions:
+  hello:
+    handler: handler.hello
+    events:
+      - http:
+          path: /hello
+          method: get
+          cors: true
