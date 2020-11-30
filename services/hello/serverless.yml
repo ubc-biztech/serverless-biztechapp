@@ -1,4 +1,4 @@
-service: biztechApi
+service: biztechApi-hello
 tenant: ianmh
 app: biztechapp
 
@@ -26,3 +26,21 @@ functions:
           path: /hello
           method: get
           cors: true
+
+# Helps to share the endpoint between services
+# https://serverless-stack.com/chapters/share-an-api-endpoint-between-services.html
+resources:
+  Outputs:
+    ApiGatewayRestApiId:
+      Value:
+        Ref: ApiGatewayRestApi
+      Export:
+        Name: ${self:provider.stage}-ExtApiGatewayRestApiId
+
+    ApiGatewayRestApiRootResourceId:
+      Value:
+          Fn::GetAtt:
+          - ApiGatewayRestApi
+          - RootResourceId 
+      Export:
+        Name: ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
