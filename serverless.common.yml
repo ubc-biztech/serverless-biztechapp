@@ -1,11 +1,9 @@
 provider:
-  name: aws
   stage: ${opt:stage, 'dev'}
   apiKeys:
     - ${opt:stage, 'dev'}-key
   runtime: nodejs12.x
   region: us-east-1
-  cfLogs: true
 
 custom:
   prune:

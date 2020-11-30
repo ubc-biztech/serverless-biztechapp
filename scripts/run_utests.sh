@@ -2,7 +2,7 @@
 
 # By default, use "all"
 service=${1:-all}
-function=${1:-all}
+function=${2:-all}
 
 if [ $service == all ]
 then # run unit tests for all services

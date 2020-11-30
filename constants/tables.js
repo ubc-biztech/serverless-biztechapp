@@ -1,4 +1,4 @@
-module.exports = {
+export default {
   EVENTS_TABLE: 'biztechEvents',
   MEMBERSHIPS_TABLE: 'biztechMemberships2021',
   PRIZES_TABLE: 'biztechPrizes',

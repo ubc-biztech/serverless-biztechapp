@@ -1,4 +1,4 @@
-module.exports = {
+export default {
   MAX_BATCH_ITEM_COUNT: 100,
   RESERVED_WORDS: [
     'ABORT',

@@ -8,7 +8,13 @@ plugins:
   - serverless-prune-plugin
   - serverless-mocha-plugin
 
-provider: ${file(../../serverless.common.yml):provider}
+provider:
+  name: aws
+  stage: ${file(../../serverless.common.yml):provider.stage}
+  apiKeys: ${file(../../serverless.common.yml):provider.apiKeys}
+  runtime: ${file(../../serverless.common.yml):provider.runtime}
+  region: ${file(../../serverless.common.yml):provider.region}
+  cfLogs: true
 
 custom: ${file(../../serverless.common.yml):custom}
 
