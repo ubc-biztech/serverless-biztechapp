@@ -1,17 +1,17 @@
 #!/bin/bash
 
 # By default, use "all"
-collection=${1:-all}
+service=${1:-all}
 function=${1:-all}
 
-if [ $collection == all ]
-then # run unit tests for all collections
+if [ $service == all ]
+then # run unit tests for all services
     sls invoke test --compilers js:babel-core/register --path services/*/test --root services/*
 elif [ $function == all ]
-then # run unit tests for all functions in a collection
-    sls invoke test --compilers js:babel-core/register --path services/${collection}/test --root services/${collection}
+then # run unit tests for all functions in a service
+    sls invoke test --compilers js:babel-core/register --path services/${service}/test --root services/${service}
 else # run unit tests for a specific function
-    cd ./services/${collection} && sls invoke test --compilers js:babel-core/register --function ${function}
+    cd ./services/${service} && sls invoke test --compilers js:babel-core/register --function ${function}
 fi
 
 # Notes:

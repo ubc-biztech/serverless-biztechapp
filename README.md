@@ -55,13 +55,13 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Files and Services
 
-* `handlers/` - Our main handler functions.
-* `handlers/helpers.js` - Abstracted functions to be used by our handlers. Most functions that directly connect to the database are located here.
+* `services/` - Our main services.
+* `libs/` - Abstracted functions to be used by our handlers in each service. Most functions that directly connect to databases are located here.
 * `constants/` - Abstracted constants
 * `utils/` - Any other miscellaneous functions
 
-* `test/` - Unit tests.
-* `test_integration/` - Integration tests.
+* `services/*/test/` - Unit tests for the respective service.
+* `services/*/test_integration/` - Integration tests for the respective service.
 
 See [testing](#testing) for information on how to run them.
 
@@ -90,20 +90,22 @@ See our [notion doc](https://www.notion.so/ubcbiztech/Unit-Testing-Notes-a7016cc
 **Unit tests** can be run using the following command:
 
 ```
-npm run utest <function_name>
+npm run utest <service_name> <function_name>
 ```
-This command runs a shell script that indirectly runs the real command: `sls invoke test -f <function_name>`
+This command runs a shell script that indirectly runs the serverless command: `sls invoke test -f <function>`
 
-Not specifying a `function_name` will run all the tests instead.
+Not specifying a `service_name` will run all the tests in the repo.
+
+Specifying a `service_name`, but not specifying a `function_name` will run all the tests in a service.
 
 **Integration tests** can be run using the following command:
 
 ```
-npm run itest <test_name>
+npm run itest <function_name>
 ```
-This command runs a shell script that indirectly runs the real command: `mocha ./test_integration`
+This command runs a shell script that indirectly runs the mocha command: `mocha <path_to_function>`
 
-Not specifying a `test_name` will run all the tests instead.
+Not specifying a `function_name` will run all the tests instead.
 
 In order to run integration tests, however, you need to [deploy](#development-dev) the API to dev environment first.
 
@@ -115,14 +117,25 @@ Both integration and unit tests can be run at the same time by:
 npm run test
 ```
 
-## Deployment
+### Running tests from inside each service file
+
+The test functions can also be run from inside each of the service files.
+
+When you do so, the nested `package.json` files are set up so that the `service_name` argument is no longer needed, and the first argument of the command is replaced with the `function_name` instead.
+
+For example, from inside `service/hello`, you will be able to run:
+
+`npm run utest <function_name>` and
+`npm run itest <function_name>`
+
+## Deployment (CHANGE README AFTER MICROSERVICE CHANGES COMPLETE)
 
 Our serverless API is deployed into different environments:
 
 ### Development (dev)
 - Used for active **backend development**
 - Uses databases `biztechUsers`, `biztechegistrations`, etc.
-To deploy to this environment, run the following:
+To deploy to this environment, run the following in each service file:
 
 ```
 sls deploy

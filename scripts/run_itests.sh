@@ -1,17 +1,17 @@
 #!/bin/bash
 
 # By default, use "all"
-collection=${1:-all}
+service=${1:-all}
 function=${2:-all}
 
-if [ $collection == all ]
-then # run integration tests for all collections
+if [ $service == all ]
+then # run integration tests for all services
     mocha --require babel-core/register ./services/*/test_integration
 elif [ $function == all ]
-then # run integration tests for all functions in a collection
-    mocha --require babel-core/register  ./services/${collection}/test_integration
+then # run integration tests for all functions in a service
+    mocha --require babel-core/register  ./services/${service}/test_integration
 else # run integration tests for a specific function
-    mocha --require babel-core/register  ./services/${collection}/test_integration/${function}
+    mocha --require babel-core/register  ./services/${service}/test_integration/${function}
 fi
 
 # Notes:
