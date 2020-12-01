@@ -53,6 +53,7 @@ functions:
           method: post
           cors: true
           authorizer:
+            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   eventDelete:
@@ -67,6 +68,7 @@ functions:
               id: true
           cors: true
           authorizer:
+            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   eventGetAll:
@@ -93,6 +95,7 @@ functions:
               year: true
           cors: true
           authorizer:
+            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   eventGet:
@@ -111,5 +114,6 @@ functions:
                 users: false
           cors: true
           authorizer:
+            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
