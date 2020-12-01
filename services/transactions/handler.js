@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import helpers from '../../lib/helpers';
+import db from '../../lib/db';
 import { isEmpty } from '../../utils/functions';
 import { TRANSACTIONS_TABLE, USERS_TABLE } from '../../constants/tables';
 
@@ -23,7 +24,7 @@ export const getAll = async (event, ctx, callback) => {
     }
 
     // scan the table
-    const transaction = await helpers.scan(TRANSACTIONS_TABLE, filters);
+    const transaction = await db.scan(TRANSACTIONS_TABLE, filters);
 
     let items = {};
 
@@ -74,7 +75,7 @@ export const create = async (event, ctx, callback) => {
     });
 
     // check that the user id exists
-    const existingUser = await helpers.getOne(data.userId, USERS_TABLE);
+    const existingUser = await db.getOne(data.userId, USERS_TABLE);
     if(isEmpty(existingUser)) throw helpers.notFoundResponse('User', data.userId);
 
     // generate a random uuid for the transaction
@@ -83,7 +84,7 @@ export const create = async (event, ctx, callback) => {
     while(!data.id || !isEmpty(existingTransaction)) {
 
       data.id = uuidv4();
-      existingTransaction = await helpers.getOne(data.id, TRANSACTIONS_TABLE);
+      existingTransaction = await db.getOne(data.id, TRANSACTIONS_TABLE);
 
     }
 
@@ -108,7 +109,7 @@ export const create = async (event, ctx, callback) => {
     };
 
     // do the magic
-    const res = await helpers.create(item, TRANSACTIONS_TABLE);
+    const res = await db.create(item, TRANSACTIONS_TABLE);
     const response = helpers.createResponse(201, {
       message: 'Transaction Created!',
       response: res,
