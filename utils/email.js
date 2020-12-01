@@ -2,7 +2,7 @@ const sgMail = require('@sendgrid/mail');
 sgMail.setApiKey(process.env.SENDGRID_KEY);
 
 // Returns a promise
-module.exports.send = (msg) => {
+export const send = (msg) => {
 
   if (!msg.from) {
 
