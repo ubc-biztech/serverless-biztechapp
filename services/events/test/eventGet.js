@@ -12,7 +12,7 @@ import { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } from '../../../co
 import eventData from './events.json';
 const event = eventData.Items[0];
 const getEventResponse = { Item: event };
-import eventRegistrationResponse from './eventRegistrations.json';
+import getEventRegistrationResponse from './eventRegistrations.json';
 
 describe('eventGet', () => {
 
@@ -42,7 +42,7 @@ describe('eventGet', () => {
 
       if(params.TableName.includes(USER_REGISTRATIONS_TABLE)) {
 
-        callback(null, eventRegistrationResponse);
+        callback(null, getEventRegistrationResponse);
 
       }
 

@@ -15,8 +15,8 @@ const NUM_EVENTS_TEST_YEAR = 2;
 const TEST_ID = 'existingEvent3';
 const NUM_EVENTS_TEST_ID = 2;
 
-import getEventsResponse from './events.json';
-import getRegistrationResponse from './eventRegistrations.json';
+import * as getEventsResponse from './events.json';
+import * as getRegistrationResponse from './eventRegistrations.json';
 
 describe('eventGetAll', () => {
 

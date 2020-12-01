@@ -45,7 +45,7 @@ provider:
 custom: ${file(../../serverless.common.yml):custom}
 
 functions:
-    eventCreate:
+  eventCreate:
     handler: handler.create
     events:
       - http:

@@ -1,16 +1,16 @@
 'use strict';
-const chai = require('chai');
+import chai from 'chai';
 const expect = chai.expect;
 
-const helpers = require('./helpers');
-const {
+import helpers from '../../../lib/testHelpers';
+import {
   INTEGRATION_TEST_EVENT_ID,
   INTEGRATION_TEST_YEAR,
   INTEGRATION_TEST_PERSISTENT_EVENT_ID,
   INTEGRATION_TEST_PERSISTENT_YEAR,
   INTEGRATION_TEST_NON_EXISTANT_EVENT_ID,
   INTEGRATION_TEST_NON_EXISTANT_YEAR,
-} = require('../constants/test');
+} from '../../../constants/test';
 
 describe('events integration', function () {
 
