@@ -1,0 +1,57 @@
+{
+    "Items": [
+        {
+            "id": "existingEvent1",
+            "year": 2020,
+            "capac": 123,
+            "createdAt": 1581227718674,
+            "description":	"I am a description",
+            "elocation": "UBC",   
+            "ename": "Existing Event",   
+            "startDate": "2020-02-09T05:55:11.131Z",
+            "endDate":	"2020-02-09T05:55:11.131Z",
+            "imageUrl":	"https://i.picsum.photos/id/236/700/400.jpg",
+            "updatedAt": 1581227718674
+        },
+        {
+            "id": "existingEvent2",
+            "year":2020,
+            "capac": 20,
+            "createdAt": 1581227718555,
+            "description":	"I am also a description",
+            "elocation": "Vancouver",   
+            "ename": "Existing Event Number 2",   
+            "startDate": "2020-02-09T05:55:11.131Z",
+            "endDate": "2020-02-09T05:55:11.131Z",
+            "imageUrl":	"https://i.picsum.photos/id/237/700/400.jpg",
+            "updatedAt": 1581227718555
+        },
+        {
+            "id": "existingEvent3",
+            "year":2019,
+            "capac": 20,
+            "createdAt": 1581227718555,
+            "description":	"I am also a description",
+            "elocation": "Vancouver",   
+            "ename": "Existing Event Number 2",   
+            "startDate": "2020-02-09T05:55:11.131Z",
+            "endDate": "2020-02-09T05:55:11.131Z",
+            "imageUrl":	"https://i.picsum.photos/id/237/700/400.jpg",
+            "updatedAt": 1581227718555
+        },
+                {
+            "id": "existingEvent3",
+            "year":2018,
+            "capac": 20,
+            "createdAt": 1581227718555,
+            "description":	"I am also a description",
+            "elocation": "Vancouver",   
+            "ename": "Existing Event Number 2",   
+            "startDate": "2020-02-09T05:55:11.131Z",
+            "endDate": "2020-02-09T05:55:11.131Z",
+            "imageUrl":	"https://i.picsum.photos/id/237/700/400.jpg",
+            "updatedAt": 1581227718555
+        }
+    ]
+  }
+  
