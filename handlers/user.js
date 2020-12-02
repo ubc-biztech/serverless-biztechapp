@@ -256,8 +256,8 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
     const existingUser = await helpers.getOne(id, USERS_TABLE);
     if(isEmpty(existingUser)) throw helpers.notFoundResponse('user', id);
 
-    const favedEventsList = existingUser['favedEventsID;year'] ? 
-        existingUser['favedEventsID;year'].values : undefined;
+    const favedEventsList = existingUser['favedEventsID;year'] ?
+      existingUser['favedEventsID;year'].values : undefined;
 
     let updateExpression = '';
     let conditionExpression = '';
@@ -274,6 +274,7 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
         'attribute_exists(id) and contains(#favedEvents, :eventIDAndYear)'; // if eventID does not exist, don't perform delete operation
 
     } else {
+
       //If user is trying to favourite an event that they've already favourited
       //OR if user is trying to unfavourite an event that is not favourited
       //In either of these cases, do nothing, but return a success message.
@@ -284,6 +285,7 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
         response: {}
       }));
       return null;
+
     }
 
     let expressionAttributeNames;
