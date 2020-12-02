@@ -1,9 +1,9 @@
-'use strict';
-const AWS = require('aws-sdk');
-const helpers = require('./helpers');
-const email = require('../utils/email');
-const { isEmpty } = require('../utils/functions');
-const { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } = require('../constants/tables');
+import AWS from 'aws-sdk';
+import registrationHelpers from './helpers';
+import helpers from '../../lib/helpers';
+import db from '../../lib/db';
+import { isEmpty } from '../../utils/functions';
+import { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } from '../../constants/tables';
 
 // const CHECKIN_COUNT_SANITY_CHECK = 500;
 
@@ -31,21 +31,21 @@ async function updateHelper(data, createNew, idString) {
   let registrationStatus = data.registrationStatus;
 
   // Check if the user exists
-  const existingUser = await helpers.getOne(id, USERS_TABLE);
+  const existingUser = await db.getOne(id, USERS_TABLE);
   if(isEmpty(existingUser)) throw helpers.notFoundResponse('User', id);
 
   // Check if the event exists
-  const existingEvent = await helpers.getOne(eventID, EVENTS_TABLE, { year });
+  const existingEvent = await db.getOne(eventID, EVENTS_TABLE, { year });
   if(isEmpty(existingEvent)) throw helpers.notFoundResponse('Event', eventID, year);
 
   // Check if the event is full
   if (registrationStatus == 'registered') {
 
-    const counts = await helpers.getEventCounts(eventIDAndYear);
+    const counts = await registrationHelpers.getEventCounts(eventIDAndYear);
 
     if (counts == null) {
 
-      throw helpers.dynamoErrorResponse({
+      throw db.dynamoErrorResponse({
         code: 'DYNAMODB ERROR',
         time: new Date().getTime(),
       });
@@ -100,7 +100,7 @@ async function createRegistration(registrationStatus, data, id, eventIDAndYear, 
       updateExpression,
       expressionAttributeValues,
       expressionAttributeNames
-    } = helpers.createUpdateExpression(updateObject);
+    } = db.createUpdateExpression(updateObject);
 
     // Because biztechRegistration table has a sort key, we cannot use helpers.updateDB()
     let params = {
@@ -137,7 +137,7 @@ async function createRegistration(registrationStatus, data, id, eventIDAndYear, 
 
   } catch(err) {
 
-    let errorResponse = helpers.dynamoErrorResponse(err);
+    let errorResponse = db.dynamoErrorResponse(err);
     const errBody = JSON.parse(errorResponse.body);
 
     // customize the error messsage if it is caused by the 'ConditionExpression' check
@@ -191,13 +191,13 @@ async function sendEmail(user, eventName, registrationStatus) {
       }
     };
 
-    await email.send(msg);
+    await registrationHelpers.sendEmail(msg);
 
   }
 
 }
 
-module.exports.post = async (event, ctx, callback) => {
+export const post = async (event, ctx, callback) => {
 
   try {
 
@@ -226,7 +226,7 @@ module.exports.post = async (event, ctx, callback) => {
 
 };
 
-module.exports.put = async (event, ctx, callback) => {
+export const put = async (event, ctx, callback) => {
 
   try {
 
@@ -260,7 +260,7 @@ module.exports.put = async (event, ctx, callback) => {
 
 
 // Return list of entries with the matching id
-module.exports.get = async (event, ctx, callback) => {
+export const get = async (event, ctx, callback) => {
 
   try {
 
@@ -272,7 +272,7 @@ module.exports.get = async (event, ctx, callback) => {
 
     }
 
-    let timeStampFilter = undefined;
+    let timeStampFilter;
     if (queryString.hasOwnProperty('afterTimestamp')) {
 
       timeStampFilter = Number(queryString.afterTimestamp);
@@ -297,7 +297,7 @@ module.exports.get = async (event, ctx, callback) => {
         }
       };
 
-      registrations = await helpers.scan(USER_REGISTRATIONS_TABLE, filterExpression);
+      registrations = await db.scan(USER_REGISTRATIONS_TABLE, filterExpression);
 
       // filter by id query, if given 
       if(queryString.hasOwnProperty('id')) {
@@ -316,12 +316,12 @@ module.exports.get = async (event, ctx, callback) => {
         }
       };
 
-      registrations = await helpers.scan(USER_REGISTRATIONS_TABLE, filterExpression);
+      registrations = await db.scan(USER_REGISTRATIONS_TABLE, filterExpression);
 
     }
 
     // filter by timestamp, if given
-    if(timeStampFilter !== undefined) {
+    if(timeStampFilter) {
 
       registrations = registrations.filter(entry => entry.updatedAt > timeStampFilter);
 
@@ -345,7 +345,7 @@ module.exports.get = async (event, ctx, callback) => {
 };
 
 // (used for testing)
-module.exports.delete = async (event, ctx, callback) => {
+export const del = async (event, ctx, callback) => {
 
   try {
 
@@ -363,7 +363,7 @@ module.exports.delete = async (event, ctx, callback) => {
 
     const eventIDAndYear = data.eventID + ';' + data.year;
 
-    const res = await helpers.deleteOne(id, USER_REGISTRATIONS_TABLE, { ['eventID;year']: eventIDAndYear });
+    const res = await db.deleteOne(id, USER_REGISTRATIONS_TABLE, { ['eventID;year']: eventIDAndYear });
 
     const response = helpers.createResponse(200, {
       message: 'Registration entry Deleted!',

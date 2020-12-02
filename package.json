@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
-    "@sendgrid/mail": "^6.5.3",
     "serverless": "^1.67.2"
   },
   "scripts": {
