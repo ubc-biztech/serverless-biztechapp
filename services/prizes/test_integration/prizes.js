@@ -1,12 +1,14 @@
 'use strict';
-const chai = require('chai');
+import chai from 'chai';
 const expect = chai.expect;
 
-const helpers = require('./helpers');
-const {
+import helpers from '../../../lib/testHelpers';
+import {
   INTEGRATION_TEST_PRIZE_ID,
   INTEGRATION_TEST_NON_EXISTANT_PRIZE_ID
-} = require('../constants/test');
+} from '../../../constants/test';
+
+const SERVICE = 'prizes';
 
 describe('prizes integration', function () {
 
@@ -16,7 +18,7 @@ describe('prizes integration', function () {
 
     it('prizes GET returns 200 on success', async () => {
 
-      return helpers.invokeLambda('prizeGetAll', '')
+      return helpers.invokeLambda(SERVICE, 'prizeGetAll', '')
         .then(([statusCode]) => {
 
           expect(statusCode).to.equal(200);
@@ -42,7 +44,7 @@ describe('prizes integration', function () {
 
     it('prizes POST returns 201 on success', async () => {
 
-      await helpers.invokeLambda('prizeCreate', JSON.stringify(prizePayload))
+      await helpers.invokeLambda(SERVICE, 'prizeCreate', JSON.stringify(prizePayload))
         .then(([statusCode]) => {
 
           expect(statusCode).to.equal(201);
@@ -53,7 +55,7 @@ describe('prizes integration', function () {
 
     it('prizes POST returns 409 when prize id already exists', async () => {
 
-      return helpers.invokeLambda('prizeCreate', JSON.stringify(prizePayload))
+      return helpers.invokeLambda(SERVICE, 'prizeCreate', JSON.stringify(prizePayload))
         .then(([statusCode, body]) => {
 
           expect(statusCode).to.equal(409);
@@ -81,7 +83,7 @@ describe('prizes integration', function () {
         body: JSON.stringify(prizePayload)
       };
 
-      return helpers.invokeLambda('prizeUpdate', JSON.stringify(payload))
+      return helpers.invokeLambda(SERVICE, 'prizeUpdate', JSON.stringify(payload))
         .then(([statusCode]) => {
 
           expect(statusCode).to.equal(404);
@@ -98,7 +100,7 @@ describe('prizes integration', function () {
         },
         body: JSON.stringify(prizePayload)
       };
-      await helpers.invokeLambda('prizeUpdate', JSON.stringify(payload))
+      await helpers.invokeLambda(SERVICE, 'prizeUpdate', JSON.stringify(payload))
         .then(([statusCode]) => {
 
           expect(statusCode).to.equal(200);
@@ -119,7 +121,7 @@ describe('prizes integration', function () {
         }
       };
 
-      return helpers.invokeLambda('prizeDelete', JSON.stringify(payload))
+      return helpers.invokeLambda(SERVICE, 'prizeDelete', JSON.stringify(payload))
         .then(([statusCode]) => {
 
           expect(statusCode).to.equal(404);
@@ -135,7 +137,7 @@ describe('prizes integration', function () {
           id: INTEGRATION_TEST_PRIZE_ID
         }
       };
-      await helpers.invokeLambda('prizeDelete', JSON.stringify(payload))
+      await helpers.invokeLambda(SERVICE, 'prizeDelete', JSON.stringify(payload))
         .then(([statusCode]) => {
 
           expect(statusCode).to.equal(200);
