@@ -9,7 +9,7 @@ const AWSMock = require('aws-sdk-mock');
 let wrapped = mochaPlugin.getWrapper('userUpdate', '/handlers/user.js', 'update');
 
 const testEntry = {
-  id: '6456456464',
+  id: 6456456464,
   fname: 'insanetest',
   lname: 'dude',
   faculty: 'Science',
@@ -19,7 +19,7 @@ const testEntry = {
 
 describe('userUpdate', () => {
 
-  const existingUserIds = ['6456456464'];
+  const existingUserIds = [6456456464];
 
   before(() => {
 
@@ -50,11 +50,23 @@ describe('userUpdate', () => {
 
   });
 
-  it('returns 404 when given unknown id', async () => {
+  it('returns 406 when given id that is not a number', async () => {
+    const badID = 'badID';
 
     const response = await wrapped.run({
       body: JSON.stringify(testEntry),
-      pathParameters: { id: 'badID' }
+      pathParameters: { id: badID }
+    });
+    expect(response.statusCode).to.equal(406);
+
+  });
+
+  it('returns 404 when given unknown id', async () => {
+    const unknownID = '2468';
+
+    const response = await wrapped.run({
+      body: JSON.stringify(testEntry),
+      pathParameters: { id: unknownID }
     });
     expect(response.statusCode).to.equal(404);
 

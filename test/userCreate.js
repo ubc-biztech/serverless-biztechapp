@@ -10,7 +10,7 @@ let wrapped = mochaPlugin.getWrapper('userCreate', '/handlers/user.js', 'create'
 const { USER_INVITE_CODES_TABLE } = require('../constants/tables');
 
 const testEntry = {
-  id: '6456456464',
+  id: 6456456464,
   fname: 'insanetest',
   lname: 'dude',
   faculty: 'Science',

@@ -180,7 +180,9 @@ module.exports.update = async (event, ctx, callback) => {
   try {
 
     if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('event');
-    const id = event.pathParameters.id;
+
+    const id = parseInt(event.pathParameters.id, 10);
+    if(isNaN(id)) throw helpers.inputError('Id path parameter must be a number', event.pathParameters);
 
     const existingUser = await helpers.getOne(id, USERS_TABLE);
     if(isEmpty(existingUser)) throw helpers.notFoundResponse('user', id);
@@ -319,7 +321,9 @@ module.exports.delete = async (event, ctx, callback) => {
 
     // check that the param was given
     if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('event');
-    const id = event.pathParameters.id;
+    
+    const id = parseInt(event.pathParameters.id, 10);
+    if(isNaN(id)) throw helpers.inputError('Id path parameter must be a number', event.pathParameters);
 
     // check that the user exists
     const existingUser = await helpers.getOne(id, USERS_TABLE);
