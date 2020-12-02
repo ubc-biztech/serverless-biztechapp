@@ -51,6 +51,7 @@ describe('userUpdate', () => {
   });
 
   it('returns 406 when given id that is not a number', async () => {
+
     const badID = 'badID';
 
     const response = await wrapped.run({
@@ -62,6 +63,7 @@ describe('userUpdate', () => {
   });
 
   it('returns 404 when given unknown id', async () => {
+
     const unknownID = '2468';
 
     const response = await wrapped.run({

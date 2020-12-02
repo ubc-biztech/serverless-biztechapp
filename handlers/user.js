@@ -321,7 +321,7 @@ module.exports.delete = async (event, ctx, callback) => {
 
     // check that the param was given
     if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('event');
-    
+
     const id = parseInt(event.pathParameters.id, 10);
     if(isNaN(id)) throw helpers.inputError('Id path parameter must be a number', event.pathParameters);
 
