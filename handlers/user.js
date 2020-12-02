@@ -256,20 +256,34 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
     const existingUser = await helpers.getOne(id, USERS_TABLE);
     if(isEmpty(existingUser)) throw helpers.notFoundResponse('user', id);
 
+    const favedEventsList = existingUser['favedEventsID;year'] ? 
+        existingUser['favedEventsID;year'].values : undefined;
+
     let updateExpression = '';
     let conditionExpression = '';
-    if (isFavourite) {
+    if (isFavourite && (!favedEventsList || !favedEventsList.includes(eventIDAndYear))) {
 
       updateExpression = 'add #favedEvents :eventsIDAndYear';
       conditionExpression =
         'attribute_exists(id) and (not contains(#favedEvents, :eventIDAndYear))'; // if eventID already exists, don't perform add operation
 
-    } else {
+    } else if (!isFavourite && (favedEventsList && favedEventsList.includes(eventIDAndYear))){
 
       updateExpression = 'delete #favedEvents :eventsIDAndYear';
       conditionExpression =
         'attribute_exists(id) and contains(#favedEvents, :eventIDAndYear)'; // if eventID does not exist, don't perform delete operation
 
+    } else {
+      //If user is trying to favourite an event that they've already favourited
+      //OR if user is trying to unfavourite an event that is not favourited
+      //In either of these cases, do nothing, but return a success message.
+      let successMsg = 'Already ' + (isFavourite ? 'favourited' : 'unfavourited');
+      successMsg += ` event with eventID ${eventID} for the year ${year}`;
+      callback(null, helpers.createResponse(200, {
+        message: successMsg,
+        response: {}
+      }));
+      return null;
     }
 
     let expressionAttributeNames;
