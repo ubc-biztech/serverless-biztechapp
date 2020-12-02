@@ -2,7 +2,7 @@
 const chai = require('chai');
 const expect = chai.expect;
 
-const helpers = require('./helpers');
+const helpers = require('../../../test_integration/helpers');
 
 describe('memberships integration', function () {
 
