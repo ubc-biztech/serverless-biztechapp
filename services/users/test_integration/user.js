@@ -21,7 +21,7 @@ describe('user integration', function () {
 
     it('user GET doesn\'t exist returns 404', async () => {
 
-      return helpers.invokeLambda('userGet', JSON.stringify(defaultPayload))
+      return helpers.invokeLambda(SERVICE, 'userGet', JSON.stringify(defaultPayload))
         .then(([statusCode]) => {
 
           expect(statusCode).to.equal(404);

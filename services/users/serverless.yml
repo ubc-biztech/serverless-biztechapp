@@ -46,13 +46,14 @@ custom: ${file(../../serverless.common.yml):custom}
 
 functions:
   userCreate:
-    handler: handlercreate
+    handler: handler.create
     events:
       - http:
           path: users/
           method: post
           cors: true
           authorizer:
+            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   userGet:
@@ -67,6 +68,7 @@ functions:
                 id: true
           cors: true
           authorizer:
+            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   userGetAll:
@@ -77,6 +79,7 @@ functions:
           method: get
           cors: true
           authorizer:
+            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   userUpdate:
@@ -90,6 +93,7 @@ functions:
               id: true
           cors: true
           authorizer:
+            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   userFavouriteEvent:
@@ -103,6 +107,7 @@ functions:
               id: true
           cors: true
           authorizer:
+            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   userDelete:
@@ -116,6 +121,7 @@ functions:
               id: true
           cors: true
           authorizer:
+            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
 

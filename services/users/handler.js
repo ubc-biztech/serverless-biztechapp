@@ -1,4 +1,3 @@
-'use strict';
 const AWS = require('aws-sdk');
 
 import helpers from '../../lib/helpers';
