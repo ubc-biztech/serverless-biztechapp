@@ -1,9 +1,11 @@
 'use strict';
-const chai = require('chai');
+import chai from 'chai';
 const expect = chai.expect;
-const { INTEGRATION_TEST_USER_ID, INTEGRATION_TEST_PERSISTENT_EVENT_ID, INTEGRATION_TEST_PERSISTENT_YEAR } = require('../constants/test');
+import { INTEGRATION_TEST_USER_ID, INTEGRATION_TEST_PERSISTENT_EVENT_ID, INTEGRATION_TEST_PERSISTENT_YEAR } from '../../../constants/test';
 
-const helpers = require('./helpers');
+import helpers from '../../../lib/testHelpers';
+
+const SERVICE = 'users';
 
 describe('user integration', function () {
 
@@ -48,7 +50,7 @@ describe('user integration', function () {
 
     it('user POST returns 201', async () => {
 
-      return helpers.invokeLambda('userCreate', JSON.stringify(userCreatePayload))
+      return helpers.invokeLambda(SERVICE, 'userCreate', JSON.stringify(userCreatePayload))
         .then(([statusCode, body]) => {
 
           expect(statusCode).to.equal(201);
@@ -60,7 +62,7 @@ describe('user integration', function () {
 
     it('user POST already exists returns 409', async () => {
 
-      return helpers.invokeLambda('userCreate', JSON.stringify(userCreatePayload))
+      return helpers.invokeLambda(SERVICE, 'userCreate', JSON.stringify(userCreatePayload))
         .then(([statusCode]) => {
 
           expect(statusCode).to.equal(409);
@@ -91,7 +93,7 @@ describe('user integration', function () {
 
     it('user PATCH on user that exists returns 200', async() => {
 
-      return helpers.invokeLambda('userUpdate', JSON.stringify(userPatchPayload))
+      return helpers.invokeLambda(SERVICE, 'userUpdate', JSON.stringify(userPatchPayload))
         .then(([statusCode]) => {
 
           expect(statusCode).to.equal(200);
@@ -113,7 +115,7 @@ describe('user integration', function () {
         }),
       };
 
-      return helpers.invokeLambda('userFavouriteEvent', JSON.stringify(payload))
+      return helpers.invokeLambda(SERVICE, 'userFavouriteEvent', JSON.stringify(payload))
         .then(([statusCode]) => {
 
           expect(statusCode).to.equal(200);
@@ -135,7 +137,7 @@ describe('user integration', function () {
         }),
       };
 
-      return helpers.invokeLambda('userFavouriteEvent', JSON.stringify(payload))
+      return helpers.invokeLambda(SERVICE, 'userFavouriteEvent', JSON.stringify(payload))
         .then(([statusCode]) => {
 
           expect(statusCode).to.equal(200);
@@ -146,7 +148,7 @@ describe('user integration', function () {
 
     it('user GET exists returns 200 and check PATCH success', async () => {
 
-      return helpers.invokeLambda('userGet', JSON.stringify(defaultPayload))
+      return helpers.invokeLambda(SERVICE, 'userGet', JSON.stringify(defaultPayload))
         .then(([statusCode, body]) => {
 
           expect(statusCode).to.equal(200);
@@ -167,7 +169,7 @@ describe('user integration', function () {
 
     it('user DELETE returns 200', async () => {
 
-      return helpers.invokeLambda('userDelete', JSON.stringify(defaultPayload))
+      return helpers.invokeLambda(SERVICE, 'userDelete', JSON.stringify(defaultPayload))
         .then(([statusCode]) => {
 
           expect(statusCode).to.equal(200);
@@ -178,7 +180,7 @@ describe('user integration', function () {
 
     it('user GET returns 404 to check DELETE worked', async () => {
 
-      return helpers.invokeLambda('userGet', JSON.stringify(defaultPayload))
+      return helpers.invokeLambda(SERVICE, 'userGet', JSON.stringify(defaultPayload))
         .then(([statusCode]) => {
 
           expect(statusCode).to.equal(404);
@@ -189,7 +191,7 @@ describe('user integration', function () {
 
     it('user PATCH on user that does not exist returns 404', async () => {
 
-      return helpers.invokeLambda('userGet', JSON.stringify(userPatchPayload))
+      return helpers.invokeLambda(SERVICE, 'userGet', JSON.stringify(userPatchPayload))
         .then(([statusCode]) => {
 
           expect(statusCode).to.equal(404);
