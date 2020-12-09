@@ -1,9 +1,9 @@
 provider:
   stage: ${opt:stage, 'dev'}
   apiKeys:
-    - ${opt:stage, 'dev'}-key
+    - ${opt:stage, 'dev'}-api-key
   runtime: nodejs12.x
-  region: us-east-1
+  region: us-west-2
 
 custom:
   prune:

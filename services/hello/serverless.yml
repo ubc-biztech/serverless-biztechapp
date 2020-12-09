@@ -1,4 +1,5 @@
-service: biztechApi-hello
+# Always deploy the "hello" endpoint first (for any new environment)
+service: biztechApi
 tenant: ianmh
 app: biztechapp
 
