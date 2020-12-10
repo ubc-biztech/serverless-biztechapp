@@ -187,7 +187,7 @@ export const update = async (event, ctx, callback) => {
     if(isEmpty(existingUser)) throw helpers.notFoundResponse('user', id);
 
     const data = JSON.parse(event.body);
-    const res = await helpers.updateDB(id, data, USERS_TABLE);
+    const res = await db.updateDB(id, data, USERS_TABLE);
     const response = helpers.createResponse(200, {
       message: `Updated event with id ${id}!`,
       response: res
@@ -326,7 +326,7 @@ export const del = async (event, ctx, callback) => {
     const existingUser = await db.getOne(id, USERS_TABLE);
     if(isEmpty(existingUser)) throw helpers.notFoundResponse('User', id);
 
-    const res = await helpers.deleteOne(id, USERS_TABLE);
+    const res = await db.deleteOne(id, USERS_TABLE);
     const response = helpers.createResponse(200, {
       message: 'User deleted!',
       response: res

@@ -1,9 +1,6 @@
 {
   "name": "biztechapi-users",
   "version": "1.0.0",
-  "dependencies": {
-    "uuid": "^8.3.1"
-  },
   "scripts": {
     "itest": "npm run itest users --prefix ../../",
     "utest": "npm run utest users --prefix ../../",
