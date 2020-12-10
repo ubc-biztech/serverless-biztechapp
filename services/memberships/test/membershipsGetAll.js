@@ -31,7 +31,6 @@ describe('membershipsGetAll', () => {
   it('return 200 response for getting all memberships', async() => {
 
     const response = await wrapped.run();
-    console.log(response);
     expect(response.statusCode).to.be.equal(200);
 
     const body = JSON.parse(response.body);

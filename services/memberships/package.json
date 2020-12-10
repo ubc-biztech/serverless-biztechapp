@@ -1,9 +1,6 @@
 {
   "name": "biztechapi-memberships",
   "version": "1.0.0",
-  "dependencies": {
-    "uuid": "^8.3.1"
-  },
   "scripts": {
     "itest": "npm run itest memberships --prefix ../../",
     "utest": "npm run utest memberships --prefix ../../",
