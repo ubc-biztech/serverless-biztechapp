@@ -24,11 +24,6 @@ provider:
   iamRoleStatements:
     - Effect: Allow
       Action:
-        - cognito-idp:AdminAddUserToGroup
-      Resource:
-        - "arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp"
-    - Effect: Allow
-      Action:
         - dynamodb:DescribeTable
         - dynamodb:Query
         - dynamodb:Scan
@@ -42,19 +37,8 @@ provider:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechUsers${file(./config.${self:provider.stage}.json):ENVIRONMENT}"
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechEvents${file(./config.${self:provider.stage}.json):ENVIRONMENT}"
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechRegistration${file(./config.${self:provider.stage}.json):ENVIRONMENT}"
-        - "arn:aws:dynamodb:us-west-2:432714361962:table/inviteCodes${file(./config.${self:provider.stage}.json):ENVIRONMENT}"
 
 functions:
-  admin:
-    handler: handlers/admin.create
-    events:
-      - http:
-          path: admin/
-          method: post
-          cors: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   eventCreate:
     handler: handlers/event.create
     events:
@@ -119,16 +103,6 @@ functions:
               querystrings:
                 count: false
                 users: false
-          cors: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
-  inviteCreate:
-    handler: handlers/inviteCodes.invite
-    events:
-      - http:
-          path: inviteCodes
-          method: post
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS

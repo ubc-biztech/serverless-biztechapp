@@ -1,8 +1,8 @@
 'use strict';
-const AWS = require('aws-sdk');
-const helpers = require('./helpers');
+import AWS from 'aws-sdk';
+import helpers from '../../lib/helpers';
 
-module.exports.create = async (event, ctx, callback) => {
+export const create = async (event, ctx, callback) => {
 
   const cognito = new AWS.CognitoIdentityServiceProvider();
 
