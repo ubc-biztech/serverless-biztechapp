@@ -1,10 +1,11 @@
 'use strict';
-const helpers = require('./helpers');
-const crypto = require('crypto');
-const email = require('../utils/email');
-const { USER_INVITE_CODES_TABLE } = require('../constants/tables');
+import crypto from 'crypto';
+import inviteHelpers from './helpers';
+import helpers from '../../lib/helpers';
+import db from '../../lib/db';
+import { USER_INVITE_CODES_TABLE } from '../../constants/tables';
 
-module.exports.invite = async (event, ctx, callback) => {
+export const invite = async (event, ctx, callback) => {
 
   try {
 
@@ -16,7 +17,7 @@ module.exports.invite = async (event, ctx, callback) => {
     const id = crypto.randomBytes(20).toString('hex');
     const item = { id, email: data.email };
 
-    const res = await helpers.create(item, USER_INVITE_CODES_TABLE);
+    const res = await db.create(item, USER_INVITE_CODES_TABLE);
 
     const msg = {
       to: data.email,
@@ -26,7 +27,7 @@ module.exports.invite = async (event, ctx, callback) => {
       }
     };
 
-    email.send(msg);
+    inviteHelpers.sendEmail(msg);
 
     const response = helpers.createResponse(200, {
       message: 'Invite code created & sent to ' + data.email,
