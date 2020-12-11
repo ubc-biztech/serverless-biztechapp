@@ -9,7 +9,7 @@ import AWSMock from 'aws-sdk-mock';
 let wrapped = mochaPlugin.getWrapper('userDelete', '/handler.js', 'del');
 
 const userPayload = {
-  id: '6456456464',
+  id: 6456456464,
   fname: 'insanetest',
   lname: 'dude',
   faculty: 'Science',
@@ -18,7 +18,7 @@ const userPayload = {
 
 describe('userDelete', () => {
 
-  const existingUsers = ['userId'];
+  const existingUsers = [1234];
 
   before(() => {
 
@@ -62,16 +62,25 @@ describe('userDelete', () => {
 
   it('return 404 for trying to delete a user that does not exist', async () => {
 
-    const invalidId = 'invalidUser';
+    const invalidId = '2468';
 
     const response = await wrapped.run({ pathParameters: { id: invalidId } });
     expect(response.statusCode).to.be.equal(404);
 
   });
 
+  it('return 406 for inputting a malformed user id (string instead of number)', async () => {
+
+    const invalidId = 'badID';
+
+    const response = await wrapped.run({ pathParameters: { id: invalidId } });
+    expect(response.statusCode).to.be.equal(406);
+
+  });
+
   it('return 200 for successfully deleting a user', async () => {
 
-    const validId = 'userId';
+    const validId = '1234';
 
     const response = await wrapped.run({ pathParameters: { id: validId } });
     expect(response.statusCode).to.be.equal(200);

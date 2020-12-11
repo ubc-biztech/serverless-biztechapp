@@ -124,7 +124,51 @@ describe('user integration', function () {
 
     });
 
+    it('user favouriteEvent PATCH returns 200 for an already favourited event', async () => {
+
+      const payload = {
+        pathParameters: {
+          id: INTEGRATION_TEST_USER_ID,
+        },
+        body: JSON.stringify({
+          isFavourite: true,
+          eventID: INTEGRATION_TEST_PERSISTENT_EVENT_ID,
+          year: INTEGRATION_TEST_PERSISTENT_YEAR
+        }),
+      };
+
+      return helpers.invokeLambda(SERVICE, 'userFavouriteEvent', JSON.stringify(payload))
+        .then(([statusCode]) => {
+
+          expect(statusCode).to.equal(200);
+
+        });
+
+    });
+
     it('user unfavouriteEvent PATCH returns 200', async () => {
+
+      const payload = {
+        pathParameters: {
+          id: INTEGRATION_TEST_USER_ID,
+        },
+        body: JSON.stringify({
+          isFavourite: false,
+          eventID: INTEGRATION_TEST_PERSISTENT_EVENT_ID,
+          year: INTEGRATION_TEST_PERSISTENT_YEAR
+        }),
+      };
+
+      return helpers.invokeLambda(SERVICE, 'userFavouriteEvent', JSON.stringify(payload))
+        .then(([statusCode]) => {
+
+          expect(statusCode).to.equal(200);
+
+        });
+
+    });
+
+    it('user unfavouriteEvent PATCH returns 200 for an already unfavourited event', async () => {
 
       const payload = {
         pathParameters: {
