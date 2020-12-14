@@ -1,4 +1,3 @@
-'use strict';
 import AWS from 'aws-sdk';
 import helpers from '../../lib/helpers';
 

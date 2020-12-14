@@ -27,7 +27,7 @@ provider:
       Action:
         - dynamodb:PutItem
       Resource:
-        - "arn:aws:dynamodb:us-west-2:432714361962:table/inviteCodes${file(./config.${self:provider.stage}.json):ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/inviteCodes${file(../../config.${self:provider.stage}.json):ENVIRONMENT}"
 
 custom: ${file(../../serverless.common.yml):custom}
 

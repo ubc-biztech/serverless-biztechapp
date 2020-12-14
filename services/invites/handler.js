@@ -1,4 +1,3 @@
-'use strict';
 import crypto from 'crypto';
 import inviteHelpers from './helpers';
 import helpers from '../../lib/helpers';
