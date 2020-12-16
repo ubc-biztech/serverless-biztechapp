@@ -126,7 +126,7 @@ describe('events integration', function () {
 
       const updatePayload = {
         ename: 'Updated Event',
-        description: 'Updated test event description',
+        description: 'DO NOT DELETE',
         capac: 100,
         facebookUrl: 'https://www.facebook.com/BizTechUBC/',
         imageUrl: 'https://www.facebook.com/BizTechUBC/',
