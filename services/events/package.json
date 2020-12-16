@@ -1,7 +1,6 @@
 {
   "name": "biztechapi-events",
   "version": "1.0.0",
-  "dependencies": {},
   "scripts": {
     "itest": "npm run itest events --prefix ../../",
     "utest": "npm run utest events --prefix ../../",
