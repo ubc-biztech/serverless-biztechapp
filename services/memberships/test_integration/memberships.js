@@ -1,8 +1,10 @@
 'use strict';
-const chai = require('chai');
+import chai from 'chai';
 const expect = chai.expect;
 
-const helpers = require('./helpers');
+import helpers from '../../../lib/testHelpers';
+
+const SERVICE = 'memberships';
 
 describe('memberships integration', function () {
 
@@ -12,7 +14,7 @@ describe('memberships integration', function () {
 
     it('memberships GET returns 200 on success', async () => {
 
-      return helpers.invokeLambda('membershipsGetAll', '')
+      return helpers.invokeLambda(SERVICE, 'membershipsGetAll', '')
         .then(([statusCode, body]) => {
 
           expect(statusCode).to.equal(200);
