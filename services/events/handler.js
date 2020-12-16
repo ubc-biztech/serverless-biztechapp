@@ -1,12 +1,13 @@
-'use strict';
-const AWS = require('aws-sdk');
-const helpers = require('./helpers');
-const sorters = require('../utils/sorters');
-const { isEmpty } = require('../utils/functions');
-const { MAX_BATCH_ITEM_COUNT } = require('../constants/dynamodb');
-const { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } = require('../constants/tables');
+import AWS from 'aws-sdk';
+import eventHelpers from './helpers';
+import helpers from '../../lib/helpers';
+import db from '../../lib/db';
+import { alphabeticalComparer } from '../../utils/sorters';
+import { isEmpty } from '../../utils/functions';
+import { MAX_BATCH_ITEM_COUNT } from '../../constants/dynamodb';
+import { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } from '../../constants/tables';
 
-module.exports.create = async (event, ctx, callback) => {
+export const create = async (event, ctx, callback) => {
 
   try {
 
@@ -19,7 +20,7 @@ module.exports.create = async (event, ctx, callback) => {
       capac: { required: true, type: 'number' }
     });
 
-    const existingEvent = await helpers.getOne(data.id, EVENTS_TABLE, { year: data.year });
+    const existingEvent = await db.getOne(data.id, EVENTS_TABLE, { year: data.year });
     if(!isEmpty(existingEvent)) throw helpers.duplicateResponse('event id and year', data);
 
     const item = {
@@ -39,7 +40,7 @@ module.exports.create = async (event, ctx, callback) => {
       updatedAt: timestamp
     };
 
-    const res = await helpers.create(item, EVENTS_TABLE);
+    const res = await db.create(item, EVENTS_TABLE);
 
     const response = helpers.createResponse(201, {
       message: `Created event with id ${data.id} for the year ${data.year}!`,
@@ -61,8 +62,9 @@ module.exports.create = async (event, ctx, callback) => {
 
 };
 
-//DELETE /events/{id}/{year}
-module.exports.delete = async (event, ctx, callback) => {
+// DELETE /events/{id}/{year}
+// eslint-disable-next-line
+export const del = async (event, ctx, callback) => {
 
   try {
 
@@ -73,9 +75,9 @@ module.exports.delete = async (event, ctx, callback) => {
     const year = parseInt(event.pathParameters.year, 10);
     if(isNaN(year)) throw helpers.inputError('Year path parameter must be a number', event.pathParameters);
 
-    const existingEvent = await helpers.getOne(id, EVENTS_TABLE, { year });
+    const existingEvent = await db.getOne(id, EVENTS_TABLE, { year });
     if(isEmpty(existingEvent)) throw helpers.notFoundResponse('event', id);
-    const res = await helpers.deleteOne(id, EVENTS_TABLE, { year });
+    const res = await db.deleteOne(id, EVENTS_TABLE, { year });
 
     const response = helpers.createResponse(200, {
       message: `Deleted event with id '${id}' for the year ${year}!`,
@@ -97,7 +99,7 @@ module.exports.delete = async (event, ctx, callback) => {
 };
 
 // /events 
-module.exports.getAll = async (event, ctx, callback) => {
+export const getAll = async (event, ctx, callback) => {
 
   try {
 
@@ -122,7 +124,7 @@ module.exports.getAll = async (event, ctx, callback) => {
     }
 
     // scan
-    let events = await helpers.scan(EVENTS_TABLE, filterExpression);
+    let events = await db.scan(EVENTS_TABLE, filterExpression);
 
     if(event && event.queryStringParameters && event.queryStringParameters.hasOwnProperty('id')) {
 
@@ -133,11 +135,11 @@ module.exports.getAll = async (event, ctx, callback) => {
     // get event counts
     for(event of events) {
 
-      event.counts = await helpers.getEventCounts(`${event.id};${event.year}`);
+      event.counts = await eventHelpers.getEventCounts(`${event.id};${event.year}`);
 
     }
     // sort the events by startDate
-    events.sort(sorters.alphabeticalComparer('startDate'));
+    events.sort(alphabeticalComparer('startDate'));
 
     const response = helpers.createResponse(200, events);
     callback(null, response);
@@ -154,7 +156,7 @@ module.exports.getAll = async (event, ctx, callback) => {
 };
 
 // PATCH events/{id}/{year}
-module.exports.update = async (event, ctx, callback) => {
+export const update = async (event, ctx, callback) => {
 
   try {
 
@@ -165,7 +167,7 @@ module.exports.update = async (event, ctx, callback) => {
     const year = parseInt(event.pathParameters.year, 10);
     if(isNaN(year)) throw helpers.inputError('Year path parameter must be a number', event.pathParameters);
 
-    const existingEvent = await helpers.getOne(id, EVENTS_TABLE, { year });
+    const existingEvent = await db.getOne(id, EVENTS_TABLE, { year });
     if(isEmpty(existingEvent)) throw helpers.notFoundResponse('event', id, year);
 
     const data = JSON.parse(event.body);
@@ -176,7 +178,7 @@ module.exports.update = async (event, ctx, callback) => {
       updateExpression,
       expressionAttributeValues,
       expressionAttributeNames
-    } = helpers.createUpdateExpression(data);
+    } = db.createUpdateExpression(data);
 
     // construct the param object
     let params = {
@@ -211,7 +213,7 @@ module.exports.update = async (event, ctx, callback) => {
 };
 
 // GET events/{id}/{year}
-module.exports.get = async (event, ctx, callback) => {
+export const get = async (event, ctx, callback) => {
 
   try {
 
@@ -235,7 +237,7 @@ module.exports.get = async (event, ctx, callback) => {
     } else if (queryString && queryString.count == 'true') {
 
       // return counts
-      const counts = await helpers.getEventCounts(`${id};${year}`);
+      const counts = await eventHelpers.getEventCounts(`${id};${year}`);
 
       const response = helpers.createResponse(200, counts);
       callback(null, response);
@@ -267,7 +269,7 @@ module.exports.get = async (event, ctx, callback) => {
           registrationStatus: 'registered'
         }
        */
-        registrationList = await helpers.scan(USER_REGISTRATIONS_TABLE, filters);
+        registrationList = await db.scan(USER_REGISTRATIONS_TABLE, filters);
 
       } catch(err) {
 
@@ -297,7 +299,7 @@ module.exports.get = async (event, ctx, callback) => {
 
       const result = await Promise.all(keyBatches.map(batch => (
 
-        helpers.batchGet(batch, USERS_TABLE + process.env.ENVIRONMENT)
+        db.batchGet(batch, USERS_TABLE + process.env.ENVIRONMENT)
 
       )));
 
@@ -319,7 +321,7 @@ module.exports.get = async (event, ctx, callback) => {
 
       });
 
-      resultsWithRegistrationStatus.sort(sorters.alphabeticalComparer('lname'));
+      resultsWithRegistrationStatus.sort(alphabeticalComparer('lname'));
       const response = helpers.createResponse(200, resultsWithRegistrationStatus);
       callback(null, response);
       return null;
@@ -327,7 +329,7 @@ module.exports.get = async (event, ctx, callback) => {
     } else {
 
       // if none of the optional params are true, then return the event
-      const event = await helpers.getOne(id, EVENTS_TABLE, { year });
+      const event = await db.getOne(id, EVENTS_TABLE, { year });
 
       if(isEmpty(event)) throw helpers.notFoundResponse('event', id, year);
 

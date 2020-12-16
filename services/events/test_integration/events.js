@@ -1,16 +1,18 @@
 'use strict';
-const chai = require('chai');
+import chai from 'chai';
 const expect = chai.expect;
 
-const helpers = require('./helpers');
-const {
+import helpers from '../../../lib/testHelpers';
+import {
   INTEGRATION_TEST_EVENT_ID,
   INTEGRATION_TEST_YEAR,
   INTEGRATION_TEST_PERSISTENT_EVENT_ID,
   INTEGRATION_TEST_PERSISTENT_YEAR,
   INTEGRATION_TEST_NON_EXISTANT_EVENT_ID,
   INTEGRATION_TEST_NON_EXISTANT_YEAR,
-} = require('../constants/test');
+} from '../../../constants/test';
+
+const SERVICE = 'events';
 
 describe('events integration', function () {
 
@@ -28,7 +30,7 @@ describe('events integration', function () {
             year: INTEGRATION_TEST_PERSISTENT_YEAR
           }
         };
-        return helpers.invokeLambda('eventGet', JSON.stringify(payload))
+        return helpers.invokeLambda(SERVICE, 'eventGet', JSON.stringify(payload))
           .then(([statusCode, body]) => {
 
             expect(statusCode).to.equal(200);
@@ -47,7 +49,7 @@ describe('events integration', function () {
             year: INTEGRATION_TEST_PERSISTENT_YEAR
           }
         };
-        return helpers.invokeLambda('eventGet', JSON.stringify(payload))
+        return helpers.invokeLambda(SERVICE, 'eventGet', JSON.stringify(payload))
           .then(([statusCode]) => {
 
             expect(statusCode).to.equal(404);
@@ -64,7 +66,7 @@ describe('events integration', function () {
             year: INTEGRATION_TEST_NON_EXISTANT_YEAR
           }
         };
-        return helpers.invokeLambda('eventGet', JSON.stringify(payload))
+        return helpers.invokeLambda(SERVICE, 'eventGet', JSON.stringify(payload))
           .then(([statusCode]) => {
 
             expect(statusCode).to.equal(404);
@@ -85,7 +87,7 @@ describe('events integration', function () {
             users: 'false'
           }
         };
-        return helpers.invokeLambda('eventGet', JSON.stringify(payload))
+        return helpers.invokeLambda(SERVICE, 'eventGet', JSON.stringify(payload))
           .then(([statusCode, body]) => {
 
             expect(statusCode).to.equal(200);
@@ -109,7 +111,7 @@ describe('events integration', function () {
             users: 'true'
           }
         };
-        return helpers.invokeLambda('eventGet', JSON.stringify(payload))
+        return helpers.invokeLambda(SERVICE, 'eventGet', JSON.stringify(payload))
           .then(([statusCode]) => {
 
             expect(statusCode).to.equal(200);
@@ -124,7 +126,7 @@ describe('events integration', function () {
 
       const updatePayload = {
         ename: 'Updated Event',
-        description: 'Updated test event description',
+        description: 'DO NOT DELETE',
         capac: 100,
         facebookUrl: 'https://www.facebook.com/BizTechUBC/',
         imageUrl: 'https://www.facebook.com/BizTechUBC/',
@@ -155,7 +157,7 @@ describe('events integration', function () {
           },
           body: JSON.stringify(defaultPayload)
         };
-        await helpers.invokeLambda('eventUpdate', JSON.stringify(payload))
+        await helpers.invokeLambda(SERVICE, 'eventUpdate', JSON.stringify(payload))
           .then(([statusCode]) => {
 
             expect(statusCode).to.equal(200);
@@ -169,7 +171,7 @@ describe('events integration', function () {
           }
         };
         // check that integrationTestEvent was updated
-        await helpers.invokeLambda('eventGet', JSON.stringify(payload))
+        await helpers.invokeLambda(SERVICE, 'eventGet', JSON.stringify(payload))
           .then(([statusCode, body]) => {
 
             expect(statusCode).to.equal(200);
@@ -190,7 +192,7 @@ describe('events integration', function () {
           },
           body: JSON.stringify(updatePayload)
         };
-        await helpers.invokeLambda('eventUpdate', JSON.stringify(payload))
+        await helpers.invokeLambda(SERVICE, 'eventUpdate', JSON.stringify(payload))
           .then(([statusCode]) => {
 
             expect(statusCode).to.equal(200);
@@ -198,7 +200,7 @@ describe('events integration', function () {
           });
 
         // check that integrationTestEvent was updated
-        return helpers.invokeLambda('eventGet', JSON.stringify(payload))
+        return helpers.invokeLambda(SERVICE, 'eventGet', JSON.stringify(payload))
           .then(([statusCode, body]) => {
 
             expect(statusCode).to.equal(200);
@@ -223,7 +225,7 @@ describe('events integration', function () {
           body: JSON.stringify(defaultPayload)
         };
 
-        return helpers.invokeLambda('eventUpdate', JSON.stringify(payload))
+        return helpers.invokeLambda(SERVICE, 'eventUpdate', JSON.stringify(payload))
           .then(([statusCode]) => {
 
             expect(statusCode).to.equal(404);
@@ -242,7 +244,7 @@ describe('events integration', function () {
 
       it('events GET returns 200 on success', async () => {
 
-        return helpers.invokeLambda('eventGetAll', '')
+        return helpers.invokeLambda(SERVICE, 'eventGetAll', '')
           .then(([statusCode]) => {
 
             expect(statusCode).to.equal(200);
@@ -266,7 +268,7 @@ describe('events integration', function () {
             img: 'someImageUrl'
           })
         };
-        await helpers.invokeLambda('eventCreate', JSON.stringify(payload))
+        await helpers.invokeLambda(SERVICE, 'eventCreate', JSON.stringify(payload))
           .then(([statusCode, body]) => {
 
             expect(statusCode).to.equal(201);
@@ -281,7 +283,7 @@ describe('events integration', function () {
           }
         };
 
-        return helpers.invokeLambda('eventDelete', JSON.stringify(payload))
+        return helpers.invokeLambda(SERVICE, 'eventDelete', JSON.stringify(payload))
           .then(([statusCode]) => {
 
             expect(statusCode).to.equal(200);
@@ -301,7 +303,7 @@ describe('events integration', function () {
             img: 'someImgUrl'
           })
         };
-        return helpers.invokeLambda('eventCreate', JSON.stringify(payload))
+        return helpers.invokeLambda(SERVICE, 'eventCreate', JSON.stringify(payload))
           .then(([statusCode, body]) => {
 
             expect(statusCode).to.equal(409);
