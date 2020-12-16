@@ -1,7 +1,6 @@
 {
   "name": "biztechapi-stickers",
   "version": "1.0.0",
-  "dependencies": {},
   "scripts": {
     "itest": "npm run itest stickers --prefix ../../",
     "utest": "npm run utest stickers --prefix ../../",
