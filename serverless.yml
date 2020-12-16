@@ -133,52 +133,12 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
-  registrationPost:
-    handler: handlers/registration.post
+  membershipsGetAll:
+    handler: handlers/memberships.getAll
     events:
       - http:
-          path: registrations/
-          method: post
-          cors: true
-  registrationPut:
-    handler: handlers/registration.put
-    events:
-      - http:
-          path: registrations/{id}
-          method: put
-          request:
-            path:
-              id: true
-          cors: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
-  registrationGet:
-    handler: handlers/registration.get
-    events:
-      - http:
-          path: registrations/
+          path: memberships/
           method: get
-          request:
-            parameters:
-              querystrings:
-                eventID: false
-                year: false
-                id: false
-                afterTimestamp: false
-          cors: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
-  registrationDelete:
-    handler: handlers/registration.delete
-    events:
-      - http:
-          path: registrations/{id}
-          method: delete
-          request:
-            path:
-              id: true
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS

@@ -1,0 +1,104 @@
+service: biztechApi-registrations
+tenant: ianmh
+app: biztechapp
+
+plugins:
+  - serverless-domain-manager
+  - serverless-bundle
+  - serverless-prune-plugin
+  - serverless-mocha-plugin
+
+provider:
+  name: aws
+  stage: ${file(../../serverless.common.yml):provider.stage}
+  runtime: ${file(../../serverless.common.yml):provider.runtime}
+  region: ${file(../../serverless.common.yml):provider.region}
+  cfLogs: true
+  environment:
+    ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
+  
+  apiGateway:
+    restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
+    restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
+
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechRegistrations${self:provider.environment.ENVIRONMENT}"
+    - Effect: Allow
+      Action:
+        - dynamodb:GetItem
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechUsers${self:provider.environment.ENVIRONMENT}"
+    - Effect: Allow
+      Action:
+        - dynamodb:GetItem
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechEvents${self:provider.environment.ENVIRONMENT}"
+
+custom: ${file(../../serverless.common.yml):custom}
+
+functions:
+  registrationPost:
+    handler: handler.post
+    events:
+      - http:
+          path: registrations/
+          method: post
+          cors: true
+          authorizer:
+            name: ${self:service}-authorizer
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+  registrationPut:
+    handler: handler.put
+    events:
+      - http:
+          path: registrations/{id}
+          method: put
+          request:
+            path:
+              id: true
+          cors: true
+          authorizer:
+            name: ${self:service}-authorizer
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+  registrationGet:
+    handler: handler.get
+    events:
+      - http:
+          path: registrations/
+          method: get
+          request:
+            parameters:
+              querystrings:
+                eventID: false
+                year: false
+                id: false
+                afterTimestamp: false
+          cors: true
+          authorizer:
+            name: ${self:service}-authorizer
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+  registrationDelete:
+    handler: handler.del
+    events:
+      - http:
+          path: registrations/{id}
+          method: delete
+          request:
+            path:
+              id: true
+          cors: true
+          authorizer:
+            name: ${self:service}-authorizer
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp

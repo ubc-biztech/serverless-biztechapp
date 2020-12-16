@@ -31,7 +31,10 @@ jobs:
           ${{ runner.os }}-
 
     - name: Install dependencies
-      run: npm ci
+      # install dependencies for all the microservices
+      run: |
+        npm ci
+        cd services/registrations && npm ci
 
     - name: 'Deploy and test Staging'
       env:
@@ -39,8 +42,7 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
       # deploy on dev so that dev is up to date with staging
+      # TODO: deploy to dev and staging
       run: |
-        npx sls deploy --conceal
-        npx mocha test_integration
-        npx sls deploy --stage staging --conceal
-        npx sls invoke test --stage staging
+        npm run utest
+        npm run itest
