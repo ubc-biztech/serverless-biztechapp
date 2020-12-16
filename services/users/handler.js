@@ -1,10 +1,11 @@
-'use strict';
 const AWS = require('aws-sdk');
-const helpers = require('./helpers');
-const { isEmpty } = require('../utils/functions');
-const { USERS_TABLE, USER_INVITE_CODES_TABLE, EVENTS_TABLE } = require('../constants/tables');
 
-module.exports.create = async (event, ctx, callback) => {
+import helpers from '../../lib/helpers';
+import db from '../../lib/db';
+import { isEmpty } from '../../utils/functions';
+import { USERS_TABLE, USER_INVITE_CODES_TABLE, EVENTS_TABLE } from '../../constants/tables';
+
+export const create = async (event, ctx, callback) => {
 
   const docClient = new AWS.DynamoDB.DocumentClient();
 
@@ -149,7 +150,7 @@ module.exports.create = async (event, ctx, callback) => {
 
 };
 
-module.exports.get = async (event, ctx, callback) => {
+export const get = async (event, ctx, callback) => {
 
   try {
 
@@ -157,7 +158,7 @@ module.exports.get = async (event, ctx, callback) => {
     const id = parseInt(event.pathParameters.id, 10);
     if(isNaN(id)) throw helpers.inputError('Id is not a number!');
 
-    const user = await helpers.getOne(id, USERS_TABLE);
+    const user = await db.getOne(id, USERS_TABLE);
     if(isEmpty(user)) throw helpers.notFoundResponse('user', id);
 
     const response = helpers.createResponse(200, user);
@@ -175,18 +176,20 @@ module.exports.get = async (event, ctx, callback) => {
 
 };
 
-module.exports.update = async (event, ctx, callback) => {
+export const update = async (event, ctx, callback) => {
 
   try {
 
     if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('event');
-    const id = event.pathParameters.id;
 
-    const existingUser = await helpers.getOne(id, USERS_TABLE);
+    const id = parseInt(event.pathParameters.id, 10);
+    if(isNaN(id)) throw helpers.inputError('Id path parameter must be a number', event.pathParameters);
+
+    const existingUser = await db.getOne(id, USERS_TABLE);
     if(isEmpty(existingUser)) throw helpers.notFoundResponse('user', id);
 
     const data = JSON.parse(event.body);
-    const res = await helpers.updateDB(id, data, USERS_TABLE);
+    const res = await db.updateDB(id, data, USERS_TABLE);
     const response = helpers.createResponse(200, {
       message: `Updated event with id ${id}!`,
       response: res
@@ -206,11 +209,11 @@ module.exports.update = async (event, ctx, callback) => {
 
 };
 
-module.exports.getAll = async (event, ctx, callback) => {
+export const getAll = async (event, ctx, callback) => {
 
   try {
 
-    const users = await helpers.scan(USERS_TABLE);
+    const users = await db.scan(USERS_TABLE);
 
     // create the response
     const response = helpers.createResponse(200, users);
@@ -229,7 +232,7 @@ module.exports.getAll = async (event, ctx, callback) => {
 
 };
 
-module.exports.favouriteEvent = async (event, ctx, callback) => {
+export const favouriteEvent = async (event, ctx, callback) => {
 
   const docClient = new AWS.DynamoDB.DocumentClient();
 
@@ -248,25 +251,42 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
 
     const id = parseInt(event.pathParameters.id, 10);
 
-    const existingEvent = await helpers.getOne(eventID, EVENTS_TABLE, { year });
+    const existingEvent = await db.getOne(eventID, EVENTS_TABLE, { year });
     if(isEmpty(existingEvent)) throw helpers.notFoundResponse('event', eventID, year);
 
-    const existingUser = await helpers.getOne(id, USERS_TABLE);
+    const existingUser = await db.getOne(id, USERS_TABLE);
     if(isEmpty(existingUser)) throw helpers.notFoundResponse('user', id);
+
+    const favedEventsList = existingUser['favedEventsID;year'] ?
+      existingUser['favedEventsID;year'].values : undefined;
+
 
     let updateExpression = '';
     let conditionExpression = '';
-    if (isFavourite) {
+    if (isFavourite && (!favedEventsList || !favedEventsList.includes(eventIDAndYear))) {
 
       updateExpression = 'add #favedEvents :eventsIDAndYear';
       conditionExpression =
         'attribute_exists(id) and (not contains(#favedEvents, :eventIDAndYear))'; // if eventID already exists, don't perform add operation
 
-    } else {
+    } else if (!isFavourite && (favedEventsList && favedEventsList.includes(eventIDAndYear))){
 
       updateExpression = 'delete #favedEvents :eventsIDAndYear';
       conditionExpression =
         'attribute_exists(id) and contains(#favedEvents, :eventIDAndYear)'; // if eventID does not exist, don't perform delete operation
+
+    } else {
+
+      //If user is trying to favourite an event that they've already favourited
+      //OR if user is trying to unfavourite an event that is not favourited
+      //In either of these cases, do nothing, but return a success message.
+      let successMsg = 'Already ' + (isFavourite ? 'favourited' : 'unfavourited');
+      successMsg += ` event with eventID ${eventID} for the year ${year}`;
+      callback(null, helpers.createResponse(200, {
+        message: successMsg,
+        response: {}
+      }));
+      return null;
 
     }
 
@@ -313,19 +333,21 @@ module.exports.favouriteEvent = async (event, ctx, callback) => {
 };
 
 // TODO: refactor to abstract delete code among different endpoints
-module.exports.delete = async (event, ctx, callback) => {
+export const del = async (event, ctx, callback) => {
 
   try {
 
     // check that the param was given
     if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('event');
-    const id = event.pathParameters.id;
+
+    const id = parseInt(event.pathParameters.id, 10);
+    if(isNaN(id)) throw helpers.inputError('Id path parameter must be a number', event.pathParameters);
 
     // check that the user exists
-    const existingUser = await helpers.getOne(id, USERS_TABLE);
+    const existingUser = await db.getOne(id, USERS_TABLE);
     if(isEmpty(existingUser)) throw helpers.notFoundResponse('User', id);
 
-    const res = await helpers.deleteOne(id, USERS_TABLE);
+    const res = await db.deleteOne(id, USERS_TABLE);
     const response = helpers.createResponse(200, {
       message: 'User deleted!',
       response: res
