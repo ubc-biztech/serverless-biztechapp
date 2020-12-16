@@ -28,14 +28,13 @@ jobs:
           ${{ runner.os }}-
 
     - name: Install dependencies
-      # install dependencies for all the microservices
-      run: |
-        npm ci
-        cd services/registrations && npm ci
+      run: npm ci
 
     - name: 'Deploy and run tests'
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
-      run: npm run test
+      run: |
+        npx sls deploy --conceal
+        npm run test

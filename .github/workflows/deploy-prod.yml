@@ -30,10 +30,7 @@ jobs:
           ${{ runner.os }}-
 
     - name: Install dependencies
-      # install dependencies for all the microservices
-      run: |
-        npm ci
-        cd services/registrations && npm ci
+      run: npm ci
 
     - name: 'Deploy and test Production'
       env:
@@ -42,5 +39,4 @@ jobs:
         SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
       # TODO: deploy all to production
       run: |
-        npm run utest
-        npm run itest
+        npx sls deploy --stage prod --conceal 
