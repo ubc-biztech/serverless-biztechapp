@@ -3,13 +3,13 @@ import chai from 'chai';
 const expect = chai.expect;
 import {
   INTEGRATION_TEST_PERSISTENT_USER_ID,
+  INTEGRATION_TEST_PERSISTENT_USER_ID_2,
   INTEGRATION_TEST_NON_EXISTANT_USER_ID,
   INTEGRATION_TEST_PERSISTENT_EVENT_ID,
   INTEGRATION_TEST_PERSISTENT_YEAR,
-  INTEGRATION_TEST_PERSISTENT_EVENT_ID_2,
-  INTEGRATION_TEST_PERSISTENT_YEAR_2,
   INTEGRATION_TEST_NON_EXISTANT_EVENT_ID,
-  INTEGRATION_TEST_NON_EXISTANT_YEAR
+  INTEGRATION_TEST_NON_EXISTANT_YEAR,
+  INTEGRATION_TEST_PERSISTENT_REGISTRATION_PARAMETERS
 } from '../../../constants/test';
 
 import helpers from '../../../lib/testHelpers';
@@ -26,9 +26,9 @@ describe('registration integration', function () {
 
       const payload = {
         queryStringParameters: {
-          id: INTEGRATION_TEST_PERSISTENT_USER_ID,
-          eventID: INTEGRATION_TEST_PERSISTENT_EVENT_ID,
-          year: INTEGRATION_TEST_PERSISTENT_YEAR
+          year: INTEGRATION_TEST_PERSISTENT_REGISTRATION_PARAMETERS.year,
+          id: INTEGRATION_TEST_PERSISTENT_REGISTRATION_PARAMETERS.userId,
+          eventID: INTEGRATION_TEST_PERSISTENT_EVENT_ID // wrong eventId
         }
       };
       return helpers.invokeLambda(SERVICE, 'registrationGet', JSON.stringify(payload))
@@ -46,8 +46,8 @@ describe('registration integration', function () {
 
       const payload = {
         queryStringParameters: {
-          eventID: INTEGRATION_TEST_PERSISTENT_EVENT_ID_2,
-          year: INTEGRATION_TEST_PERSISTENT_YEAR_2
+          eventID: INTEGRATION_TEST_PERSISTENT_REGISTRATION_PARAMETERS.eventId,
+          year: INTEGRATION_TEST_PERSISTENT_REGISTRATION_PARAMETERS.year
         }
       };
 
@@ -56,7 +56,7 @@ describe('registration integration', function () {
 
           expect(statusCode).to.equal(200);
           expect(body.size).to.equal(1);
-          expect(body.data[0]['eventID;year']).to.equal(`${INTEGRATION_TEST_PERSISTENT_EVENT_ID_2};${INTEGRATION_TEST_PERSISTENT_YEAR_2}`);
+          expect(body.data[0]['eventID;year']).to.equal(INTEGRATION_TEST_PERSISTENT_REGISTRATION_PARAMETERS.key);
 
         });
 
@@ -119,7 +119,12 @@ describe('registration integration', function () {
 
     it('entry POST event at capacity returns 201', async () => {
 
-      const payload = createPayload(INTEGRATION_TEST_PERSISTENT_USER_ID, INTEGRATION_TEST_PERSISTENT_EVENT_ID_2, INTEGRATION_TEST_PERSISTENT_YEAR, 'registered');
+      const payload = createPayload(
+        INTEGRATION_TEST_PERSISTENT_USER_ID_2,
+        INTEGRATION_TEST_PERSISTENT_REGISTRATION_PARAMETERS.eventId,
+        INTEGRATION_TEST_PERSISTENT_REGISTRATION_PARAMETERS.year,
+        'registered'
+      );
       return helpers.invokeLambda(SERVICE, 'registrationPost', JSON.stringify(payload))
         .then(([statusCode, body]) => {
 
@@ -167,9 +172,9 @@ describe('registration integration', function () {
               expect(entry.registrationStatus).to.equal('checkedIn');
 
             }
-            if (entry['eventID;year'] == `${INTEGRATION_TEST_PERSISTENT_EVENT_ID_2};${INTEGRATION_TEST_PERSISTENT_YEAR_2}`) {
+            if (entry['eventID;year'] == INTEGRATION_TEST_PERSISTENT_REGISTRATION_PARAMETERS.key) {
 
-              expect(entry.registrationStatus).to.equal('waitlist');
+              expect(entry.registrationStatus).to.equal('registered');
 
             }
 
@@ -190,8 +195,8 @@ describe('registration integration', function () {
           id: INTEGRATION_TEST_PERSISTENT_USER_ID
         },
         body: JSON.stringify({
-          eventID: INTEGRATION_TEST_PERSISTENT_EVENT_ID_2,
-          year: INTEGRATION_TEST_PERSISTENT_YEAR_2
+          eventID: INTEGRATION_TEST_PERSISTENT_EVENT_ID,
+          year: INTEGRATION_TEST_PERSISTENT_YEAR
         })
       };
       return helpers.invokeLambda(SERVICE, 'registrationDelete', JSON.stringify(payload))
@@ -207,11 +212,11 @@ describe('registration integration', function () {
 
       const payload = {
         pathParameters: {
-          id: INTEGRATION_TEST_PERSISTENT_USER_ID,
+          id: INTEGRATION_TEST_PERSISTENT_USER_ID_2,
         },
         body: JSON.stringify({
-          eventID: INTEGRATION_TEST_PERSISTENT_EVENT_ID,
-          year: INTEGRATION_TEST_PERSISTENT_YEAR
+          eventID: INTEGRATION_TEST_PERSISTENT_REGISTRATION_PARAMETERS.eventId,
+          year: INTEGRATION_TEST_PERSISTENT_REGISTRATION_PARAMETERS.year
         })
       };
       return helpers.invokeLambda(SERVICE, 'registrationDelete', JSON.stringify(payload))
