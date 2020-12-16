@@ -1,0 +1,9 @@
+{
+  "name": "biztechapi-users",
+  "version": "1.0.0",
+  "scripts": {
+    "itest": "npm run itest users --prefix ../../",
+    "utest": "npm run utest users --prefix ../../",
+    "test": "npm run utest users --prefix ../../ && npm run itest users --prefix ../../"
+  }
+}

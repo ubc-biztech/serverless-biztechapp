@@ -1,0 +1,9 @@
+{
+  "name": "biztechapi-prizes",
+  "version": "1.0.0",
+  "scripts": {
+    "itest": "npm run itest prizes --prefix ../../",
+    "utest": "npm run utest prizes --prefix ../../",
+    "test": "npm run utest prizes --prefix ../../ && npm run itest prizes --prefix ../../"
+  }
+}
