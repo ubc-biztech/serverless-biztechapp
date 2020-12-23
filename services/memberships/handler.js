@@ -1,4 +1,4 @@
-import helpers from '../../lib/helpers';
+import helpers from '../../lib/handlerHelpers';
 import db from '../../lib/db';
 const { MEMBERSHIPS_TABLE } = require('../../constants/tables');
 

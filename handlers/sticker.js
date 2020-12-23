@@ -1,6 +1,6 @@
 'use strict';
 const helpers = require('./helpers');
-const { isEmpty } = require('../utils/functions');
+const { isEmpty } = require('../lib/utils');
 const { STICKERS_TABLE } = require('../constants/tables');
 
 module.exports.getAll = async(event, ctx, callback) => {
