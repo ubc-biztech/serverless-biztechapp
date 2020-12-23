@@ -58,7 +58,6 @@ These instructions will get you a copy of the project up and running on your loc
 * `services/` - Our main services.
 * `libs/` - Abstracted functions to be used by our handlers in each service. Most functions that directly connect to databases are located here.
 * `constants/` - Abstracted constants
-* `utils/` - Any other miscellaneous functions
 
 * `services/*/test/` - Unit tests for the respective service.
 * `services/*/test_integration/` - Integration tests for the respective service.
