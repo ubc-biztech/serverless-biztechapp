@@ -1,9 +1,8 @@
 import AWS from 'aws-sdk';
 import eventHelpers from './helpers';
-import helpers from '../../lib/helpers';
+import helpers from '../../lib/handlerHelpers';
 import db from '../../lib/db';
-import { alphabeticalComparer } from '../../utils/sorters';
-import { isEmpty } from '../../utils/functions';
+import { alphabeticalComparer, isEmpty } from '../../lib/utils';
 import { MAX_BATCH_ITEM_COUNT } from '../../constants/dynamodb';
 import { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } from '../../constants/tables';
 

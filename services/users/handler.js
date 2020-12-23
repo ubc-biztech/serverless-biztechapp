@@ -1,8 +1,8 @@
 const AWS = require('aws-sdk');
 
-import helpers from '../../lib/helpers';
+import helpers from '../../lib/handlerHelpers';
 import db from '../../lib/db';
-import { isEmpty } from '../../utils/functions';
+import { isEmpty } from '../../lib/utils';
 import { USERS_TABLE, USER_INVITE_CODES_TABLE, EVENTS_TABLE } from '../../constants/tables';
 
 export const create = async (event, ctx, callback) => {
