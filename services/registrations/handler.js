@@ -1,8 +1,8 @@
 import AWS from 'aws-sdk';
 import registrationHelpers from './helpers';
-import helpers from '../../lib/helpers';
+import helpers from '../../lib/handlerHelpers';
 import db from '../../lib/db';
-import { isEmpty } from '../../utils/functions';
+import { isEmpty } from '../../lib/utils';
 import { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } from '../../constants/tables';
 
 // const CHECKIN_COUNT_SANITY_CHECK = 500;
