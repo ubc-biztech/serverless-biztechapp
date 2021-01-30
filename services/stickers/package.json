@@ -1,0 +1,9 @@
+{
+  "name": "biztechapi-stickers",
+  "version": "1.0.0",
+  "scripts": {
+    "itest": "npm run itest stickers --prefix ../../",
+    "utest": "npm run utest stickers --prefix ../../",
+    "test": "npm run utest stickers --prefix ../../ && npm run itest stickers --prefix ../../"
+  }
+}

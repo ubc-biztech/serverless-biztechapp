@@ -1,0 +1,25 @@
+provider:
+  stage: ${opt:stage, 'dev'}
+  apiKeys:
+    - ${opt:stage, 'dev'}-api-key
+  runtime: nodejs12.x
+  region: us-west-2
+
+custom:
+  prune:
+    automatic: true
+    number: 3
+
+  serverless-mocha-plugin:
+    # use test template to overwrite plugin usage of commonjs
+    testTemplate: ../../lib/testTemplate.ejs
+
+  customDomain:
+    domainName: api-${self:provider.stage}.ubcbiztech.com
+    basePath: ''
+    stage: ${self:provider.stage}
+    certificateName: 'api-${self:provider.stage}.ubcbiztech.com'
+    createRoute53Record: true
+    endpointType: 'edge'
+    apiType: rest
+    autoDomain: false

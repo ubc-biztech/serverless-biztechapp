@@ -1,0 +1,47 @@
+# Always deploy the "hello" endpoint first (for any new environment)
+service: biztechApi
+tenant: ianmh
+app: biztechapp
+
+plugins:
+  - serverless-domain-manager
+  - serverless-bundle
+  - serverless-prune-plugin
+  - serverless-mocha-plugin
+
+provider:
+  name: aws
+  stage: ${file(../../serverless.common.yml):provider.stage}
+  apiKeys: ${file(../../serverless.common.yml):provider.apiKeys}
+  runtime: ${file(../../serverless.common.yml):provider.runtime}
+  region: ${file(../../serverless.common.yml):provider.region}
+  cfLogs: true
+
+custom: ${file(../../serverless.common.yml):custom}
+
+functions:
+  hello:
+    handler: handler.hello
+    events:
+      - http:
+          path: /hello
+          method: get
+          cors: true
+
+# Helps to share the endpoint between services
+# https://serverless-stack.com/chapters/share-an-api-endpoint-between-services.html
+resources:
+  Outputs:
+    ApiGatewayRestApiId:
+      Value:
+        Ref: ApiGatewayRestApi
+      Export:
+        Name: ${self:provider.stage}-ExtApiGatewayRestApiId
+
+    ApiGatewayRestApiRootResourceId:
+      Value:
+          Fn::GetAtt:
+          - ApiGatewayRestApi
+          - RootResourceId 
+      Export:
+        Name: ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
