@@ -9,7 +9,9 @@ import {
   INTEGRATION_TEST_PERSISTENT_YEAR,
   INTEGRATION_TEST_NON_EXISTANT_EVENT_ID,
   INTEGRATION_TEST_NON_EXISTANT_YEAR,
-  INTEGRATION_TEST_PERSISTENT_REGISTRATION_PARAMETERS
+  INTEGRATION_TEST_PERSISTENT_REGISTRATION_PARAMETERS,
+  INTEGRATION_TEST_PERSISTENT_EVENT_ID_2,
+  INTEGRATION_TEST_PERSISTENT_YEAR_2
 } from '../../../constants/test';
 
 import helpers from '../../../lib/testHelpers';
@@ -160,27 +162,27 @@ describe('registration integration', function () {
         }
       };
       return helpers.invokeLambda(SERVICE, 'registrationGet', JSON.stringify(payload))
-        .then(([statusCode, body]) => {
+          .then(([statusCode, body]) => {
 
-          expect(statusCode).to.equal(200);
-          expect(body.size).to.equal(2);
-          for(const entry of body.data) {
+            expect(statusCode).to.equal(200);
+            expect(body.size).to.equal(1);
+            for(const entry of body.data) {
 
-            expect(entry.id).to.equal(INTEGRATION_TEST_PERSISTENT_USER_ID);
-            if (entry['eventID;year'] == `${INTEGRATION_TEST_PERSISTENT_EVENT_ID};${INTEGRATION_TEST_PERSISTENT_YEAR}`) {
+              expect(entry.id).to.equal(INTEGRATION_TEST_PERSISTENT_USER_ID);
+              if (entry['eventID;year'] === `${INTEGRATION_TEST_PERSISTENT_EVENT_ID};${INTEGRATION_TEST_PERSISTENT_YEAR}`) {
 
-              expect(entry.registrationStatus).to.equal('checkedIn');
+                expect(entry.registrationStatus).to.equal('checkedIn');
+
+              }
+              if (entry['eventID;year'] === `${INTEGRATION_TEST_PERSISTENT_EVENT_ID_2};${INTEGRATION_TEST_PERSISTENT_YEAR_2}`) {
+
+                expect(entry.registrationStatus).to.equal('waitlist');
+
+              }
 
             }
-            if (entry['eventID;year'] == INTEGRATION_TEST_PERSISTENT_REGISTRATION_PARAMETERS.key) {
 
-              expect(entry.registrationStatus).to.equal('registered');
-
-            }
-
-          }
-
-        });
+          });
 
     });
 
