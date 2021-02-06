@@ -236,8 +236,6 @@ export const put = async (event, ctx, callback) => {
     const data = JSON.parse(event.body);
 
     if(!isValidEmail(email)) throw helpers.inputError('Invalid email', email);
-
-
     // Check that parameters are valid
     helpers.checkPayloadProps(data, {
       eventID: { required: true, type: 'string' },
@@ -357,8 +355,6 @@ export const del = async (event, ctx, callback) => {
 
     const email = event.pathParameters.email;
     if(!isValidEmail(email)) throw helpers.inputError('Invalid email', email);
-
-
     helpers.checkPayloadProps(data, {
       eventID : { required: true , type: 'string' },
       year : { required: true, type: 'number' }

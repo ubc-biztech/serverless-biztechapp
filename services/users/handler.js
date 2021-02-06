@@ -11,8 +11,6 @@ export const create = async (event, ctx, callback) => {
 
   const timestamp = new Date().getTime();
   const data = JSON.parse(event.body);
-  console.log(event.body);
-  console.log(data.email);
   if(!isValidEmail(data.email)) return helpers.inputError('Invalid email', data.email);
   const email = data.email;
 
