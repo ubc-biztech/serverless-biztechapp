@@ -9,12 +9,14 @@ const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper('registrationPost', '/handler.js', 'post');
 import { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } from '../../../constants/tables';
 
+const email = "test@gmail.com"
+const email2 = "test2@gmail.com"
 const userResponse = {
-  id: 12200034,
+  studentId: 12200034,
   fname: 'user',
   lname: 'man',
   faculty: 'Science',
-  email: 'test@test.com'
+  email: email
 };
 
 const eventResponse = {
@@ -33,14 +35,14 @@ const eventResponse = {
 
 const registrationsResponse = [
   {
-    id: 12345677,
+    email: email,
     eventID: 'event',
     year: 2020,
     updatedAt: 1600669844493,
     registrationStatus: 'registered'
   },
   {
-    id: 12345678,
+    email: email2,
     eventID: 'event',
     year: 2020,
     updatedAt: 1600669844493,
@@ -62,8 +64,8 @@ describe('registrationPost', () => {
       }
       else if(params.TableName.includes(USERS_TABLE)) {
 
-        if(params.Key.id === 12200034) callback(null, { Item: userResponse });
-        else if(params.Key.id === 12345678) callback(null, { Item: { ...userResponse, id: 12345678 } });
+        if(params.Key.id === email) callback(null, { Item: userResponse });
+        else if(params.Key.id === email2) callback(null, { Item: { ...userResponse, id: email2 } });
         else callback(null, { Item: null });
 
       }
@@ -85,8 +87,8 @@ describe('registrationPost', () => {
     AWSMock.mock('DynamoDB.DocumentClient', 'update', (params, callback) => {
 
       // for POST
-      // throw error if already exists (only check for 12345678)
-      if(params.Key.id === 12345678 && params.Key['eventID;year'] === 'event;2020') callback({ code: 'ConditionalCheckFailedException' });
+      // throw error if already exists (only check for email2)
+      if(params.Key.id === email2 && params.Key['eventID;year'] === 'event;2020') callback({ code: 'ConditionalCheckFailedException' });
       else callback(null, 'Created!');
 
       return null;
@@ -101,7 +103,7 @@ describe('registrationPost', () => {
 
   });
 
-  it('should return 406 when id is not given ', async () => {
+  it('should return 406 when email is not given ', async () => {
 
     const response = await wrapped.run({
       body: JSON.stringify({
@@ -118,7 +120,7 @@ describe('registrationPost', () => {
 
     const response = await wrapped.run({
       body: JSON.stringify({
-        id: 12200034,
+        email: email,
         year: 2020,
         registrationStatus: 'registered'
       })
@@ -131,7 +133,7 @@ describe('registrationPost', () => {
 
     const response = await wrapped.run({
       body: JSON.stringify({
-        id: 12200034,
+        email: email,
         registrationStatus: 'registered',
         eventID: 'event',
       })
@@ -144,7 +146,7 @@ describe('registrationPost', () => {
 
     const response = await wrapped.run({
       body: JSON.stringify({
-        id: 12200034,
+        email: email,
         ['eventID;year']: 'event;2020',
       })
     });
@@ -156,7 +158,7 @@ describe('registrationPost', () => {
 
     const response = await wrapped.run({
       body: JSON.stringify({
-        id: 12200034,
+        email: email,
         eventID: 'unknownEvent',
         year: 2020,
         registrationStatus: 'registered'
@@ -166,11 +168,11 @@ describe('registrationPost', () => {
 
   });
 
-  it('should return 404 when unknown user id is provided', async () => {
+  it('should return 404 when unknown user email is provided', async () => {
 
     const response = await wrapped.run({
       body: JSON.stringify({
-        id: 1220003424657,
+        email: "asdf@gmail.com",
         eventID: 'event',
         year: 2020,
         registrationStatus: 'registered'
@@ -184,7 +186,7 @@ describe('registrationPost', () => {
 
     const response = await wrapped.run({
       body: JSON.stringify({
-        id: 12200034,
+        email: email,
         eventID: 'event',
         year: 2020,
         registrationStatus: 'waitlist'
@@ -201,7 +203,7 @@ describe('registrationPost', () => {
 
     const response = await wrapped.run({
       body: JSON.stringify({
-        id: 12200034,
+        email: email,
         eventID: 'event',
         year: 2020,
         registrationStatus: 'registered'
@@ -218,7 +220,7 @@ describe('registrationPost', () => {
 
     const response = await wrapped.run({
       body: JSON.stringify({
-        id: 12345678,
+        email: email2,
         eventID: 'event',
         year: 2020,
         registrationStatus: 'registered'

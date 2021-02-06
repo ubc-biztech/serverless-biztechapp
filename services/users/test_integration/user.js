@@ -1,7 +1,7 @@
 'use strict';
 import chai from 'chai';
 const expect = chai.expect;
-import { INTEGRATION_TEST_USER_ID, INTEGRATION_TEST_PERSISTENT_EVENT_ID, INTEGRATION_TEST_PERSISTENT_YEAR } from '../../../constants/test';
+import { INTEGRATION_TEST_USER_EMAIL, INTEGRATION_TEST_PERSISTENT_EVENT_ID, INTEGRATION_TEST_PERSISTENT_YEAR } from '../../../constants/test';
 
 import helpers from '../../../lib/testHelpers';
 
@@ -13,11 +13,11 @@ describe('user integration', function () {
 
   const defaultPayload = {
     pathParameters: {
-      id: INTEGRATION_TEST_USER_ID,
+      email: INTEGRATION_TEST_USER_EMAIL,
     }
   };
 
-  describe('user/{id} GET setup', function () {
+  describe('user/{email} GET setup', function () {
 
     it('user GET doesn\'t exist returns 404', async () => {
 
@@ -34,7 +34,8 @@ describe('user integration', function () {
 
   const userCreatePayload = {
     body: JSON.stringify({
-      id: INTEGRATION_TEST_USER_ID,
+      email: INTEGRATION_TEST_USER_EMAIL,
+      studentId: 44403060,
       fname: 'TESTUSER',
       lname: 'DONOTMODIFY',
       email: 'integration@test.com',
@@ -79,23 +80,22 @@ describe('user integration', function () {
     userYear: 3,
     faculty: 'arts',
     gender: 'Female',
-    diet: 'none',
+    diet: 'none'
   };
 
   const userPatchPayload = {
     pathParameters: {
-      id: INTEGRATION_TEST_USER_ID,
+      email: INTEGRATION_TEST_USER_EMAIL,
     },
     body: JSON.stringify(userPatchBody)
   };
 
-  describe('user/{id} PATCH', function () {
+  describe('user/{email} PATCH', function () {
 
     it('user PATCH on user that exists returns 200', async() => {
 
       return helpers.invokeLambda(SERVICE, 'userUpdate', JSON.stringify(userPatchPayload))
         .then(([statusCode]) => {
-
           expect(statusCode).to.equal(200);
 
         });
@@ -106,7 +106,7 @@ describe('user integration', function () {
 
       const payload = {
         pathParameters: {
-          id: INTEGRATION_TEST_USER_ID,
+          email: INTEGRATION_TEST_USER_EMAIL,
         },
         body: JSON.stringify({
           isFavourite: true,
@@ -128,7 +128,7 @@ describe('user integration', function () {
 
       const payload = {
         pathParameters: {
-          id: INTEGRATION_TEST_USER_ID,
+          email: INTEGRATION_TEST_USER_EMAIL,
         },
         body: JSON.stringify({
           isFavourite: true,
@@ -150,7 +150,7 @@ describe('user integration', function () {
 
       const payload = {
         pathParameters: {
-          id: INTEGRATION_TEST_USER_ID,
+          email: INTEGRATION_TEST_USER_EMAIL,
         },
         body: JSON.stringify({
           isFavourite: false,
@@ -172,7 +172,7 @@ describe('user integration', function () {
 
       const payload = {
         pathParameters: {
-          id: INTEGRATION_TEST_USER_ID,
+          email: INTEGRATION_TEST_USER_EMAIL,
         },
         body: JSON.stringify({
           isFavourite: false,
@@ -209,7 +209,7 @@ describe('user integration', function () {
 
   });
 
-  describe('user/{id} DELETE and wrapup', function () {
+  describe('user/{email} DELETE and wrapup', function () {
 
     it('user DELETE returns 200', async () => {
 

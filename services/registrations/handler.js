@@ -2,7 +2,7 @@ import AWS from 'aws-sdk';
 import registrationHelpers from './helpers';
 import helpers from '../../lib/handlerHelpers';
 import db from '../../lib/db';
-import { isEmpty } from '../../lib/utils';
+import { isEmpty, isValidEmail } from '../../lib/utils';
 import { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } from '../../constants/tables';
 
 // const CHECKIN_COUNT_SANITY_CHECK = 500;
@@ -13,15 +13,13 @@ import { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } from '../../const
    returns 200 when entry is updated successfully, error 409 if a registration with the same id/eventID DNE
    sends an email to the user if they are registered, waitlisted, or cancelled, but not if checkedIn
 */
-async function updateHelper(data, createNew, idString) {
-
-  const id = parseInt(idString, 10);
+async function updateHelper(data, createNew, email) {
 
   const { eventID, year } = data;
   const eventIDAndYear = eventID + ';' + year;
 
   //Check if eventID exists and is string. Check if year exists and is number.
-  if(typeof eventID !== 'string' || typeof year !== 'number' || isNaN(year)) {
+  if(typeof eventID !== 'string' || typeof year !== 'number' || isNaN(year) || !isValidEmail(email)) {
 
     throw helpers.inputError('Incorrect types for eventID and year in registration.updateHelper', data);
 
@@ -31,8 +29,8 @@ async function updateHelper(data, createNew, idString) {
   let registrationStatus = data.registrationStatus;
 
   // Check if the user exists
-  const existingUser = await db.getOne(id, USERS_TABLE);
-  if(isEmpty(existingUser)) throw helpers.notFoundResponse('User', id);
+  const existingUser = await db.getOne(email, USERS_TABLE);
+  if(isEmpty(existingUser)) throw helpers.notFoundResponse('User', email);
 
   // Check if the event exists
   const existingEvent = await db.getOne(eventID, EVENTS_TABLE, { year });
@@ -75,12 +73,12 @@ async function updateHelper(data, createNew, idString) {
 
   if(existingUser.heardFrom) data.heardFrom = existingUser.heardFrom;
 
-  const response = await createRegistration(registrationStatus, data, id, eventIDAndYear, createNew);
+  const response = await createRegistration(registrationStatus, data, email, eventIDAndYear, createNew);
   return response;
 
 }
 
-async function createRegistration(registrationStatus, data, id, eventIDAndYear, createNew) {
+async function createRegistration(registrationStatus, data, email, eventIDAndYear, createNew) {
 
   try {
 
@@ -104,7 +102,7 @@ async function createRegistration(registrationStatus, data, id, eventIDAndYear, 
 
     // Because biztechRegistration table has a sort key, we cannot use helpers.updateDB()
     let params = {
-      Key: { id, ['eventID;year']: eventIDAndYear },
+      Key: { 'id': email, ['eventID;year']: eventIDAndYear },
       TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
       ExpressionAttributeValues: expressionAttributeValues,
       ExpressionAttributeNames: { ...expressionAttributeNames, '#eventIDYear': 'eventID;year' },
@@ -115,14 +113,13 @@ async function createRegistration(registrationStatus, data, id, eventIDAndYear, 
 
     // do the magic
     const res = await docClient.update(params).promise();
-
-    let message = `User with id ${id} successfully registered (through update) to status '${registrationStatus}'!`;
+    let message = `User with email ${email} successfully registered (through update) to status '${registrationStatus}'!`;
     let statusCode = 200;
 
     // different status code if created new entry
     if(createNew) {
 
-      message = `User with id ${id} successfully registered (created) to status '${registrationStatus}'!`;
+      message = `User with email ${email} successfully registered (created) to status '${registrationStatus}'!`;
       statusCode = 201;
 
     }
@@ -145,8 +142,8 @@ async function createRegistration(registrationStatus, data, id, eventIDAndYear, 
 
       errorResponse.statusCode = 409;
       errBody.statusCode = 409;
-      if(createNew) errBody.message = `Create error because the registration entry for user '${id}' and with eventID;year'${eventIDAndYear}' already exists`;
-      else errBody.message = `Update error because the registration entry for user '${id}' and with eventID;year '${eventIDAndYear}' does not exist`;
+      if(createNew) errBody.message = `Create error because the registration entry for user '${email}' and with eventID;year'${eventIDAndYear}' already exists`;
+      else errBody.message = `Update error because the registration entry for user '${email}' and with eventID;year '${eventIDAndYear}' does not exist`;
       errorResponse.body = JSON.stringify(errBody);
 
     }
@@ -203,14 +200,16 @@ export const post = async (event, ctx, callback) => {
 
     const data = JSON.parse(event.body);
 
+
+    if(!isValidEmail(data.email)) throw helpers.inputError('Invalid email', data.email);
     helpers.checkPayloadProps(data, {
-      id: { required: true, type: 'number' },
+      email: { required: true, type: 'string' },
       eventID: { required: true, type: 'string' },
       year: { required: true, type: 'number' },
       registrationStatus: { required: true , type: 'string' },
     });
 
-    const response = await updateHelper(data, true, data.id);
+    const response = await updateHelper(data, true, data.email);
 
     callback(null, response);
     return null;
@@ -230,10 +229,14 @@ export const put = async (event, ctx, callback) => {
 
   try {
 
-    if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('user');
-    const id = event.pathParameters.id;
-
+    if(!event.pathParameters || !event.pathParameters.email) throw helpers.missingIdQueryResponse('user');
+    
+    const email = event.pathParameters.email;
+    
     const data = JSON.parse(event.body);
+
+    if(!isValidEmail(email)) throw helpers.inputError('Invalid email', email);
+
 
     // Check that parameters are valid
     helpers.checkPayloadProps(data, {
@@ -242,7 +245,7 @@ export const put = async (event, ctx, callback) => {
       registrationStatus: { required: true , type: 'string' },
     });
 
-    const response = await updateHelper(data, false, id);
+    const response = await updateHelper(data, false, email);
 
     callback(null, response);
     return null;
@@ -265,7 +268,7 @@ export const get = async (event, ctx, callback) => {
   try {
 
     const queryString = event.queryStringParameters;
-    if(!queryString || (!queryString.eventID && !queryString.year && !queryString.id)) throw helpers.missingIdQueryResponse('eventID/year/user ');
+    if(!queryString || (!queryString.eventID && !queryString.year && !queryString.email)) throw helpers.missingIdQueryResponse('eventID/year/user ');
     if((queryString.eventID && !queryString.year) || (!queryString.eventID && queryString.year)) {
 
       throw helpers.missingIdQueryResponse('eventID or year (must have both or neither)');
@@ -300,19 +303,18 @@ export const get = async (event, ctx, callback) => {
       registrations = await db.scan(USER_REGISTRATIONS_TABLE, filterExpression);
 
       // filter by id query, if given 
-      if(queryString.hasOwnProperty('id')) {
+      if(queryString.hasOwnProperty('email')) {
 
-        registrations = registrations.filter(entry => entry.id === parseInt(queryString.id, 10));
+        registrations = registrations.filter(entry => entry.id === queryString.email);
 
       }
 
     } else { // if eventID and year was not given (only id)
 
-      const id = parseInt(queryString.id, 10);
       const filterExpression = {
         FilterExpression: 'id = :query',
         ExpressionAttributeValues: {
-          ':query': id
+          ':query': queryString.email
         }
       };
 
@@ -351,10 +353,11 @@ export const del = async (event, ctx, callback) => {
 
     const data = JSON.parse(event.body);
 
-    if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('registration');
+    if(!event.pathParameters || !event.pathParameters.email) throw helpers.missingIdQueryResponse('registration');
 
-    const id = parseInt(event.pathParameters.id, 10);
-    if(isNaN(id)) throw helpers.inputError('Id path parameter must be a number', event.pathParameters);
+    const email = event.pathParameters.email
+    if(!isValidEmail(email)) throw helpers.inputError('Invalid email', email);
+
 
     helpers.checkPayloadProps(data, {
       eventID : { required: true , type: 'string' },
@@ -363,7 +366,7 @@ export const del = async (event, ctx, callback) => {
 
     const eventIDAndYear = data.eventID + ';' + data.year;
 
-    const res = await db.deleteOne(id, USER_REGISTRATIONS_TABLE, { ['eventID;year']: eventIDAndYear });
+    const res = await db.deleteOne(email, USER_REGISTRATIONS_TABLE, { ['eventID;year']: eventIDAndYear });
 
     const response = helpers.createResponse(200, {
       message: 'Registration entry Deleted!',

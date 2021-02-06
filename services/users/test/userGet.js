@@ -10,19 +10,22 @@ let wrapped = mochaPlugin.getWrapper('userGet', '/handler.js', 'get');
 
 // If want to invoke mocha instead of sls invoke
 // let wrapped = mochaPlugin.getWrapper('userGet', '../../../handlers/user.js', 'get');
+
+const email = "test@gmail.com"
+const nonexistentEmail = "nonexistent@gmail.com"
 describe('userGet', () => {
 
   before(() => {
 
     AWSMock.mock('DynamoDB.DocumentClient', 'get', function (params, callback){
 
-      if (params.Key.id == 332332) {
+      if (params.Key.id == email) {
 
         Promise.resolve(
           callback(null, { Item: 'not null user' })
         );
 
-      } else if  (params.Key.id == 123123) {
+      } else if  (params.Key.id == nonexistentEmail) {
 
         Promise.resolve(
           callback(null, { Item: null })
@@ -40,11 +43,11 @@ describe('userGet', () => {
 
   });
 
-  it ('should return 406 for trying to get a user with invalid id (string)', async () => {
+  it ('should return 406 for trying to get a user with invalid email', async () => {
 
     const response = await wrapped.run({
       pathParameters: {
-        id: 'badID'
+        email: 'asdf'
       }
     });
     expect(response).to.not.be.empty;
@@ -52,11 +55,11 @@ describe('userGet', () => {
 
   });
 
-  it ('shoult return 404 for trying to get a user that does not exist', async () => {
+  it ('should return 404 for trying to get a user that does not exist', async () => {
 
     const response = await wrapped.run({
       pathParameters: {
-        id: 123123
+        email: nonexistentEmail
       }
     });
     expect(response).to.not.be.empty;
@@ -68,7 +71,7 @@ describe('userGet', () => {
 
     const response = await wrapped.run({
       pathParameters: {
-        id: 332332
+        email: email
       }
     });
     expect(response).to.not.be.empty;

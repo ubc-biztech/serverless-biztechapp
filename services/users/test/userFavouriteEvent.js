@@ -15,12 +15,13 @@ const testEntry = {
   isFavourite: true
 };
 
+const email = "test@gmail.com"
 const userObject = {
-  id: '6456456464',
+  studentId: '6456456464',
   fname: 'insanetest',
   lname: 'dude',
   faculty: 'Science',
-  email: 'test@test.com'
+  email: email
 };
 
 describe('userFavEvent', () => {
@@ -29,7 +30,7 @@ describe('userFavEvent', () => {
 
     AWSMock.mock('DynamoDB.DocumentClient', 'get', (params, callback) => {
 
-      if(params.TableName.includes(USERS_TABLE) && params.Key.id === 6456456464) {
+      if(params.TableName.includes(USERS_TABLE) && params.Key.id === email) {
 
         callback(null, { Item: userObject });
 
@@ -64,7 +65,7 @@ describe('userFavEvent', () => {
         isFavourite: true
       }),
       pathParameters: {
-        id: '6456456464'
+        email: email
       }
     });
     expect(response.statusCode).to.equal(406);
@@ -79,7 +80,7 @@ describe('userFavEvent', () => {
         isFavourite: true
       }),
       pathParameters: {
-        id: '6456456464'
+        email: email
       }
     });
     expect(response.statusCode).to.equal(406);
@@ -95,7 +96,7 @@ describe('userFavEvent', () => {
         isFavourite: true
       }),
       pathParameters: {
-        id: '6456456464'
+        email: email
       }
     });
     expect(response.statusCode).to.equal(406);
@@ -110,7 +111,7 @@ describe('userFavEvent', () => {
         year: 2020
       }),
       pathParameters: {
-        id: '6456456464'
+        email: email
       }
     });
     expect(response.statusCode).to.equal(406);
@@ -126,7 +127,7 @@ describe('userFavEvent', () => {
         isFavourite: 'not a boolean'
       }),
       pathParameters: {
-        id: '6456456464'
+        email: email
       }
     });
     expect(response.statusCode).to.equal(406);
@@ -142,7 +143,7 @@ describe('userFavEvent', () => {
         isFavourite: true
       }),
       pathParameters: {
-        id: '12345678'
+        email: "asdf@gmail.com"
       }
     });
     expect(response.statusCode).to.equal(404);
@@ -158,7 +159,7 @@ describe('userFavEvent', () => {
         isFavourite: true
       }),
       pathParameters: {
-        id: '6456456464'
+        email: email
       }
     });
     expect(response.statusCode).to.equal(404);
@@ -170,7 +171,7 @@ describe('userFavEvent', () => {
     const response = await wrapped.run({
       body: JSON.stringify(testEntry),
       pathParameters: {
-        id: '6456456464'
+        email: email
       }
     });
     expect(response.statusCode).to.equal(200);
@@ -185,7 +186,7 @@ describe('userFavEvent', () => {
         isFavourite: false
       }),
       pathParameters: {
-        id: '6456456464'
+        email: email
       }
     });
     expect(response.statusCode).to.equal(200);

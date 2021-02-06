@@ -9,12 +9,15 @@ let wrapped = mochaPlugin.getWrapper('registrationPut', '/handler.js', 'put');
 import AWSMock from 'aws-sdk-mock';
 import { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } from '../../../constants/tables';
 
+const email = "test@gmail.com"
+const email2 = "test2@gmail.com"
+
 const userResponse = {
-  id: 12200034,
+  studentId: 12200034,
   fname: 'user',
   lname: 'man',
   faculty: 'Science',
-  email: 'test@test.com'
+  email: email
 };
 
 const eventResponse = {
@@ -33,13 +36,13 @@ const eventResponse = {
 
 const registrationsResponse = [
   {
-    id: 12345677,
+    id: email,
     ['eventID;year']: 'event;2020',
     updatedAt: 1600669844493,
     registrationStatus: 'registered'
   },
   {
-    id: 12345678,
+    id: email2,
     ['eventID;year']: 'event;2020',
     updatedAt: 1600669844493,
     registrationStatus: 'registered'
@@ -60,8 +63,8 @@ describe('registrationPut', () => {
       }
       else if(params.TableName.includes(USERS_TABLE)) {
 
-        if(params.Key.id === 12200034) callback(null, { Item: userResponse });
-        else if(params.Key.id === 12345678) callback(null, { Item: { ...userResponse, id: 12345678 } });
+        if(params.Key.id === email) callback(null, { Item: userResponse });
+        else if(params.Key.id === email2) callback(null, { Item: { ...userResponse, id: email2 } });
         else callback(null, { Item: null });
 
       }
@@ -83,8 +86,8 @@ describe('registrationPut', () => {
     AWSMock.mock('DynamoDB.DocumentClient', 'update', (params, callback) => {
 
       // for PUT (different from POST)
-      // throw error if doesnt exist (only check for 87654321)
-      if(params.Key.id === 12345678 && params.Key['eventID;year'] === 'event;2020') callback({ code: 'ConditionalCheckFailedException' });
+      // throw error if doesnt exist (only check for email2)
+      if(params.Key.id === email2 && params.Key['eventID;year'] === 'event;2020') callback({ code: 'ConditionalCheckFailedException' });
       else callback(null, 'Updated!');
 
       return null;
@@ -99,7 +102,7 @@ describe('registrationPut', () => {
 
   });
 
-  it('should return 400 when id parameter is not given ', async () => {
+  it('should return 400 when email parameter is not given ', async () => {
 
     const response = await wrapped.run({
       body: JSON.stringify({
@@ -120,7 +123,7 @@ describe('registrationPut', () => {
         year: 2020,
       }),
       pathParameters: {
-        id: '12200034'
+        email: email
       }
     });
     expect(response.statusCode).to.be.equal(406);
@@ -135,7 +138,7 @@ describe('registrationPut', () => {
         registrationStatus: 'registered'
       }),
       pathParameters: {
-        id: '12200034'
+        email: email
       }
     });
     expect(response.statusCode).to.be.equal(406);
@@ -150,7 +153,7 @@ describe('registrationPut', () => {
         year: 2020,
       }),
       pathParameters: {
-        id: '12200034'
+        email: email
       }
     });
     expect(response.statusCode).to.be.equal(406);
@@ -166,14 +169,14 @@ describe('registrationPut', () => {
         registrationStatus: 'registered'
       }),
       pathParameters: {
-        id: '12200034'
+        email: email
       }
     });
     expect(response.statusCode).to.be.equal(404);
 
   });
 
-  it('should return 404 when unknown id is provided', async () => {
+  it('should return 404 when unknown email is provided', async () => {
 
     const response = await wrapped.run({
       body: JSON.stringify({
@@ -182,7 +185,7 @@ describe('registrationPut', () => {
         registrationStatus: 'registered'
       }),
       pathParameters: {
-        id: '1111111111'
+        email: 'asdf@gmail.com'
       }
     });
     expect(response.statusCode).to.be.equal(404);
@@ -198,7 +201,7 @@ describe('registrationPut', () => {
         registrationStatus: 'waitlist'
       }),
       pathParameters: {
-        id: '12200034'
+        email: email
       }
     });
 
@@ -217,7 +220,7 @@ describe('registrationPut', () => {
         registrationStatus: 'registered'
       }),
       pathParameters: {
-        id: '12200034'
+        email: email
       }
     });
 
@@ -236,7 +239,7 @@ describe('registrationPut', () => {
         registrationStatus: 'registered'
       }),
       pathParameters: {
-        id: '12345678'
+        email: email2
       }
     });
     expect(response.statusCode).to.equal(409);

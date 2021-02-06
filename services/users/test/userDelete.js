@@ -8,17 +8,18 @@ const expect = mochaPlugin.chai.expect;
 import AWSMock from 'aws-sdk-mock';
 let wrapped = mochaPlugin.getWrapper('userDelete', '/handler.js', 'del');
 
+const email = "test@gmail.com"
 const userPayload = {
-  id: 6456456464,
+  studentId: 6456456464,
   fname: 'insanetest',
   lname: 'dude',
   faculty: 'Science',
-  email: 'test@test.com'
+  email: email
 };
 
 describe('userDelete', () => {
 
-  const existingUsers = [1234];
+  const existingUsers = [email];
 
   before(() => {
 
@@ -52,7 +53,7 @@ describe('userDelete', () => {
 
   });
 
-  it('return 400 for trying to delete a user with no id', async () => {
+  it('return 400 for trying to delete a user with no email', async () => {
 
 
     const response = await wrapped.run({ pathParameters: {} });
@@ -62,27 +63,16 @@ describe('userDelete', () => {
 
   it('return 404 for trying to delete a user that does not exist', async () => {
 
-    const invalidId = '2468';
+    const invalidEmail = 'asdf@gmail.com';
 
-    const response = await wrapped.run({ pathParameters: { id: invalidId } });
+    const response = await wrapped.run({ pathParameters: { email: invalidEmail } });
     expect(response.statusCode).to.be.equal(404);
-
-  });
-
-  it('return 406 for inputting a malformed user id (string instead of number)', async () => {
-
-    const invalidId = 'badID';
-
-    const response = await wrapped.run({ pathParameters: { id: invalidId } });
-    expect(response.statusCode).to.be.equal(406);
 
   });
 
   it('return 200 for successfully deleting a user', async () => {
 
-    const validId = '1234';
-
-    const response = await wrapped.run({ pathParameters: { id: validId } });
+    const response = await wrapped.run({ pathParameters: { email: email } });
     expect(response.statusCode).to.be.equal(200);
 
   });
