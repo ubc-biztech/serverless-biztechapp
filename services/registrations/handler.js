@@ -230,9 +230,9 @@ export const put = async (event, ctx, callback) => {
   try {
 
     if(!event.pathParameters || !event.pathParameters.email) throw helpers.missingIdQueryResponse('user');
-    
+
     const email = event.pathParameters.email;
-    
+
     const data = JSON.parse(event.body);
 
     if(!isValidEmail(email)) throw helpers.inputError('Invalid email', email);
@@ -355,7 +355,7 @@ export const del = async (event, ctx, callback) => {
 
     if(!event.pathParameters || !event.pathParameters.email) throw helpers.missingIdQueryResponse('registration');
 
-    const email = event.pathParameters.email
+    const email = event.pathParameters.email;
     if(!isValidEmail(email)) throw helpers.inputError('Invalid email', email);
 
 

@@ -9,8 +9,8 @@ let wrapped = mochaPlugin.getWrapper('registrationPut', '/handler.js', 'put');
 import AWSMock from 'aws-sdk-mock';
 import { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } from '../../../constants/tables';
 
-const email = "test@gmail.com"
-const email2 = "test2@gmail.com"
+const email = 'test@gmail.com';
+const email2 = 'test2@gmail.com';
 
 const userResponse = {
   studentId: 12200034,

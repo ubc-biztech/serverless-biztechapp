@@ -9,8 +9,8 @@ const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper('registrationPost', '/handler.js', 'post');
 import { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } from '../../../constants/tables';
 
-const email = "test@gmail.com"
-const email2 = "test2@gmail.com"
+const email = 'test@gmail.com';
+const email2 = 'test2@gmail.com';
 const userResponse = {
   studentId: 12200034,
   fname: 'user',
@@ -172,7 +172,7 @@ describe('registrationPost', () => {
 
     const response = await wrapped.run({
       body: JSON.stringify({
-        email: "asdf@gmail.com",
+        email: 'asdf@gmail.com',
         eventID: 'event',
         year: 2020,
         registrationStatus: 'registered'

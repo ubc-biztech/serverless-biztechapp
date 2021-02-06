@@ -11,8 +11,8 @@ let wrapped = mochaPlugin.getWrapper('userGet', '/handler.js', 'get');
 // If want to invoke mocha instead of sls invoke
 // let wrapped = mochaPlugin.getWrapper('userGet', '../../../handlers/user.js', 'get');
 
-const email = "test@gmail.com"
-const nonexistentEmail = "nonexistent@gmail.com"
+const email = 'test@gmail.com';
+const nonexistentEmail = 'nonexistent@gmail.com';
 describe('userGet', () => {
 
   before(() => {

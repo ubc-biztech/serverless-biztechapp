@@ -11,8 +11,8 @@ export const create = async (event, ctx, callback) => {
 
   const timestamp = new Date().getTime();
   const data = JSON.parse(event.body);
-  console.log(event.body)
-  console.log(data.email)
+  console.log(event.body);
+  console.log(data.email);
   if(!isValidEmail(data.email)) return helpers.inputError('Invalid email', data.email);
   const email = data.email;
 
@@ -26,7 +26,7 @@ export const create = async (event, ctx, callback) => {
     isBiztechAdmin = true;
 
   }
-  
+
   const userParams = {
     Item: {
       id: data.email,
@@ -146,9 +146,10 @@ export const create = async (event, ctx, callback) => {
 export const get = async (event, ctx, callback) => {
 
   try {
+
     if(!event.pathParameters || !event.pathParameters.email) throw helpers.missingIdQueryResponse('email');
     const email = event.pathParameters.email;
-    if(!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
+    if(!isValidEmail(email)) throw helpers.inputError('Invalid email', email);
     const user = await db.getOne(email, USERS_TABLE);
     if(isEmpty(user)) throw helpers.notFoundResponse('user', email);
 
@@ -173,8 +174,8 @@ export const update = async (event, ctx, callback) => {
 
     if(!event.pathParameters || !event.pathParameters.email) throw helpers.missingIdQueryResponse('event');
 
-    const email = event.pathParameters.email
-    if(!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
+    const email = event.pathParameters.email;
+    if(!isValidEmail(email)) throw helpers.inputError('Invalid email', email);
 
     const existingUser = await db.getOne(email, USERS_TABLE);
     if(isEmpty(existingUser)) throw helpers.notFoundResponse('user', email);
@@ -241,7 +242,7 @@ export const favouriteEvent = async (event, ctx, callback) => {
     const eventIDAndYear = eventID + ';' + year;
 
     const email = event.pathParameters.email;
-    if(email == null || !isValidEmail(email)) throw helpers.inputError("Invalid email", email);
+    if(email == null || !isValidEmail(email)) throw helpers.inputError('Invalid email', email);
 
     const existingEvent = await db.getOne(eventID, EVENTS_TABLE, { year });
     if(isEmpty(existingEvent)) throw helpers.notFoundResponse('event', eventID, year);

@@ -9,7 +9,7 @@ import AWSMock from 'aws-sdk-mock';
 let wrapped = mochaPlugin.getWrapper('userCreate', '/handler.js', 'create');
 import { USER_INVITE_CODES_TABLE } from '../../../constants/tables';
 
-const email = "test@gmail.com"
+const email = 'test@gmail.com';
 const testEntry = {
   studentId: 6456456464,
   fname: 'insanetest',

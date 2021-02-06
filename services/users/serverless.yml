@@ -56,12 +56,12 @@ functions:
     handler: handler.get
     events:
       - http:
-          path: users/{id}
+          path: users/{email}
           method: get
           request:
             parameters:
               path:
-                id: true
+                email: true
           cors: true
           authorizer:
             name: ${self:service}-authorizer
@@ -82,11 +82,11 @@ functions:
     handler: handler.update
     events:
       - http:
-          path: users/{id}
+          path: users/{email}
           method: patch
           request:
             path:
-              id: true
+              email: true
           cors: true
           authorizer:
             name: ${self:service}-authorizer
@@ -96,11 +96,11 @@ functions:
     handler: handler.favouriteEvent
     events:
       - http:
-          path: users/favEvent/{id}
+          path: users/favEvent/{email}
           method: patch
           request:
             path:
-              id: true
+              email: true
           cors: true
           authorizer:
             name: ${self:service}-authorizer
@@ -110,11 +110,11 @@ functions:
     handler: handler.del
     events:
       - http:
-          path: users/{id}
+          path: users/{email}
           method: delete
           request:
             path:
-              id: true
+              email: true
           cors: true
           authorizer:
             name: ${self:service}-authorizer

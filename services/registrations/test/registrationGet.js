@@ -8,7 +8,7 @@ const expect = mochaPlugin.chai.expect;
 import AWSMock from 'aws-sdk-mock';
 let wrapped = mochaPlugin.getWrapper('registrationGet', '/handler.js', 'get');
 
-const email = "test@gmail.com"
+const email = 'test@gmail.com';
 
 const registrationPayload = [{ id: email, ['eventID;year']: 'event;2020', updatedAt: 1600669844493 }, { id: email, ['eventID;year']: 'event;2020', updatedAt: 1600669844493 }];
 

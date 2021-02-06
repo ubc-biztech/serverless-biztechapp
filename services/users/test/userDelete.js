@@ -8,7 +8,7 @@ const expect = mochaPlugin.chai.expect;
 import AWSMock from 'aws-sdk-mock';
 let wrapped = mochaPlugin.getWrapper('userDelete', '/handler.js', 'del');
 
-const email = "test@gmail.com"
+const email = 'test@gmail.com';
 const userPayload = {
   studentId: 6456456464,
   fname: 'insanetest',

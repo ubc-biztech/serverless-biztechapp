@@ -277,7 +277,7 @@ export const get = async (event, ctx, callback) => {
         });
 
       }
-      console.log(registrationList)
+      console.log(registrationList);
       let keysForRequest = registrationList.map(registrationObj => {
 
         const keyEntry = {};

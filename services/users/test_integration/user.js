@@ -38,7 +38,6 @@ describe('user integration', function () {
       studentId: 44403060,
       fname: 'TESTUSER',
       lname: 'DONOTMODIFY',
-      email: 'integration@test.com',
       faculty: 'science',
       userYear: 1,
       gender: 'Male',
@@ -96,6 +95,7 @@ describe('user integration', function () {
 
       return helpers.invokeLambda(SERVICE, 'userUpdate', JSON.stringify(userPatchPayload))
         .then(([statusCode]) => {
+
           expect(statusCode).to.equal(200);
 
         });

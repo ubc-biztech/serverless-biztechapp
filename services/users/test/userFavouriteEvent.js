@@ -15,7 +15,7 @@ const testEntry = {
   isFavourite: true
 };
 
-const email = "test@gmail.com"
+const email = 'test@gmail.com';
 const userObject = {
   studentId: '6456456464',
   fname: 'insanetest',
@@ -143,7 +143,7 @@ describe('userFavEvent', () => {
         isFavourite: true
       }),
       pathParameters: {
-        email: "asdf@gmail.com"
+        email: 'asdf@gmail.com'
       }
     });
     expect(response.statusCode).to.equal(404);

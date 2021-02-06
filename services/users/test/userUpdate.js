@@ -8,7 +8,7 @@ const expect = mochaPlugin.chai.expect;
 import AWSMock from 'aws-sdk-mock';
 let wrapped = mochaPlugin.getWrapper('userUpdate', '/handler.js', 'update');
 
-const email = "test@gmail.com"
+const email = 'test@gmail.com';
 
 const testEntry = {
   studentId: 6456456464,

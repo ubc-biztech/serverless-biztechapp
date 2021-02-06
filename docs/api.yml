@@ -251,9 +251,9 @@ paths:
           description: 'User could not be created because {object} already exists'
         '502':
           description: 'Internal Server Error'
-  /users/{id}:
+  /users/{email}:
     get:
-      summary: Returns a user based on id
+      summary: Returns a user based on email
       operationId: getUser
       tags:
         - Users
@@ -270,20 +270,20 @@ paths:
         '403':
           description: 'Forbidden'  
         '404':
-          description: 'user with id {integer} could not be found. Make sure you have provided the correct id.'
+          description: 'user with email {string} could not be found. Make sure you have provided the correct email.'
         '406':
           description: '(object) is not a (object)!'
         '502':
           description: 'Internal Server Error'
       parameters:
-        - name: "id"
+        - name: "email"
           in: "path"
           required: true
-          description: "The id of the user"
+          description: "The email of the user"
           schema:
             type: string
     patch:
-      summary: Updates or replaces a user based on id
+      summary: Updates or replaces a user based on email
       operationId: patchUser
       tags:
         - Users
@@ -295,7 +295,7 @@ paths:
                 $ref: '#/components/schemas/UsersPostBody'
       responses:
         '200':
-          description: 'Updated user with id {string}!'
+          description: 'Updated user with email {string}!'
           content:
             application/json:
               schema:
@@ -305,46 +305,46 @@ paths:
         '403':
           description: 'Forbidden'  
         '404':
-          description: 'user with id {integer} could not be found. Make sure you have provided the correct id.'
+          description: 'user with email {string} could not be found. Make sure you have provided the correct email.'
         '406':
           description: '(object) is not a (object)!'
         '502':
           description: 'Internal Server Error'
       parameters:
-        - name: "id"
+        - name: "email"
           in: "path"
           required: true
-          description: "The id of the user"
+          description: "The email of the user"
           schema:
             type: string
     delete:
-      summary: Deletes a user based on id
+      summary: Deletes a user based on email
       operationId: deleteUser
       tags:
         - Users
       responses:
         '200':
-          description: 'Deleted user with id {string}!'
+          description: 'Deleted user with email {string}!'
         '401':
           description: 'Unauthorized'
         '403':
           description: 'Forbidden'  
         '404':
-          description: 'user with id {integer} could not be found. Make sure you have provided the correct id.'
+          description: 'user with email {string} could not be found. Make sure you have provided the correct email.'
         '406':
           description: '(object) is not a (object)!'
         '502':
           description: 'Internal Server Error'
       parameters:
-        - name: "id"
+        - name: "email"
           in: "path"
           required: true
-          description: "The id of the user"
+          description: "The email of the user"
           schema:
             type: string
-  /users/favEvent/{id}:
+  /users/favEvent/{email}:
     patch:
-      summary: Update event in user's favourite event based on id
+      summary: Update event in user's favourite event based on email
       operationId: patchFavEventUser
       tags:
         - Users
@@ -362,16 +362,16 @@ paths:
         '403':
           description: 'Forbidden'  
         '404':
-          description: 'user with id {integer} could not be found. Make sure you have provided the correct id.'
+          description: 'user with email {string} could not be found. Make sure you have provided the correct email.'
         '406':
           description: '(object) is not a (object)!'
         '502':
           description: 'Internal Server Error'
       parameters:
-        - name: "id"
+        - name: "email"
           in: "path"
           required: true
-          description: "The id of the user"
+          description: "The email of the user"
           schema:
             type: string
   /registrations:
@@ -390,7 +390,7 @@ paths:
                 items: 
                   $ref: '#/components/schemas/RegistrationsGetResponse'
         '400':
-          description: "A(n) eventID or year (must have both or neither) id was not provided. Check query params"
+          description: "A(n) eventID or year (must have both or neither) email was not provided. Check query params"
         '401':
           description: 'Unauthorized'
         '403':
@@ -413,13 +413,12 @@ paths:
           schema:
             type: integer
             format: int64
-        - name: "id"
+        - name: "email"
           in: "header"
-          description: "The id of the user (Only required if eventID and year are not provided)"
+          description: "The email of the user (Only required if eventID and year are not provided)"
           required: true
           schema:
-            type: integer
-            format: int64
+            type: string
     post:
       summary: Creates a new registration
       operationId: postRegistration
@@ -448,9 +447,9 @@ paths:
           description: 'Create error because the registration entry for user {integer} and with eventID;year {string} already exists'
         '502':
           description: 'Internal Server Error'
-  /registrations/{id}:
+  /registrations/{email}:
     put:
-      summary: Update registration entry based on id
+      summary: Update registration entry based on email
       operationId: putRegistration
       tags:
         - Registrations
@@ -462,7 +461,7 @@ paths:
                 $ref: '#/components/schemas/RegistrationsPostBody'
       responses:
         '200':
-          description: 'User with id {integer} successfully registered (through update) to status {string}!'
+          description: 'User with email {string} successfully registered (through update) to status {string}!'
           content:
             application/json:
               schema:
@@ -472,18 +471,19 @@ paths:
         '403':
           description: 'Forbidden'
         '404':
-          description: 'User with id {integer} could not be found. Make sure you have provided the correct id.'
+          description: 'User with email {string} could not be found. Make sure you have provided the correct email.'
         '406':
           description: '{object} is missing from request body'
         '502':
           description: 'Internal Server Error'
       parameters:
-        - name: "id"
+        - name: "email"
           in: "path"
           required: true
-          description: "The id of the user"
+          description: "The email of the user"
           schema:
             type: string
+
   /memberships:
     get:
       summary: Returns all users who signed up for membership
@@ -654,17 +654,17 @@ components:
     UsersGetResponse:
       type: object
       required:
-        - id
+        - email
       properties:
-        id:
-          type: integer
-          format: int64
+        email:
+          type: string
         fname:
           type: string
         lname:
           type: string
-        email:
-          type: string
+        studentId:
+          type: number
+          format: int64
         faculty:
           type: string
         userYear:
@@ -682,17 +682,17 @@ components:
     UsersPostBody:
       type: object
       required:
-        - id
+        - email
       properties:
-        id:
-          type: integer
-          format: int64
+        email:
+          type: string
         fname:
           type: string
         lname:
           type: string
-        email:
-          type: string
+        studentId:
+          type: number
+          format: int64
         faculty:
           type: string
         userYear:
@@ -754,7 +754,7 @@ components:
       required:
         - eventID
         - year
-        - id
+        - email
         - registrationStatus
       properties:
         eventID:
@@ -762,9 +762,8 @@ components:
         year: 
           type: integer
           format: int64
-        id: 
-          type: integer
-          format: int64
+        email: 
+          type: string
         registrationStatus:
           type: string
           enum: ["registered, checkedIn, waitlisted"]

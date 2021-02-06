@@ -56,11 +56,11 @@ functions:
     handler: handler.put
     events:
       - http:
-          path: registrations/{id}
+          path: registrations/{email}
           method: put
           request:
             path:
-              id: true
+              email: true
           cors: true
           authorizer:
             name: ${self:service}-authorizer
@@ -77,7 +77,7 @@ functions:
               querystrings:
                 eventID: false
                 year: false
-                id: false
+                email: false
                 afterTimestamp: false
           cors: true
           authorizer:
@@ -88,11 +88,11 @@ functions:
     handler: handler.del
     events:
       - http:
-          path: registrations/{id}
+          path: registrations/{email}
           method: delete
           request:
             path:
-              id: true
+              email: true
           cors: true
           authorizer:
             name: ${self:service}-authorizer
