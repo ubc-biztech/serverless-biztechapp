@@ -30,11 +30,14 @@ jobs:
    - name: Install dependencies
      run: npm ci
 
-   - name: 'Deploy and run tests'
+   - name: 'Deploy each microservice and run unit and integration tests'
      env:
        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
        SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
+     # Code below iterates through each directory and deploys each microservice asychronously
+     path: ~/serverless-biztechapp/services
      run: |
-       npx sls deploy --conceal
-       npm run test
+     for DIR in *; do (cd $DIR  && npx sls deploy --conceal && cd ..) & done; wait
+     npm run test
+
