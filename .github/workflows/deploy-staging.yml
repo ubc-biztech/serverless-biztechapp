@@ -1,10 +1,10 @@
 name: Deploy Staging
 
-on:
- push:
-   branches:
-       - master
-
+# on:
+#  push:
+#    branches:
+#        - master
+on: pull_request
 jobs:
  deploy-staging:
    runs-on: ubuntu-latest
@@ -40,7 +40,7 @@ jobs:
        SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
      run: |
       cd services
-      for DIR in *; do (cd $DIR  && npx sls deploy --stage staging --conceal && cd ..) & done; wait
+      for DIR in *; do (cd $DIR  && npx sls deploy --stage staging && cd ..) & done; wait
       echo "Finished deployment in staging"
       for DIR in *; do (cd $DIR && npx sls invoke test --compilers js:babel-core/register --stage staging && cd ..) & done; wait
       echo "Finished running tests in staging environment"
