@@ -163,10 +163,10 @@ async function sendEmail(user, eventName, registrationStatus) {
     if(!userEmail) throw { message: 'User does not have an e-mail address!' };
 
     // template id for registered and waitlist
-    let tempId = 'd-99da9013c9a04ef293e10f0d73e9b49c';
+    let tempId = 'd-11d4bfcbebdf42b686f5e7d0977aa952';
     if (registrationStatus == 'cancelled') {
 
-      tempId = 'd-0c87cb420ba2456ebc4c3f99a9d50ba0';
+      tempId = 'd-8d272b62693e40c6b469a365f7c04443';
 
     }
 
