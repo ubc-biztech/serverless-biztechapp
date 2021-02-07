@@ -38,6 +38,6 @@ jobs:
      # Code below iterates through each directory and deploys each microservice asychronously
      run: |
       cd services
-      for DIR in *; do (echo "wtf" && echo $DIR && cd $DIR && npx sls deploy && cd ..) done;
+      for DIR in *; do (echo "wtf" && echo $DIR && cd $DIR && sls deploy && cd ..) done;
       npm run test
 
