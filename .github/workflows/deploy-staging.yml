@@ -1,6 +1,9 @@
 name: Deploy Staging
 
-on: pull_request
+on:
+ push:
+   branches:
+       - master
 
 jobs:
  deploy-staging:
@@ -30,7 +33,7 @@ jobs:
    - name: Install dependencies
      run: npm ci
 
-   - name: 'Deploy Staging'
+   - name: 'Deploy and test Staging'
      env:
        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -39,12 +42,5 @@ jobs:
       cd services
       for DIR in *; do (cd $DIR  && npx sls deploy --stage staging --conceal && cd ..) & done; wait
       echo "Finished deployment in staging"
-   - name: 'Test Staging'
-     env:
-       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-       SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
-     run: |
-      mocha --require babel-core/register ./services/*/test_integration
-
+      for DIR in *; do (cd $DIR && npx sls invoke test --compilers js:babel-core/register --stage staging && cd ..) & done; wait
       echo "Finished running tests in staging environment"
