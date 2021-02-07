@@ -45,6 +45,7 @@ jobs:
        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
        SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
      run: |
-      cd services
-      for DIR in *; do (cd $DIR  && npx sls invoke test --compilers js:babel-core/register --stage staging && cd ..) & done; wait
+      cd services/events
+      npx sls invoke test --compilers js:babel-core/register --stage staging
+
       echo "Finished running tests in staging environment"
