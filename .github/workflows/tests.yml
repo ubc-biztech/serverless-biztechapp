@@ -43,6 +43,6 @@ jobs:
      # Code below iterates through each directory and deploys each microservice asychronously
      run: |
       cd services
-      for DIR in *; do (cd $DIR && npm ci && sls deploy && cd ..) & done; wait
+      for DIR in *; do (cd $DIR && sls deploy && cd ..) & done; wait
       npm run test
 
