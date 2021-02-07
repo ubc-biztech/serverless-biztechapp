@@ -175,7 +175,7 @@ describe('registration integration', function () {
             }
             if (entry['eventID;year'] === `${INTEGRATION_TEST_PERSISTENT_EVENT_ID_2};${INTEGRATION_TEST_PERSISTENT_YEAR_2}`) {
 
-              expect(entry.registrationStatus).to.equal('waitlist');
+              expect(entry.registrationStatus).to.equal('registered');
 
             }
 
