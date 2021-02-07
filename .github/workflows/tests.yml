@@ -38,6 +38,6 @@ jobs:
      # Code below iterates through each directory and deploys each microservice asychronously
      path: ~/serverless-biztechapp/services
      run: |
-     for DIR in *; do (cd $DIR  && npx sls deploy --conceal && cd ..) & done; wait
-     npm run test
+      for DIR in *; do (cd $DIR  && npx sls deploy --conceal && cd ..) & done; wait
+      npm run test
 
