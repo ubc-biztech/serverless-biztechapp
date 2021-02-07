@@ -267,6 +267,8 @@ export const get = async (event, ctx, callback) => {
 
     const queryString = event.queryStringParameters;
     if(!queryString || (!queryString.eventID && !queryString.year && !queryString.email)) throw helpers.missingIdQueryResponse('eventID/year/user ');
+    
+    const email = queryString.email
     if((queryString.eventID && !queryString.year) || (!queryString.eventID && queryString.year)) {
 
       throw helpers.missingIdQueryResponse('eventID or year (must have both or neither)');
@@ -303,7 +305,7 @@ export const get = async (event, ctx, callback) => {
       // filter by id query, if given 
       if(queryString.hasOwnProperty('email')) {
 
-        registrations = registrations.filter(entry => entry.id === queryString.email);
+        registrations = registrations.filter(entry => entry.id === email);
 
       }
 
@@ -312,7 +314,7 @@ export const get = async (event, ctx, callback) => {
       const filterExpression = {
         FilterExpression: 'id = :query',
         ExpressionAttributeValues: {
-          ':query': queryString.email
+          ':query': email
         }
       };
 
