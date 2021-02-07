@@ -9,12 +9,13 @@ import AWSMock from 'aws-sdk-mock';
 let wrapped = mochaPlugin.getWrapper('userCreate', '/handler.js', 'create');
 import { USER_INVITE_CODES_TABLE } from '../../../constants/tables';
 
+const email = 'test@gmail.com';
 const testEntry = {
-  id: 6456456464,
+  studentId: 6456456464,
   fname: 'insanetest',
   lname: 'dude',
   faculty: 'Science',
-  email: 'test@test.com'
+  email: email
 };
 
 describe('userCreate', () => {
@@ -38,22 +39,22 @@ describe('userCreate', () => {
     const response = await wrapped.run({ body: JSON.stringify(testEntry) });
     expect(response.statusCode).to.equal(201);
     const responseBody = JSON.parse(response.body);
-    expect(responseBody.params.Item.id).to.equal(6456456464);
+    expect(responseBody.params.Item.id).to.equal(email);
     expect(responseBody.params.Item.admin).to.equal(false);
 
   });
 
-  it('returns 406 when not given ID', async () => {
+  it('returns 406 when not given email', async () => {
 
     const body = {
       ...testEntry
     };
-    delete body.id;
+    delete body.email;
 
     const response = await wrapped.run({ body: JSON.stringify(body) });
     expect(response.statusCode).to.equal(406);
     const responseBody = JSON.parse(response.body);
-    expect(responseBody.message).to.equal('User ID not specified.');
+    expect(responseBody.message).to.equal('Invalid email');
 
   });
 
@@ -67,7 +68,6 @@ describe('userCreate', () => {
     const response = await wrapped.run({ body: JSON.stringify(body) });
     expect(response.statusCode).to.equal(201);
     const responseBody = JSON.parse(response.body);
-    expect(responseBody.params.Item.id).to.equal(6456456464);
     expect(responseBody.params.Item.admin).to.equal(true);
 
   });
@@ -122,7 +122,7 @@ describe('userCreate', () => {
     const response = await wrapped.run({ body: JSON.stringify(body) });
     expect(response.statusCode).to.equal(201);
     const responseBody = JSON.parse(response.body);
-    expect(responseBody.params.Item.id).to.equal(6456456464);
+    expect(responseBody.params.Item.id).to.equal(email);
     expect(responseBody.params.Item.admin).to.equal(false);
     expect(responseBody.params.Item.paid).to.equal(true);
 

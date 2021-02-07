@@ -8,7 +8,9 @@ const expect = mochaPlugin.chai.expect;
 import AWSMock from 'aws-sdk-mock';
 let wrapped = mochaPlugin.getWrapper('registrationGet', '/handler.js', 'get');
 
-const registrationPayload = [{ id: 12345678, ['eventID;year']: 'event;2020', updatedAt: 1600669844493 }, { id: 12345678, ['eventID;year']: 'event;2020', updatedAt: 1600669844493 }];
+const email = 'test@gmail.com';
+
+const registrationPayload = [{ id: email, ['eventID;year']: 'event;2020', updatedAt: 1600669844493 }, { id: email, ['eventID;year']: 'event;2020', updatedAt: 1600669844493 }];
 
 describe('registrationUpdateHelper', () => {
 
@@ -39,7 +41,7 @@ describe('registrationUpdateHelper', () => {
 
   });
 
-  it('return 400 when queryString is missing both eventID and id ', async () => {
+  it('return 400 when queryString is missing both eventID and email ', async () => {
 
     const response = await wrapped.run({
       queryStringParameters: {
@@ -50,7 +52,7 @@ describe('registrationUpdateHelper', () => {
 
   });
 
-  it('return 200 for successful get with eventID and year but no id', async () => {
+  it('return 200 for successful get with eventID and year but no email', async () => {
 
     const response = await wrapped.run({
       queryStringParameters: {
@@ -62,11 +64,11 @@ describe('registrationUpdateHelper', () => {
 
   });
 
-  it('return 200 for successful get with id and no eventID or year', async () => {
+  it('return 200 for successful get with email and no eventID or year', async () => {
 
     const response = await wrapped.run({
       queryStringParameters: {
-        id: 12345678
+        email: email
       }
     });
 
@@ -74,13 +76,13 @@ describe('registrationUpdateHelper', () => {
 
   });
 
-  it('return 200 for successful get with both eventID and id', async () => {
+  it('return 200 for successful get with both eventID and email', async () => {
 
     const response = await wrapped.run({
       queryStringParameters: {
         eventID: 'event',
         year: 2020,
-        id: 12345678
+        email: email
       }
     });
 
@@ -91,13 +93,13 @@ describe('registrationUpdateHelper', () => {
 
   });
 
-  it('return 200 for successful get with id, eventID;year, and recent timestamp', async () => {
+  it('return 200 for successful get with email, eventID;year, and recent timestamp', async () => {
 
     const response = await wrapped.run({
       queryStringParameters: {
         eventID: 'event',
         year: 2020,
-        id: 12345678,
+        email: email,
         afterTimestamp: 1600669844494
       }
     });
@@ -110,13 +112,13 @@ describe('registrationUpdateHelper', () => {
   });
 
 
-  it('return 200 for successful get with id, eventID;year, and timestamp', async () => {
+  it('return 200 for successful get with email, eventID;year, and timestamp', async () => {
 
     const response = await wrapped.run({
       queryStringParameters: {
         eventID: 'event',
         year: 2020,
-        id: 12345678,
+        email: email,
         afterTimestamp: 1600669844492
       }
     });

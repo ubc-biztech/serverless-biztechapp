@@ -263,7 +263,7 @@ export const get = async (event, ctx, callback) => {
        * Example of a registration object:
         {
           eventID: 'blueprint',
-          id: 123,
+          email: test@gmail.com,
           updatedAt: 1580007893340,
           registrationStatus: 'registered'
         }
@@ -277,11 +277,10 @@ export const get = async (event, ctx, callback) => {
         });
 
       }
-
       let keysForRequest = registrationList.map(registrationObj => {
 
         const keyEntry = {};
-        keyEntry.id = parseInt(registrationObj.id);
+        keyEntry.id = registrationObj.id;
         return keyEntry;
 
       });

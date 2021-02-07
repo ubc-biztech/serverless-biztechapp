@@ -2,9 +2,9 @@
 import chai from 'chai';
 const expect = chai.expect;
 import {
-  INTEGRATION_TEST_PERSISTENT_USER_ID,
-  INTEGRATION_TEST_PERSISTENT_USER_ID_2,
-  INTEGRATION_TEST_NON_EXISTANT_USER_ID,
+  INTEGRATION_TEST_PERSISTENT_USER_EMAIL,
+  INTEGRATION_TEST_PERSISTENT_USER_EMAIL_2,
+  INTEGRATION_TEST_NON_EXISTANT_USER_EMAIL,
   INTEGRATION_TEST_PERSISTENT_EVENT_ID,
   INTEGRATION_TEST_PERSISTENT_YEAR,
   INTEGRATION_TEST_NON_EXISTANT_EVENT_ID,
@@ -29,7 +29,7 @@ describe('registration integration', function () {
       const payload = {
         queryStringParameters: {
           year: INTEGRATION_TEST_PERSISTENT_REGISTRATION_PARAMETERS.year,
-          id: INTEGRATION_TEST_PERSISTENT_REGISTRATION_PARAMETERS.userId,
+          email: INTEGRATION_TEST_PERSISTENT_REGISTRATION_PARAMETERS.email,
           eventID: INTEGRATION_TEST_PERSISTENT_EVENT_ID // wrong eventId
         }
       };
@@ -52,7 +52,6 @@ describe('registration integration', function () {
           year: INTEGRATION_TEST_PERSISTENT_REGISTRATION_PARAMETERS.year
         }
       };
-
       return helpers.invokeLambda(SERVICE, 'registrationGet', JSON.stringify(payload))
         .then(([statusCode, body]) => {
 
@@ -70,7 +69,7 @@ describe('registration integration', function () {
 
     it('entry POST no such event returns 404', async () => {
 
-      const payload = createPayload(INTEGRATION_TEST_PERSISTENT_USER_ID, INTEGRATION_TEST_NON_EXISTANT_EVENT_ID, INTEGRATION_TEST_NON_EXISTANT_YEAR, 'registered');
+      const payload = createPayload(INTEGRATION_TEST_PERSISTENT_USER_EMAIL, INTEGRATION_TEST_NON_EXISTANT_EVENT_ID, INTEGRATION_TEST_NON_EXISTANT_YEAR, 'registered');
       return helpers.invokeLambda(SERVICE, 'registrationPost', JSON.stringify(payload))
         .then(([statusCode, body]) => {
 
@@ -83,12 +82,12 @@ describe('registration integration', function () {
 
     it('entry POST no such user returns 404', async () => {
 
-      const payload = createPayload(INTEGRATION_TEST_NON_EXISTANT_USER_ID, INTEGRATION_TEST_PERSISTENT_EVENT_ID, INTEGRATION_TEST_PERSISTENT_YEAR, 'registered');
+      const payload = createPayload(INTEGRATION_TEST_NON_EXISTANT_USER_EMAIL, INTEGRATION_TEST_PERSISTENT_EVENT_ID, INTEGRATION_TEST_PERSISTENT_YEAR, 'registered');
       return helpers.invokeLambda(SERVICE, 'registrationPost', JSON.stringify(payload))
         .then(([statusCode, body]) => {
 
           expect(statusCode).to.equal(404);
-          expect(body.message).to.equal(`User with id '${INTEGRATION_TEST_NON_EXISTANT_USER_ID}' could not be found. Make sure you have provided the correct id.`);
+          expect(body.message).to.equal(`User with id '${INTEGRATION_TEST_NON_EXISTANT_USER_EMAIL}' could not be found. Make sure you have provided the correct id.`);
 
         });
 
@@ -96,7 +95,7 @@ describe('registration integration', function () {
 
     it('entry POST success returns 201', async () => {
 
-      const payload = createPayload(INTEGRATION_TEST_PERSISTENT_USER_ID, INTEGRATION_TEST_PERSISTENT_EVENT_ID, INTEGRATION_TEST_PERSISTENT_YEAR, 'registered');
+      const payload = createPayload(INTEGRATION_TEST_PERSISTENT_USER_EMAIL, INTEGRATION_TEST_PERSISTENT_EVENT_ID, INTEGRATION_TEST_PERSISTENT_YEAR, 'registered');
       return helpers.invokeLambda(SERVICE, 'registrationPost', JSON.stringify(payload))
         .then(([statusCode, body]) => {
 
@@ -109,7 +108,7 @@ describe('registration integration', function () {
 
     it('entry POST entry already exists returns 409', async () => {
 
-      const payload = createPayload(INTEGRATION_TEST_PERSISTENT_USER_ID, INTEGRATION_TEST_PERSISTENT_EVENT_ID, INTEGRATION_TEST_PERSISTENT_YEAR, 'checkedIn');
+      const payload = createPayload(INTEGRATION_TEST_PERSISTENT_USER_EMAIL, INTEGRATION_TEST_PERSISTENT_EVENT_ID, INTEGRATION_TEST_PERSISTENT_YEAR, 'checkedIn');
       return helpers.invokeLambda(SERVICE, 'registrationPost', JSON.stringify(payload))
         .then(([statusCode]) => {
 
@@ -122,7 +121,7 @@ describe('registration integration', function () {
     it('entry POST event at capacity returns 201', async () => {
 
       const payload = createPayload(
-        INTEGRATION_TEST_PERSISTENT_USER_ID_2,
+        INTEGRATION_TEST_PERSISTENT_USER_EMAIL_2,
         INTEGRATION_TEST_PERSISTENT_REGISTRATION_PARAMETERS.eventId,
         INTEGRATION_TEST_PERSISTENT_REGISTRATION_PARAMETERS.year,
         'registered'
@@ -139,11 +138,11 @@ describe('registration integration', function () {
 
   });
 
-  describe('registrations/{id} PUT', function() {
+  describe('registrations/{email} PUT', function() {
 
     it('entry PUT success returns 200', async () => {
 
-      const payload = createPayloadPut(INTEGRATION_TEST_PERSISTENT_USER_ID, INTEGRATION_TEST_PERSISTENT_EVENT_ID, INTEGRATION_TEST_PERSISTENT_YEAR, 'checkedIn');
+      const payload = createPayloadPut(INTEGRATION_TEST_PERSISTENT_USER_EMAIL, INTEGRATION_TEST_PERSISTENT_EVENT_ID, INTEGRATION_TEST_PERSISTENT_YEAR, 'checkedIn');
       return helpers.invokeLambda(SERVICE, 'registrationPut', JSON.stringify(payload))
         .then(([statusCode, body]) => {
 
@@ -158,43 +157,43 @@ describe('registration integration', function () {
 
       const payload = {
         queryStringParameters: {
-          id: INTEGRATION_TEST_PERSISTENT_USER_ID
+          email: INTEGRATION_TEST_PERSISTENT_USER_EMAIL
         }
       };
       return helpers.invokeLambda(SERVICE, 'registrationGet', JSON.stringify(payload))
-          .then(([statusCode, body]) => {
+        .then(([statusCode, body]) => {
 
-            expect(statusCode).to.equal(200);
-            expect(body.size).to.equal(1);
-            for(const entry of body.data) {
+          expect(statusCode).to.equal(200);
+          expect(body.size).to.equal(2);
+          for(const entry of body.data) {
 
-              expect(entry.id).to.equal(INTEGRATION_TEST_PERSISTENT_USER_ID);
-              if (entry['eventID;year'] === `${INTEGRATION_TEST_PERSISTENT_EVENT_ID};${INTEGRATION_TEST_PERSISTENT_YEAR}`) {
+            expect(entry.id).to.equal(INTEGRATION_TEST_PERSISTENT_USER_EMAIL);
+            if (entry['eventID;year'] == `${INTEGRATION_TEST_PERSISTENT_EVENT_ID};${INTEGRATION_TEST_PERSISTENT_YEAR}`) {
 
-                expect(entry.registrationStatus).to.equal('checkedIn');
+              expect(entry.registrationStatus).to.equal('checkedIn');
 
-              }
-              if (entry['eventID;year'] === `${INTEGRATION_TEST_PERSISTENT_EVENT_ID_2};${INTEGRATION_TEST_PERSISTENT_YEAR_2}`) {
+            }
+            if (entry['eventID;year'] === `${INTEGRATION_TEST_PERSISTENT_EVENT_ID_2};${INTEGRATION_TEST_PERSISTENT_YEAR_2}`) {
 
-                expect(entry.registrationStatus).to.equal('waitlist');
-
-              }
+              expect(entry.registrationStatus).to.equal('waitlist');
 
             }
 
-          });
+          }
+
+        });
 
     });
 
   });
 
-  describe('registrations/{id} DELETE', function() {
+  describe('registrations/{email} DELETE', function() {
 
     it('entry DELETE success returns 200', async () => {
 
       const payload = {
         pathParameters: {
-          id: INTEGRATION_TEST_PERSISTENT_USER_ID
+          email: INTEGRATION_TEST_PERSISTENT_USER_EMAIL
         },
         body: JSON.stringify({
           eventID: INTEGRATION_TEST_PERSISTENT_EVENT_ID,
@@ -214,7 +213,7 @@ describe('registration integration', function () {
 
       const payload = {
         pathParameters: {
-          id: INTEGRATION_TEST_PERSISTENT_USER_ID_2,
+          email: INTEGRATION_TEST_PERSISTENT_USER_EMAIL_2,
         },
         body: JSON.stringify({
           eventID: INTEGRATION_TEST_PERSISTENT_REGISTRATION_PARAMETERS.eventId,
@@ -232,12 +231,12 @@ describe('registration integration', function () {
 
     it('entry PUT no such id and event combination returns 409', async() => {
 
-      const payload = createPayloadPut(INTEGRATION_TEST_PERSISTENT_USER_ID, INTEGRATION_TEST_PERSISTENT_EVENT_ID, INTEGRATION_TEST_PERSISTENT_YEAR,'checkedIn');
+      const payload = createPayloadPut(INTEGRATION_TEST_PERSISTENT_USER_EMAIL, INTEGRATION_TEST_PERSISTENT_EVENT_ID, INTEGRATION_TEST_PERSISTENT_YEAR,'checkedIn');
       return helpers.invokeLambda(SERVICE, 'registrationPut', JSON.stringify(payload))
         .then(([statusCode, body]) => {
 
           expect(statusCode).to.equal(409);
-          expect(body.message).to.equal(`Update error because the registration entry for user '${INTEGRATION_TEST_PERSISTENT_USER_ID}' and with eventID;year '${INTEGRATION_TEST_PERSISTENT_EVENT_ID};${INTEGRATION_TEST_PERSISTENT_YEAR}' does not exist`);
+          expect(body.message).to.equal(`Update error because the registration entry for user '${INTEGRATION_TEST_PERSISTENT_USER_EMAIL}' and with eventID;year '${INTEGRATION_TEST_PERSISTENT_EVENT_ID};${INTEGRATION_TEST_PERSISTENT_YEAR}' does not exist`);
 
         });
 
@@ -247,11 +246,11 @@ describe('registration integration', function () {
 
 });
 
-const createPayload = function(id, eventID, year, registrationStatus) {
+const createPayload = function(email, eventID, year, registrationStatus) {
 
   return {
     body: JSON.stringify({
-      id,
+      email,
       eventID,
       year,
       registrationStatus
@@ -260,11 +259,11 @@ const createPayload = function(id, eventID, year, registrationStatus) {
 
 };
 
-const createPayloadPut = function(id, eventID, year, registrationStatus) {
+const createPayloadPut = function(email, eventID, year, registrationStatus) {
 
   return {
     pathParameters: {
-      id
+      email
     },
     body: JSON.stringify({
       eventID,

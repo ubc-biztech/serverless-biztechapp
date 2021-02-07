@@ -2,7 +2,7 @@ const AWS = require('aws-sdk');
 
 import helpers from '../../lib/handlerHelpers';
 import db from '../../lib/db';
-import { isEmpty } from '../../lib/utils';
+import { isEmpty, isValidEmail } from '../../lib/utils';
 import { USERS_TABLE, USER_INVITE_CODES_TABLE, EVENTS_TABLE } from '../../constants/tables';
 
 export const create = async (event, ctx, callback) => {
@@ -11,15 +11,7 @@ export const create = async (event, ctx, callback) => {
 
   const timestamp = new Date().getTime();
   const data = JSON.parse(event.body);
-
-  if (!data.hasOwnProperty('id')) {
-
-    callback(null, helpers.inputError('User ID not specified.', data));
-
-  }
-
-  const id = parseInt(data.id, 10);
-
+  if(!isValidEmail(data.email)) return helpers.inputError('Invalid email', data.email);
   const email = data.email;
 
   let isBiztechAdmin = false;
@@ -32,12 +24,13 @@ export const create = async (event, ctx, callback) => {
     isBiztechAdmin = true;
 
   }
+
   const userParams = {
     Item: {
-      id,
+      id: data.email,
+      studentId: data.studentId || 0,
       fname: data.fname,
       lname: data.lname,
-      email: data.email,
       faculty: data.faculty,
       year: data.year,
       gender: data.gender,
@@ -49,8 +42,6 @@ export const create = async (event, ctx, callback) => {
     TableName: USERS_TABLE + process.env.ENVIRONMENT,
     ConditionExpression: 'attribute_not_exists(id)'
   };
-
-
   //check whether the favedEventsArray body param meets the requirements
   if (data.hasOwnProperty('favedEventsArray') && Array.isArray(data.favedEventsArray)) {
 
@@ -136,7 +127,7 @@ export const create = async (event, ctx, callback) => {
       if (error.code === 'ConditionalCheckFailedException') {
 
         response = helpers.createResponse(409,
-          'User could not be created because id already exists');
+          'User could not be created because email already exists');
 
       } else {
 
@@ -154,12 +145,11 @@ export const get = async (event, ctx, callback) => {
 
   try {
 
-    if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('event');
-    const id = parseInt(event.pathParameters.id, 10);
-    if(isNaN(id)) throw helpers.inputError('Id is not a number!');
-
-    const user = await db.getOne(id, USERS_TABLE);
-    if(isEmpty(user)) throw helpers.notFoundResponse('user', id);
+    if(!event.pathParameters || !event.pathParameters.email) throw helpers.missingIdQueryResponse('email');
+    const email = event.pathParameters.email;
+    if(!isValidEmail(email)) throw helpers.inputError('Invalid email', email);
+    const user = await db.getOne(email, USERS_TABLE);
+    if(isEmpty(user)) throw helpers.notFoundResponse('user', email);
 
     const response = helpers.createResponse(200, user);
     callback(null, response);
@@ -180,18 +170,18 @@ export const update = async (event, ctx, callback) => {
 
   try {
 
-    if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('event');
+    if(!event.pathParameters || !event.pathParameters.email) throw helpers.missingIdQueryResponse('event');
 
-    const id = parseInt(event.pathParameters.id, 10);
-    if(isNaN(id)) throw helpers.inputError('Id path parameter must be a number', event.pathParameters);
+    const email = event.pathParameters.email;
+    if(!isValidEmail(email)) throw helpers.inputError('Invalid email', email);
 
-    const existingUser = await db.getOne(id, USERS_TABLE);
-    if(isEmpty(existingUser)) throw helpers.notFoundResponse('user', id);
+    const existingUser = await db.getOne(email, USERS_TABLE);
+    if(isEmpty(existingUser)) throw helpers.notFoundResponse('user', email);
 
     const data = JSON.parse(event.body);
-    const res = await db.updateDB(id, data, USERS_TABLE);
+    const res = await db.updateDB(email, data, USERS_TABLE);
     const response = helpers.createResponse(200, {
-      message: `Updated event with id ${id}!`,
+      message: `Updated event with email ${email}!`,
       response: res
     });
 
@@ -249,13 +239,14 @@ export const favouriteEvent = async (event, ctx, callback) => {
     const { eventID, year, isFavourite } = data;
     const eventIDAndYear = eventID + ';' + year;
 
-    const id = parseInt(event.pathParameters.id, 10);
+    const email = event.pathParameters.email;
+    if(email == null || !isValidEmail(email)) throw helpers.inputError('Invalid email', email);
 
     const existingEvent = await db.getOne(eventID, EVENTS_TABLE, { year });
     if(isEmpty(existingEvent)) throw helpers.notFoundResponse('event', eventID, year);
 
-    const existingUser = await db.getOne(id, USERS_TABLE);
-    if(isEmpty(existingUser)) throw helpers.notFoundResponse('user', id);
+    const existingUser = await db.getOne(email, USERS_TABLE);
+    if(isEmpty(existingUser)) throw helpers.notFoundResponse('user', email);
 
     const favedEventsList = existingUser['favedEventsID;year'] ?
       existingUser['favedEventsID;year'].values : undefined;
@@ -302,7 +293,7 @@ export const favouriteEvent = async (event, ctx, callback) => {
     expressionAttributeValues[':eventIDAndYear'] = eventIDAndYear; // string data type, for conditionExpression
 
     const params = {
-      Key: { id },
+      Key: { id:email },
       TableName: USERS_TABLE + process.env.ENVIRONMENT,
       ExpressionAttributeNames: expressionAttributeNames,
       ExpressionAttributeValues: expressionAttributeValues,
@@ -338,16 +329,14 @@ export const del = async (event, ctx, callback) => {
   try {
 
     // check that the param was given
-    if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('event');
+    if(!event.pathParameters || !event.pathParameters.email) throw helpers.missingIdQueryResponse('event');
 
-    const id = parseInt(event.pathParameters.id, 10);
-    if(isNaN(id)) throw helpers.inputError('Id path parameter must be a number', event.pathParameters);
-
+    const email = event.pathParameters.email;
     // check that the user exists
-    const existingUser = await db.getOne(id, USERS_TABLE);
-    if(isEmpty(existingUser)) throw helpers.notFoundResponse('User', id);
+    const existingUser = await db.getOne(email, USERS_TABLE);
+    if(isEmpty(existingUser)) throw helpers.notFoundResponse('User', email);
 
-    const res = await db.deleteOne(id, USERS_TABLE);
+    const res = await db.deleteOne(email, USERS_TABLE);
     const response = helpers.createResponse(200, {
       message: 'User deleted!',
       response: res
