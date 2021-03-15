@@ -267,8 +267,8 @@ export const get = async (event, ctx, callback) => {
 
     const queryString = event.queryStringParameters;
     if(!queryString || (!queryString.eventID && !queryString.year && !queryString.email)) throw helpers.missingIdQueryResponse('eventID/year/user ');
-    
-    const email = queryString.email
+
+    const email = queryString.email;
     if((queryString.eventID && !queryString.year) || (!queryString.eventID && queryString.year)) {
 
       throw helpers.missingIdQueryResponse('eventID or year (must have both or neither)');

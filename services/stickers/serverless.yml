@@ -27,6 +27,8 @@ provider:
         - dynamodb:Scan
         - dynamodb:GetItem
         - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechStickers${self:provider.environment.ENVIRONMENT}"
 
@@ -46,13 +48,58 @@ functions:
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   stickerCreate:
-   handler: handler.create
+    handler: handler.create
+    events:
+      - http:
+          path: stickers/
+          method: post
+          cors: true
+          authorizer:
+            name: ${self:service}-authorizer
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+  stickerGet:
+    handler: handler.get
+    events:
+      - http:
+          path: stickers/{id}
+          method: get
+          request:
+            parameters:
+              path:
+                id: true
+          cors: true
+          authorizer:
+            name: ${self:service}-authorizer
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+  stickerUpdate:
+    handler: handler.update
+    events:
+      - http:
+          path: stickers/{id}
+          method: patch
+          request:
+            parameters:
+              path:
+                id: true
+          cors: true
+          authorizer:
+            name: ${self:service}-authorizer
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+  stickerDelete:
+   handler: handler.del
    events:
      - http:
-         path: stickers/
-         method: post
-         cors: true
-         authorizer:
+          path: stickers/{id}
+          method: delete
+          request:
+            parameters:
+              path:
+                id: true
+          cors: true
+          authorizer:
             name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
