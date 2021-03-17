@@ -39,7 +39,7 @@ export const create = async(event, ctx, callback) => {
     });
 
     const existingSticker = await db.getOne(data.id, STICKERS_TABLE);
-    if (!isEmpty(existingSticker)) throw helpers.duplicateResponse('sticker id', data);
+    if (!isEmpty(existingSticker)) throw helpers.duplicateResponse('id', data);
 
     const item = {
       id: data.id,
