@@ -1,6 +1,6 @@
 export const EVENTS_TABLE = 'biztechEvents';
 export const MEMBERSHIPS2021_TABLE = 'biztechMemberships2021';
-// export const MEMBERSHIPS2022_TABLE = 'biztechMemberships2022';
+export const MEMBERSHIPS2022_TABLE = 'biztechMemberships2022';
 export const PRIZES_TABLE = 'biztechPrizes';
 export const STICKERS_TABLE = 'biztechStickers';
 export const TRANSACTIONS_TABLE = 'biztechTransactions';
