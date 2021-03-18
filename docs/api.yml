@@ -505,6 +505,32 @@ paths:
           description: "Forbidden"
         "502":
           description: "Internal Server Error"
+    post:
+      summary: Creates a new membership
+      operationId: postMemberships
+      tags:
+        - Memberships
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MembershipsPostBody"
+      responses:
+        "201":
+          description: "Created!"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MembershipsPostResponse"
+        "401":
+          description: Unauthorized
+        "406":
+          description: "{object} not specified"
+        "409":
+          description: "Membership could not be created because {object} already exists"
+        "502":
+          description: "Internal Server Error"
 
 components:
   schemas:
@@ -784,6 +810,7 @@ components:
           properties:
             Attributes:
               $ref: "#/components/schemas/RegistrationsPostBody"
+
     MembershipsGetResponse:
       type: object
       required:
@@ -835,3 +862,69 @@ components:
           type: string
         high_school:
           type: string
+    MembershipsPostBody:
+      type: object
+      required:
+        - id
+        - timestamp
+        - email
+        - education
+        - first_name
+        - last_name
+        - pronouns
+        - heard_from
+      properties:
+        id:
+          type: integer
+          format: int64
+        timestamp:
+          type: integer
+          format: int64
+        email:
+          type: string
+        education:
+          type: string
+        first_name:
+          type: string
+        last_name:
+          type: string
+        pronouns:
+          type: string
+        student_number:
+          type: integer
+          format: int64
+        year:
+          type: string
+        faculty:
+          type: string
+        major:
+          type: string
+        prev_member:
+          type: boolean
+        international:
+          type: boolean
+        topics:
+          type: array
+          items:
+            type: string
+        heard_from:
+          type: string
+        university:
+          type: string
+        high_school:
+          type: string
+    MembershipsPostResponse:
+      type: object
+      required:
+        - message
+        - params
+      properties:
+        message:
+          type: string
+        params:
+          type: object
+          required:
+            - Item
+          properties:
+            Item:
+              $ref: "#/components/schemas/MembershipsPostBody"
