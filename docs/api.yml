@@ -24,20 +24,20 @@ paths:
       tags:
         - Events
       responses:
-        '200':
-          description: 'OK'
+        "200":
+          description: "OK"
           content:
             application/json:
               schema:
                 type: array
-                items: 
-                  $ref: '#/components/schemas/EventsGetResponse'
-        '403':
-          description: 'Forbidden'
-        '406':
-          description: 'Year query parameter must be a number'
-        '502':
-          description: 'Internal Server Error'
+                items:
+                  $ref: "#/components/schemas/EventsGetResponse"
+        "403":
+          description: "Forbidden"
+        "406":
+          description: "Year query parameter must be a number"
+        "502":
+          description: "Internal Server Error"
       parameters:
         - name: "id"
           in: "header"
@@ -62,24 +62,24 @@ paths:
         content:
           application/json:
             schema:
-                $ref: '#/components/schemas/EventsPostBody'
+              $ref: "#/components/schemas/EventsPostBody"
       responses:
-        '201':
-          description: 'Created event with id {string} for the year {integer}!'
+        "201":
+          description: "Created event with id {string} for the year {integer}!"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EventsPostResponse'
-        '401':
-          description: 'Unauthorized'
-        '403':
-          description: 'Forbidden'
-        '406':
-          description: '{object} is missing from request body'
-        '409':
-          description: 'A database entry with the same event id and yearalready exists'
-        '502':
-          description: 'Internal Server Error'
+                $ref: "#/components/schemas/EventsPostResponse"
+        "401":
+          description: "Unauthorized"
+        "403":
+          description: "Forbidden"
+        "406":
+          description: "{object} is missing from request body"
+        "409":
+          description: "A database entry with the same event id and yearalready exists"
+        "502":
+          description: "Internal Server Error"
   /events/{id}/{year}:
     get:
       summary: Returns an event based on id and year
@@ -87,25 +87,25 @@ paths:
       tags:
         - Events
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 oneOf:
-                  - $ref: '#/components/schemas/EventsGetResponse'
-                  - $ref: '#/components/schemas/EventsGetUserResponse'
-                  - $ref: '#/components/schemas/EventsGetCountResponse'
-        '401':
-          description: 'Unauthorized'
-        '403':
-          description: 'Forbidden'
-        '404':
-          description: 'event with id {string} and secondaryKey {integer} could not be found. Make sure you have provided them correctly.'
-        '406':
+                  - $ref: "#/components/schemas/EventsGetResponse"
+                  - $ref: "#/components/schemas/EventsGetUserResponse"
+                  - $ref: "#/components/schemas/EventsGetCountResponse"
+        "401":
+          description: "Unauthorized"
+        "403":
+          description: "Forbidden"
+        "404":
+          description: "event with id {string} and secondaryKey {integer} could not be found. Make sure you have provided them correctly."
+        "406":
           description: 'Year query parameter must be a number \\\\\ Only one true parameter is permissible at a time.'
-        '502':
-          description: 'Internal Server Error'
+        "502":
+          description: "Internal Server Error"
       parameters:
         - name: "id"
           in: "path"
@@ -142,24 +142,24 @@ paths:
         content:
           application/json:
             schema:
-                $ref: '#/components/schemas/EventsPatchBody'
+              $ref: "#/components/schemas/EventsPatchBody"
       responses:
-        '200':
-          description: 'Updated event with id {string} and year {integer}!'
+        "200":
+          description: "Updated event with id {string} and year {integer}!"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EventsPatchResponse'
-        '401':
-          description: 'Unauthorized'
-        '403':
-          description: 'Forbidden'
-        '404':
-          description: 'event with id {string} and secondaryKey {integer} could not be found. Make sure you have provided them correctly.'
-        '406':
+                $ref: "#/components/schemas/EventsPatchResponse"
+        "401":
+          description: "Unauthorized"
+        "403":
+          description: "Forbidden"
+        "404":
+          description: "event with id {string} and secondaryKey {integer} could not be found. Make sure you have provided them correctly."
+        "406":
           description: 'Year query parameter must be a number \\\\\ Only one true parameter is permissible at a time.'
-        '502':
-          description: 'Internal Server Error'
+        "502":
+          description: "Internal Server Error"
       parameters:
         - name: "id"
           in: "path"
@@ -180,18 +180,18 @@ paths:
       tags:
         - Events
       responses:
-        '200':
-          description: 'Deleted event with id {string} and year {integer}!'
-        '401':
-          description: 'Unauthorized'
-        '403':
-          description: 'Forbidden'
-        '404':
-          description: 'event with id {string} and secondaryKey {integer} could not be found. Make sure you have provided them correctly.'
-        '406':
+        "200":
+          description: "Deleted event with id {string} and year {integer}!"
+        "401":
+          description: "Unauthorized"
+        "403":
+          description: "Forbidden"
+        "404":
+          description: "event with id {string} and secondaryKey {integer} could not be found. Make sure you have provided them correctly."
+        "406":
           description: 'Year query parameter must be a number \\\\\ Only one true parameter is permissible at a time.'
-        '502':
-          description: 'Internal Server Error'
+        "502":
+          description: "Internal Server Error"
       parameters:
         - name: "id"
           in: "path"
@@ -213,18 +213,18 @@ paths:
       tags:
         - Users
       responses:
-        '200':
-          description: 'OK'
+        "200":
+          description: "OK"
           content:
             application/json:
               schema:
                 type: array
-                items: 
-                  $ref: '#/components/schemas/UsersGetResponse'
-        '401':
+                items:
+                  $ref: "#/components/schemas/UsersGetResponse"
+        "401":
           description: Unauthorized
-        '502':
-          description: 'Internal Server Error'
+        "502":
+          description: "Internal Server Error"
     post:
       summary: Creates a new user
       operationId: postUser
@@ -235,22 +235,22 @@ paths:
         content:
           application/json:
             schema:
-                $ref: '#/components/schemas/UsersPostBody'
+              $ref: "#/components/schemas/UsersPostBody"
       responses:
-        '201':
-          description: 'Created!'
+        "201":
+          description: "Created!"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UsersPostResponse'
-        '401':
+                $ref: "#/components/schemas/UsersPostResponse"
+        "401":
           description: Unauthorized
-        '406':
-          description: '{object} not specified'
-        '409':
-          description: 'User could not be created because {object} already exists'
-        '502':
-          description: 'Internal Server Error'
+        "406":
+          description: "{object} not specified"
+        "409":
+          description: "User could not be created because {object} already exists"
+        "502":
+          description: "Internal Server Error"
   /users/{email}:
     get:
       summary: Returns a user based on email
@@ -258,23 +258,23 @@ paths:
       tags:
         - Users
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 oneOf:
-                  - $ref: '#/components/schemas/UsersGetResponse'
-        '401':
-          description: 'Unauthorized'
-        '403':
-          description: 'Forbidden'  
-        '404':
-          description: 'user with email {string} could not be found. Make sure you have provided the correct email.'
-        '406':
-          description: '(object) is not a (object)!'
-        '502':
-          description: 'Internal Server Error'
+                  - $ref: "#/components/schemas/UsersGetResponse"
+        "401":
+          description: "Unauthorized"
+        "403":
+          description: "Forbidden"
+        "404":
+          description: "user with email {string} could not be found. Make sure you have provided the correct email."
+        "406":
+          description: "(object) is not a (object)!"
+        "502":
+          description: "Internal Server Error"
       parameters:
         - name: "email"
           in: "path"
@@ -292,24 +292,24 @@ paths:
         content:
           application/json:
             schema:
-                $ref: '#/components/schemas/UsersPostBody'
+              $ref: "#/components/schemas/UsersPostBody"
       responses:
-        '200':
-          description: 'Updated user with email {string}!'
+        "200":
+          description: "Updated user with email {string}!"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UsersPostResponse'
-        '401':
-          description: 'Unauthorized'
-        '403':
-          description: 'Forbidden'  
-        '404':
-          description: 'user with email {string} could not be found. Make sure you have provided the correct email.'
-        '406':
-          description: '(object) is not a (object)!'
-        '502':
-          description: 'Internal Server Error'
+                $ref: "#/components/schemas/UsersPostResponse"
+        "401":
+          description: "Unauthorized"
+        "403":
+          description: "Forbidden"
+        "404":
+          description: "user with email {string} could not be found. Make sure you have provided the correct email."
+        "406":
+          description: "(object) is not a (object)!"
+        "502":
+          description: "Internal Server Error"
       parameters:
         - name: "email"
           in: "path"
@@ -323,18 +323,18 @@ paths:
       tags:
         - Users
       responses:
-        '200':
-          description: 'Deleted user with email {string}!'
-        '401':
-          description: 'Unauthorized'
-        '403':
-          description: 'Forbidden'  
-        '404':
-          description: 'user with email {string} could not be found. Make sure you have provided the correct email.'
-        '406':
-          description: '(object) is not a (object)!'
-        '502':
-          description: 'Internal Server Error'
+        "200":
+          description: "Deleted user with email {string}!"
+        "401":
+          description: "Unauthorized"
+        "403":
+          description: "Forbidden"
+        "404":
+          description: "user with email {string} could not be found. Make sure you have provided the correct email."
+        "406":
+          description: "(object) is not a (object)!"
+        "502":
+          description: "Internal Server Error"
       parameters:
         - name: "email"
           in: "path"
@@ -353,20 +353,20 @@ paths:
         content:
           application/json:
             schema:
-                $ref: '#/components/schemas/FavEventPatchBody'
+              $ref: "#/components/schemas/FavEventPatchBody"
       responses:
-        '200':
-          description: 'Favourited event with eventID {string} for the year {integer}'
-        '401':
-          description: 'Unauthorized'
-        '403':
-          description: 'Forbidden'  
-        '404':
-          description: 'user with email {string} could not be found. Make sure you have provided the correct email.'
-        '406':
-          description: '(object) is not a (object)!'
-        '502':
-          description: 'Internal Server Error'
+        "200":
+          description: "Favourited event with eventID {string} for the year {integer}"
+        "401":
+          description: "Unauthorized"
+        "403":
+          description: "Forbidden"
+        "404":
+          description: "user with email {string} could not be found. Make sure you have provided the correct email."
+        "406":
+          description: "(object) is not a (object)!"
+        "502":
+          description: "Internal Server Error"
       parameters:
         - name: "email"
           in: "path"
@@ -381,24 +381,24 @@ paths:
       tags:
         - Registrations
       responses:
-        '200':
-          description: 'OK'
+        "200":
+          description: "OK"
           content:
             application/json:
               schema:
                 type: array
-                items: 
-                  $ref: '#/components/schemas/RegistrationsGetResponse'
-        '400':
+                items:
+                  $ref: "#/components/schemas/RegistrationsGetResponse"
+        "400":
           description: "A(n) eventID or year (must have both or neither) email was not provided. Check query params"
-        '401':
-          description: 'Unauthorized'
-        '403':
-          description: 'Forbidden'
-        '406':
-          description: 'Year query parameter must be a number'
-        '502':
-          description: 'Internal Server Error'
+        "401":
+          description: "Unauthorized"
+        "403":
+          description: "Forbidden"
+        "406":
+          description: "Year query parameter must be a number"
+        "502":
+          description: "Internal Server Error"
       parameters:
         - name: "eventID"
           in: "header"
@@ -429,24 +429,24 @@ paths:
         content:
           application/json:
             schema:
-                $ref: '#/components/schemas/RegistrationsPostBody'
+              $ref: "#/components/schemas/RegistrationsPostBody"
       responses:
-        '201':
-          description: 'Created event with id {string} for the year {integer}!'
+        "201":
+          description: "Created event with id {string} for the year {integer}!"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RegistrationsPostResponse'
-        '401':
-          description: 'Unauthorized'
-        '403':
-          description: 'Forbidden'
-        '406':
-          description: '{object} is missing from request body'
-        '409':
-          description: 'Create error because the registration entry for user {integer} and with eventID;year {string} already exists'
-        '502':
-          description: 'Internal Server Error'
+                $ref: "#/components/schemas/RegistrationsPostResponse"
+        "401":
+          description: "Unauthorized"
+        "403":
+          description: "Forbidden"
+        "406":
+          description: "{object} is missing from request body"
+        "409":
+          description: "Create error because the registration entry for user {integer} and with eventID;year {string} already exists"
+        "502":
+          description: "Internal Server Error"
   /registrations/{email}:
     put:
       summary: Update registration entry based on email
@@ -458,24 +458,24 @@ paths:
         content:
           application/json:
             schema:
-                $ref: '#/components/schemas/RegistrationsPostBody'
+              $ref: "#/components/schemas/RegistrationsPostBody"
       responses:
-        '200':
-          description: 'User with email {string} successfully registered (through update) to status {string}!'
+        "200":
+          description: "User with email {string} successfully registered (through update) to status {string}!"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RegistrationsPostResponse'
-        '401':
-          description: 'Unauthorized'
-        '403':
-          description: 'Forbidden'
-        '404':
-          description: 'User with email {string} could not be found. Make sure you have provided the correct email.'
-        '406':
-          description: '{object} is missing from request body'
-        '502':
-          description: 'Internal Server Error'
+                $ref: "#/components/schemas/RegistrationsPostResponse"
+        "401":
+          description: "Unauthorized"
+        "403":
+          description: "Forbidden"
+        "404":
+          description: "User with email {string} could not be found. Make sure you have provided the correct email."
+        "406":
+          description: "{object} is missing from request body"
+        "502":
+          description: "Internal Server Error"
       parameters:
         - name: "email"
           in: "path"
@@ -491,21 +491,20 @@ paths:
       tags:
         - Memberships
       responses:
-        '200':
-          description: 'OK'
+        "200":
+          description: "OK"
           content:
             application/json:
               schema:
                 type: array
-                items: 
-                  $ref: '#/components/schemas/MembershipsGetResponse'
-        '401':
-          description: 'Unauthorized'
-        '403':
-          description: 'Forbidden'
-        '502':
-          description: 'Internal Server Error'
-
+                items:
+                  $ref: "#/components/schemas/MembershipsGetResponse"
+        "401":
+          description: "Unauthorized"
+        "403":
+          description: "Forbidden"
+        "502":
+          description: "Internal Server Error"
 
 components:
   schemas:
@@ -544,8 +543,8 @@ components:
           type: string
     EventsGetUserResponse:
       type: array
-      items: 
-        $ref: '#/components/schemas/UsersGetResponse'
+      items:
+        $ref: "#/components/schemas/UsersGetResponse"
     EventsGetCountResponse:
       type: object
       required:
@@ -607,7 +606,7 @@ components:
         response:
           type: object
         item:
-          $ref: '#/components/schemas/EventsPostBody'
+          $ref: "#/components/schemas/EventsPostBody"
     EventsPatchBody:
       type: object
       properties:
@@ -647,9 +646,8 @@ components:
           required:
             - Attributes
           properties:
-            Attributes: 
-              $ref: '#/components/schemas/EventsPatchBody'
-
+            Attributes:
+              $ref: "#/components/schemas/EventsPatchBody"
 
     UsersGetResponse:
       type: object
@@ -676,9 +674,9 @@ components:
         admin:
           type: boolean
         favedEventsArray:
-            type: array
-            items:
-              type: string
+          type: array
+          items:
+            type: string
     UsersPostBody:
       type: object
       required:
@@ -704,16 +702,16 @@ components:
         admin:
           type: boolean
         favedEventsArray:
-            type: array
-            items:
-                type: string
+          type: array
+          items:
+            type: string
     UsersPostResponse:
       type: object
       required:
         - message
         - params
       properties:
-        message: 
+        message:
           type: string
         params:
           type: object
@@ -721,7 +719,7 @@ components:
             - Item
           properties:
             Item:
-              $ref: '#/components/schemas/UsersPostBody'
+              $ref: "#/components/schemas/UsersPostBody"
     FavEventPatchBody:
       type: object
       required:
@@ -748,7 +746,7 @@ components:
         data:
           type: array
           items:
-            $ref: '#/components/schemas/UsersGetResponse'
+            $ref: "#/components/schemas/UsersGetResponse"
     RegistrationsPostBody:
       type: object
       required:
@@ -759,10 +757,10 @@ components:
       properties:
         eventID:
           type: string
-        year: 
+        year:
           type: integer
           format: int64
-        email: 
+        email:
           type: string
         registrationStatus:
           type: string
@@ -785,7 +783,7 @@ components:
             - Attributes
           properties:
             Attributes:
-              $ref: '#/components/schemas/RegistrationsPostBody'
+              $ref: "#/components/schemas/RegistrationsPostBody"
     MembershipsGetResponse:
       type: object
       required:
