@@ -2,6 +2,7 @@ import helpers from '../../lib/handlerHelpers';
 import db from '../../lib/db';
 import { isEmpty } from '../../lib/utils';
 import { STICKERS_TABLE } from '../../constants/tables';
+import imageUpload from '../../lib/s3ImageUpload';
 
 export const getAll = async(event, ctx, callback) => {
 
@@ -32,19 +33,30 @@ export const create = async(event, ctx, callback) => {
 
     const data = JSON.parse(event.body);
 
+    console.log("HELLO");
+
     helpers.checkPayloadProps(data, {
       id: { required: true, type: 'string' },
       name: { required: true, type: 'string' },
-      url: { required: true, type: 'string' }
+      image: { required: true, type: 'string' },
+      mime: { required: true, type: 'string' }
     });
 
     const existingSticker = await db.getOne(data.id, STICKERS_TABLE);
     if (!isEmpty(existingSticker)) throw helpers.duplicateResponse('id', data);
 
+    const s3Upload = await imageUpload.imageUpload(event.body);
+
+    console.log("STICKER ATTEMPTED UPLOAD");
+
+    if (s3Upload.statusCode !== 200) {
+      throw s3Upload;
+    }
+
     const item = {
       id: data.id,
       name: data.name,
-      url: data.url,
+      url: s3Upload.imageURL,
       description: data.description
     };
     const res = await db.create(item, STICKERS_TABLE);
