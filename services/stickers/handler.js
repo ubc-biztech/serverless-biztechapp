@@ -33,7 +33,7 @@ export const create = async(event, ctx, callback) => {
 
     const data = JSON.parse(event.body);
 
-    console.log("HELLO");
+    console.log('HELLO');
 
     helpers.checkPayloadProps(data, {
       id: { required: true, type: 'string' },
@@ -45,11 +45,12 @@ export const create = async(event, ctx, callback) => {
     const existingSticker = await db.getOne(data.id, STICKERS_TABLE);
     if (!isEmpty(existingSticker)) throw helpers.duplicateResponse('id', data);
 
-    const s3Upload = await imageUpload.imageUpload(event.body);
+    const s3Upload = await imageUpload(data);
 
-    console.log("STICKER ATTEMPTED UPLOAD");
+    console.log('STICKER ATTEMPTED UPLOAD');
 
     if (s3Upload.statusCode !== 200) {
+
       throw s3Upload;
     }
 

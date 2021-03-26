@@ -16,7 +16,7 @@ provider:
   cfLogs: true
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
-    stickerImagesBucket: ${self:custom.stickerImagesBucket}
+    stickerImagesBucket: biztech-images-staging
   
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
@@ -30,14 +30,12 @@ provider:
         - dynamodb:PutItem
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
-        - s3:GetItem
-        - s3:PutItem
-        - s3:UpdateItem
-        - s3:DeleteItem
+        - s3:PutObject
+        - s3:PutObjectAcl
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechStickers${self:provider.environment.ENVIRONMENT}"
         # TODO: dynamically determine prod vs. staging bucket
-        - "arn:aws:s3:::biztech-images-staging"
+        - "arn:aws:s3:::biztech-images-staging/*"
 
 custom:
     ${file(../../serverless.common.yml):custom}
