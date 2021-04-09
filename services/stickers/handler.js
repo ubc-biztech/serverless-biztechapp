@@ -2,7 +2,7 @@ import helpers from '../../lib/handlerHelpers';
 import db from '../../lib/db';
 import { isEmpty } from '../../lib/utils';
 import { STICKERS_TABLE } from '../../constants/tables';
-import imageUpload from '../../lib/s3ImageUpload';
+import { imageUpload } from '../../lib/s3';
 
 export const getAll = async(event, ctx, callback) => {
 
@@ -47,17 +47,19 @@ export const create = async(event, ctx, callback) => {
 
     const s3Upload = await imageUpload(data);
 
-    console.log('STICKER ATTEMPTED UPLOAD');
-
     if (s3Upload.statusCode !== 200) {
 
       throw s3Upload;
+
     }
+
+    const uploadBody = JSON.parse(s3Upload.body);
+    console.log(uploadBody.imageURL);
 
     const item = {
       id: data.id,
       name: data.name,
-      url: s3Upload.imageURL,
+      imageURL: uploadBody.imageURL,
       description: data.description
     };
     const res = await db.create(item, STICKERS_TABLE);
@@ -116,15 +118,34 @@ export const update = async (event, ctx, callback) => {
 
     // check request body
     helpers.checkPayloadProps(data, {
+      id: { required: true, type: 'string' },
       name: { required: true, type: 'string' },
-      url: { required: true, type: 'string' }
+      image: { required: true, type: 'string' },
+      mime: { required: true, type: 'string' }
     });
 
     const existingSticker = await db.getOne(id, STICKERS_TABLE);
     if(isEmpty(existingSticker)) throw helpers.notFoundResponse('sticker', id);
 
+    const s3Upload = await imageUpload(data);
 
-    const res = await db.updateDB(id, data, STICKERS_TABLE);
+    if (s3Upload.statusCode !== 200) {
+
+      throw s3Upload;
+
+    }
+
+    const uploadBody = JSON.parse(s3Upload.body);
+    console.log(uploadBody.imageURL);
+
+    const item = {
+      id: data.id,
+      name: data.name,
+      imageURL: uploadBody.imageURL,
+      description: data.description
+    };
+
+    const res = await db.updateDB(id, item, STICKERS_TABLE);
     const response = helpers.createResponse(200, {
       message: `Updated sticker with id ${id}!`,
       response: res
