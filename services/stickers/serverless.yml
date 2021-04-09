@@ -35,8 +35,7 @@ provider:
         - s3:PutObjectAcl
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechStickers${self:provider.environment.ENVIRONMENT}"
-        # TODO: dynamically determine prod vs. staging bucket
-        - "arn:aws:s3:::biztech-images-staging/*"
+        - "arn:aws:s3:::biztech-images-${file(../../config.${self:provider.stage}.json):BUCKET}/*"
 
 custom:
     ${file(../../serverless.common.yml):custom}
