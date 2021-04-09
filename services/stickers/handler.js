@@ -33,8 +33,6 @@ export const create = async(event, ctx, callback) => {
 
     const data = JSON.parse(event.body);
 
-    console.log('HELLO');
-
     helpers.checkPayloadProps(data, {
       id: { required: true, type: 'string' },
       name: { required: true, type: 'string' },
@@ -54,7 +52,6 @@ export const create = async(event, ctx, callback) => {
     }
 
     const uploadBody = JSON.parse(s3Upload.body);
-    console.log(uploadBody.imageURL);
 
     const item = {
       id: data.id,
@@ -136,7 +133,6 @@ export const update = async (event, ctx, callback) => {
     }
 
     const uploadBody = JSON.parse(s3Upload.body);
-    console.log(uploadBody.imageURL);
 
     const item = {
       id: data.id,
