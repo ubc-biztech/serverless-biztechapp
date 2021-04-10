@@ -2,7 +2,7 @@ import helpers from '../../lib/handlerHelpers';
 import db from '../../lib/db';
 import { isEmpty } from '../../lib/utils';
 import { STICKERS_TABLE } from '../../constants/tables';
-import { imageUpload } from '../../lib/s3';
+import { imageUpload, deleteObject } from '../../lib/s3';
 
 export const getAll = async(event, ctx, callback) => {
 
@@ -57,7 +57,8 @@ export const create = async(event, ctx, callback) => {
       id: data.id,
       name: data.name,
       imageURL: uploadBody.imageURL,
-      description: data.description
+      description: data.description,
+      key: uploadBody.s3ObjectKey
     };
     const res = await db.create(item, STICKERS_TABLE);
 
@@ -172,6 +173,12 @@ export const del = async (event, ctx, callback) => {
     // check that the id exists
     const existingSticker = await db.getOne(id, STICKERS_TABLE);
     if(isEmpty(existingSticker)) throw helpers.notFoundResponse('Sticker', id);
+
+    const s3Delete = await deleteObject(existingSticker);
+
+    if (s3Delete.statusCode !== 200) {
+      throw s3Delete;
+    }
 
     // do the magic
     const res = await db.deleteOne(id, STICKERS_TABLE);

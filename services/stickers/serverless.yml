@@ -33,6 +33,8 @@ provider:
         - dynamodb:DeleteItem
         - s3:PutObject
         - s3:PutObjectAcl
+        - s3:DeleteObject
+        - s3:DeleteObjectAcl
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechStickers${self:provider.environment.ENVIRONMENT}"
         - "arn:aws:s3:::biztech-images-${file(../../config.${self:provider.stage}.json):BUCKET}/*"
@@ -41,7 +43,7 @@ custom:
     ${file(../../serverless.common.yml):custom}
 
 functions:
-  stickerGetAll:
+  stickersGetAll:
     handler: handler.getAll
     events:
       - http:
@@ -52,7 +54,7 @@ functions:
             name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
-  stickerCreate:
+  stickersCreate:
     handler: handler.create
     events:
       - http:
@@ -63,7 +65,7 @@ functions:
             name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
-  stickerGet:
+  stickersGet:
     handler: handler.get
     events:
       - http:
@@ -78,7 +80,7 @@ functions:
             name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
-  stickerUpdate:
+  stickersUpdate:
     handler: handler.update
     events:
       - http:
@@ -93,7 +95,7 @@ functions:
             name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
-  stickerDelete:
+  stickersDelete:
    handler: handler.del
    events:
      - http:
