@@ -67,48 +67,48 @@ export const create = async (event, ctx, callback) => {
 
   }
 
-  if (data.hasOwnProperty('inviteCode')) {
+  // if (data.hasOwnProperty('inviteCode')) {
 
-    const inviteCodeParams = {
-      Key: { id: data.inviteCode },
-      TableName: USER_INVITE_CODES_TABLE + process.env.ENVIRONMENT
-    };
-    await docClient
-      .get(inviteCodeParams)
-      .promise()
-      .then(async result => {
+  //   const inviteCodeParams = {
+  //     Key: { id: data.inviteCode },
+  //     TableName: USER_INVITE_CODES_TABLE + process.env.ENVIRONMENT
+  //   };
+  //   await docClient
+  //     .get(inviteCodeParams)
+  //     .promise()
+  //     .then(async result => {
 
-        if (result.Item == null) {
+  //       if (result.Item == null) {
 
-          const response = helpers.createResponse(
-            404,
-            'Invite code not found.'
-          );
-          callback(null, response);
+  //         const response = helpers.createResponse(
+  //           404,
+  //           'Invite code not found.'
+  //         );
+  //         callback(null, response);
 
-        } else {
+  //       } else {
 
-          // invite code was found
-          // add paid: true to user
-          userParams.Item.paid = true;
-          const deleteParams = {
-            Key: { id: data.inviteCode },
-            TableName: USER_INVITE_CODES_TABLE + process.env.ENVIRONMENT
-          };
-          await docClient.delete(deleteParams).promise();
+  //         // invite code was found
+  //         // add paid: true to user
+  //         userParams.Item.paid = true;
+  //         const deleteParams = {
+  //           Key: { id: data.inviteCode },
+  //           TableName: USER_INVITE_CODES_TABLE + process.env.ENVIRONMENT
+  //         };
+  //         await docClient.delete(deleteParams).promise();
 
-        }
+  //       }
 
-      })
-      .catch(error => {
+  //     })
+  //     .catch(error => {
 
-        console.error(error);
-        const response = helpers.createResponse(502, error);
-        callback(null, response);
+  //       console.error(error);
+  //       const response = helpers.createResponse(502, error);
+  //       callback(null, response);
 
-      });
+  //     });
 
-  }
+  // }
 
   await docClient
     .put(userParams)
