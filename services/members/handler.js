@@ -12,9 +12,9 @@ export const create = async (event, ctx, callback) => {
 
   const timestamp = new Date().getTime();
   const data = JSON.parse(event.body);
-  if (!isValidEmail(data.email))
+  if (!isValidEmail(data.email)) {
     return helpers.inputError("Invalid email", data.email);
-  const email = data.email;
+  }
 
   const memberParams = {
     Item: {
