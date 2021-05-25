@@ -88,6 +88,7 @@ function removeDefaultKeys(data){
     if(ignoreKeys.includes(key)) delete formResponse[key];
 
   });
+  return formResponse;
 
 }
 
