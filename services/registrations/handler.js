@@ -78,14 +78,29 @@ async function updateHelper(data, createNew, email) {
 
 }
 
+function removeDefaultKeys(data){
+
+  const formResponse = data;
+  const ignoreKeys = ['eventID','year','email','registrationStatus'];
+
+  Object.keys(formResponse).forEach(function (key) {
+
+    if(ignoreKeys.includes(key)) delete formResponse[key];
+
+  });
+
+}
+
 async function createRegistration(registrationStatus, data, email, eventIDAndYear, createNew) {
 
   try {
 
     const docClient = new AWS.DynamoDB.DocumentClient();
+    const formResponse = removeDefaultKeys(data);
 
     const updateObject = {
-      registrationStatus
+      registrationStatus,
+      formResponse
     };
     if (data.heardFrom) updateObject.heardFrom = data.heardFrom;
 
@@ -267,8 +282,8 @@ export const get = async (event, ctx, callback) => {
 
     const queryString = event.queryStringParameters;
     if(!queryString || (!queryString.eventID && !queryString.year && !queryString.email)) throw helpers.missingIdQueryResponse('eventID/year/user ');
-    
-    const email = queryString.email
+
+    const email = queryString.email;
     if((queryString.eventID && !queryString.year) || (!queryString.eventID && queryString.year)) {
 
       throw helpers.missingIdQueryResponse('eventID or year (must have both or neither)');
