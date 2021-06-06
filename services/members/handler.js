@@ -2,10 +2,9 @@ const AWS = require("aws-sdk");
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
 import { isValidEmail } from "../../lib/utils";
-const {
-  MEMBERS2022_TABLE,
-  MEMBER_VERIFICATION_CODES_TABLE,
-} = require("../../constants/tables");
+const { MEMBERS2022_TABLE } = require("../../constants/tables");
+
+const VERIFICATION_CODE = "bizbot";
 
 export const create = async (event, ctx, callback) => {
   const docClient = new AWS.DynamoDB.DocumentClient();
@@ -33,27 +32,17 @@ export const create = async (event, ctx, callback) => {
   };
 
   if (data.hasOwnProperty("verificationCode")) {
-    const verificationCodeParams = {
-      Key: { id: data.verificationCode },
-      TableName: MEMBER_VERIFICATION_CODES_TABLE + process.env.ENVIRONMENT,
-    };
-    await docClient
-      .get(verificationCodeParams)
-      .promise()
-      .then(async (result) => {
-        if (result.Item == null) {
-          const response = helpers.createResponse(
-            404,
-            "Verification code not found."
-          );
-          callback(null, response);
-        }
-      })
-      .catch((error) => {
-        console.error(error);
-        const response = helpers.createResponse(502, error);
-        callback(null, response);
+    if (data.verificationCode !== VERIFICATION_CODE) {
+      const response = helpers.createResponse(401, {
+        message: "Invalid verification code",
       });
+      callback(null, response);
+    }
+  } else if (!data.hasOwnProperty("verificationCode")) {
+    const response = helpers.createResponse(401, {
+      message: "Missing verification code",
+    });
+    callback(null, response);
   }
 
   await docClient
