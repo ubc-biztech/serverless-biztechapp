@@ -4,17 +4,18 @@ const expect = chai.expect;
 
 import helpers from '../../../lib/testHelpers';
 
-const SERVICE = 'memberships';
+const SERVICE = 'memberss';
 
-describe('memberships integration', function () {
+describe('memberss integration', function () {
 
   this.timeout(10000);
 
-  describe('memberships/ GET tests', function () {
+  describe('members/ GET tests', function () {
 
-    it('memberships GET returns 200 on success', async () => {
+    it('members GET returns 200 on success', async () => {
 
-      return helpers.invokeLambda(SERVICE, 'membershipsGetAll', '')
+      return helpers
+        .invokeLambda(SERVICE, 'membersGetAll', '')
         .then(([statusCode, body]) => {
 
           expect(statusCode).to.equal(200);
