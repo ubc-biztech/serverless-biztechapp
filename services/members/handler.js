@@ -1,7 +1,7 @@
-const AWS = require("aws-sdk");
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
-import { isValidEmail } from "../../lib/utils";
+import { isEmpty, isValidEmail } from "../../lib/utils";
+const AWS = require("aws-sdk");
 const { MEMBERS2022_TABLE } = require("../../constants/tables");
 
 const VERIFICATION_CODE = "bizbot";
@@ -25,22 +25,22 @@ export const create = async (event, ctx, callback) => {
       topics: data.topics,
       heardFrom: data.heard_from,
       createdAt: timestamp,
-      updatedAt: timestamp,
+      updatedAt: timestamp
     },
     TableName: MEMBERS2022_TABLE + process.env.ENVIRONMENT,
-    ConditionExpression: "attribute_not_exists(id)",
+    ConditionExpression: "attribute_not_exists(id)"
   };
 
   if (data.hasOwnProperty("verificationCode")) {
     if (data.verificationCode !== VERIFICATION_CODE) {
       const response = helpers.createResponse(401, {
-        message: "Invalid verification code",
+        message: "Invalid verification code"
       });
       callback(null, response);
     }
   } else if (!data.hasOwnProperty("verificationCode")) {
     const response = helpers.createResponse(401, {
-      message: "Missing verification code",
+      message: "Missing verification code"
     });
     callback(null, response);
   }
@@ -51,7 +51,7 @@ export const create = async (event, ctx, callback) => {
     .then(() => {
       const response = helpers.createResponse(201, {
         message: "Created!",
-        params: memberParams,
+        params: memberParams
       });
       callback(null, response);
     })
@@ -72,6 +72,27 @@ export const create = async (event, ctx, callback) => {
     });
 };
 
+export const get = async (event, ctx, callback) => {
+  try {
+    // eslint-disable-next-line
+    if (!event.pathParameters || !event.pathParameters.email)
+      throw helpers.missingIdQueryResponse("email");
+    const email = event.pathParameters.email;
+
+    if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
+    const member = await db.getOne(email, MEMBERS2022_TABLE);
+    if (isEmpty(member)) throw helpers.notFoundResponse("member", email);
+
+    const response = helpers.createResponse(200, member);
+    callback(null, response);
+    return null;
+  } catch (err) {
+    console.log(err);
+    callback(null, err);
+    return null;
+  }
+};
+
 export const getAll = async (event, ctx, callback) => {
   try {
     // scan the table
@@ -85,6 +106,36 @@ export const getAll = async (event, ctx, callback) => {
     callback(null, response);
     return null;
   } catch (err) {
+    callback(null, err);
+    return null;
+  }
+};
+
+export const update = async (event, ctx, callback) => {
+  try {
+    // eslint-disable-next-line
+    if (!event.pathParameters || !event.pathParameters.email)
+      throw helpers.missingIdQueryResponse("email");
+
+    const email = event.pathParameters.email;
+    if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
+
+    const existingMember = await db.getOne(email, MEMBERS2022_TABLE);
+    // eslint-disable-next-line
+    if (isEmpty(existingMember))
+      throw helpers.notFoundResponse("member", email);
+
+    const data = JSON.parse(event.body);
+    const res = await db.updateDB(email, data, MEMBERS2022_TABLE);
+    const response = helpers.createResponse(200, {
+      message: `Updated member with email ${email}!`,
+      response: res
+    });
+
+    callback(null, response);
+    return null;
+  } catch (err) {
+    console.error(err);
     callback(null, err);
     return null;
   }

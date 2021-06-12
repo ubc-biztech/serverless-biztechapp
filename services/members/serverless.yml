@@ -30,17 +30,16 @@ provider:
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2022${self:provider.environment.ENVIRONMENT}"
 
-
 custom: ${file(../../serverless.common.yml):custom}
 
 functions:
   memberCreate:
-      handler: handler.create
-      events:
-        - http:
-            path: members/
-            method: post
-            cors: true
+    handler: handler.create
+    events:
+      - http:
+          path: members/
+          method: post
+          cors: true
   memberGet:
     handler: handler.get
     events:
@@ -67,4 +66,17 @@ functions:
             name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
-
+  memberUpdate:
+    handler: handler.update
+    events:
+      - http:
+          path: members/{email}
+          method: patch
+          request:
+            path:
+              email: true
+            cors: true
+            authorizer:
+              name: ${self:service}-authorizer
+              type: COGNITO_USER_POOLS
+              arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
