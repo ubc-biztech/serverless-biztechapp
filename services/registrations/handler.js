@@ -78,14 +78,30 @@ async function updateHelper(data, createNew, email) {
 
 }
 
+function removeDefaultKeys(data){
+
+  const formResponse = data;
+  const ignoreKeys = ['eventID','year','email','registrationStatus'];
+
+  Object.keys(formResponse).forEach(function (key) {
+
+    if(ignoreKeys.includes(key)) delete formResponse[key];
+
+  });
+  return formResponse;
+
+}
+
 async function createRegistration(registrationStatus, data, email, eventIDAndYear, createNew) {
 
   try {
 
     const docClient = new AWS.DynamoDB.DocumentClient();
+    const formResponse = removeDefaultKeys(data);
 
     const updateObject = {
-      registrationStatus
+      registrationStatus,
+      formResponse
     };
     if (data.heardFrom) updateObject.heardFrom = data.heardFrom;
 
