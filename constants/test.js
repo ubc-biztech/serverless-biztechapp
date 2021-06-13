@@ -1,31 +1,31 @@
-export const INTEGRATION_TEST_USER_EMAIL = "integration@test.com";
+export const INTEGRATION_TEST_USER_EMAIL = 'integration@test.com';
 export const INTEGRATION_TEST_PERSISTENT_USER_EMAIL =
-  "integration@persistent.com";
+  'integration@persistent.com';
 export const INTEGRATION_TEST_PERSISTENT_USER_EMAIL_2 =
-  "integration@persistent2.com";
+  'integration@persistent2.com';
 export const INTEGRATION_TEST_NON_EXISTANT_USER_EMAIL =
-  "integration@nonexistant.com";
-export const INTEGRATION_TEST_EVENT_ID = "__INTEGRATION_TEST_EVENT_POST";
+  'integration@nonexistant.com';
+export const INTEGRATION_TEST_EVENT_ID = '__INTEGRATION_TEST_EVENT_POST';
 export const INTEGRATION_TEST_YEAR = 2020;
-export const INTEGRATION_TEST_PERSISTENT_EVENT_ID = "__INTEGRATION_TEST_EVENT";
+export const INTEGRATION_TEST_PERSISTENT_EVENT_ID = '__INTEGRATION_TEST_EVENT';
 export const INTEGRATION_TEST_PERSISTENT_YEAR = 2020;
 export const INTEGRATION_TEST_PERSISTENT_EVENT_ID_2 =
-  "__INTEGRATION_TEST_EVENT_2";
+  '__INTEGRATION_TEST_EVENT_2';
 export const INTEGRATION_TEST_PERSISTENT_YEAR_2 = 2020;
 export const INTEGRATION_TEST_NON_EXISTANT_EVENT_ID =
-  "someRandomEventThatDoesNotExist123";
+  'someRandomEventThatDoesNotExist123';
 export const INTEGRATION_TEST_NON_EXISTANT_YEAR = 1234;
-export const INTEGRATION_TEST_PRIZE_ID = "__INTEGRATION_TEST_PRIZE_POST";
-export const INTEGRATION_TEST_PERSISTENT_PRIZE_ID = "__INTEGRATION_TEST_PRIZE";
+export const INTEGRATION_TEST_PRIZE_ID = '__INTEGRATION_TEST_PRIZE_POST';
+export const INTEGRATION_TEST_PERSISTENT_PRIZE_ID = '__INTEGRATION_TEST_PRIZE';
 export const INTEGRATION_TEST_NON_EXISTANT_PRIZE_ID =
-  "someRandomPrizeThatDoesNotExist123";
-export const INTEGRATION_TEST_MEMBER_EMAIL = "integration@test.com";
+  'someRandomPrizeThatDoesNotExist123';
+export const INTEGRATION_TEST_MEMBER_EMAIL = 'integration@test.com';
 export const INTEGRATION_TEST_PERSISTENT_MEMBER_EMAIL =
-  "integration@persistent.com";
+  'integration@persistent.com';
 export const INTEGRATION_TEST_PERSISTENT_MEMBER_EMAIL_2 =
-  "integration@persistent2.com";
+  'integration@persistent2.com';
 export const INTEGRATION_TEST_NON_EXISTENT_MEMBER_EMAIL =
-  "integration@nonexistent.com";
+  'integration@nonexistent.com';
 
 export const INTEGRATION_TEST_PERSISTENT_REGISTRATION_PARAMETERS = {
   eventId: INTEGRATION_TEST_PERSISTENT_EVENT_ID_2, // has capacity of "1"

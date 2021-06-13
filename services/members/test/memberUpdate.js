@@ -8,16 +8,16 @@ const expect = mochaPlugin.chai.expect;
 import AWSMock from 'aws-sdk-mock';
 let wrapped = mochaPlugin.getWrapper('memberUpdate', '/handler.js', 'update');
 
-const email = "test@gmail.com";
+const email = 'test@gmail.com';
 const testEntry = {
   email: email,
-  pronouns: "He/Him",
-  major: "BUCS",
-  prevMember: "yes",
-  international: "yes",
-  topics: "Cyber Security, Careers in the Tech Industry",
-  heardFrom: "Instagram",
-  verificationCode: "bizbot",
+  pronouns: 'He/Him',
+  major: 'BUCS',
+  prevMember: 'yes',
+  international: 'yes',
+  topics: 'Cyber Security, Careers in the Tech Industry',
+  heardFrom: 'Instagram',
+  verificationCode: 'bizbot',
 };
 
 describe('memberUpdate', () => {
