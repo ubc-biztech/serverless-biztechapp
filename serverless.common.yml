@@ -14,11 +14,17 @@ custom:
     # use test template to overwrite plugin usage of commonjs
     testTemplate: ../../lib/testTemplate.ejs
 
+  stage: ${opt:stage, self:provider.stage}
+  domains:
+    prod: api.ubcbiztech.com
+    staging: api-staging.ubcbiztech.com
+    dev: api-dev.ubcbiztech.com
+
   customDomain:
-    domainName: api-${self:provider.stage}.ubcbiztech.com
+    domainName: ${self:custom.domains.${self:custom.stage}}
     basePath: ''
-    stage: ${self:provider.stage}
-    certificateName: 'api-${self:provider.stage}.ubcbiztech.com'
+    stage: ${self:custom.stage}
+    certificateName: ${self:custom.customDomain.domainName}
     createRoute53Record: true
     endpointType: 'edge'
     apiType: rest
