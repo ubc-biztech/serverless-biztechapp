@@ -14,7 +14,7 @@ const updatePayload = {
   url: 'https://www.google.ca'
 };
 
-describe('prizeUpdate', () => {
+describe('stickerUpdate', () => {
 
   let existingStickers = [updateId];
 

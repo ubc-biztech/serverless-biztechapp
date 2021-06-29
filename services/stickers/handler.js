@@ -167,7 +167,7 @@ export const del = async (event, ctx, callback) => {
   try {
 
     // check if id was given
-    if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('prize');
+    if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('Sticker');
     const id = event.pathParameters.id;
 
     // check that the id exists
