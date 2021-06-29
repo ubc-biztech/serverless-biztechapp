@@ -177,7 +177,9 @@ export const del = async (event, ctx, callback) => {
     const s3Delete = await deleteObject(existingSticker);
 
     if (s3Delete.statusCode !== 200) {
+
       throw s3Delete;
+
     }
 
     // do the magic
