@@ -8,7 +8,7 @@ import mochaPlugin from 'serverless-mocha-plugin';
 const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper('stickerGetAll', '/handler.js', 'getAll');
 
-import getStickersResponse from './stickers.json';
+import { stickerItemList } from './testData';
 
 describe('stickerGetAll', () => {
 
@@ -16,7 +16,7 @@ describe('stickerGetAll', () => {
 
     AWSMock.mock('DynamoDB.DocumentClient', 'scan', (params, callback) => {
 
-      callback(null, getStickersResponse);
+      callback(null, { Items: stickerItemList });
 
     });
 
@@ -39,7 +39,8 @@ describe('stickerGetAll', () => {
     const event = body[0];
     expect(event).to.have.property('id');
     expect(event).to.have.property('name');
-    expect(event).to.have.property('url');
+    expect(event).to.have.property('imageURL');
+    expect(event).to.have.property('key');
 
   });
 

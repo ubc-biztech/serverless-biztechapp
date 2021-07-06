@@ -2,8 +2,8 @@ import helpers from '../../lib/handlerHelpers';
 import db from '../../lib/db';
 import { isEmpty } from '../../lib/utils';
 import { STICKERS_TABLE } from '../../constants/tables';
-import { imageUpload, deleteObject } from '../../lib/s3';
-
+import s3Helpers from '../../lib/s3';
+// import { imageUpload, deleteObject } from '../../lib/s3;
 export const getAll = async(event, ctx, callback) => {
 
   try {
@@ -43,7 +43,7 @@ export const create = async(event, ctx, callback) => {
     const existingSticker = await db.getOne(data.id, STICKERS_TABLE);
     if (!isEmpty(existingSticker)) throw helpers.duplicateResponse('id', data);
 
-    const s3Upload = await imageUpload(data);
+    const s3Upload = await s3Helpers.imageUpload(data);
 
     if (s3Upload.statusCode !== 200) {
 
@@ -125,7 +125,7 @@ export const update = async (event, ctx, callback) => {
     const existingSticker = await db.getOne(id, STICKERS_TABLE);
     if(isEmpty(existingSticker)) throw helpers.notFoundResponse('sticker', id);
 
-    const s3Upload = await imageUpload(data);
+    const s3Upload = await s3Helpers.imageUpload(data);
 
     if (s3Upload.statusCode !== 200) {
 
@@ -174,7 +174,7 @@ export const del = async (event, ctx, callback) => {
     const existingSticker = await db.getOne(id, STICKERS_TABLE);
     if(isEmpty(existingSticker)) throw helpers.notFoundResponse('Sticker', id);
 
-    const s3Delete = await deleteObject(existingSticker);
+    const s3Delete = await s3Helpers.deleteObject(existingSticker);
 
     if (s3Delete.statusCode !== 200) {
 
