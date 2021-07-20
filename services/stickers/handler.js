@@ -54,12 +54,14 @@ export const create = async(event, ctx, callback) => {
     const uploadBody = JSON.parse(s3Upload.body);
 
     const item = {
-      id: data.id,
-      name: data.name,
+      ...data,
       imageURL: uploadBody.imageURL,
-      description: data.description,
       key: uploadBody.s3ObjectKey
     };
+
+    delete item.image;
+    delete item.mime;
+
     const res = await db.create(item, STICKERS_TABLE);
 
     const response = helpers.createResponse(201, {
@@ -136,11 +138,12 @@ export const update = async (event, ctx, callback) => {
     const uploadBody = JSON.parse(s3Upload.body);
 
     const item = {
-      id: data.id,
-      name: data.name,
+      ...data,
       imageURL: uploadBody.imageURL,
-      description: data.description
     };
+
+    delete item.image;
+    delete item.mime;
 
     const res = await db.updateDB(id, item, STICKERS_TABLE);
     const response = helpers.createResponse(200, {

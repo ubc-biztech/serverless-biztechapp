@@ -3,6 +3,7 @@ import chai from 'chai';
 const expect = chai.expect;
 
 import helpers from '../../../lib/testHelpers';
+import { stickerPayloadBody } from './integrationTestData';
 import {
   INTEGRATION_TEST_STICKER_ID,
   INTEGRATION_TEST_NON_EXISTANT_STICKER_ID
@@ -24,7 +25,7 @@ describe('stickers integration', function () {
 
     it('stickers/{id} GET doesn\'t exist returns 404', async () => {
 
-      return helpers.invokeLambda(SERVICE, 'stickerGet', JSON.stringify(defaultPayload))
+      return helpers.invokeLambda(SERVICE, 'stickersGet', JSON.stringify(defaultPayload))
         .then(([statusCode]) => {
 
           expect(statusCode).to.equal(404);
@@ -37,17 +38,13 @@ describe('stickers integration', function () {
 
   describe('stickers/ POST tests', function () {
 
-    let stickerPayload = {
-      body: JSON.stringify({
-        id: INTEGRATION_TEST_STICKER_ID,
-        name: 'Integration Sticker',
-        url: 'http://google.ca'
-      })
+    const payload = {
+      body: JSON.stringify(stickerPayloadBody)
     };
 
     it('stickers/ POST returns 201 on success', async () => {
 
-      await helpers.invokeLambda(SERVICE, 'stickerCreate', JSON.stringify(stickerPayload))
+      await helpers.invokeLambda(SERVICE, 'stickersCreate', JSON.stringify(payload))
         .then(([statusCode]) => {
 
           expect(statusCode).to.equal(201);
@@ -58,7 +55,7 @@ describe('stickers integration', function () {
 
     it('stickers/ POST returns 409 when sticker id already exists', async () => {
 
-      return helpers.invokeLambda(SERVICE, 'stickerCreate', JSON.stringify(stickerPayload))
+      return helpers.invokeLambda(SERVICE, 'stickersCreate', JSON.stringify(payload))
         .then(([statusCode, body]) => {
 
           expect(statusCode).to.equal(409);
@@ -72,21 +69,21 @@ describe('stickers integration', function () {
 
   describe('stickers/{id} PATCH and GET tests', function () {
 
-    const stickerPayload = {
-      name: 'Updated Sticker',
-      url: 'http://google.com'
-    };
+    const newStickerName = `${stickerPayloadBody}-updatedName`;
 
-    it('stickers/{id} PATCH returns 404 when event not found', async () => {
+    it('stickers/{id} PATCH returns 404 when sticker not found', async () => {
 
       const payload = {
         pathParameters: {
           id: INTEGRATION_TEST_NON_EXISTANT_STICKER_ID
         },
-        body: JSON.stringify(stickerPayload)
+        body: JSON.stringify({
+          ...stickerPayloadBody,
+          id: INTEGRATION_TEST_NON_EXISTANT_STICKER_ID,
+        })
       };
 
-      return helpers.invokeLambda(SERVICE, 'stickerUpdate', JSON.stringify(payload))
+      return helpers.invokeLambda(SERVICE, 'stickersUpdate', JSON.stringify(payload))
         .then(([statusCode]) => {
 
           expect(statusCode).to.equal(404);
@@ -101,9 +98,13 @@ describe('stickers integration', function () {
         pathParameters: {
           id: INTEGRATION_TEST_STICKER_ID
         },
-        body: JSON.stringify(stickerPayload)
+        body: JSON.stringify({
+          ...stickerPayloadBody,
+          name: newStickerName,
+          id: INTEGRATION_TEST_STICKER_ID,
+        })
       };
-      await helpers.invokeLambda(SERVICE, 'stickerUpdate', JSON.stringify(payload))
+      await helpers.invokeLambda(SERVICE, 'stickersUpdate', JSON.stringify(payload))
         .then(([statusCode]) => {
 
           expect(statusCode).to.equal(200);
@@ -114,14 +115,17 @@ describe('stickers integration', function () {
 
     it('stickers/{id} GET returns 200 and check PATCH success', async () => {
 
-      return helpers.invokeLambda(SERVICE, 'stickerGet', JSON.stringify(defaultPayload))
+      return helpers.invokeLambda(SERVICE, 'stickersGet', JSON.stringify(defaultPayload))
         .then(([statusCode, body]) => {
 
           expect(statusCode).to.equal(200);
 
           // Check that update succeeded
-          expect(body.name).to.equal(stickerPayload.name);
-          expect(body.url).to.equal(stickerPayload.url);
+          expect(body.name).to.equal(newStickerName);
+          expect(body).to.have.property('id');
+          expect(body).to.have.property('name');
+          expect(body).to.have.property('imageURL');
+          expect(body).to.have.property('key');
 
         });
 
@@ -129,7 +133,7 @@ describe('stickers integration', function () {
 
     it('stickers/ GET returns 200 on success', async () => {
 
-      return helpers.invokeLambda(SERVICE, 'stickerGetAll', '').then(([statusCode]) => {
+      return helpers.invokeLambda(SERVICE, 'stickersGetAll', '').then(([statusCode]) => {
 
         expect(statusCode).to.equal(200);
 
@@ -141,7 +145,7 @@ describe('stickers integration', function () {
 
   describe('stickers/{id} DELETE tests', function () {
 
-    it('stickers/{id} DELETE returns 404 when event not found', async () => {
+    it('stickers/{id} DELETE returns 404 when sticker not found', async () => {
 
       const payload = {
         pathParameters: {
@@ -149,7 +153,7 @@ describe('stickers integration', function () {
         }
       };
 
-      return helpers.invokeLambda(SERVICE, 'stickerDelete', JSON.stringify(payload))
+      return helpers.invokeLambda(SERVICE, 'stickersDelete', JSON.stringify(payload))
         .then(([statusCode]) => {
 
           expect(statusCode).to.equal(404);
@@ -158,9 +162,9 @@ describe('stickers integration', function () {
 
     });
 
-    it('stickers/{id} DELETE returns 200 on update success', async () => {
+    it('stickers/{id} DELETE returns 200 on delete success', async () => {
 
-      await helpers.invokeLambda(SERVICE, 'stickerDelete', JSON.stringify(defaultPayload))
+      await helpers.invokeLambda(SERVICE, 'stickersDelete', JSON.stringify(defaultPayload))
         .then(([statusCode]) => {
 
           expect(statusCode).to.equal(200);
