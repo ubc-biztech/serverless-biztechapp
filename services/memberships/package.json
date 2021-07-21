@@ -5,5 +5,8 @@
     "itest": "npm run itest memberships --prefix ../../",
     "utest": "npm run utest memberships --prefix ../../",
     "test": "npm run utest memberships --prefix ../../ && npm run itest memberships --prefix ../../"
+  },
+  "dependencies": {
+    "stripe": "^8.160.0"
   }
 }
