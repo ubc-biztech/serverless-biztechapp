@@ -1,4 +1,5 @@
 {
     "ENVIRONMENT": "",
-    "REQUIRE_API_KEY": true
+    "REQUIRE_API_KEY": true,
+    "BUCKET": "staging"
 }

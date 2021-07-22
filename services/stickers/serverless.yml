@@ -16,7 +16,9 @@ provider:
   cfLogs: true
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
-  
+    stickerImagesBucket: biztech-images-staging
+    region: ${file(../../serverless.common.yml):provider.region}
+
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
     restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
@@ -27,14 +29,21 @@ provider:
         - dynamodb:Scan
         - dynamodb:GetItem
         - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+        - s3:PutObject
+        - s3:PutObjectAcl
+        - s3:DeleteObject
+        - s3:DeleteObjectAcl
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechStickers${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:s3:::biztech-images-${file(../../config.${self:provider.stage}.json):BUCKET}/*"
 
-
-custom: ${file(../../serverless.common.yml):custom}
+custom:
+    ${file(../../serverless.common.yml):custom}
 
 functions:
-  stickerGetAll:
+  stickersGetAll:
     handler: handler.getAll
     events:
       - http:
@@ -45,14 +54,59 @@ functions:
             name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
-  stickerCreate:
-   handler: handler.create
+  stickersCreate:
+    handler: handler.create
+    events:
+      - http:
+          path: stickers/
+          method: post
+          cors: true
+          authorizer:
+            name: ${self:service}-authorizer
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+  stickersGet:
+    handler: handler.get
+    events:
+      - http:
+          path: stickers/{id}
+          method: get
+          request:
+            parameters:
+              path:
+                id: true
+          cors: true
+          authorizer:
+            name: ${self:service}-authorizer
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+  stickersUpdate:
+    handler: handler.update
+    events:
+      - http:
+          path: stickers/{id}
+          method: patch
+          request:
+            parameters:
+              path:
+                id: true
+          cors: true
+          authorizer:
+            name: ${self:service}-authorizer
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+  stickersDelete:
+   handler: handler.del
    events:
      - http:
-         path: stickers/
-         method: post
-         cors: true
-         authorizer:
+          path: stickers/{id}
+          method: delete
+          request:
+            parameters:
+              path:
+                id: true
+          cors: true
+          authorizer:
             name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
