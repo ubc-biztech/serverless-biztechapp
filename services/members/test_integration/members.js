@@ -5,15 +5,15 @@ import { INTEGRATION_TEST_MEMBER_EMAIL } from '../../../constants/test';
 
 import helpers from '../../../lib/testHelpers';
 
-const SERVICE = 'memberss';
+const SERVICE = 'members';
 
 describe('members integration', function () {
 
-  this.timeout(10000);
+  this.timeout(15000);
 
   const defaultPayload = {
     pathParameters: {
-      email: INTEGRATION_TEST_MEMBER_EMAIL,
+      id: INTEGRATION_TEST_MEMBER_EMAIL,
     },
   };
 
@@ -26,25 +26,6 @@ describe('members integration', function () {
         .then(([statusCode]) => {
 
           expect(statusCode).to.equal(404);
-
-        });
-
-    });
-
-  });
-
-  describe('members/ GET tests', function () {
-
-    it('members GET returns 200 on success', async () => {
-
-      return helpers
-        .invokeLambda(SERVICE, 'membersGetAll', '')
-        .then(([statusCode, body]) => {
-
-          expect(statusCode).to.equal(200);
-          expect(body).to.not.be.empty;
-          expect(body[0]).to.have.property('id');
-          expect(body[0]).to.have.property('email');
 
         });
 
@@ -98,6 +79,25 @@ describe('members integration', function () {
 
         });
 
+    });
+
+    describe('members/ GET tests', function () {
+
+      it('members GET returns 200 on success', async () => {
+  
+        return helpers
+          .invokeLambda(SERVICE, 'memberGet', JSON.stringify(defaultPayload))
+          .then(([statusCode, body]) => {
+  
+            expect(statusCode).to.equal(200);
+            expect(body).to.not.be.empty;
+            expect(body[0]).to.have.property('id');
+            expect(body[0]).to.have.property('email');
+  
+          });
+  
+      });
+  
     });
 
     it('member POST already exists returns 409', async () => {

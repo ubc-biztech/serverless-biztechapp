@@ -21,12 +21,21 @@ export const create = async (event, ctx, callback) => {
   const memberParams = {
     Item: {
       id: data.email,
+      education: data.education,
+      firstName: data.first_name,
+      lastName: data.last_name,
       pronouns: data.pronouns,
+      studentNumber: data.student_number,
+      faculty: data.faculty,
+      year: data.year,
       major: data.major,
       prevMember: data.prev_member,
       international: data.international,
       topics: data.topics,
       heardFrom: data.heard_from,
+      university: data.university,
+      highSchool: data.high_school,
+      admin: data.admin,
       createdAt: timestamp,
       updatedAt: timestamp,
     },
@@ -176,3 +185,32 @@ export const update = async (event, ctx, callback) => {
   }
 
 };
+
+export const del = async (event, ctx, callback) => {
+
+  try {
+    if (!event.pathParameters || !event.pathParameters.email) 
+      throw helpers.missingIdQueryResponse('email');
+
+    const email = event.pathParameters.email;
+    if (!isValidEmail(email)) throw helpers.inputError('Invalid email', email);
+    // check that the member exists
+    const existingMember = await db.getOne(email, MEMBERS2022_TABLE);
+    if (isEmpty(existingMember)) throw helpers.notFoundResponse('Member', email);
+
+    const res = await db.deleteOne(email, MEMBERS2022_TABLE);
+    const response = helpers.createResponse(200, {
+      message: 'Member deleted!',
+      response: res,
+    });
+
+    callback(null, response);
+    return null;
+
+  } catch (err) {
+
+    callback(null, err);
+    return null; 
+
+  }
+}
