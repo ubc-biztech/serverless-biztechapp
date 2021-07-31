@@ -114,6 +114,7 @@ describe('members integration', function () {
         });
 
     });
+
   });
 
   describe('member/{id} DELETE and wrapup', function () {
