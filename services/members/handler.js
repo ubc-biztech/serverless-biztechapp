@@ -4,8 +4,6 @@ import { isEmpty, isValidEmail } from '../../lib/utils';
 const AWS = require('aws-sdk');
 const { MEMBERS2022_TABLE } = require('../../constants/tables');
 
-const VERIFICATION_CODE = 'bizbot';
-
 export const create = async (event, ctx, callback) => {
 
   const docClient = new AWS.DynamoDB.DocumentClient();
@@ -42,26 +40,6 @@ export const create = async (event, ctx, callback) => {
     TableName: MEMBERS2022_TABLE + process.env.ENVIRONMENT,
     ConditionExpression: 'attribute_not_exists(id)',
   };
-
-  if (data.hasOwnProperty('verificationCode')) {
-
-    if (data.verificationCode !== VERIFICATION_CODE) {
-
-      const response = helpers.createResponse(401, {
-        message: 'Invalid verification code',
-      });
-      callback(null, response);
-
-    }
-
-  } else if (!data.hasOwnProperty('verificationCode')) {
-
-    const response = helpers.createResponse(401, {
-      message: 'Missing verification code',
-    });
-    callback(null, response);
-
-  }
 
   await docClient
     .put(memberParams)
@@ -104,9 +82,9 @@ export const get = async (event, ctx, callback) => {
   try {
 
     // eslint-disable-next-line
-    if (!event.pathParameters || !event.pathParameters.email)
+    if (!event.pathParameters || !event.pathParameters.id)
       throw helpers.missingIdQueryResponse('email');
-    const email = event.pathParameters.email;
+    const email = event.pathParameters.id;
 
     if (!isValidEmail(email)) throw helpers.inputError('Invalid email', email);
     const member = await db.getOne(email, MEMBERS2022_TABLE);
@@ -155,10 +133,10 @@ export const update = async (event, ctx, callback) => {
   try {
 
     // eslint-disable-next-line
-    if (!event.pathParameters || !event.pathParameters.email)
+    if (!event.pathParameters || !event.pathParameters.id)
       throw helpers.missingIdQueryResponse('email');
 
-    const email = event.pathParameters.email;
+    const email = event.pathParameters.id;
     if (!isValidEmail(email)) throw helpers.inputError('Invalid email', email);
 
     const existingMember = await db.getOne(email, MEMBERS2022_TABLE);
@@ -189,10 +167,11 @@ export const update = async (event, ctx, callback) => {
 export const del = async (event, ctx, callback) => {
 
   try {
-    if (!event.pathParameters || !event.pathParameters.email) 
+
+    if (!event.pathParameters || !event.pathParameters.id)
       throw helpers.missingIdQueryResponse('email');
 
-    const email = event.pathParameters.email;
+    const email = event.pathParameters.id;
     if (!isValidEmail(email)) throw helpers.inputError('Invalid email', email);
     // check that the member exists
     const existingMember = await db.getOne(email, MEMBERS2022_TABLE);
@@ -210,7 +189,8 @@ export const del = async (event, ctx, callback) => {
   } catch (err) {
 
     callback(null, err);
-    return null; 
+    return null;
 
   }
-}
+
+};

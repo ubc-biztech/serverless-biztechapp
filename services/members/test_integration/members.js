@@ -17,7 +17,7 @@ describe('members integration', function () {
     },
   };
 
-  describe('member/{email} GET setup', function () {
+  describe('member/{id} GET setup', function () {
 
     it('member GET doesn\'t exist returns 404', async () => {
 
@@ -81,23 +81,22 @@ describe('members integration', function () {
 
     });
 
-    describe('members/ GET tests', function () {
+    describe('members/ GETALL tests', function () {
 
       it('members GET returns 200 on success', async () => {
-  
+
         return helpers
-          .invokeLambda(SERVICE, 'memberGet', JSON.stringify(defaultPayload))
+          .invokeLambda(SERVICE, 'memberGetAll', JSON.stringify(defaultPayload))
           .then(([statusCode, body]) => {
-  
+
             expect(statusCode).to.equal(200);
             expect(body).to.not.be.empty;
             expect(body[0]).to.have.property('id');
-            expect(body[0]).to.have.property('email');
-  
+
           });
-  
+
       });
-  
+
     });
 
     it('member POST already exists returns 409', async () => {
@@ -111,6 +110,42 @@ describe('members integration', function () {
         .then(([statusCode]) => {
 
           expect(statusCode).to.equal(409);
+
+        });
+
+    });
+  });
+
+  describe('member/{id} DELETE and wrapup', function () {
+
+    it('member DELETE returns 200', async () => {
+
+      return helpers.invokeLambda(SERVICE, 'memberDelete', JSON.stringify(defaultPayload))
+        .then(([statusCode]) => {
+
+          expect(statusCode).to.equal(200);
+
+        });
+
+    });
+
+    it('member GET returns 404 to check DELETE worked', async () => {
+
+      return helpers.invokeLambda(SERVICE, 'memberGet', JSON.stringify(defaultPayload))
+        .then(([statusCode]) => {
+
+          expect(statusCode).to.equal(404);
+
+        });
+
+    });
+
+    it('member PATCH on member that does not exist returns 404', async () => {
+
+      return helpers.invokeLambda(SERVICE, 'memberUpdate', JSON.stringify(defaultPayload))
+        .then(([statusCode]) => {
+
+          expect(statusCode).to.equal(404);
 
         });
 
