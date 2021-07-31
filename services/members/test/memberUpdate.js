@@ -17,7 +17,6 @@ const testEntry = {
   international: 'yes',
   topics: 'Cyber Security, Careers in the Tech Industry',
   heardFrom: 'Instagram',
-  verificationCode: 'bizbot',
 };
 
 describe('memberUpdate', () => {
@@ -29,21 +28,24 @@ describe('memberUpdate', () => {
     AWSMock.mock('DynamoDB.DocumentClient', 'get', (params, callback) => {
 
       let returnValue = null;
-      if(existingMemberIds.includes(params.Key.id)) returnValue = {
-        ...testEntry,
-        id: params.Key.id
-      };
+      if (existingMemberIds.includes(params.Key.id))
+        returnValue = {
+          ...testEntry,
+          id: params.Key.id,
+        };
       callback(null, { Item: returnValue });
 
     });
 
-    AWSMock.mock('DynamoDB.DocumentClient', 'update', function (params, callback) {
+    AWSMock.mock(
+      'DynamoDB.DocumentClient',
+      'update',
+      function (params, callback) {
 
-      Promise.resolve(
-        callback(null, { Item: 'not null user' })
-      );
+        Promise.resolve(callback(null, { Item: 'not null user' }));
 
-    });
+      }
+    );
 
   });
 
@@ -59,7 +61,7 @@ describe('memberUpdate', () => {
 
     const response = await wrapped.run({
       body: JSON.stringify(testEntry),
-      pathParameters: { email: badEmail }
+      pathParameters: { email: badEmail },
     });
     expect(response.statusCode).to.equal(406);
 
@@ -71,7 +73,7 @@ describe('memberUpdate', () => {
 
     const response = await wrapped.run({
       body: JSON.stringify(testEntry),
-      pathParameters: { email: unknownEmail }
+      pathParameters: { email: unknownEmail },
     });
     expect(response.statusCode).to.equal(404);
 
@@ -81,7 +83,7 @@ describe('memberUpdate', () => {
 
     const response = await wrapped.run({
       body: JSON.stringify(testEntry),
-      pathParameters: { email }
+      pathParameters: { email },
     });
     expect(response.statusCode).to.equal(200);
 
