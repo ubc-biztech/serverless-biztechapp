@@ -33,7 +33,6 @@ export const create = async (event, ctx, callback) => {
       fname: data.fname,
       lname: data.lname,
       faculty: data.faculty,
-      major: data.major,
       year: data.year,
       gender: data.gender,
       diet: data.diet,

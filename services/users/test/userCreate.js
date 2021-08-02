@@ -15,7 +15,6 @@ const testEntry = {
   fname: 'insanetest',
   lname: 'dude',
   faculty: 'Science',
-  major: 'biology',
   email: email
 };
 

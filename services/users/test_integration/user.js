@@ -39,7 +39,6 @@ describe('user integration', function () {
       fname: 'TESTUSER',
       lname: 'DONOTMODIFY',
       faculty: 'science',
-      major: 'biology',
       userYear: 1,
       gender: 'Male',
       diet: 'vegan',
@@ -79,7 +78,6 @@ describe('user integration', function () {
     lname: 'DONOTMODIFYSTILL',
     userYear: 3,
     faculty: 'arts',
-    major: 'history',
     gender: 'Female',
     diet: 'none'
   };
@@ -202,8 +200,6 @@ describe('user integration', function () {
           expect(body.fname).to.equal(userPatchBody.fname);
           expect(body.year).to.equal(userPatchBody.year);
           expect(body.gender).to.equal(userPatchBody.gender);
-          expect(body.faculty).to.equal(userPatchBody.faculty);
-          expect(body.major).to.equal(userPatchBody.major);
           expect(body['favedEventsID;year']).to.contain('bluePrint;2020');
           expect(body['favedEventsID;year']).to.contain('someEvent;2020');
 
