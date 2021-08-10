@@ -1,0 +1,98 @@
+service: biztechApi-members
+tenant: ianmh
+app: biztechapp
+
+plugins:
+  - serverless-domain-manager
+  - serverless-bundle
+  - serverless-prune-plugin
+  - serverless-mocha-plugin
+
+provider:
+  name: aws
+  stage: ${file(../../serverless.common.yml):provider.stage}
+  runtime: ${file(../../serverless.common.yml):provider.runtime}
+  region: ${file(../../serverless.common.yml):provider.region}
+  cfLogs: true
+  environment:
+    ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
+
+  apiGateway:
+    restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
+    restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
+
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2022${self:provider.environment.ENVIRONMENT}"
+
+custom: ${file(../../serverless.common.yml):custom}
+
+functions:
+  memberCreate:
+    handler: handler.create
+    events:
+      - http:
+          path: members/
+          method: post
+          cors: true
+  memberGet:
+    handler: handler.get
+    events:
+      - http:
+          path: members/{email}
+          method: get
+          request:
+            parameters:
+              path:
+                email: true
+          cors: true
+          authorizer:
+            name: ${self:service}-authorizer
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+  memberGetAll:
+    handler: handler.getAll
+    events:
+      - http:
+          path: members/
+          method: get
+          cors: true
+          authorizer:
+            name: ${self:service}-authorizer
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+  memberUpdate:
+    handler: handler.update
+    events:
+      - http:
+          path: members/{email}
+          method: patch
+          request:
+            path:
+              email: true
+            cors: true
+            authorizer:
+              name: ${self:service}-authorizer
+              type: COGNITO_USER_POOLS
+              arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+  memberDelete:
+      handler: handler.del
+      events:
+        - http:
+            path: members/{email}
+            method: delete
+            request:
+              path:
+                email: true
+            cors: true
+            authorizer:
+              name: ${self:service}-authorizer
+              type: COGNITO_USER_POOLS
+              arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp

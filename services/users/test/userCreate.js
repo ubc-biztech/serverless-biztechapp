@@ -7,7 +7,6 @@ import mochaPlugin from 'serverless-mocha-plugin';
 const expect = mochaPlugin.chai.expect;
 import AWSMock from 'aws-sdk-mock';
 let wrapped = mochaPlugin.getWrapper('userCreate', '/handler.js', 'create');
-import { USER_INVITE_CODES_TABLE } from '../../../constants/tables';
 
 const email = 'test@gmail.com';
 const testEntry = {
@@ -15,7 +14,7 @@ const testEntry = {
   fname: 'insanetest',
   lname: 'dude',
   faculty: 'Science',
-  email: email
+  email: email,
 };
 
 describe('userCreate', () => {
@@ -26,9 +25,9 @@ describe('userCreate', () => {
 
       Promise.resolve(
         callback(null, {
-          Item: 'not null user'
-        }
-        ));
+          Item: 'not null user',
+        })
+      );
 
     });
 
@@ -47,7 +46,7 @@ describe('userCreate', () => {
   it('returns 406 when not given email', async () => {
 
     const body = {
-      ...testEntry
+      ...testEntry,
     };
     delete body.email;
 
@@ -62,7 +61,7 @@ describe('userCreate', () => {
 
     const body = {
       ...testEntry,
-      email: 'adminUser@ubcbiztech.com'
+      email: 'adminUser@ubcbiztech.com',
     };
 
     const response = await wrapped.run({ body: JSON.stringify(body) });
@@ -72,96 +71,81 @@ describe('userCreate', () => {
 
   });
 
-  it('returns 201 and deletes invite code', async () => {
+  // it("returns 201 and deletes invite code", async () => {
+  //   AWSMock.mock("DynamoDB.DocumentClient", "get", function (params, callback) {
+  //     if (
+  //       params.TableName ==
+  //       USER_INVITE_CODES_TABLE + process.env.ENVIRONMENT
+  //     ) {
+  //       Promise.resolve(
+  //         callback(null, {
+  //           Item: "not null invites",
+  //         })
+  //       );
+  //     } else {
+  //       Promise.reject(callback(null));
+  //     }
+  //   });
 
-    AWSMock.mock('DynamoDB.DocumentClient', 'get', function (params, callback) {
+  //   AWSMock.mock(
+  //     "DynamoDB.DocumentClient",
+  //     "delete",
+  //     function (params, callback) {
+  //       if (
+  //         params.TableName ==
+  //         USER_INVITE_CODES_TABLE + process.env.ENVIRONMENT
+  //       ) {
+  //         Promise.resolve(
+  //           callback(null, {
+  //             Item: "expected invites delete",
+  //           })
+  //         );
+  //       } else {
+  //         Promise.reject(callback(null));
+  //       }
+  //     }
+  //   );
 
-      if (params.TableName == USER_INVITE_CODES_TABLE + process.env.ENVIRONMENT) {
+  //   const body = {
+  //     ...testEntry,
+  //     // inviteCode: "23323",
+  //   };
 
-        Promise.resolve(
-          callback(null, {
-            Item: 'not null invites'
-          })
-        );
+  //   const response = await wrapped.run({ body: JSON.stringify(body) });
+  //   expect(response.statusCode).to.equal(201);
+  //   const responseBody = JSON.parse(response.body);
+  //   expect(responseBody.params.Item.id).to.equal(email);
+  //   expect(responseBody.params.Item.admin).to.equal(false);
+  //   expect(responseBody.params.Item.paid).to.equal(true);
+  // });
 
-      } else {
+  // it("returns 404 when invite code not found", async () => {
+  //   AWSMock.mock("DynamoDB.DocumentClient", "get", function (params, callback) {
+  //     if (
+  //       params.TableName ==
+  //       USER_INVITE_CODES_TABLE + process.env.ENVIRONMENT
+  //     ) {
+  //       Promise.resolve(
+  //         callback(null, {
+  //           Item: null,
+  //         })
+  //       );
+  //     } else {
+  //       Promise.reject(callback(null));
+  //     }
+  //   });
 
-        Promise.reject(
-          callback(null)
-        );
+  //   const body = {
+  //     ...testEntry,
+  //     inviteCode: "23323",
+  //   };
+  //   const response = await wrapped.run({ body: JSON.stringify(body) });
+  //   expect(response.statusCode).to.equal(404);
+  //   const responseBody = JSON.parse(response.body);
+  //   expect(responseBody).to.equal("Invite code not found.");
+  // });
 
-      }
-
-    });
-
-    AWSMock.mock('DynamoDB.DocumentClient', 'delete', function (params, callback) {
-
-      if (params.TableName == USER_INVITE_CODES_TABLE + process.env.ENVIRONMENT) {
-
-        Promise.resolve(
-          callback(null, {
-            Item: 'expected invites delete'
-          })
-        );
-
-      } else {
-
-        Promise.reject(
-          callback(null)
-        );
-
-      }
-
-    });
-
-    const body = {
-      ...testEntry,
-      inviteCode: '23323'
-    };
-
-    const response = await wrapped.run({ body: JSON.stringify(body) });
-    expect(response.statusCode).to.equal(201);
-    const responseBody = JSON.parse(response.body);
-    expect(responseBody.params.Item.id).to.equal(email);
-    expect(responseBody.params.Item.admin).to.equal(false);
-    expect(responseBody.params.Item.paid).to.equal(true);
-
-  });
-
-  it('returns 404 when invite code not found', async () => {
-
-    AWSMock.mock('DynamoDB.DocumentClient', 'get', function (params, callback) {
-
-      if (params.TableName == USER_INVITE_CODES_TABLE + process.env.ENVIRONMENT) {
-
-        Promise.resolve(
-          callback(null, {
-            Item: null
-          })
-        );
-
-      } else {
-
-        Promise.reject(
-          callback(null)
-        );
-
-      }
-
-    });
-
-    const body = {
-      ...testEntry,
-      inviteCode: '23323'
-    };
-    const response = await wrapped.run({ body: JSON.stringify(body) });
-    expect(response.statusCode).to.equal(404);
-    const responseBody = JSON.parse(response.body);
-    expect(responseBody).to.equal('Invite code not found.');
-
-  });
-
-  afterEach(function() {
+  afterEach(function () {
 
     AWSMock.restore('DynamoDB.DocumentClient');
 
