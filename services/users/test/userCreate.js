@@ -14,7 +14,8 @@ const testEntry = {
   fname: 'insanetest',
   lname: 'dude',
   faculty: 'Science',
-  email: email,
+  major: 'biology',
+  email: email
 };
 
 describe('userCreate', () => {
