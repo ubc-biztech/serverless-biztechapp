@@ -37,9 +37,12 @@ export const create = async (event, ctx, callback) => {
       latitude: data.latitude,
       createdAt: timestamp,
       updatedAt: timestamp,
-      textFields: data.textFields,
-      selectFields: data.selectFields,
-      checkboxFields: data.checkboxFields
+      requiredTextFields: data.requiredTextFields,
+      unrequiredTextFields: data.unrequiredTextFields,
+      requiredSelectFields: data.requiredSelectFields,
+      unrequiredSelectFields: data.unrequiredSelectFields,
+      requiredCheckBoxFields: data.requiredCheckBoxFields,
+      unrequiredCheckBoxFields: data.unrequiredCheckBoxFields,
     };
 
     const res = await db.create(item, EVENTS_TABLE);
