@@ -23,7 +23,15 @@ const eventPayload = {
   longitude: -120.00,
   latitude: 78.00,
   createdAt: '20200607T000000-0400',
-  updatedAt: '20200607T000000-0400'
+  updatedAt: '20200607T000000-0400',
+  registrationQuestions: [
+    {
+      name: 'testQuestion',
+      type: 'textField',
+      label: 'This is a test question?',
+      required: true,
+    }
+  ],
 };
 
 describe('eventCreate', () => {

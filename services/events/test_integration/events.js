@@ -133,6 +133,14 @@ describe('events integration', function () {
         elocation: 'UBC Sauder',
         longitude: -120.10,
         latitude: 78.03,
+        registrationQuestions: [
+          {
+            name: 'testQuestion',
+            type: 'textField',
+            label: 'This is a test question?',
+            required: true,
+          }
+        ],
       };
 
       // fields that are different in the updatePayload: ename, description, capac, elocation, longitude, latitude
@@ -145,6 +153,14 @@ describe('events integration', function () {
         elocation: 'UBC Nest',
         longitude: 120.00,
         latitude: -78.00,
+        registrationQuestions: [
+          {
+            name: 'anotherQuestion',
+            type: 'checkbox',
+            label: 'This is a checkbox?',
+            required: false,
+          }
+        ],
       };
 
       it('event PATCH returns 200 on update success', async () => {
@@ -181,6 +197,7 @@ describe('events integration', function () {
             expect(body.description).to.equal(defaultPayload.description);
             expect(body.capac).to.equal(defaultPayload.capac);
             expect(body.longitude).to.equal(defaultPayload.longitude);
+            expect(body.registrationQuestions).to.have.deep.members(defaultPayload.registrationQuestions);
 
           });
 
@@ -210,6 +227,7 @@ describe('events integration', function () {
             expect(body.description).to.equal(updatePayload.description);
             expect(body.capac).to.equal(updatePayload.capac);
             expect(body.longitude).to.equal(updatePayload.longitude);
+            expect(body.registrationQuestions).to.have.deep.members(updatePayload.registrationQuestions);
 
           });
 

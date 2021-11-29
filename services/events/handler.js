@@ -43,6 +43,7 @@ export const create = async (event, ctx, callback) => {
       unrequiredSelectFields: data.unrequiredSelectFields,
       requiredCheckBoxFields: data.requiredCheckBoxFields,
       unrequiredCheckBoxFields: data.unrequiredCheckBoxFields,
+      registrationQuestions: data.registrationQuestions,
     };
 
     const res = await db.create(item, EVENTS_TABLE);
