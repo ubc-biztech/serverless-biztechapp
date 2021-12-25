@@ -135,7 +135,7 @@ describe('events integration', function () {
         latitude: 78.03,
         registrationQuestions: [
           {
-            name: 'testQuestion',
+            questionId: 'b6b6d6d6-c54f-45f7-8cd0-6f3a354e2796',
             type: 'textField',
             label: 'This is a test question?',
             required: true,
@@ -155,7 +155,7 @@ describe('events integration', function () {
         latitude: -78.00,
         registrationQuestions: [
           {
-            name: 'anotherQuestion',
+            questionId: 'c2bc026e-9659-42ef-9f01-5522b4deb5d0',
             type: 'checkbox',
             label: 'This is a checkbox?',
             required: false,

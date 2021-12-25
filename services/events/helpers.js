@@ -1,4 +1,5 @@
 import AWS from 'aws-sdk';
+import { v4 as uuidv4 } from 'uuid';
 import { USER_REGISTRATIONS_TABLE } from '../../constants/tables';
 
 export default {
@@ -60,5 +61,22 @@ export default {
 
       });
 
-  }
+  },
+/**
+ * Inserts a unique uuid into each registrationQuestion 
+ * @param {Array} registrationQuestions 
+ * @returns a new Array, with a unique questionId inserted into each question
+ */
+  addIdsToRegistrationQuestions: function (registrationQuestions) {
+
+    return registrationQuestions.map((question) => {
+
+      return {
+        ...question,
+        questionId: uuidv4(),
+      };
+
+    });
+
+  },
 };
