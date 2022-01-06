@@ -41,7 +41,7 @@ const eventPayloadWithRegistrationQuestionIds = {
     label: 'This is a test question?',
     required: true,
   }]
-}
+};
 
 describe('eventCreate', () => {
 
@@ -57,7 +57,7 @@ describe('eventCreate', () => {
       if (params.TableName.includes(EVENTS_TABLE)) {
 
         // Check if an entry with the same id and year already exists in our table
-        if (params.Key.id && params.Key.year && createdEventsIdAndYear.some(key => key.id === params.Key.id && key.year === params.Key.year)) 
+        if (params.Key.id && params.Key.year && createdEventsIdAndYear.some(key => key.id === params.Key.id && key.year === params.Key.year))
           callback(null, { Item: eventPayloadWithRegistrationQuestionIds });
 
         // Id and year does not exist in our table

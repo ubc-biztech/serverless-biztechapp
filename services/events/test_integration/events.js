@@ -143,7 +143,7 @@ describe('events integration', function () {
         ],
       };
 
-      // fields that are different in the updatePayload: ename, description, capac, elocation, longitude, latitude
+      // fields that are different in the updatePayload: ename, description, capac, elocation, longitude, latitude, registrationQuestions
       const defaultPayload = {
         ename: 'integrationTestEventName',
         description: 'default test event description',
