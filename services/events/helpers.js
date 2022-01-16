@@ -62,10 +62,10 @@ export default {
       });
 
   },
-/**
- * Inserts a unique uuid into each registrationQuestion 
+  /**
+ * Inserts a unique uuid into each registrationQuestion, if it does not already exist
  * @param {Array} registrationQuestions 
- * @returns a new Array, with a unique questionId inserted into each question
+ * @returns a new Array, with a unique questionId in each question
  */
   addIdsToRegistrationQuestions: function (registrationQuestions) {
 
@@ -73,7 +73,7 @@ export default {
 
       return {
         ...question,
-        questionId: uuidv4(),
+        questionId: question.questionId || uuidv4(),
       };
 
     });
