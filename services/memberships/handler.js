@@ -1,7 +1,7 @@
 import helpers from '../../lib/handlerHelpers';
 import db from '../../lib/db';
 const { MEMBERSHIPS_TABLE } = require('../../constants/tables');
-export const getAll = async(event, ctx, callback) => {
+export const getAll = async (event, ctx, callback) => {
 
   try {
 
@@ -10,7 +10,8 @@ export const getAll = async(event, ctx, callback) => {
 
     // re-organize the response
     let response = {};
-    if (memberships !== null) response = helpers.createResponse(200, memberships);
+    if (memberships !== null)
+      response = helpers.createResponse(200, memberships);
 
     // return the response object
     callback(null, response);
@@ -25,8 +26,11 @@ export const getAll = async(event, ctx, callback) => {
 
 };
 
-export const payment = async(event, ctx, callback) => {
-  const stripe = require('stripe')('sk_test_51KOxOlBAxwbCreS7JRQtvZCnCgLmn8tjK7WPHDGjpw0s4vfVHLwbcrZZvQLmd5cY7zKRIsfj3pnEDDHTy3G81Tuf00v9ygIBrC');
+export const payment = async (event, ctx, callback) => {
+
+  const stripe = require('stripe')(
+    'sk_test_51KOxOlBAxwbCreS7JRQtvZCnCgLmn8tjK7WPHDGjpw0s4vfVHLwbcrZZvQLmd5cY7zKRIsfj3pnEDDHTy3G81Tuf00v9ygIBrC'
+  );
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ['card'],
     line_items: [
@@ -42,12 +46,19 @@ export const payment = async(event, ctx, callback) => {
         quantity: 1,
       },
     ],
-    // metadata: event.body,
+    metadata: {
+      // event.body
+      order_id: '12345',
+      student_number: '1234567',
+      first_name: 'John',
+      last_name: 'Cena',
+    },
     mode: 'payment',
-    success_url: `https://app.ubcbiztech.com/signup/success`,
-    cancel_url: `https://facebook.com`,
+    success_url: 'https://app.ubcbiztech.com/signup/success',
+    cancel_url: 'https://facebook.com',
   });
   let response = helpers.createResponse(200, session.url);
   callback(null, response);
   return null;
-}
+
+};
