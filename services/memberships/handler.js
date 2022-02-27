@@ -1,7 +1,7 @@
 import helpers from '../../lib/handlerHelpers';
 import db from '../../lib/db';
 const { MEMBERSHIPS_TABLE } = require('../../constants/tables');
-export const getAll = async(event, ctx, callback) => {
+export const getAll = async (event, ctx, callback) => {
 
   try {
 
@@ -10,7 +10,8 @@ export const getAll = async(event, ctx, callback) => {
 
     // re-organize the response
     let response = {};
-    if (memberships !== null) response = helpers.createResponse(200, memberships);
+    if (memberships !== null)
+      response = helpers.createResponse(200, memberships);
 
     // return the response object
     callback(null, response);
@@ -51,7 +52,13 @@ export const payment = async(event, ctx, callback) => {
         quantity: 1,
       },
     ],
-    // metadata: event.body,
+    metadata: {
+      // event.body
+      order_id: '12345',
+      student_number: '1234567',
+      first_name: 'John',
+      last_name: 'Cena',
+    },
     mode: 'payment',
     success_url: 'https://app.ubcbiztech.com/signup/success',
     cancel_url: 'https://facebook.com',
