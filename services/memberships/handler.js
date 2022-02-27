@@ -26,10 +26,12 @@ export const getAll = async(event, ctx, callback) => {
 };
 
 export const webhook = async(event, ctx, callback) => {
+
   let response = helpers.createResponse(200, {});
   callback(null, response);
-  return null; 
-}
+  return null;
+
+};
 
 export const payment = async(event, ctx, callback) => {
 
