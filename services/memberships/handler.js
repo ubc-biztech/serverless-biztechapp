@@ -30,22 +30,29 @@ export const getAll = async (event, ctx, callback) => {
 };
 
 export const webhook = async(event, ctx, callback) => {
+
   const sig = event.headers['Stripe-Signature'];
   let eventData;
   console.log(event.body);
 
   // Stripe returns an error if verification fails
-    try {
-      eventData = stripe.webhooks.constructEvent(event.body, sig, endpointSecret);
-    } catch(err) {
-      return helpers.createResponse(400, {
-        message: `Webhook Error: ${err.message}`
-      }); 
-    }
+  try {
+
+    eventData = stripe.webhooks.constructEvent(event.body, sig, endpointSecret);
+
+  } catch(err) {
+
+    return helpers.createResponse(400, {
+      message: `Webhook Error: ${err.message}`
+    });
+
+  }
 
   // Handle the checkout.session.completed event
   if (eventData.type == 'checkout.session.completed') {
+
     console.log(eventData.data);
+
   }
 
   let response = helpers.createResponse(200, {});
@@ -61,6 +68,7 @@ export const config = {
 };
 
 export const payment = async(event, ctx, callback) => {
+
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ['card'],
     line_items: [
@@ -82,6 +90,7 @@ export const payment = async(event, ctx, callback) => {
       student_number: '1234567',
       first_name: 'John',
       last_name: 'Cena',
+      test_test: 'test',
     },
     mode: 'payment',
     success_url: 'https://app.ubcbiztech.com/signup/success',
