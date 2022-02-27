@@ -1,5 +1,8 @@
 import helpers from '../../lib/handlerHelpers';
 import db from '../../lib/db';
+const stripe = require('stripe')('sk_test_51KOxOlBAxwbCreS7JRQtvZCnCgLmn8tjK7WPHDGjpw0s4vfVHLwbcrZZvQLmd5cY7zKRIsfj3pnEDDHTy3G81Tuf00v9ygIBrC');
+// development endpoint secret - switch to live secret key in production
+const endpointSecret = 'whsec_TYSFr29HQ4bIPu649lgkxOrlPjrDOe2l';
 const { MEMBERSHIPS_TABLE } = require('../../constants/tables');
 export const getAll = async (event, ctx, callback) => {
 
@@ -27,6 +30,23 @@ export const getAll = async (event, ctx, callback) => {
 };
 
 export const webhook = async(event, ctx, callback) => {
+  const sig = event.headers['Stripe-Signature'];
+  let eventData;
+  console.log(event.body);
+
+  // Stripe returns an error if verification fails
+    try {
+      eventData = stripe.webhooks.constructEvent(event.body, sig, endpointSecret);
+    } catch(err) {
+      return helpers.createResponse(400, {
+        message: `Webhook Error: ${err.message}`
+      }); 
+    }
+
+  // Handle the checkout.session.completed event
+  if (eventData.type == 'checkout.session.completed') {
+    console.log(eventData.data);
+  }
 
   let response = helpers.createResponse(200, {});
   callback(null, response);
@@ -34,9 +54,13 @@ export const webhook = async(event, ctx, callback) => {
 
 };
 
-export const payment = async(event, ctx, callback) => {
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
 
-  const stripe = require('stripe')('sk_test_51KOxOlBAxwbCreS7JRQtvZCnCgLmn8tjK7WPHDGjpw0s4vfVHLwbcrZZvQLmd5cY7zKRIsfj3pnEDDHTy3G81Tuf00v9ygIBrC');
+export const payment = async(event, ctx, callback) => {
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ['card'],
     line_items: [
