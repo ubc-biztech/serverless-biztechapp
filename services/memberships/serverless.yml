@@ -50,4 +50,12 @@ functions:
           path: memberships/payment
           method: post
           cors: true
+  membershipsWebhook:
+    handler: handler.webhook
+    events:
+      - http:
+          path: memberships/webhook
+          method: post
+          cors: true
+          
 

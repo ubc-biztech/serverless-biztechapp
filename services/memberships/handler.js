@@ -25,7 +25,14 @@ export const getAll = async(event, ctx, callback) => {
 
 };
 
+export const webhook = async(event, ctx, callback) => {
+  let response = helpers.createResponse(200, {});
+  callback(null, response);
+  return null; 
+}
+
 export const payment = async(event, ctx, callback) => {
+
   const stripe = require('stripe')('sk_test_51KOxOlBAxwbCreS7JRQtvZCnCgLmn8tjK7WPHDGjpw0s4vfVHLwbcrZZvQLmd5cY7zKRIsfj3pnEDDHTy3G81Tuf00v9ygIBrC');
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ['card'],
@@ -44,10 +51,11 @@ export const payment = async(event, ctx, callback) => {
     ],
     // metadata: event.body,
     mode: 'payment',
-    success_url: `https://app.ubcbiztech.com/signup/success`,
-    cancel_url: `https://facebook.com`,
+    success_url: 'https://app.ubcbiztech.com/signup/success',
+    cancel_url: 'https://facebook.com',
   });
   let response = helpers.createResponse(200, session.url);
   callback(null, response);
   return null;
-}
+
+};
