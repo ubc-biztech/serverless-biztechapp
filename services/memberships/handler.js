@@ -56,6 +56,8 @@ export const config = {
 };
 
 export const payment = async (event, ctx, callback) => {
+  const data = JSON.parse(event.body);
+
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ["card"],
     line_items: [
@@ -72,20 +74,29 @@ export const payment = async (event, ctx, callback) => {
       },
     ],
     metadata: {
-      // event.body
       order_id: "12345",
       student_number: "1234567",
       first_name: "John",
       last_name: "Cena",
       test_test: "test",
+      id: data.id,
+      email: data.email,
+      faculty: data.faculty,
+      first_name: data.first_name,
+      // heard_from: event.body.heard_from,
+      // high_school: event.body.high_school,
+      // last_name: event.body.last_name,
+      // major: event.body.major,
+      // pronouns: event.body.pronouns,
+      // student_number: event.body.student_number,
+      // timestamp: event.body.timestamp,
+      // topics: event.body.topics,
+      // university: event.body.university,
+      // year: event.body.year,
+      // international: event.body.international,
+      // prev_member: event.body.prev_member,
       // education2: event.education.value,
       // education3: event.body.education.value,
-      // id: ctx.id,
-      // id2: ctx.body.id,
-      // education0: ctx.education,
-      // education1: ctx.body.education,
-      // education3: event.education,
-      // email: event.body.email,
     },
     mode: "payment",
     success_url: "https://app.ubcbiztech.com/signup/success",
