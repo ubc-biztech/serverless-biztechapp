@@ -567,6 +567,10 @@ components:
           type: string
         imageUrl:
           type: string
+        registrationQuestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/registrationQuestionResponse"
     EventsGetUserResponse:
       type: array
       items:
@@ -620,6 +624,10 @@ components:
           type: string
         imageUrl:
           type: string
+        registrationQuestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/registrationQuestionRequest"
     EventsPostResponse:
       type: object
       required:
@@ -659,6 +667,10 @@ components:
           type: string
         imageUrl:
           type: string
+        registrationQuestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/registrationQuestionResponse"
     EventsPatchResponse:
       type: object
       required:
@@ -674,7 +686,22 @@ components:
           properties:
             Attributes:
               $ref: "#/components/schemas/EventsPatchBody"
-
+    registrationQuestionRequest:
+      type: object
+      properties:
+        type:
+          type: string
+        label:
+          type: string
+        required:
+          type: boolean
+    registrationQuestionResponse:
+      allOf:
+        - type: object
+          properties:
+            id:
+              type: string
+        - $ref: "#/components/schemas/registrationQuestionRequest"
     UsersGetResponse:
       type: object
       required:
@@ -772,7 +799,16 @@ components:
         data:
           type: array
           items:
-            $ref: "#/components/schemas/UsersGetResponse"
+            $ref: "#/components/schemas/RegistrationGetResponse"
+    RegistrationGetResponse:
+      allOf:
+        - $ref: "#/components/schemas/UsersGetResponse"
+        - type: object
+          properties:
+            registrationResponses:
+              type: array
+              items:
+                $ref: "#/components/schemas/RegistrationResponse"
     RegistrationsPostBody:
       type: object
       required:
@@ -791,6 +827,20 @@ components:
         registrationStatus:
           type: string
           enum: ["registered, checkedIn, waitlisted"]
+        registrationResponses:
+          type: array
+          items:
+            $ref: "#/components/schemas/RegistrationResponse"
+    RegistrationResponse:
+      type: object
+      required:
+        - questionId
+        - value
+      properties:
+        questionId:
+          type: string
+        value:
+          description: 'Can be anything'
     RegistrationsPostResponse:
       type: object
       required:
