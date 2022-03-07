@@ -1,5 +1,7 @@
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
+import { useHistory } from "react-router-dom";
+
 const stripe = require("stripe")(
   "sk_test_51KOxOlBAxwbCreS7JRQtvZCnCgLmn8tjK7WPHDGjpw0s4vfVHLwbcrZZvQLmd5cY7zKRIsfj3pnEDDHTy3G81Tuf00v9ygIBrC"
 );
@@ -56,6 +58,8 @@ export const config = {
 };
 
 export const payment = async (event, ctx, callback) => {
+  const history = useHistory();
+
   const data = JSON.parse(event.body);
 
   const session = await stripe.checkout.sessions.create({
@@ -94,7 +98,7 @@ export const payment = async (event, ctx, callback) => {
     },
     mode: "payment",
     success_url: "https://app.ubcbiztech.com/signup/success",
-    cancel_url: "https://facebook.com",
+    cancel_url: "https://app.ubcbiztech.com/signup",
   });
   let response = helpers.createResponse(200, session.url);
   callback(null, response);
