@@ -26,23 +26,30 @@ export const getAll = async (event, ctx, callback) => {
   }
 };
 
-export const webhook = async (event, ctx, callback) => {
-  const sig = event.headers["Stripe-Signature"];
+export const webhook = async(event, ctx, callback) => {
+
+  const sig = event.headers['Stripe-Signature'];
   let eventData;
   console.log(event.body);
 
   // Stripe returns an error if verification fails
   try {
+
     eventData = stripe.webhooks.constructEvent(event.body, sig, endpointSecret);
-  } catch (err) {
+
+  } catch(err) {
+
     return helpers.createResponse(400, {
-      message: `Webhook Error: ${err.message}`,
+      message: `Webhook Error: ${err.message}`
     });
+
   }
 
   // Handle the checkout.session.completed event
-  if (eventData.type == "checkout.session.completed") {
+  if (eventData.type == 'checkout.session.completed') {
+
     console.log(eventData.data);
+
   }
 
   let response = helpers.createResponse(200, {});
