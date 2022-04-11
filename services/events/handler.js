@@ -1,4 +1,5 @@
 import AWS from 'aws-sdk';
+
 import eventHelpers from './helpers';
 import helpers from '../../lib/handlerHelpers';
 import db from '../../lib/db';
@@ -22,6 +23,7 @@ export const create = async (event, ctx, callback) => {
     const existingEvent = await db.getOne(data.id, EVENTS_TABLE, { year: data.year });
     if(!isEmpty(existingEvent)) throw helpers.duplicateResponse('event id and year', data);
 
+
     const item = {
       id: data.id,
       year: data.year,
@@ -37,10 +39,19 @@ export const create = async (event, ctx, callback) => {
       latitude: data.latitude,
       createdAt: timestamp,
       updatedAt: timestamp,
-      textFields: data.textFields,
-      selectFields: data.selectFields,
-      checkboxFields: data.checkboxFields
+      requiredTextFields: data.requiredTextFields,
+      unrequiredTextFields: data.unrequiredTextFields,
+      requiredSelectFields: data.requiredSelectFields,
+      unrequiredSelectFields: data.unrequiredSelectFields,
+      requiredCheckBoxFields: data.requiredCheckBoxFields,
+      unrequiredCheckBoxFields: data.unrequiredCheckBoxFields,
     };
+
+    if (Array.isArray(data.registrationQuestions)) {
+
+      item.registrationQuestions = eventHelpers.addIdsToRegistrationQuestions(data.registrationQuestions);
+
+    }
 
     const res = await db.create(item, EVENTS_TABLE);
 

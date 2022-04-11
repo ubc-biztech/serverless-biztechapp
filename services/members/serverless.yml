@@ -1,4 +1,4 @@
-service: biztechApi-memberships
+service: biztechApi-members
 tenant: ianmh
 app: biztechapp
 
@@ -32,15 +32,21 @@ provider:
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2022${self:provider.environment.ENVIRONMENT}"
 
-
 custom: ${file(../../serverless.common.yml):custom}
 
 functions:
-  membershipsGet:
+  memberCreate:
+    handler: handler.create
+    events:
+      - http:
+          path: members/
+          method: post
+          cors: true
+  memberGet:
     handler: handler.get
     events:
       - http:
-          path: memberships/{email}
+          path: members/{email}
           method: get
           request:
             parameters:
@@ -51,36 +57,22 @@ functions:
             name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
-  membershipsGetAll:
+  memberGetAll:
     handler: handler.getAll
     events:
       - http:
-          path: memberships/
+          path: members/
           method: get
           cors: true
           authorizer:
             name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
-  membershipsPayment:
-    handler: handler.payment
-    events:
-      - http:
-          path: memberships/payment
-          method: post
-          cors: true
-  membershipsWebhook:
-    handler: handler.webhook
-    events:
-      - http:
-          path: memberships/webhook
-          method: post
-          cors: true
-  membershipsUpdate:
+  memberUpdate:
     handler: handler.update
     events:
       - http:
-          path: memberships/{email}
+          path: members/{email}
           method: patch
           request:
             path:
@@ -90,11 +82,11 @@ functions:
               name: ${self:service}-authorizer
               type: COGNITO_USER_POOLS
               arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
-  membershipsDelete:
+  memberDelete:
       handler: handler.del
       events:
         - http:
-            path: memberships/{email}
+            path: members/{email}
             method: delete
             request:
               path:
@@ -104,5 +96,3 @@ functions:
               name: ${self:service}-authorizer
               type: COGNITO_USER_POOLS
               arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
-          
-

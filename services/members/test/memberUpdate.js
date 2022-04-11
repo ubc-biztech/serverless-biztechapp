@@ -6,44 +6,46 @@
 import mochaPlugin from 'serverless-mocha-plugin';
 const expect = mochaPlugin.chai.expect;
 import AWSMock from 'aws-sdk-mock';
-let wrapped = mochaPlugin.getWrapper('userUpdate', '/handler.js', 'update');
+let wrapped = mochaPlugin.getWrapper('memberUpdate', '/handler.js', 'update');
 
 const email = 'test@gmail.com';
-
 const testEntry = {
-  studentId: 6456456464,
-  fname: 'insanetest',
-  lname: 'dude',
-  faculty: 'Science',
-  major: 'biology',
   email: email,
-  year: '3rd year'
+  pronouns: 'He/Him',
+  major: 'BUCS',
+  prevMember: 'yes',
+  international: 'yes',
+  topics: 'Cyber Security, Careers in the Tech Industry',
+  heardFrom: 'Instagram',
 };
 
-describe('userUpdate', () => {
+describe('memberUpdate', () => {
 
-  const existingUserIds = [email];
+  const existingMemberIds = [email];
 
   before(() => {
 
     AWSMock.mock('DynamoDB.DocumentClient', 'get', (params, callback) => {
 
       let returnValue = null;
-      if(existingUserIds.includes(params.Key.id)) returnValue = {
-        ...testEntry,
-        id: params.Key.id
-      };
+      if (existingMemberIds.includes(params.Key.id))
+        returnValue = {
+          ...testEntry,
+          id: params.Key.id,
+        };
       callback(null, { Item: returnValue });
 
     });
 
-    AWSMock.mock('DynamoDB.DocumentClient', 'update', function (params, callback) {
+    AWSMock.mock(
+      'DynamoDB.DocumentClient',
+      'update',
+      function (params, callback) {
 
-      Promise.resolve(
-        callback(null, { Item: 'not null user' })
-      );
+        Promise.resolve(callback(null, { Item: 'not null user' }));
 
-    });
+      }
+    );
 
   });
 
@@ -59,7 +61,7 @@ describe('userUpdate', () => {
 
     const response = await wrapped.run({
       body: JSON.stringify(testEntry),
-      pathParameters: { email: badEmail }
+      pathParameters: { email: badEmail },
     });
     expect(response.statusCode).to.equal(406);
 
@@ -71,7 +73,7 @@ describe('userUpdate', () => {
 
     const response = await wrapped.run({
       body: JSON.stringify(testEntry),
-      pathParameters: { email: unknownEmail }
+      pathParameters: { email: unknownEmail },
     });
     expect(response.statusCode).to.equal(404);
 
@@ -81,9 +83,7 @@ describe('userUpdate', () => {
 
     const response = await wrapped.run({
       body: JSON.stringify(testEntry),
-      pathParameters: {
-        email: email
-      }
+      pathParameters: { email },
     });
     expect(response.statusCode).to.equal(200);
 

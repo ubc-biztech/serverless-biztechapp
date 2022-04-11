@@ -133,9 +133,17 @@ describe('events integration', function () {
         elocation: 'UBC Sauder',
         longitude: -120.10,
         latitude: 78.03,
+        registrationQuestions: [
+          {
+            questionId: 'b6b6d6d6-c54f-45f7-8cd0-6f3a354e2796',
+            type: 'textField',
+            label: 'This is a test question?',
+            required: true,
+          }
+        ],
       };
 
-      // fields that are different in the updatePayload: ename, description, capac, elocation, longitude, latitude
+      // fields that are different in the updatePayload: ename, description, capac, elocation, longitude, latitude, registrationQuestions
       const defaultPayload = {
         ename: 'integrationTestEventName',
         description: 'default test event description',
@@ -145,6 +153,14 @@ describe('events integration', function () {
         elocation: 'UBC Nest',
         longitude: 120.00,
         latitude: -78.00,
+        registrationQuestions: [
+          {
+            questionId: 'c2bc026e-9659-42ef-9f01-5522b4deb5d0',
+            type: 'checkbox',
+            label: 'This is a checkbox?',
+            required: false,
+          }
+        ],
       };
 
       it('event PATCH returns 200 on update success', async () => {
@@ -181,6 +197,7 @@ describe('events integration', function () {
             expect(body.description).to.equal(defaultPayload.description);
             expect(body.capac).to.equal(defaultPayload.capac);
             expect(body.longitude).to.equal(defaultPayload.longitude);
+            expect(body.registrationQuestions).to.have.deep.members(defaultPayload.registrationQuestions);
 
           });
 
@@ -210,6 +227,7 @@ describe('events integration', function () {
             expect(body.description).to.equal(updatePayload.description);
             expect(body.capac).to.equal(updatePayload.capac);
             expect(body.longitude).to.equal(updatePayload.longitude);
+            expect(body.registrationQuestions).to.have.deep.members(updatePayload.registrationQuestions);
 
           });
 
