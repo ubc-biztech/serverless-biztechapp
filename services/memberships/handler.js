@@ -152,9 +152,9 @@ export const payment = async (event, ctx, callback) => {
       international: data.international,
       prev_member: data.prev_member,
     },
-    mode: 'payment',
-    success_url: 'https://app.ubcbiztech.com/signup/success',
-    cancel_url: 'https://facebook.com',
+    mode: "payment",
+    success_url: "https://app.ubcbiztech.com/signup/success",
+    cancel_url: "https://app.ubcbiztech.com/signup",
   });
 
   let response = helpers.createResponse(200, session.url);
