@@ -57,7 +57,7 @@ async function updateHelper(data, createNew, email) {
   // try to send the registration email
   try {
 
-    if(process.env.ENVIRONMENT !== '') await sendEmail(existingUser, existingEvent.ename, registrationStatus);
+    await sendEmail(existingUser, existingEvent.ename, registrationStatus);
 
   }
   catch(err) {
