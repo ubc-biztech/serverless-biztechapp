@@ -38,6 +38,7 @@ export const create = async (event, ctx, callback) => {
       year: data.year,
       gender: data.gender,
       diet: data.diet,
+      isMember: data.isMember,
       createdAt: timestamp,
       updatedAt: timestamp,
       admin: isBiztechAdmin,
