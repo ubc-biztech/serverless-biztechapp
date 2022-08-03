@@ -1,0 +1,7 @@
+{
+  "name": "biztechApi-payments",
+  "version": "1.0.0",
+  "dependencies": {
+    "stripe": "^8.160.0"
+  }
+}
