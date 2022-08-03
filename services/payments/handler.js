@@ -30,8 +30,7 @@ export const webhook = async(event, ctx, callback) => {
       {
         Name: 'custom:student_id',
         Value: data.student_number
-      },
-      ],
+      },],
       Password: data.password,
     };
 
@@ -312,7 +311,7 @@ export const payment = async (event, ctx, callback) => {
       },
     ],
     metadata: data,
-    mode: "payment",
+    mode: 'payment',
     success_url: data.success_url,
     cancel_url: data.cancel_url,
   });
