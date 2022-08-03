@@ -61,7 +61,7 @@ export const webhook = async(event, ctx, callback) => {
         year: data.year,
         gender: data.pronouns,
         diet: data.diet,
-        isMember: data.isMember,
+        isMember: true,
         createdAt: timestamp,
         updatedAt: timestamp,
         admin: isBiztechAdmin,
@@ -174,7 +174,7 @@ export const webhook = async(event, ctx, callback) => {
       year: data.year,
       gender: data.pronouns,
       diet: data.diet,
-      isMember: data.isMember,
+      isMember: true,
       admin: isBiztechAdmin,
     };
 
