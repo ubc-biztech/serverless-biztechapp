@@ -29,7 +29,7 @@ export const create = async (event, ctx, callback) => {
   const userParams = {
     Item: {
       id: data.email,
-      optTradingGroup: data.optTradingGroup,
+      education: data.education,
       studentId: data.studentId || 0,
       fname: data.fname,
       lname: data.lname,
@@ -38,6 +38,7 @@ export const create = async (event, ctx, callback) => {
       year: data.year,
       gender: data.gender,
       diet: data.diet,
+      isMember: data.isMember,
       createdAt: timestamp,
       updatedAt: timestamp,
       admin: isBiztechAdmin,

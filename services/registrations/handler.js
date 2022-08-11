@@ -59,7 +59,7 @@ async function updateHelper(data, createNew, email) {
 
   // try to send the registration email
   try {
-
+  
     await sendEmail(existingUser, existingEvent.ename, registrationStatus, id);
 
   }
