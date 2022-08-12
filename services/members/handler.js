@@ -31,6 +31,7 @@ export const create = async (event, ctx, callback) => {
       international: data.international,
       topics: data.topics,
       heardFrom: data.heard_from,
+      diet: data.diet,
       university: data.university,
       highSchool: data.high_school,
       admin: data.admin,

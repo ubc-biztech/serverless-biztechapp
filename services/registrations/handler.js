@@ -74,8 +74,6 @@ async function updateHelper(data, createNew, email) {
 
   }
 
-  if(existingUser.heardFrom) data.heardFrom = existingUser.heardFrom;
-
   const response = await createRegistration(registrationStatus, data, email, eventIDAndYear, createNew);
   return response;
 
@@ -104,9 +102,8 @@ async function createRegistration(registrationStatus, data, email, eventIDAndYea
 
     const updateObject = {
       registrationStatus,
-      formResponse
+      ...formResponse,
     };
-    if (data.heardFrom) updateObject.heardFrom = data.heardFrom;
 
     let conditionExpression = 'attribute_exists(id) and attribute_exists(#eventIDYear)';
     // if we are creating a new object, the condition expression needs to be different
