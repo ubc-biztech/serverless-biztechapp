@@ -29,7 +29,7 @@ export const create = async (event, ctx, callback) => {
   const userParams = {
     Item: {
       id: data.email,
-      optTradingGroup: data.optTradingGroup,
+      education: data.education,
       studentId: data.studentId || 0,
       fname: data.fname,
       lname: data.lname,
@@ -38,6 +38,7 @@ export const create = async (event, ctx, callback) => {
       year: data.year,
       gender: data.gender,
       diet: data.diet,
+      isMember: data.isMember,
       createdAt: timestamp,
       updatedAt: timestamp,
       admin: isBiztechAdmin,
@@ -165,6 +166,32 @@ export const create = async (event, ctx, callback) => {
       callback(null, response);
 
     });
+
+};
+
+export const checkUser = async (event, ctx, callback) => {
+
+  try {
+
+    const email = event.pathParameters.email;
+    const user = await db.getOne(email, USERS_TABLE);
+    if (isEmpty(user)) {
+
+      callback(null, helpers.createResponse(200, false));
+
+    } else {
+
+      callback(null, helpers.createResponse(200, true));
+
+    }
+    return null;
+
+  } catch (err) {
+
+    callback(null, helpers.createResponse(400, err));
+    return null;
+
+  }
 
 };
 

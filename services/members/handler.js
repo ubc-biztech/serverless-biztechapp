@@ -31,6 +31,7 @@ export const create = async (event, ctx, callback) => {
       international: data.international,
       topics: data.topics,
       heardFrom: data.heard_from,
+      diet: data.diet,
       university: data.university,
       highSchool: data.high_school,
       admin: data.admin,
@@ -82,9 +83,9 @@ export const get = async (event, ctx, callback) => {
   try {
 
     // eslint-disable-next-line
-    if (!event.pathParameters || !event.pathParameters.id)
+    if (!event.pathParameters || !event.pathParameters.email)
       throw helpers.missingIdQueryResponse('email');
-    const email = event.pathParameters.id;
+    const email = event.pathParameters.email;
 
     if (!isValidEmail(email)) throw helpers.inputError('Invalid email', email);
     const member = await db.getOne(email, MEMBERS2022_TABLE);
