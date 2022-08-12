@@ -52,6 +52,17 @@ functions:
           path: users/
           method: post
           cors: true
+  checkUser:
+    handler: handler.checkUser
+    events:
+      - http:
+          path: users/check/{email}
+          method: get
+          request:
+            parameters:
+              path:
+                email: true
+            cors: true
   userGet:
     handler: handler.get
     events:

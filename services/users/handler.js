@@ -169,6 +169,32 @@ export const create = async (event, ctx, callback) => {
 
 };
 
+export const checkUser = async (event, ctx, callback) => {
+
+  try {
+
+    const email = event.pathParameters.email;
+    const user = await db.getOne(email, USERS_TABLE);
+    if (isEmpty(user)) {
+
+      callback(null, helpers.createResponse(200, false));
+
+    } else {
+
+      callback(null, helpers.createResponse(200, true));
+
+    }
+    return null;
+
+  } catch (err) {
+
+    callback(null, helpers.createResponse(400, err));
+    return null;
+
+  }
+
+};
+
 export const get = async (event, ctx, callback) => {
 
   try {
