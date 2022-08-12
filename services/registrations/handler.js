@@ -18,6 +18,9 @@ async function updateHelper(data, createNew, email) {
   const { eventID, year } = data;
   const eventIDAndYear = eventID + ';' + year;
 
+  // for the QR code, we pass this to SendGrid
+  const id = `${email};${eventIDAndYear}`;
+
   //Check if eventID exists and is string. Check if year exists and is number.
   if(typeof eventID !== 'string' || typeof year !== 'number' || isNaN(year) || !isValidEmail(email)) {
 
@@ -56,8 +59,8 @@ async function updateHelper(data, createNew, email) {
 
   // try to send the registration email
   try {
-
-    await sendEmail(existingUser, existingEvent.ename, registrationStatus);
+  
+    await sendEmail(existingUser, existingEvent.ename, registrationStatus, id);
 
   }
   catch(err) {
@@ -169,7 +172,7 @@ async function createRegistration(registrationStatus, data, email, eventIDAndYea
 
 }
 
-async function sendEmail(user, eventName, registrationStatus) {
+async function sendEmail(user, eventName, registrationStatus, id) {
 
   if(registrationStatus !== 'checkedIn') {
 
@@ -189,6 +192,7 @@ async function sendEmail(user, eventName, registrationStatus) {
     let status = registrationStatus;
     if (registrationStatus == 'waitlist') {
 
+      tempId = 'd-8d272b62693e40c6b469a365f7c04443';
       status = 'waitlisted';
 
     }
@@ -200,7 +204,8 @@ async function sendEmail(user, eventName, registrationStatus) {
         subject: 'BizTech ' + eventName + ' Receipt',
         name: userName,
         registrationStatus: status,
-        eventName: eventName
+        eventName: eventName,
+        eventID: id
       }
     };
 
