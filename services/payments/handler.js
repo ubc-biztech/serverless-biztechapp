@@ -2,7 +2,7 @@ import helpers from '../../lib/handlerHelpers';
 import { isValidEmail } from '../../lib/utils';
 import db from '../../lib/db';
 const AWS = require('aws-sdk');
-const { USERS_TABLE, MEMBERS2022_TABLE } = require('../../constants/tables');
+const { USERS_TABLE, MEMBERS2023_TABLE } = require('../../constants/tables');
 const stripe = require('stripe')(
   'sk_test_51KOxOlBAxwbCreS7JRQtvZCnCgLmn8tjK7WPHDGjpw0s4vfVHLwbcrZZvQLmd5cY7zKRIsfj3pnEDDHTy3G81Tuf00v9ygIBrC'
 );
@@ -92,7 +92,7 @@ export const webhook = async(event, ctx, callback) => {
         createdAt: timestamp,
         updatedAt: timestamp,
       },
-      TableName: MEMBERS2022_TABLE + process.env.ENVIRONMENT,
+      TableName: MEMBERS2023_TABLE + process.env.ENVIRONMENT,
       ConditionExpression: 'attribute_not_exists(id)',
     };
 
@@ -201,7 +201,7 @@ export const webhook = async(event, ctx, callback) => {
         createdAt: timestamp,
         updatedAt: timestamp,
       },
-      TableName: MEMBERS2022_TABLE + process.env.ENVIRONMENT,
+      TableName: MEMBERS2023_TABLE + process.env.ENVIRONMENT,
       ConditionExpression: 'attribute_not_exists(id)',
     };
 
