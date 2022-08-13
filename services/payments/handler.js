@@ -6,8 +6,8 @@ const { USERS_TABLE, MEMBERS2023_TABLE } = require('../../constants/tables');
 const stripe = require('stripe')(
   'sk_test_51KOxOlBAxwbCreS7JRQtvZCnCgLmn8tjK7WPHDGjpw0s4vfVHLwbcrZZvQLmd5cY7zKRIsfj3pnEDDHTy3G81Tuf00v9ygIBrC'
 );
-// development endpoint secret - switch to live secret key in production
-const endpointSecret = 'whsec_TYSFr29HQ4bIPu649lgkxOrlPjrDOe2l';
+// endpoint secret - different for each webhook
+const endpointSecret = process.env.ENVIRONMENT === 'PROD' ? 'whsec_VQYJBpMby1eq7Q9hrdOV4P134cAXMVbB' : 'whsec_TYSFr29HQ4bIPu649lgkxOrlPjrDOe2l';
 
 // Creates the member here
 export const webhook = async(event, ctx, callback) => {
