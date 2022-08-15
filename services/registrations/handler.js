@@ -59,7 +59,7 @@ async function updateHelper(data, createNew, email) {
 
   // try to send the registration email
   try {
-  
+
     await sendEmail(existingUser, existingEvent.ename, registrationStatus, id);
 
   }
@@ -198,7 +198,7 @@ async function sendEmail(user, eventName, registrationStatus, id) {
       from: 'info@ubcbiztech.com',
       templateId: tempId,
       dynamic_template_data: {
-        subject: 'BizTech ' + eventName + ' Receipt',
+        subject: 'BizTech ' + eventName + ' Event Registration Confirmation',
         name: userName,
         registrationStatus: status,
         eventName: eventName,
