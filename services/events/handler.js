@@ -31,6 +31,7 @@ export const create = async (event, ctx, callback) => {
       description: data.description,
       startDate: data.startDate,
       endDate: data.endDate,
+      deadline: data.deadline,
       capac: data.capac,
       facebookUrl: data.facebookUrl,
       imageUrl: data.imageUrl,
@@ -45,6 +46,7 @@ export const create = async (event, ctx, callback) => {
       unrequiredSelectFields: data.unrequiredSelectFields,
       requiredCheckBoxFields: data.requiredCheckBoxFields,
       unrequiredCheckBoxFields: data.unrequiredCheckBoxFields,
+      isPublished: data.isPublished,
     };
 
     if (Array.isArray(data.registrationQuestions)) {
@@ -182,8 +184,20 @@ export const update = async (event, ctx, callback) => {
 
     const existingEvent = await db.getOne(id, EVENTS_TABLE, { year });
     if(isEmpty(existingEvent)) throw helpers.notFoundResponse('event', id, year);
-
     const data = JSON.parse(event.body);
+    if (Array.isArray(data.registrationQuestions)) {
+
+      for (let i = 0; i < data.registrationQuestions.length; i++) {
+
+        if (!data.registrationQuestions[i].questionId) {
+
+          data.registrationQuestions[i] = eventHelpers.addIdsToRegistrationQuestions([data.registrationQuestions[i]])[0];
+
+        }
+
+      }
+
+    }
     //Since we have a sort key, can't use helpers.updateDB()
     const docClient = new AWS.DynamoDB.DocumentClient();
 
