@@ -57,10 +57,10 @@ async function updateHelper(data, createNew, email) {
 
   }
 
-  // try to send the registration email
+  // try to send the registration and calendar emails
   try {
 
-    await sendEmail(existingUser, existingEvent.ename, registrationStatus, id);
+    await sendEmail(existingUser, existingEvent, registrationStatus, id);
 
   }
   catch(err) {
@@ -169,7 +169,7 @@ async function createRegistration(registrationStatus, data, email, eventIDAndYea
 
 }
 
-async function sendEmail(user, eventName, registrationStatus, id) {
+async function sendEmail(user, existingEvent, registrationStatus, id) {
 
   if(registrationStatus !== 'checkedIn') {
 
@@ -180,9 +180,12 @@ async function sendEmail(user, eventName, registrationStatus, id) {
 
     // template id for registered and waitlist
     let tempId = 'd-11d4bfcbebdf42b686f5e7d0977aa952';
+    let tempCalendarId = 'd-b517e4c407e4421a8886140caceba551';
+
     if (registrationStatus == 'cancelled') {
 
       tempId = 'd-8d272b62693e40c6b469a365f7c04443';
+      tempCalendarId = false;
 
     }
 
@@ -193,20 +196,48 @@ async function sendEmail(user, eventName, registrationStatus, id) {
       status = 'waitlisted';
 
     }
-    const msg = {
+
+    const dynamicMsg = {
       to: userEmail,
       from: 'info@ubcbiztech.com',
       templateId: tempId,
       dynamic_template_data: {
-        subject: 'BizTech ' + eventName + ' Event Registration Confirmation',
+        subject: 'BizTech ' + existingEvent.ename + ' Event Registration Confirmation',
         name: userName,
         registrationStatus: status,
-        eventName: eventName,
+        eventName: existingEvent.ename,
         eventID: id
       }
     };
 
-    await registrationHelpers.sendEmail(msg);
+    // objects below are for the calendar invite!
+    const startDate = new Date(existingEvent.startDate);
+
+    // format the event date from startDate like "October 19 9:00 AM PDT" (ensure it's PST/PDT) then append location
+    // check if PDT or PST
+    const timeZone = startDate.getTimezoneOffset() == 420 ? 'PDT' : 'PST';
+    const eventDate = startDate.toLocaleString('en-US', { timeZone: 'America/Los_Angeles', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true }) + ' ' + timeZone + ' — ' + existingEvent.elocation;
+
+    // format event day like "October 19"
+    const eventDay = startDate.toLocaleString('en-US', { timeZone: 'America/Los_Angeles', month: 'long', day: 'numeric' });
+
+    const dynamicCalendarMsg = {
+      templateId: tempCalendarId,
+      dynamic_template_data: {
+        EVENT_NAME: existingEvent.ename,
+        BIZTECH_HOMEPAGE: 'https://app.ubcbiztech.com',
+        CURRENT_YEAR: existingEvent.year,
+        FIRST_NAME: user.firstName,
+        BANNER_URL: existingEvent.imageUrl,
+        EVENT_DATE: eventDate,
+        EVENT_DAY: eventDay,
+        EVENT_URL: 'https://app.ubcbiztech.com/events',
+        SUBJECT: `[BizTech Confirmation] ${existingEvent.ename} on ${eventDay}`,
+      }
+    };
+
+    await registrationHelpers.sendDynamicEmail(dynamicMsg);
+    if (tempCalendarId) await registrationHelpers.sendCalendarInvite(existingEvent, user, dynamicCalendarMsg);
 
   }
 
