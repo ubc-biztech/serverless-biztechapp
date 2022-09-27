@@ -59,7 +59,7 @@ async function updateHelper(data, createNew, email) {
 
   // try to send the registration and calendar emails
   try {
-
+  
     await sendEmail(existingUser, existingEvent, registrationStatus, id);
 
   }
