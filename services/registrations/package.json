@@ -2,7 +2,8 @@
   "name": "biztechapi-registrations",
   "version": "1.0.0",
   "dependencies": {
-    "@sendgrid/mail": "^7.4.0"
+    "@sendgrid/mail": "^7.4.0",
+    "ics": "^2.40.0"
   },
   "scripts": {
     "itest": "npm run itest registrations --prefix ../../",

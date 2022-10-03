@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
+    "ics": "^2.40.0",
     "serverless": "^1.67.2"
   },
   "scripts": {
