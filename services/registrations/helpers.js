@@ -65,7 +65,7 @@ export default {
       });
 
   },
-  sendDynamicEmail: (msg) => {
+  sendDynamicQR: (msg) => {
 
     if (!msg.from) {
 
@@ -74,28 +74,8 @@ export default {
 
     }
 
-    if (process.env.ENVIRONMENT === 'PROD') {
-
-      // Production emails are okay to send
-      return sgMail.send(msg);
-
-    } else {
-
-      // Dev/staging emails should only be sent to ubcbiztech emails
-      // This is to reduce accidental test emails being sent to random addresses
-      // and prevent us from being marked as spam. Redirect to dev@ubcbiztech.com
-      if (msg.to.includes('@ubcbiztech.com')) {
-
-        return sgMail.send(msg);
-
-      } else {
-
-        msg.to = 'dev@ubcbiztech.com';
-        return sgMail.send(msg);
-
-      }
-
-    }
+    // in the future if you want to restrict to prod, use process.env.ENVIRONMENT === 'PROD'
+    return sgMail.send(msg);
 
   },
   sendCalendarInvite: async (event, user, dynamicCalendarMsg) => {
@@ -170,6 +150,8 @@ export default {
     const base64 = Buffer.from(value).toString('base64');
     const base64Cal = base64.toString('base64');
 
+    // send the email for the calendar invite
+    // for the qr code email, go to handlers.js
     const msg = {
       to: user.id,
       from: {
