@@ -59,7 +59,7 @@ async function updateHelper(data, createNew, email) {
 
   // try to send the registration and calendar emails
   try {
-  
+
     await sendEmail(existingUser, existingEvent, registrationStatus, id);
 
   }
@@ -197,9 +197,14 @@ async function sendEmail(user, existingEvent, registrationStatus, id) {
 
     }
 
+    // send the email for the registration status (qr code)
+    // for the calendar invite code, go to helpers.js
     const dynamicMsg = {
       to: userEmail,
-      from: 'info@ubcbiztech.com',
+      from: {
+        email: 'info@ubcbiztech.com',
+        name: 'UBC BizTech'
+      },
       templateId: tempId,
       dynamic_template_data: {
         subject: 'BizTech ' + existingEvent.ename + ' Event Registration Confirmation',
@@ -236,7 +241,7 @@ async function sendEmail(user, existingEvent, registrationStatus, id) {
       }
     };
 
-    await registrationHelpers.sendDynamicEmail(dynamicMsg);
+    await registrationHelpers.sendDynamicQR(dynamicMsg);
     if (tempCalendarId) await registrationHelpers.sendCalendarInvite(existingEvent, user, dynamicCalendarMsg);
 
   }
