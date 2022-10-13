@@ -23,7 +23,8 @@ const updatePayload = {
   longitude: -120.00,
   latitude: 78.00,
   createdAt: '20200607T000000-0400',
-  updatedAt: '20200607T000000-0400'
+  updatedAt: '20200607T000000-0400',
+  feedback: 'updated-test-feedback-form-link',
 };
 
 describe('eventUpdate', () => {
