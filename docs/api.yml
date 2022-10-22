@@ -567,6 +567,8 @@ components:
           type: string
         imageUrl:
           type: string
+        feedback:
+          type: string
         registrationQuestions:
           type: array
           items:
@@ -624,6 +626,8 @@ components:
           type: string
         imageUrl:
           type: string
+        feedback:
+          type: string
         registrationQuestions:
           type: array
           items:
@@ -666,6 +670,8 @@ components:
         endDate:
           type: string
         imageUrl:
+          type: string
+        feedback:
           type: string
         registrationQuestions:
           type: array
