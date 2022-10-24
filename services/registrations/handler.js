@@ -169,7 +169,7 @@ async function createRegistration(registrationStatus, data, email, eventIDAndYea
 
 }
 
-async function sendEmail(user, existingEvent, registrationStatus, id) {
+export async function sendEmail(user, existingEvent, registrationStatus, id) {
 
   if(registrationStatus !== 'checkedIn') {
 
