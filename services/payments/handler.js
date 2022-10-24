@@ -1,8 +1,9 @@
 import helpers from '../../lib/handlerHelpers';
-import { isValidEmail } from '../../lib/utils';
+import { isValidEmail, isEmpty } from '../../lib/utils';
+import { sendEmail } from '../registrations/handler';
 import db from '../../lib/db';
 const AWS = require('aws-sdk');
-const { USERS_TABLE, MEMBERS2023_TABLE } = require('../../constants/tables');
+const { USERS_TABLE, EVENTS_TABLE, MEMBERS2023_TABLE, USER_REGISTRATIONS_TABLE } = require('../../constants/tables');
 const stripe = require('stripe')(
   process.env.ENVIRONMENT === 'PROD' ?
     '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'
@@ -251,6 +252,86 @@ export const webhook = async(event, ctx, callback) => {
 
   };
 
+  const eventRegistration = async (data) => {
+
+    const docClient = new AWS.DynamoDB.DocumentClient();
+    const { email, registrationStatus, year, eventID } = data;
+    const eventIDAndYear = `${data.eventID};${data.year}`;
+    const conditionExpression = 'attribute_not_exists(id) and attribute_not_exists(#eventIDYear)';
+    const ignoreKeys = ['eventID', 'year', 'email', 'registrationStatus', 'paymentType', 'paymentName', 'paymentPrice', 'success_url', 'cancel_url'];
+    const ignoreUserKeys = ['diet', 'heardFrom'];
+
+    Object.keys(data).forEach(function (key) {
+
+      if (ignoreKeys.includes(key)) delete data[key];
+
+    });
+
+    data.basicInformation = JSON.parse(data.basicInformation);
+    data.dynamicResponses = JSON.parse(data.dynamicResponses);
+
+    const create = {
+      registrationStatus,
+      ...data,
+    };
+
+    const {
+      updateExpression,
+      expressionAttributeValues,
+      expressionAttributeNames
+    } = db.createUpdateExpression(create);
+
+    const params = {
+      Key: { 'id': email, ['eventID;year']: eventIDAndYear },
+      TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
+      ExpressionAttributeValues: expressionAttributeValues,
+      ExpressionAttributeNames: { ...expressionAttributeNames, '#eventIDYear': 'eventID;year' },
+      UpdateExpression: updateExpression,
+      ReturnValues: 'UPDATED_NEW',
+      ConditionExpression: conditionExpression
+    };
+
+    const res = await docClient.update(params).promise();
+
+    Object.keys(data.basicInformation).forEach(function (key) {
+
+      if (ignoreUserKeys.includes(key)) delete data.basicInformation[key];
+
+    });
+
+    const user = {
+      id: email,
+      studentId: data.studentId,
+      ...data.basicInformation,
+    };
+
+    const existingEvent = await db.getOne(eventID, EVENTS_TABLE, { year: Number(year) });
+    if(isEmpty(existingEvent)) throw helpers.notFoundResponse('Event', eventID, year);
+
+    const id = `${email};${eventID};${year}`;
+
+    try {
+
+      await sendEmail(user, existingEvent, registrationStatus, id);
+
+    } catch (err) {
+
+      throw helpers.createResponse(500, {
+        statusCode: 500,
+        code: 'SENDGRID ERROR',
+        message: `Sending Email Error!: ${err.message}`
+      });
+
+    }
+
+    const response = helpers.createResponse(201, {
+      message: `User with email ${email} successfully registered (created) to status '${registrationStatus}'!`,
+      response: res,
+    });
+    callback(null, response);
+
+  };
+
   const sig = event.headers['Stripe-Signature'];
 
   let eventData;
@@ -284,6 +365,9 @@ export const webhook = async(event, ctx, callback) => {
       break;
     case 'Member':
       await memberSignup(data);
+      break;
+    case 'Event':
+      await eventRegistration(data);
       break;
     default:
       return helpers.createResponse(400, {
