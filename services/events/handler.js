@@ -38,6 +38,7 @@ export const create = async (event, ctx, callback) => {
       elocation: data.elocation,
       longitude: data.longitude,
       latitude: data.latitude,
+      pricing: data.pricing,
       createdAt: timestamp,
       updatedAt: timestamp,
       requiredTextFields: data.requiredTextFields,
