@@ -3,7 +3,7 @@ import registrationHelpers from './helpers';
 import helpers from '../../lib/handlerHelpers';
 import db from '../../lib/db';
 import { isEmpty, isValidEmail } from '../../lib/utils';
-import { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } from '../../constants/tables';
+import { EVENTS_TABLE, USER_REGISTRATIONS_TABLE } from '../../constants/tables';
 
 // const CHECKIN_COUNT_SANITY_CHECK = 500;
 
@@ -13,13 +13,13 @@ import { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } from '../../const
    returns 200 when entry is updated successfully, error 409 if a registration with the same id/eventID DNE
    sends an email to the user if they are registered, waitlisted, or cancelled, but not if checkedIn
 */
-async function updateHelper(data, createNew, email) {
+async function updateHelper(data, createNew, email, fname) {
 
   const { eventID, year } = data;
   const eventIDAndYear = eventID + ';' + year;
 
   // for the QR code, we pass this to SendGrid
-  const id = `${email};${eventIDAndYear}`;
+  const id = `${email};${eventIDAndYear};${fname}`;
 
   //Check if eventID exists and is string. Check if year exists and is number.
   if(typeof eventID !== 'string' || typeof year !== 'number' || isNaN(year) || !isValidEmail(email)) {
@@ -32,8 +32,8 @@ async function updateHelper(data, createNew, email) {
   let registrationStatus = data.registrationStatus;
 
   // Check if the user exists
-  const existingUser = await db.getOne(email, USERS_TABLE);
-  if(isEmpty(existingUser)) throw helpers.notFoundResponse('User', email);
+  // const existingUser = await db.getOne(email, USERS_TABLE);
+  // if(isEmpty(existingUser)) throw helpers.notFoundResponse('User', email);
 
   // Check if the event exists
   const existingEvent = await db.getOne(eventID, EVENTS_TABLE, { year });
@@ -57,10 +57,14 @@ async function updateHelper(data, createNew, email) {
 
   }
 
+  const user = {
+    id: email,
+    fname,
+  };
   // try to send the registration and calendar emails
   try {
 
-    await sendEmail(existingUser, existingEvent, registrationStatus, id);
+    await sendEmail(user, existingEvent, registrationStatus, id);
 
   }
   catch(err) {
@@ -232,7 +236,7 @@ export async function sendEmail(user, existingEvent, registrationStatus, id) {
         EVENT_NAME: existingEvent.ename,
         BIZTECH_HOMEPAGE: 'https://app.ubcbiztech.com',
         CURRENT_YEAR: existingEvent.year,
-        FIRST_NAME: user.firstName,
+        FIRST_NAME: user.fname,
         BANNER_URL: existingEvent.imageUrl,
         EVENT_DATE: eventDate,
         EVENT_DAY: eventDay,
@@ -263,7 +267,7 @@ export const post = async (event, ctx, callback) => {
       registrationStatus: { required: true , type: 'string' },
     });
 
-    const response = await updateHelper(data, true, data.email);
+    const response = await updateHelper(data, true, data.email, data.fname);
 
     callback(null, response);
     return null;
@@ -297,7 +301,7 @@ export const put = async (event, ctx, callback) => {
       registrationStatus: { required: true , type: 'string' },
     });
 
-    const response = await updateHelper(data, false, email);
+    const response = await updateHelper(data, false, email, event.pathParameters.fname);
 
     callback(null, response);
     return null;

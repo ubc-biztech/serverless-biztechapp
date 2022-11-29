@@ -56,11 +56,12 @@ functions:
     handler: handler.put
     events:
       - http:
-          path: registrations/{email}
+          path: registrations/{email}/{fname}
           method: put
           request:
             path:
               email: true
+              fname: true
           cors: true
           authorizer:
             name: ${self:service}-authorizer
