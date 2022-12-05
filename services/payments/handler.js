@@ -269,6 +269,7 @@ export const webhook = async(event, ctx, callback) => {
 
     data.basicInformation = JSON.parse(data.basicInformation);
     data.dynamicResponses = JSON.parse(data.dynamicResponses);
+    data.isPartner = Boolean(data.isPartner);
 
     const create = {
       registrationStatus,
