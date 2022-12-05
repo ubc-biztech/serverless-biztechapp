@@ -30,6 +30,11 @@ async function updateHelper(data, createNew, email, fname) {
 
 
   let registrationStatus = data.registrationStatus;
+  if (data.isPartner !== undefined) {
+
+    data.isPartner = Boolean(data.isPartner);
+
+  }
 
   // Check if the user exists
   // const existingUser = await db.getOne(email, USERS_TABLE);

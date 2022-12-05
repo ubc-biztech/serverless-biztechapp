@@ -38,17 +38,21 @@ export default {
 
         result.Items.forEach(item => {
 
-          switch (item.registrationStatus) {
+          if (!item.isPartner) {
 
-          case 'registered':
-            counts.registeredCount++;
-            break;
-          case 'checkedIn':
-            counts.checkedInCount++;
-            break;
-          case 'waitlist':
-            counts.waitlistCount++;
-            break;
+            switch (item.registrationStatus) {
+
+            case 'registered':
+              counts.registeredCount++;
+              break;
+            case 'checkedIn':
+              counts.checkedInCount++;
+              break;
+            case 'waitlist':
+              counts.waitlistCount++;
+              break;
+
+            }
 
           }
 
