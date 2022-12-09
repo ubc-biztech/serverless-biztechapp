@@ -151,6 +151,146 @@ export const webhook = async(event, ctx, callback) => {
 
   };
 
+  const oauthMemberSignup = async (data) => {
+
+    const cognito = new AWS.CognitoIdentityServiceProvider({
+      apiVersion: '2016-04-18',
+    });
+    const docClient = new AWS.DynamoDB.DocumentClient();
+    const timestamp = new Date().getTime();
+
+    // const cognitoParams = {
+    //   ClientId: '5tc2jshu03i3bmtl1clsov96dt',
+    //   Username: data.email,
+    //   UserAttributes: [{
+    //     Name: 'name',
+    //     Value: data.fname + ' ' + data.lname
+    //   },
+    //   {
+    //     Name: 'custom:student_id',
+    //     Value: data.student_number
+    //   },]
+    // };
+    // cognito params originally took a password field, which is required for cognito.signup 
+
+    // we need something that is like cognito.signup here but doesn't need a pw 
+    // await cognito.confirmSignUp(cognitoParams).promise(); 
+    // await cognito.signUp(cognitoParams).promise();
+
+    const email = data.email;
+
+    let isBiztechAdmin = false;
+
+    //assume the created user is biztech admin if using biztech email
+    if (
+      email.substring(email.indexOf('@') + 1, email.length) === 'ubcbiztech.com'
+    ) {
+
+      isBiztechAdmin = true;
+
+    }
+
+    const userParams = {
+      Item: {
+        id: data.email,
+        education: data.education,
+        studentId: data.student_number,
+        fname: data.fname,
+        lname: data.lname,
+        faculty: data.faculty,
+        major: data.major,
+        year: data.year,
+        gender: data.pronouns,
+        diet: data.diet,
+        isMember: true,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        admin: isBiztechAdmin,
+      },
+      TableName: USERS_TABLE + process.env.ENVIRONMENT,
+      ConditionExpression: 'attribute_not_exists(id)',
+    };
+
+    const memberParams = {
+      Item: {
+        id: data.email,
+        education: data.education,
+        firstName: data.fname,
+        lastName: data.lname,
+        pronouns: data.pronouns,
+        studentNumber: data.student_number,
+        faculty: data.faculty,
+        year: data.year,
+        major: data.major,
+        prevMember: data.prev_member,
+        international: data.international,
+        topics: data.topics.split(','),
+        diet: data.diet,
+        heardFrom: data.heard_from,
+        heardFromSpecify: data.heardFromSpecify,
+        university: data.university,
+        highSchool: data.high_school,
+        admin: isBiztechAdmin,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      },
+      TableName: MEMBERS2023_TABLE + process.env.ENVIRONMENT,
+      ConditionExpression: 'attribute_not_exists(id)',
+    };
+
+    // putting into user table 
+    await docClient.put(userParams).promise().catch((error) => {
+
+      let response;
+      if (error.code === 'ConditionalCheckFailedException') {
+
+        response = helpers.createResponse(
+          409,
+          'User could not be created because email already exists'
+        );
+
+      } else {
+
+        response = helpers.createResponse(
+          502,
+          'Internal Server Error occurred'
+        );
+
+      }
+      callback(null, response);
+
+    });
+
+    // putting into member table 
+    await docClient.put(memberParams).promise().catch((error) => {
+
+      let response;
+      if (error.code === 'ConditionalCheckFailedException') {
+
+        response = helpers.createResponse(
+          409,
+          'Member could not be created because email already exists'
+        );
+
+      } else {
+
+        response = helpers.createResponse(
+          502,
+          'Internal Server Error occurred'
+        );
+
+      }
+      callback(null, response);
+
+    });
+
+    const response = helpers.createResponse(201, {
+      message: 'Created oAuth member and user!',
+    });
+    callback(null, response);
+
+  } 
+  
   const memberSignup = async (data) => {
 
     const docClient = new AWS.DynamoDB.DocumentClient();
@@ -211,6 +351,10 @@ export const webhook = async(event, ctx, callback) => {
       ConditionExpression: 'attribute_not_exists(id)',
     };
 
+    //for members, we update the user table here 
+    // but if we change the bt web payment body for oauth users from usermember to memebr, 
+    // we will neesd a check here to see if user is first time oauth
+    // if yes, we want a db.post instead of db.update
     await db.updateDB(email, userParams, USERS_TABLE).catch((error) => {
 
       let response;
@@ -362,6 +506,9 @@ export const webhook = async(event, ctx, callback) => {
 
     case 'UserMember':
       await userMemberSignup(data);
+      break;
+    case 'OAuthMember':
+      await oauthMemberSignup(data);
       break;
     case 'Member':
       await memberSignup(data);
