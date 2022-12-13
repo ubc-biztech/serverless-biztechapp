@@ -24,21 +24,21 @@ export const webhook = async(event, ctx, callback) => {
     const docClient = new AWS.DynamoDB.DocumentClient();
     const timestamp = new Date().getTime();
 
-    const cognitoParams = {
-      ClientId: '5tc2jshu03i3bmtl1clsov96dt',
-      Username: data.email,
-      UserAttributes: [{
-        Name: 'name',
-        Value: data.fname + ' ' + data.lname
-      },
-      {
-        Name: 'custom:student_id',
-        Value: data.student_number
-      },],
-      Password: data.password,
+      const cognitoParams = {
+        ClientId: '5tc2jshu03i3bmtl1clsov96dt',
+        Username: data.email,
+        UserAttributes: [{
+          Name: 'name',
+          Value: data.fname + ' ' + data.lname
+        },
+        {
+          Name: 'custom:student_id',
+          Value: data.student_number
+        },],
+        Password: data.password,
     };
 
-    await cognito.signUp(cognitoParams).promise();
+      await cognito.signUp(cognitoParams).promise();
 
     const email = data.email;
 
@@ -122,6 +122,7 @@ export const webhook = async(event, ctx, callback) => {
       callback(null, response);
 
     });
+    
     await docClient.put(memberParams).promise().catch((error) => {
 
       let response;
@@ -153,29 +154,8 @@ export const webhook = async(event, ctx, callback) => {
 
   const oauthMemberSignup = async (data) => {
 
-    const cognito = new AWS.CognitoIdentityServiceProvider({
-      apiVersion: '2016-04-18',
-    });
     const docClient = new AWS.DynamoDB.DocumentClient();
     const timestamp = new Date().getTime();
-
-    // const cognitoParams = {
-    //   ClientId: '5tc2jshu03i3bmtl1clsov96dt',
-    //   Username: data.email,
-    //   UserAttributes: [{
-    //     Name: 'name',
-    //     Value: data.fname + ' ' + data.lname
-    //   },
-    //   {
-    //     Name: 'custom:student_id',
-    //     Value: data.student_number
-    //   },]
-    // };
-    // cognito params originally took a password field, which is required for cognito.signup 
-
-    // we need something that is like cognito.signup here but doesn't need a pw 
-    // await cognito.confirmSignUp(cognitoParams).promise(); 
-    // await cognito.signUp(cognitoParams).promise();
 
     const email = data.email;
 
@@ -259,6 +239,8 @@ export const webhook = async(event, ctx, callback) => {
       }
       callback(null, response);
 
+      console.log("put user in usertable")
+
     });
 
     // putting into member table 
@@ -283,6 +265,8 @@ export const webhook = async(event, ctx, callback) => {
       callback(null, response);
 
     });
+
+    console.log("put user in usertable and membertable") 
 
     const response = helpers.createResponse(201, {
       message: 'Created oAuth member and user!',
@@ -351,7 +335,7 @@ export const webhook = async(event, ctx, callback) => {
       ConditionExpression: 'attribute_not_exists(id)',
     };
 
-    //for members, we update the user table here 
+    // for members, we update the user table here 
     // but if we change the bt web payment body for oauth users from usermember to memebr, 
     // we will neesd a check here to see if user is first time oauth
     // if yes, we want a db.post instead of db.update
