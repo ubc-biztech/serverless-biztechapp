@@ -29,6 +29,7 @@ export const create = async (event, ctx, callback) => {
       year: data.year,
       ename: data.ename,
       description: data.description,
+      partnerDescription: data.partnerDescription,
       startDate: data.startDate,
       endDate: data.endDate,
       deadline: data.deadline,
@@ -53,6 +54,12 @@ export const create = async (event, ctx, callback) => {
     if (Array.isArray(data.registrationQuestions)) {
 
       item.registrationQuestions = eventHelpers.addIdsToRegistrationQuestions(data.registrationQuestions);
+
+    }
+
+    if (Array.isArray(data.partnerRegistrationQuestions)) {
+
+      item.partnerRegistrationQuestions = eventHelpers.addIdsToRegistrationQuestions(data.partnerRegistrationQuestions);
 
     }
 
@@ -193,6 +200,20 @@ export const update = async (event, ctx, callback) => {
         if (!data.registrationQuestions[i].questionId) {
 
           data.registrationQuestions[i] = eventHelpers.addIdsToRegistrationQuestions([data.registrationQuestions[i]])[0];
+
+        }
+
+      }
+
+    }
+
+    if (Array.isArray(data.partnerRegistrationQuestions)) {
+
+      for (let i = 0; i < data.partnerRegistrationQuestions.length; i++) {
+
+        if (!data.partnerRegistrationQuestions[i].questionId) {
+
+          data.partnerRegistrationQuestions[i] = eventHelpers.addIdsToRegistrationQuestions([data.partnerRegistrationQuestions[i]])[0];
 
         }
 
