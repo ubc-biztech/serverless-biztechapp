@@ -1,0 +1,2 @@
+cd services
+for DIR in *; do (cd $DIR && npx sls deploy --stage staging && cd ..) & done; wait
