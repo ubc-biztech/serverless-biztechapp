@@ -11,7 +11,8 @@ import { EVENTS_TABLE, USER_REGISTRATIONS_TABLE } from '../../constants/tables';
    returns error 502 if there is a problem with processing data or sending an email
    returns 201 when entry is created successfully, error 409 if a registration with the same id/eventID exists 
    returns 200 when entry is updated successfully, error 409 if a registration with the same id/eventID DNE
-   sends an email to the user if they are registered, waitlisted, or cancelled, but not if checkedIn
+   sends an email to the user if registration status is included in data, and
+     if they are registered, waitlisted, or cancelled, but not if checkedIn
 */
 async function updateHelper(data, createNew, email, fname) {
 
@@ -291,6 +292,23 @@ export const post = async (event, ctx, callback) => {
 
 };
 
+/**
+ * Update a registration entry. 
+ * Side effect: Sends an email to the user if the registration status is changed to anything that is not Checked In.
+ * 
+ * Args:
+ *  event: The event object. It must contain the following:
+ *      - pathParameters: object with the following properties
+ *          - email: string
+ *          - fname: string
+ *      - body: object with the following properties
+ *          - eventID: string
+ *          - year: number
+ *  ctx: The context object
+ *  callback: The callback function
+ * 
+ * Returns: The response object
+ */
 export const put = async (event, ctx, callback) => {
 
   try {
@@ -306,6 +324,8 @@ export const put = async (event, ctx, callback) => {
     helpers.checkPayloadProps(data, {
       eventID: { required: true, type: 'string' },
       year: { required: true, type: 'number' },
+      registrationStatus: { required: false , type: 'string' },
+      points: { required: false, type: 'number' }
     });
 
     const response = await updateHelper(data, false, email, event.pathParameters.fname);
