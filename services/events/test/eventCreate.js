@@ -31,6 +31,7 @@ const eventPayload = {
       required: true,
     }
   ],
+  feedback: 'test-feedback-form-link',
 };
 
 const eventPayloadWithRegistrationQuestionIds = {

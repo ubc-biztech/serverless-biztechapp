@@ -11,7 +11,8 @@ import { EVENTS_TABLE, USER_REGISTRATIONS_TABLE } from '../../constants/tables';
    returns error 502 if there is a problem with processing data or sending an email
    returns 201 when entry is created successfully, error 409 if a registration with the same id/eventID exists 
    returns 200 when entry is updated successfully, error 409 if a registration with the same id/eventID DNE
-   sends an email to the user if they are registered, waitlisted, or cancelled, but not if checkedIn
+   sends an email to the user if registration status is included in data, and
+     if they are registered, waitlisted, or cancelled, but not if checkedIn
 */
 async function updateHelper(data, createNew, email, fname) {
 
@@ -28,8 +29,6 @@ async function updateHelper(data, createNew, email, fname) {
 
   }
 
-
-  let registrationStatus = data.registrationStatus;
   if (data.isPartner !== undefined) {
 
     data.isPartner = Boolean(data.isPartner);
@@ -44,42 +43,48 @@ async function updateHelper(data, createNew, email, fname) {
   const existingEvent = await db.getOne(eventID, EVENTS_TABLE, { year });
   if(isEmpty(existingEvent)) throw helpers.notFoundResponse('Event', eventID, year);
 
-  // Check if the event is full
-  if (registrationStatus == 'registered') {
+  let registrationStatus = data.registrationStatus;
 
-    const counts = await registrationHelpers.getEventCounts(eventIDAndYear);
+  if (registrationStatus) {
 
-    if (counts == null) {
+    // Check if the event is full
+    if (registrationStatus == 'registered') {
 
-      throw db.dynamoErrorResponse({
-        code: 'DYNAMODB ERROR',
-        time: new Date().getTime(),
-      });
+      const counts = await registrationHelpers.getEventCounts(eventIDAndYear);
+
+      if (counts == null) {
+
+        throw db.dynamoErrorResponse({
+          code: 'DYNAMODB ERROR',
+          time: new Date().getTime(),
+        });
+
+      }
+
+      if (counts.registeredCount >= existingEvent.capac) registrationStatus = 'waitlist';
 
     }
 
-    if (counts.registeredCount >= existingEvent.capac) registrationStatus = 'waitlist';
+    const user = {
+      id: email,
+      fname,
+    };
+    // try to send the registration and calendar emails
+    try {
 
-  }
+      await sendEmail(user, existingEvent, registrationStatus, id);
 
-  const user = {
-    id: email,
-    fname,
-  };
-  // try to send the registration and calendar emails
-  try {
+    }
+    catch(err) {
 
-    await sendEmail(user, existingEvent, registrationStatus, id);
+      // if email sending failed, that user's email probably does not exist
+      throw helpers.createResponse(500, {
+        statusCode: 500,
+        code: 'SENDGRID ERROR',
+        message: `Sending Email Error!: ${err.message}`
+      });
 
-  }
-  catch(err) {
-
-    // if email sending failed, that user's email probably does not exist
-    throw helpers.createResponse(500, {
-      statusCode: 500,
-      code: 'SENDGRID ERROR',
-      message: `Sending Email Error!: ${err.message}`
-    });
+    }
 
   }
 
@@ -91,7 +96,7 @@ async function updateHelper(data, createNew, email, fname) {
 function removeDefaultKeys(data){
 
   const formResponse = data;
-  const ignoreKeys = ['eventID','year','email','registrationStatus'];
+  const ignoreKeys = ['eventID','year','email'];
 
   Object.keys(formResponse).forEach(function (key) {
 
@@ -110,7 +115,6 @@ async function createRegistration(registrationStatus, data, email, eventIDAndYea
     const formResponse = removeDefaultKeys(data);
 
     const updateObject = {
-      registrationStatus,
       ...formResponse,
     };
 
@@ -288,6 +292,23 @@ export const post = async (event, ctx, callback) => {
 
 };
 
+/**
+ * Update a registration entry. 
+ * Side effect: Sends an email to the user if the registration status is changed to anything that is not Checked In.
+ * 
+ * Args:
+ *  event: The event object. It must contain the following:
+ *      - pathParameters: object with the following properties
+ *          - email: string
+ *          - fname: string
+ *      - body: object with the following properties
+ *          - eventID: string
+ *          - year: number
+ *  ctx: The context object
+ *  callback: The callback function
+ * 
+ * Returns: The response object
+ */
 export const put = async (event, ctx, callback) => {
 
   try {
@@ -303,7 +324,8 @@ export const put = async (event, ctx, callback) => {
     helpers.checkPayloadProps(data, {
       eventID: { required: true, type: 'string' },
       year: { required: true, type: 'number' },
-      registrationStatus: { required: true , type: 'string' },
+      registrationStatus: { required: false , type: 'string' },
+      points: { required: false, type: 'number' }
     });
 
     const response = await updateHelper(data, false, email, event.pathParameters.fname);
