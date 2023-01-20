@@ -28,8 +28,6 @@ async function updateHelper(data, createNew, email, fname) {
 
   }
 
-
-  let registrationStatus = data.registrationStatus;
   if (data.isPartner !== undefined) {
 
     data.isPartner = Boolean(data.isPartner);
@@ -44,42 +42,48 @@ async function updateHelper(data, createNew, email, fname) {
   const existingEvent = await db.getOne(eventID, EVENTS_TABLE, { year });
   if(isEmpty(existingEvent)) throw helpers.notFoundResponse('Event', eventID, year);
 
-  // Check if the event is full
-  if (registrationStatus == 'registered') {
+  let registrationStatus = data.registrationStatus;
 
-    const counts = await registrationHelpers.getEventCounts(eventIDAndYear);
+  if (registrationStatus) {
 
-    if (counts == null) {
+    // Check if the event is full
+    if (registrationStatus == 'registered') {
 
-      throw db.dynamoErrorResponse({
-        code: 'DYNAMODB ERROR',
-        time: new Date().getTime(),
-      });
+      const counts = await registrationHelpers.getEventCounts(eventIDAndYear);
+
+      if (counts == null) {
+
+        throw db.dynamoErrorResponse({
+          code: 'DYNAMODB ERROR',
+          time: new Date().getTime(),
+        });
+
+      }
+
+      if (counts.registeredCount >= existingEvent.capac) registrationStatus = 'waitlist';
 
     }
 
-    if (counts.registeredCount >= existingEvent.capac) registrationStatus = 'waitlist';
+    const user = {
+      id: email,
+      fname,
+    };
+    // try to send the registration and calendar emails
+    try {
 
-  }
+      await sendEmail(user, existingEvent, registrationStatus, id);
 
-  const user = {
-    id: email,
-    fname,
-  };
-  // try to send the registration and calendar emails
-  try {
+    }
+    catch(err) {
 
-    await sendEmail(user, existingEvent, registrationStatus, id);
+      // if email sending failed, that user's email probably does not exist
+      throw helpers.createResponse(500, {
+        statusCode: 500,
+        code: 'SENDGRID ERROR',
+        message: `Sending Email Error!: ${err.message}`
+      });
 
-  }
-  catch(err) {
-
-    // if email sending failed, that user's email probably does not exist
-    throw helpers.createResponse(500, {
-      statusCode: 500,
-      code: 'SENDGRID ERROR',
-      message: `Sending Email Error!: ${err.message}`
-    });
+    }
 
   }
 
@@ -91,7 +95,7 @@ async function updateHelper(data, createNew, email, fname) {
 function removeDefaultKeys(data){
 
   const formResponse = data;
-  const ignoreKeys = ['eventID','year','email','registrationStatus'];
+  const ignoreKeys = ['eventID','year','email'];
 
   Object.keys(formResponse).forEach(function (key) {
 
@@ -110,7 +114,6 @@ async function createRegistration(registrationStatus, data, email, eventIDAndYea
     const formResponse = removeDefaultKeys(data);
 
     const updateObject = {
-      registrationStatus,
       ...formResponse,
     };
 
@@ -303,7 +306,6 @@ export const put = async (event, ctx, callback) => {
     helpers.checkPayloadProps(data, {
       eventID: { required: true, type: 'string' },
       year: { required: true, type: 'number' },
-      registrationStatus: { required: true , type: 'string' },
     });
 
     const response = await updateHelper(data, false, email, event.pathParameters.fname);
