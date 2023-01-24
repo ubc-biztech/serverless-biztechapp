@@ -46,6 +46,7 @@ export default {
       'h52Yd-lunch-activities-1': 10,
       '2g322-lunch-activities-2': 10,
       '3dJm6-lunch-activities-3': 10,
+      'GhD47-interview': 10,
       'Kgs4J-questions-during-panel': 10
     };
 
