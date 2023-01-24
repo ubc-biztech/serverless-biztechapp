@@ -39,7 +39,13 @@ export default {
       'Hhj85-boothing-7': 5,
       'p00ui-boothing-8': 5,
       'e41aa-boothing-9': 5,
+      '2g322-boothing-10': 5,
+      '3djms-boothing-11': 5,
+      '4dg12-boothing-12': 5,
       '48fsd-lunch-activities': 10,
+      'h52Yd-lunch-activities-1': 10,
+      '2g322-lunch-activities-2': 10,
+      '3dJm6-lunch-activities-3': 10,
       'Kgs4J-questions-during-panel': 10
     };
 
