@@ -141,9 +141,10 @@ describe('events integration', function () {
             required: true,
           }
         ],
+        feedback: 'updated-test-feedback-form-link',
       };
 
-      // fields that are different in the updatePayload: ename, description, capac, elocation, longitude, latitude, registrationQuestions
+      // fields that are different in the updatePayload: ename, description, capac, elocation, longitude, latitude, registrationQuestions, feedback
       const defaultPayload = {
         ename: 'integrationTestEventName',
         description: 'default test event description',
@@ -161,6 +162,7 @@ describe('events integration', function () {
             required: false,
           }
         ],
+        feedback: 'test-feedback-form-link',
       };
 
       it('event PATCH returns 200 on update success', async () => {
@@ -198,6 +200,7 @@ describe('events integration', function () {
             expect(body.capac).to.equal(defaultPayload.capac);
             expect(body.longitude).to.equal(defaultPayload.longitude);
             expect(body.registrationQuestions).to.have.deep.members(defaultPayload.registrationQuestions);
+            expect(body.feedback).to.equal(defaultPayload.feedback);
 
           });
 
@@ -228,6 +231,7 @@ describe('events integration', function () {
             expect(body.capac).to.equal(updatePayload.capac);
             expect(body.longitude).to.equal(updatePayload.longitude);
             expect(body.registrationQuestions).to.have.deep.members(updatePayload.registrationQuestions);
+            expect(body.feedback).to.equal(updatePayload.feedback);
 
           });
 

@@ -1,4 +1,4 @@
-service: biztechApi-registrations
+service: biztechApi-qr
 tenant: ianmh
 app: biztechapp
 
@@ -45,53 +45,10 @@ provider:
 custom: ${file(../../serverless.common.yml):custom}
 
 functions:
-  registrationPost:
+  qrScan:
     handler: handler.post
     events:
       - http:
-          path: registrations/
+          path: qr/
           method: post
           cors: true
-  registrationPut:
-    handler: handler.put
-    events:
-      - http:
-          path: registrations/{email}/{fname}
-          method: put
-          request:
-            path:
-              email: true
-              fname: true
-          cors: true
-          authorizer:
-            name: ${self:service}-authorizer
-            type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
-  registrationGet:
-    handler: handler.get
-    events:
-      - http:
-          path: registrations/
-          method: get
-          request:
-            parameters:
-              querystrings:
-                eventID: false
-                year: false
-                email: false
-                afterTimestamp: false
-          cors: true
-  registrationDelete:
-    handler: handler.del
-    events:
-      - http:
-          path: registrations/{email}
-          method: delete
-          request:
-            path:
-              email: true
-          cors: true
-          authorizer:
-            name: ${self:service}-authorizer
-            type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
