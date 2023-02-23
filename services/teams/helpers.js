@@ -7,13 +7,13 @@ import db from '../../lib/db.js';
 /*
   Team Table Schema from DynamoDB:
     {
-    "id": "string",
+    "id": "string", [PARTITION KEY]
     "team_name": "string",
-    "eventID;year": "string;number",
+    "eventID;year": "string;number", [SORT KEY]
     "memberIDs": "string[]",
-    "scanned_qr_codes": "string[]",
+    "scannedQRs": "string[]",
     "points": "number",
-    "points_spent": "number",
+    "pointsSpent": "number",
     "transactions": "string[]",
     "inventory": "string[]",
     "submission": "string",
@@ -21,6 +21,91 @@ import db from '../../lib/db.js';
  */
 
 export default {
+  async _getTeamFromUserRegistration(userID, eventID, year) {
+
+    /*
+        Returns the Team object of the team that the user is on.
+    */
+
+    const eventID_year = eventID + ';' + year;
+
+    return await db.getOne(userID, USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT, {
+      'eventID;year': eventID_year
+    }).then(res => {
+
+      if (res) {
+
+        return res.teamID;
+
+      } else {
+
+        return null;
+
+      }
+
+    }).then(teamID => {
+
+      if (teamID) {
+
+        return new Promise((resolve, reject) => {
+
+          const docClient = new AWS.DynamoDB.DocumentClient();
+
+          // Partition key is teamID, sort key is eventID;year
+          const params = {
+            TableName: TEAMS_TABLE + process.env.ENVIRONMENT,
+            Key: {
+              id: teamID,
+              'eventID;year': eventID_year
+            }
+          };
+
+          docClient.get(params, (err, data) => {
+
+            if (err) {
+
+              reject(err);
+
+            } else {
+
+              resolve(data.Item);
+
+            }
+
+          });
+
+        });
+
+      } else {
+
+        return null;
+
+      }
+
+    });
+
+  },
+  async _putTeam(team) {
+
+    /*
+        Puts a team in the Teams table according to the Table Schema.
+        Partition key is teamID, sort key is eventID;year
+   */
+
+    const docClient = new AWS.DynamoDB.DocumentClient();
+
+    const params = {
+      TableName: TEAMS_TABLE + process.env.ENVIRONMENT,
+      Item: team
+    };
+
+    return await docClient.put(params).promise().then(team => {
+
+      return team;
+
+    });
+
+  },
   async makeTeam(team_name, eventID, year, memberIDs) {
 
     /*
@@ -56,12 +141,12 @@ export default {
         id: uuidv4(),
         teamName: team_name,
         'eventID;year': eventID + ';' + year,
-        memberIDs: { SS: memberIDs },
-        scanned_qr_codes: { SS: [] },
+        memberIDs: memberIDs,
+        scannedQRs: [] ,
         points: 0,
-        points_spent: 0,
-        transactions: { SS: [] },
-        inventory: { SS: [] },
+        pointsSpent: 0,
+        transactions: [],
+        inventory: [],
         submission: '',
         metadata: {}
       }
@@ -121,6 +206,73 @@ export default {
       throw new Error(err);
 
     }
+
+  },
+  async checkQRScanned(user_id, qr_code_id, eventID, year) {
+
+    /*
+        Checks if a user's team has already scanned a QR code. Return true if they have, false if they haven't.
+        This method might not make sense in the far future, but it's here so that the QR microservice can quickly check :')
+        PLEASE REVISIT
+   */
+
+    // get user's team using helper function _getTeamFromUserRegistration
+    return await this._getTeamFromUserRegistration(user_id, eventID, year).then(team => {
+
+      // check if qr_code_id is in scannedQRs
+      return team.scannedQRs.includes(qr_code_id);
+
+    }).catch(err => {
+
+      console.log(err);
+      throw new Error(err);
+
+    });
+
+
+  },
+  async addQRScan(user_id, qr_code_id, eventID, year, points) {
+
+    /*
+        Adds a QR code to the scannedQRs array of a user's team.
+   */
+
+    // get user's team using helper function _getTeamFromUserRegistration
+    return await this._getTeamFromUserRegistration(user_id, eventID, year).then(team => {
+
+      // add qr_code_id to scannedQRs
+      team.scannedQRs.push(qr_code_id);
+
+      // if points is non-zero, add points to team.
+      if (points !== 0) {
+
+        team.points += points;
+
+      }
+
+      // if points are negative, add absolute points to team's pointsSpent.
+      if (points < 0) {
+
+        team.pointsSpent += points * -1;
+
+      }
+
+      // put team in Teams table
+      return new Promise((resolve, reject) => {
+
+        this._putTeam(team).then(res => {
+
+          resolve(res);
+
+        }).catch(err => {
+
+          reject(err);
+
+        });
+
+      });
+
+    });
 
   }
 };

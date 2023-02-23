@@ -60,3 +60,24 @@ functions:
           path: team/make
           method: post
           cors: true
+  checkQRScanned:
+    handler: handler.checkQRScanned
+    events:
+      - http:
+          path: team/checkQRScanned
+          method: post
+          cors: true
+  addQRScan:
+    handler: handler.addQRScan
+    events:
+      - http:
+          path: team/addQRScan
+          method: post
+          cors: true
+  getTeamFromUserID:
+    handler: handler.getTeamFromUserID
+    events:
+      - http:
+          path: team/getTeamFromUserID
+          method: post
+          cors: true

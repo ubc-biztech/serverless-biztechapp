@@ -69,7 +69,48 @@ export const makeTeam = async (event, ctx, callback) => {
 
 };
 
-export const viewTeam = async (event, ctx, callback) => {
+export const getTeamFromUserID = async (event, ctx, callback) => {
+
+  /*
+    Returns the team object of the team that the user is on from the user's ID.
+
+    Requires: user_id, eventID, year
+   */
+
+  const data = JSON.parse(event.body);
+
+  helpers.checkPayloadProps(data, {
+    user_id: { required: true, type: 'string' },
+    eventID: { required: true, type: 'string' },
+    year: { required: true, type: 'number' },
+  });
+
+  await teamHelpers._getTeamFromUserRegistration(data.user_id, data.eventID, data.year).then(res => {
+
+    if (res) {
+
+      const response_success = helpers.createResponse(200,
+        {
+          'message': 'Successfully retrieved team.',
+          'response': res
+        });
+
+      callback(null, response_success);
+      return response_success;
+
+    }
+
+  }).catch(err => {
+
+    const response_fail = helpers.createResponse(403, {
+      message: 'Could not retrieve team.',
+      'response': err
+    });
+
+    callback(null, response_fail);
+    return response_fail;
+
+  });
 
 };
 
@@ -95,9 +136,116 @@ export const changePoints = async (event, ctx, callback) => {
 
 export const addQRScan = async (event, ctx, callback) => {
 
+  /*
+    Adds a QR code to the scannedQRs array of the team.
+    If points are passed in, it will also add the points to the team's points.
+
+    DOES NOT CHANGE POINTS - do that through the changePoints function.
+    DOES NOT CHECK IF QR CODE HAS ALREADY BEEN SCANNED - do that through the checkQRScanned function.
+
+    Requires: user_id, qr_code_id, eventID, year
+   */
+
+  try {
+
+    const data = JSON.parse(event.body);
+
+    helpers.checkPayloadProps(data, {
+      user_id: { required: true, type: 'string' },
+      qr_code_id: { required: true, type: 'string' },
+      eventID: { required: true, type: 'string' },
+      year: { required: true, type: 'number' },
+      points: { required: false, type: 'number' },
+    });
+
+    const points = data.points ? data.points : 0;
+
+    await teamHelpers.addQRScan(data.user_id, data.qr_code_id, data.eventID, data.year, points).then(res => {
+
+      if (res) {
+
+        const response_success = helpers.createResponse(200,
+          {
+            'message': 'Successfully added QR code to scannedQRs array of team.',
+            'response': res
+          });
+
+        callback(null, response_success);
+        return response_success;
+
+      }
+
+    }).catch(err => {
+
+      const response_fail = helpers.createResponse(403, {
+        message: 'Could not add QR code to scannedQRs array of team.',
+        'response': err
+      });
+
+      callback(null, response_fail);
+      return response_fail;
+
+    });
+
+  } catch(err) {
+
+    console.error(err);
+    callback(null, err);
+    return null;
+
+  }
+
 };
 
 export const checkQRScanned = async (event, ctx, callback) => {
+
+  /*
+    Checks if a QR code has been scanned by a team.
+
+    Requires: user_id, qr_code_id, eventID, year
+   */
+
+  try {
+
+    const data = JSON.parse(event.body);
+
+    helpers.checkPayloadProps(data, {
+      user_id: { required: true, type: 'string' },
+      qr_code_id: { required: true, type: 'string' },
+      eventID: { required: true, type: 'string' },
+      year: { required: true, type: 'number' },
+    });
+
+    await teamHelpers.checkQRScanned(data.user_id, data.qr_code_id, data.eventID, data.year).then(bool => {
+
+      const response_success = helpers.createResponse(200,
+        {
+          'message': 'Attached boolean for check if QR code has been scanned for that user\'s team; refer to "response" field.',
+          'response': bool
+        });
+
+      callback(null, response_success);
+      return response_success;
+
+    }).catch(err => {
+
+      const response_fail = helpers.createResponse(403, {
+        message: 'Could not check if QR code has been scanned.',
+        'response': err
+      });
+
+      callback(null, response_fail);
+      return response_fail;
+
+    });
+
+  } catch(err) {
+
+    console.error(err);
+    callback(null, err);
+    return null;
+
+  }
 
 };
 
