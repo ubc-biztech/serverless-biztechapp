@@ -7,8 +7,10 @@ import db from '../../lib/db';
 import { EVENTS_TABLE, QRS_TABLE } from '../../constants/tables';
 
 /*
-  Returns Status Code 403 if a QR scan is not valid for whatever reason
   Returns Status Code 200 when QR code is scanned successfully
+  Returns Status Code 403 if a QR scan is not valid
+  Returns Status Code 405 if a QR scan is valid but the user has not confirmed negative point QR scans
+  Returns Status Code 406 if a QR scan is valid but the Team's balance would be negative
 */
 
 // Endpoint: POST /qr
@@ -34,15 +36,28 @@ export const post = async (event, ctx, callback) => {
       eventID: { required: true, type: 'string' },
       year: { required: true, type: 'number' },
       email: { required: true , type: 'string' },
+      negativePointsConfirmed: { required: true , type: 'boolean' }, // true if the user has confirmed negative point QR scans
       admin: { required: false , type: 'boolean' }, // TODO: Admin possibility if gated actions required in the future
     });
 
     await registrationHelpers.qrScanPostHelper(data, data.email).then(res => {
 
-      if (res.redeemed_points === -1) {
+      if (res.hasOwnProperty('errorMessage')) {
+
+        if (res.errorMessage === 'Team scan would result in negative points') {
+
+          const response_fail = helpers.createResponse(406, {
+            message: 'ERROR: ' + res.errorMessage,
+            'response': res
+          });
+
+          callback(null, response_fail);
+          return response_fail;
+
+        }
 
         const response_fail = helpers.createResponse(403, {
-          message: 'QR code already scanned.',
+          message: 'ERROR: ' + res.errorMessage,
           'response': res
         });
 
@@ -59,6 +74,12 @@ export const post = async (event, ctx, callback) => {
 
       callback(null, response_success);
       return response_success;
+
+    }).catch(err => {
+
+      console.error(err);
+      callback(null, err);
+      return null;
 
     });
 
