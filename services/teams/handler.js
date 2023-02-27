@@ -4,20 +4,18 @@ import helpers from '../../lib/handlerHelpers';
 /*
   Team Table Schema from DynamoDB:
     {
-    "team_id": "string",
+    "id": "string", [PARTITION KEY]
     "team_name": "string",
-    "eventID;year": "string;number",
+    "eventID;year": "string;number", [SORT KEY]
     "memberIDs": "string[]",
-    "scanned_qr_codes": "string[]",
+    "scannedQRs": "string[]",
     "points": "number",
-    "points_spent": "number",
+    "pointsSpent": "number",
     "transactions": "string[]",
     "inventory": "string[]",
     "submission": "string",
     "metadata": object
  */
-
-// Stubs below
 
 export const makeTeam = async (event, ctx, callback) => {
 
@@ -114,6 +112,8 @@ export const getTeamFromUserID = async (event, ctx, callback) => {
 
 };
 
+// STUBS or unused functions below
+
 export const changeTeam = async (event, ctx, callback) => {
 
 };
@@ -137,11 +137,10 @@ export const changePoints = async (event, ctx, callback) => {
 export const addQRScan = async (event, ctx, callback) => {
 
   /*
+    !!!! DEPRECATED: use the QR microservice for client facing calls.
+
     Adds a QR code to the scannedQRs array of the team.
     If points are passed in, it will also add the points to the team's points.
-
-    DOES NOT CHANGE POINTS - do that through the changePoints function.
-    DOES NOT CHECK IF QR CODE HAS ALREADY BEEN SCANNED - do that through the checkQRScanned function.
 
     Requires: user_id, qr_code_id, eventID, year
    */
@@ -200,6 +199,8 @@ export const addQRScan = async (event, ctx, callback) => {
 export const checkQRScanned = async (event, ctx, callback) => {
 
   /*
+    !!!! DEPRECATED: use the QR microservice for client facing calls.
+
     Checks if a QR code has been scanned by a team.
 
     Requires: user_id, qr_code_id, eventID, year

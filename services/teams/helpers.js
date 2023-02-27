@@ -166,6 +166,18 @@ export default {
             'eventID;year': eventID_year
           }).then(res => {
 
+            if (res.teamID) {
+
+              // if user is already on a team, remove them from that team on the Teams table
+              this._getTeamFromUserRegistration(memberID, eventID, year).then(team => {
+
+                team.memberIDs = team.memberIDs.filter(id => id !== memberID);
+                this._putTeam(team);
+
+              });
+
+            }
+
             // update user's registration
             res.teamID = params.Item.id;
 
