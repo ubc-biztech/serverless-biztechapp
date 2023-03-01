@@ -67,3 +67,10 @@ functions:
           path: team/getTeamFromUserID
           method: post
           cors: true
+  changeTeamName:
+    handler: handler.changeTeamName
+    events:
+      - http:
+          path: team/changeTeamName
+          method: post
+          cors: true

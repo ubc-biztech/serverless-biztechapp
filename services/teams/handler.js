@@ -124,6 +124,55 @@ export const addMember = async (event, ctx, callback) => {
 
 export const changeTeamName = async (event, ctx, callback) => {
 
+  /*
+    Changes the team name of the team with the given user_id.
+   */
+  try {
+
+    const data = JSON.parse(event.body);
+
+    helpers.checkPayloadProps(data, {
+      user_id: { required: true, type: 'string' },
+      eventID: { required: true, type: 'string' },
+      year: { required: true, type: 'number' },
+      team_name: { required: true, type: 'string' },
+    });
+
+    await teamHelpers.changeTeamName(data.user_id, data.eventID, data.year, data.team_name).then(res => {
+
+      if (res) {
+
+        const response_success = helpers.createResponse(200,
+          {
+            'message': 'Successfully changed team name.',
+            'response': res
+          });
+
+        callback(null, response_success);
+        return response_success;
+
+      }
+
+    }).catch(err => {
+
+      const response_fail = helpers.createResponse(403, {
+        message: 'Could not change team name.',
+        'response': err
+      });
+
+      callback(null, response_fail);
+      return response_fail;
+
+    });
+
+  } catch(err) {
+
+    console.error(err);
+    callback(null, err);
+    return null;
+
+  }
+
 };
 
 export const viewPoints = async (event, ctx, callback) => {
