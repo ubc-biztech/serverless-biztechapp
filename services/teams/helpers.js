@@ -99,7 +99,7 @@ export default {
       Item: team
     };
 
-    return await docClient.put(params).promise().then(team => {
+    return await docClient.put(params).promise().then(_ => {
 
       return team;
 
@@ -270,6 +270,33 @@ export default {
       }
 
       // put team in Teams table
+      return new Promise((resolve, reject) => {
+
+        this._putTeam(team).then(res => {
+
+          resolve(res);
+
+        }).catch(err => {
+
+          reject(err);
+
+        });
+
+      });
+
+    });
+
+  },
+  async changeTeamName(user_id, eventID, year, team_name) {
+
+    /*
+        Changes a team's name in the Teams table
+   */
+
+    return await this._getTeamFromUserRegistration(user_id, eventID, year).then(team => {
+
+      team.teamName = team_name;
+
       return new Promise((resolve, reject) => {
 
         this._putTeam(team).then(res => {
