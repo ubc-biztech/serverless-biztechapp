@@ -7,3 +7,5 @@ export const STICKERS_TABLE = 'biztechStickers';
 export const TRANSACTIONS_TABLE = 'biztechTransactions';
 export const USERS_TABLE = 'biztechUsers';
 export const USER_REGISTRATIONS_TABLE = 'biztechRegistrations';
+export const QRS_TABLE = 'biztechQRs';
+export const TEAMS_TABLE = 'biztechTeams';
