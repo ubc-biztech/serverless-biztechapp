@@ -18,7 +18,7 @@ export default {
 
      */
 
-    return await db.getOne(id, QRS_TABLE  + process.env.ENVIRONMENT, { 'eventID;year': eventIDAndYear }).then(res => {
+    return await db.getOne(id, QRS_TABLE, { 'eventID;year': eventIDAndYear }).then(res => {
 
       return res;
 
@@ -273,7 +273,7 @@ export default {
 
     const eventID_year = eventID + ';' + year;
 
-    return await db.getOne(userID, USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT, {
+    return await db.getOne(userID, USER_REGISTRATIONS_TABLE, {
       'eventID;year': eventID_year
     }).then(res => {
 
