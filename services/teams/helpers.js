@@ -29,7 +29,7 @@ export default {
 
     const eventID_year = eventID + ';' + year;
 
-    return await db.getOne(userID, USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT, {
+    return await db.getOne(userID, USER_REGISTRATIONS_TABLE, {
       'eventID;year': eventID_year
     }).then(res => {
 
@@ -121,7 +121,7 @@ export default {
       const memberID = memberIDs[i];
 
       // get user's registration
-      await db.getOne(memberID, USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT, {
+      await db.getOne(memberID, USER_REGISTRATIONS_TABLE, {
         'eventID;year': eventID_year
       }).then(res => {
 
@@ -162,7 +162,7 @@ export default {
           const memberID = memberIDs[i];
 
           // get user's registration
-          db.getOne(memberID, USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT, {
+          db.getOne(memberID, USER_REGISTRATIONS_TABLE, {
             'eventID;year': eventID_year
           }).then(res => {
 
