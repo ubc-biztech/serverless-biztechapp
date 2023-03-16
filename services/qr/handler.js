@@ -117,7 +117,7 @@ export const getOne = async (event, ctx, callback) => {
 
   try {
 
-    if (!event.pathParameters || !event.pathParameters.id || !event.pathParameters.eventID || !event.pathParamters.year) throw helpers.missingPathParamResponse('id', 'event', 'year');
+    if (!event.pathParameters || !event.pathParameters.id || !event.pathParameters.eventID || !event.pathParameters.year) throw helpers.missingPathParamResponse('id', 'event', 'year');
     const { id, eventID, year } = event.pathParameters;
     const eventIDAndYear = eventID + ';' + year;
     const qr = await db.scan(id, QRS_TABLE, { 'eventID;year': eventIDAndYear });
@@ -190,7 +190,7 @@ export const update = async (event, ctx, callback) => {
 
   try {
 
-    if (!event.pathParameters || !event.pathParameters.id || !event.pathParameters.eventID || !event.pathParamters.year) throw helpers.missingPathParamResponse('id', 'event', 'year');
+    if (!event.pathParameters || !event.pathParameters.id || !event.pathParameters.eventID || !event.pathParameters.year) throw helpers.missingPathParamResponse('id', 'event', 'year');
     const { id, eventID, year } = event.pathParameters;
     const eventIDAndYear = eventID + ';' + year;
 
@@ -240,7 +240,7 @@ export const del = async (event, ctx, callback) => {
 
   try {
 
-    if (!event.pathParameters || !event.pathParameters.id || !event.pathParameters.eventID || !event.pathParamters.year) throw helpers.missingPathParamResponse('id', 'event', 'year');
+    if (!event.pathParameters || !event.pathParameters.id || !event.pathParameters.eventID || !event.pathParameters.year) throw helpers.missingPathParamResponse('id', 'event', 'year');
     const { id, eventID, year } = event.pathParameters;
     const eventIDAndYear = eventID + ';' + year;
 
