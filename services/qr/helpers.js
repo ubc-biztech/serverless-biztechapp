@@ -364,7 +364,7 @@ export default {
 
     // TODO: undo this after InnoVent 2023! this is a temporary flag to enable teams for InnoVent 2023.
     // TODO 2; add a 'teamsEnabled' field to the events table so that the code below can check it as a flag
-    if (eventID_year.toLowerCase() === 'innovent;2023') {
+    if (eventID_year.toLowerCase() === 'data-and-beyond;2023') {
 
       return true;
 
