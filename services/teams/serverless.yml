@@ -67,6 +67,17 @@ functions:
           path: team/getTeamFromUserID
           method: post
           cors: true
+  teamsGetAll:
+    handler: handler.get
+    events:
+      - http:
+          path: team/{eventID}/{year}
+          request:
+            path:
+              eventID: true
+              year: true
+          method: get
+          cors: true
   changeTeamName:
     handler: handler.changeTeamName
     events:

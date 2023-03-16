@@ -1,5 +1,7 @@
 import teamHelpers from './helpers';
 import helpers from '../../lib/handlerHelpers';
+import { TEAMS_TABLE } from '../../constants/tables';
+import db from '../../lib/db.js';
 
 /*
   Team Table Schema from DynamoDB:
@@ -109,6 +111,39 @@ export const getTeamFromUserID = async (event, ctx, callback) => {
     return response_fail;
 
   });
+
+};
+
+export const get = async (event, ctx, callback) => {
+
+  if (!event.pathParameters || !event.pathParameters.eventID || !event.pathParameters.year) throw helpers.missingPathParamResponse('event', 'year');
+  const { eventID, year } = event.pathParameters;
+
+  try {
+
+    const eventIDYear = eventID + ';' + year;
+    const filterExpression = {
+      FilterExpression: '#eventIDyear = :query',
+      ExpressionAttributeNames: {
+        '#eventIDyear': 'eventID;year'
+      },
+      ExpressionAttributeValues: {
+        ':query': eventIDYear
+      }
+    };
+
+    const qrs = await db.scan(TEAMS_TABLE, filterExpression);
+    const response = helpers.createResponse(200, qrs);
+    callback(null, response);
+    return response;
+
+  } catch (err) {
+
+    console.log(err);
+    callback(null, err);
+    return null;
+
+  }
 
 };
 
