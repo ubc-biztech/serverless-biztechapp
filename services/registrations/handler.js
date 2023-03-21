@@ -9,7 +9,7 @@ import { EVENTS_TABLE, USER_REGISTRATIONS_TABLE } from '../../constants/tables';
 
 /* returns error 403 if the given id/eventID DNE in database
    returns error 502 if there is a problem with processing data or sending an email
-   returns 201 when entry is created successfully, error 409 if a registration with the same id/eventID exists 
+   returns 201 when entry is created successfully, error 409 if a registration with the same id/eventID exists
    returns 200 when entry is updated successfully, error 409 if a registration with the same id/eventID DNE
    sends an email to the user if registration status is included in data, and
      if they are registered, waitlisted, or cancelled, but not if checkedIn
@@ -256,7 +256,7 @@ export async function sendEmail(user, existingEvent, registrationStatus, id) {
     };
 
     await registrationHelpers.sendDynamicQR(dynamicMsg);
-    if (tempCalendarId) await registrationHelpers.sendCalendarInvite(existingEvent, user, dynamicCalendarMsg);
+    if (registrationStatus === 'registered' && tempCalendarId) await registrationHelpers.sendCalendarInvite(existingEvent, user, dynamicCalendarMsg);
 
   }
 
@@ -303,6 +303,14 @@ export const post = async (event, ctx, callback) => {
 
     } else {
 
+      const eventIDAndYear = `${data.eventID};${data.year}`;
+      // TODO: this is temporary. please remove after produhacks 2023
+      if (eventIDAndYear === 'produhacks;2023') {
+
+        data.registrationStatus = 'waitlist';
+
+      }
+
       const response = await updateHelper(data, true, data.email, data.fname);
 
       callback(null, response);
@@ -322,9 +330,9 @@ export const post = async (event, ctx, callback) => {
 };
 
 /**
- * Update a registration entry. 
+ * Update a registration entry.
  * Side effect: Sends an email to the user if the registration status is changed to anything that is not Checked In.
- * 
+ *
  * Args:
  *  event: The event object. It must contain the following:
  *      - pathParameters: object with the following properties
@@ -335,7 +343,7 @@ export const post = async (event, ctx, callback) => {
  *          - year: number
  *  ctx: The context object
  *  callback: The callback function
- * 
+ *
  * Returns: The response object
  */
 export const put = async (event, ctx, callback) => {
@@ -416,7 +424,7 @@ export const get = async (event, ctx, callback) => {
 
       registrations = await db.scan(USER_REGISTRATIONS_TABLE, filterExpression);
 
-      // filter by id query, if given 
+      // filter by id query, if given
       if(queryString.hasOwnProperty('email')) {
 
         registrations = registrations.filter(entry => entry.id === email);
