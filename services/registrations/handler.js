@@ -14,7 +14,7 @@ import { EVENTS_TABLE, USER_REGISTRATIONS_TABLE } from '../../constants/tables';
    sends an email to the user if registration status is included in data, and
      if they are registered, waitlisted, or cancelled, but not if checkedIn
 */
-async function updateHelper(data, createNew, email, fname) {
+export async function updateHelper(data, createNew, email, fname) {
 
   const { eventID, year } = data;
   const eventIDAndYear = eventID + ';' + year;
@@ -184,6 +184,7 @@ async function createRegistration(registrationStatus, data, email, eventIDAndYea
 
 export async function sendEmail(user, existingEvent, registrationStatus, id) {
 
+  if (registrationStatus === 'incomplete') return;
   if(registrationStatus !== 'checkedIn') {
 
     const userEmail = user.id;
@@ -267,7 +268,6 @@ export const post = async (event, ctx, callback) => {
 
     const data = JSON.parse(event.body);
 
-
     if(!isValidEmail(data.email)) throw helpers.inputError('Invalid email', data.email);
     helpers.checkPayloadProps(data, {
       email: { required: true, type: 'string' },
@@ -276,10 +276,39 @@ export const post = async (event, ctx, callback) => {
       registrationStatus: { required: true , type: 'string' },
     });
 
-    const response = await updateHelper(data, true, data.email, data.fname);
+    const existingReg = await db.getOne(data.email, USER_REGISTRATIONS_TABLE, { 'eventID;year': `${data.eventID};${data.year}` });
+    if (existingReg) {
 
-    callback(null, response);
-    return null;
+      if (existingReg.registrationStatus === 'incomplete') {
+
+        await updateHelper(data, false, data.email, data.fname);
+        const response = helpers.createResponse(200, {
+          message: 'Redirect to link',
+          url: existingReg.checkoutLink
+        });
+
+        callback(null, response);
+        return response;
+
+      } else {
+
+        const response = helpers.createResponse(400, {
+          message: 'You are already registered for this event!'
+        });
+
+        callback(null, response);
+        return response;
+
+      }
+
+    } else {
+
+      const response = await updateHelper(data, true, data.email, data.fname);
+
+      callback(null, response);
+      return null;
+
+    }
 
   }
   catch(err) {
