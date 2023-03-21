@@ -50,7 +50,11 @@ provider:
         - "arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp"
     - Effect: Allow
       Action:
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
         - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechRegistrations${self:provider.environment.ENVIRONMENT}"
     - Effect: Allow
@@ -74,6 +78,13 @@ functions:
     events:
       - http:
           path: payments/webhook
+          method: post
+          cors: true
+  paymentCancelWebhook:
+    handler: handler.cancel
+    events:
+      - http:
+          path: payments/cancel
           method: post
           cors: true
 
