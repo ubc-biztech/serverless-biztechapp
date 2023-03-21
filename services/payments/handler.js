@@ -1,9 +1,9 @@
 import helpers from '../../lib/handlerHelpers';
-import { isValidEmail, isEmpty } from '../../lib/utils';
-import { sendEmail } from '../registrations/handler';
+import { isValidEmail } from '../../lib/utils';
+import { updateHelper } from '../registrations/handler';
 import db from '../../lib/db';
 const AWS = require('aws-sdk');
-const { USERS_TABLE, EVENTS_TABLE, MEMBERS2023_TABLE, USER_REGISTRATIONS_TABLE } = require('../../constants/tables');
+const { USERS_TABLE, MEMBERS2023_TABLE, USER_REGISTRATIONS_TABLE } = require('../../constants/tables');
 const stripe = require('stripe')(
   process.env.ENVIRONMENT === 'PROD' ?
     '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'
@@ -12,6 +12,7 @@ const stripe = require('stripe')(
 );
 // endpoint secret - different for each webhook
 const endpointSecret = process.env.ENVIRONMENT === 'PROD' ? 'whsec_IOXyPRmf3bsliM3PfWXFhvkmHGeSMekf' : 'whsec_TYSFr29HQ4bIPu649lgkxOrlPjrDOe2l';
+const cancelSecret = process.env.ENVIRONMENT === 'PROD' ? 'whsec_aX8umTlvtlmg0H2KCGDc9Er9Iej6TP8D' : 'whsec_N81csvvnTAqicFpuV5o9JQfx6McImtPR';
 
 // Creates the member here
 export const webhook = async(event, ctx, callback) => {
@@ -254,83 +255,25 @@ export const webhook = async(event, ctx, callback) => {
 
   const eventRegistration = async (data) => {
 
-    const docClient = new AWS.DynamoDB.DocumentClient();
-    const { email, registrationStatus, year, eventID } = data;
-    const eventIDAndYear = `${data.eventID};${data.year}`;
-    const conditionExpression = 'attribute_not_exists(id) and attribute_not_exists(#eventIDYear)';
-    const ignoreKeys = ['eventID', 'year', 'email', 'registrationStatus', 'paymentType', 'paymentName', 'paymentPrice', 'success_url', 'cancel_url'];
-    const ignoreUserKeys = ['diet', 'heardFrom'];
-
-    Object.keys(data).forEach(function (key) {
-
-      if (ignoreKeys.includes(key)) delete data[key];
-
-    });
-
-    data.basicInformation = JSON.parse(data.basicInformation);
-    data.dynamicResponses = JSON.parse(data.dynamicResponses);
-    data.isPartner = Boolean(data.isPartner);
-    data.points = Number(data.points);
-
-    const create = {
-      registrationStatus,
-      ...data,
-    };
-
-    const {
-      updateExpression,
-      expressionAttributeValues,
-      expressionAttributeNames
-    } = db.createUpdateExpression(create);
-
-    const params = {
-      Key: { 'id': email, ['eventID;year']: eventIDAndYear },
-      TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
-      ExpressionAttributeValues: expressionAttributeValues,
-      ExpressionAttributeNames: { ...expressionAttributeNames, '#eventIDYear': 'eventID;year' },
-      UpdateExpression: updateExpression,
-      ReturnValues: 'UPDATED_NEW',
-      ConditionExpression: conditionExpression
-    };
-
-    const res = await docClient.update(params).promise();
-
-    Object.keys(data.basicInformation).forEach(function (key) {
-
-      if (ignoreUserKeys.includes(key)) delete data.basicInformation[key];
-
-    });
-
-    const user = {
-      id: email,
-      studentId: data.studentId,
-      ...data.basicInformation,
-    };
-
-    const existingEvent = await db.getOne(eventID, EVENTS_TABLE, { year: Number(year) });
-    if(isEmpty(existingEvent)) throw helpers.notFoundResponse('Event', eventID, year);
-
-    const id = `${email};${eventID};${year}`;
-
     try {
 
-      await sendEmail(user, existingEvent, registrationStatus, id);
+      const body = {
+        eventID: data.eventID,
+        year: Number(data.year),
+        registrationStatus: 'registered',
+      };
+      await updateHelper(body, false, data.email, data.fname);
+      const response = helpers.createResponse(200, {
+        message: 'Registered user after successful payment',
+      });
+      callback(null, response);
 
     } catch (err) {
 
-      throw helpers.createResponse(500, {
-        statusCode: 500,
-        code: 'SENDGRID ERROR',
-        message: `Sending Email Error!: ${err.message}`
-      });
+      console.log(err);
+      callback(err, null);
 
     }
-
-    const response = helpers.createResponse(201, {
-      message: `User with email ${email} successfully registered (created) to status '${registrationStatus}'!`,
-      response: res,
-    });
-    callback(null, response);
 
   };
 
@@ -384,33 +327,95 @@ export const webhook = async(event, ctx, callback) => {
 
 export const payment = async (event, ctx, callback) => {
 
-  const data = JSON.parse(event.body);
-  const { paymentImages } = data;
-  delete data.paymentImages;
+  try {
 
-  const session = await stripe.checkout.sessions.create({
-    payment_method_types: ['card'],
-    line_items: [
-      {
-        price_data: {
-          currency: 'CAD',
-          product_data: {
-            name: data.paymentName,
-            images: paymentImages,
+    const data = JSON.parse(event.body);
+    const { paymentImages } = data;
+    delete data.paymentImages;
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'CAD',
+            product_data: {
+              name: data.paymentName,
+              images: paymentImages,
+            },
+            unit_amount: data.paymentPrice,
           },
-          unit_amount: data.paymentPrice,
+          quantity: 1,
         },
-        quantity: 1,
-      },
-    ],
-    metadata: data,
-    mode: 'payment',
-    success_url: data.success_url,
-    cancel_url: data.cancel_url,
-  });
+      ],
+      metadata: data,
+      mode: 'payment',
+      success_url: data.success_url,
+      cancel_url: data.cancel_url,
+      expires_at: Math.round(new Date().getTime() / 1000) + 1800
+    });
 
-  let response = helpers.createResponse(200, session.url);
-  callback(null, response);
-  return null;
+    if (data.paymentType === 'Event') {
+
+      const body = {
+        eventID: data.eventID,
+        year: Number(data.year),
+        checkoutLink: session.url,
+      };
+      await updateHelper(body, false, data.email, data.fname);
+
+    }
+
+    let response = helpers.createResponse(200, session.url);
+    callback(null, response);
+    return null;
+
+  } catch (err) {
+
+    console.log(err);
+    callback(null, err);
+    return null;
+
+  }
+
+};
+
+export const cancel = async (event, ctx, callback) => {
+
+  // NOTE: cancel webhook currently only operates correctly for events i.e. payment incomplete
+  const sig = event.headers['Stripe-Signature'];
+  const eventData = stripe.webhooks.constructEvent(event.body, sig, cancelSecret);
+  const data = eventData.data.object.metadata;
+  const { email, eventID, year, paymentType } = data;
+  if (paymentType === 'Event') {
+
+    try {
+
+      const eventIDAndYear = eventID + ';' + year;
+
+      const res = await db.deleteOne(email, USER_REGISTRATIONS_TABLE, { ['eventID;year']: eventIDAndYear });
+
+      const response = helpers.createResponse(200, {
+        message: 'Registration entry Deleted!',
+        response: res
+      });
+
+      callback(null, response);
+      return null;
+
+    } catch(err) {
+
+      callback(null, err);
+      return null;
+
+    }
+
+  } else {
+
+    return helpers.createResponse(400, {
+      message: 'Webhook Error: unidentified payment type'
+    });
+
+  }
 
 };
