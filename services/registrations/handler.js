@@ -19,6 +19,9 @@ export async function updateHelper(data, createNew, email, fname) {
   const { eventID, year } = data;
   const eventIDAndYear = eventID + ';' + year;
 
+  console.log(data);
+  console.log('CloudWatch debugging purposes');
+
   // for the QR code, we pass this to SendGrid
   const id = `${email};${eventIDAndYear};${fname}`;
 
@@ -302,14 +305,6 @@ export const post = async (event, ctx, callback) => {
       }
 
     } else {
-
-      const eventIDAndYear = `${data.eventID};${data.year}`;
-      // TODO: this is temporary. please remove after produhacks 2023
-      if (eventIDAndYear === 'produhacks;2023') {
-
-        data.registrationStatus = 'waitlist';
-
-      }
 
       const response = await updateHelper(data, true, data.email, data.fname);
 

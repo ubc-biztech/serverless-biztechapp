@@ -257,10 +257,12 @@ export const webhook = async(event, ctx, callback) => {
 
     try {
 
+      const eventIDAndYear = data.eventID + ';' + data.year;
+
       const body = {
         eventID: data.eventID,
         year: Number(data.year),
-        registrationStatus: 'registered',
+        registrationStatus: eventIDAndYear === 'produhacks;2023' ? 'waitlist' : 'registered',
       };
       await updateHelper(body, false, data.email, data.fname);
       const response = helpers.createResponse(200, {
@@ -360,7 +362,7 @@ export const payment = async (event, ctx, callback) => {
       const body = {
         eventID: data.eventID,
         year: Number(data.year),
-        checkoutLink: session.url,
+        checkoutLink: session.url
       };
       await updateHelper(body, false, data.email, data.fname);
 
