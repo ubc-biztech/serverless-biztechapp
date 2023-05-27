@@ -3,8 +3,11 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
+    "copy-dynamodb-table": "^2.2.1",
+    "dotenv": "^16.0.3",
     "ics": "^2.40.0",
-    "serverless": "^1.67.2"
+    "serverless": "^1.67.2",
+    "serverless-dynamodb-local": "^0.2.40"
   },
   "scripts": {
     "preitest": "chmod +x ./scripts/run_itests.sh",
@@ -13,7 +16,8 @@
     "utest": "./scripts/run_utests.sh",
     "test": "npm run utest && npm run itest",
     "lint": "eslint . --fix",
-    "pre-commit-msg": "echo 'Fixing lint problems'..."
+    "pre-commit-msg": "echo 'Fixing lint problems'...",
+    "pretty": "prettier --write \"./**/*.{js,jsx,ts,tsx,json}\""
   },
   "devDependencies": {
     "aws-sdk-mock": "^5.1.0",

@@ -29,3 +29,6 @@ custom:
     endpointType: 'edge'
     apiType: rest
     autoDomain: false
+  	
+plugins:
+  - serverless-dynamodb-local
