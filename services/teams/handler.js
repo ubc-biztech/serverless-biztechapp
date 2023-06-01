@@ -1,7 +1,7 @@
-import teamHelpers from './helpers';
-import helpers from '../../lib/handlerHelpers';
-import { TEAMS_TABLE } from '../../constants/tables';
-import db from '../../lib/db.js';
+import teamHelpers from "./helpers";
+import helpers from "../../lib/handlerHelpers";
+import { TEAMS_TABLE } from "../../constants/tables";
+import db from "../../lib/db.js";
 
 /*
   Team Table Schema from DynamoDB:
@@ -20,57 +20,44 @@ import db from '../../lib/db.js';
  */
 
 export const makeTeam = async (event, ctx, callback) => {
-
   try {
-
     const data = JSON.parse(event.body);
 
     helpers.checkPayloadProps(data, {
-      team_name: { required: true, type: 'string' },
-      eventID: { required: true, type: 'string' },
-      year: { required: true, type: 'number' },
-      memberIDs: { required: true, type: 'object' }, // 'object' means array in this case
+      team_name: { required: true, type: "string" },
+      eventID: { required: true, type: "string" },
+      year: { required: true, type: "number" },
+      memberIDs: { required: true, type: "object" }, // 'object' means array in this case
     });
 
     await teamHelpers.makeTeam(data.team_name, data.eventID, data.year, data.memberIDs).then(res => {
-
       if (res) {
-
         const response_success = helpers.createResponse(200,
           {
-            'message': 'Successfully created new team.',
-            'response': res
+            "message": "Successfully created new team.",
+            "response": res
           });
 
         callback(null, response_success);
         return response_success;
-
       }
-
     }).catch(err => {
-
       const response_fail = helpers.createResponse(403, {
-        message: 'Could not create team.',
-        'response': err
+        message: "Could not create team.",
+        "response": err
       });
 
       callback(null, response_fail);
       return response_fail;
-
     });
-
   } catch(err) {
-
     console.error(err);
     callback(null, err);
     return null;
-
   }
-
 };
 
 export const getTeamFromUserID = async (event, ctx, callback) => {
-
   /*
     Returns the team object of the team that the user is on from the user's ID.
 
@@ -80,55 +67,46 @@ export const getTeamFromUserID = async (event, ctx, callback) => {
   const data = JSON.parse(event.body);
 
   helpers.checkPayloadProps(data, {
-    user_id: { required: true, type: 'string' },
-    eventID: { required: true, type: 'string' },
-    year: { required: true, type: 'number' },
+    user_id: { required: true, type: "string" },
+    eventID: { required: true, type: "string" },
+    year: { required: true, type: "number" },
   });
 
   await teamHelpers._getTeamFromUserRegistration(data.user_id, data.eventID, data.year).then(res => {
-
     if (res) {
-
       const response_success = helpers.createResponse(200,
         {
-          'message': 'Successfully retrieved team.',
-          'response': res
+          "message": "Successfully retrieved team.",
+          "response": res
         });
 
       callback(null, response_success);
       return response_success;
-
     }
-
   }).catch(err => {
-
     const response_fail = helpers.createResponse(403, {
-      message: 'Could not retrieve team.',
-      'response': err
+      message: "Could not retrieve team.",
+      "response": err
     });
 
     callback(null, response_fail);
     return response_fail;
-
   });
-
 };
 
 export const get = async (event, ctx, callback) => {
-
-  if (!event.pathParameters || !event.pathParameters.eventID || !event.pathParameters.year) throw helpers.missingPathParamResponse('event', 'year');
+  if (!event.pathParameters || !event.pathParameters.eventID || !event.pathParameters.year) throw helpers.missingPathParamResponse("event", "year");
   const { eventID, year } = event.pathParameters;
 
   try {
-
-    const eventIDYear = eventID + ';' + year;
+    const eventIDYear = eventID + ";" + year;
     const filterExpression = {
-      FilterExpression: '#eventIDyear = :query',
+      FilterExpression: "#eventIDyear = :query",
       ExpressionAttributeNames: {
-        '#eventIDyear': 'eventID;year'
+        "#eventIDyear": "eventID;year"
       },
       ExpressionAttributeValues: {
-        ':query': eventIDYear
+        ":query": eventIDYear
       }
     };
 
@@ -136,15 +114,11 @@ export const get = async (event, ctx, callback) => {
     const response = helpers.createResponse(200, qrs);
     callback(null, response);
     return response;
-
   } catch (err) {
-
     console.log(err);
     callback(null, err);
     return null;
-
   }
-
 };
 
 // STUBS or unused functions below
@@ -158,56 +132,44 @@ export const addMember = async (event, ctx, callback) => {
 };
 
 export const changeTeamName = async (event, ctx, callback) => {
-
   /*
     Changes the team name of the team with the given user_id.
    */
   try {
-
     const data = JSON.parse(event.body);
 
     helpers.checkPayloadProps(data, {
-      user_id: { required: true, type: 'string' },
-      eventID: { required: true, type: 'string' },
-      year: { required: true, type: 'number' },
-      team_name: { required: true, type: 'string' },
+      user_id: { required: true, type: "string" },
+      eventID: { required: true, type: "string" },
+      year: { required: true, type: "number" },
+      team_name: { required: true, type: "string" },
     });
 
     await teamHelpers.changeTeamName(data.user_id, data.eventID, data.year, data.team_name).then(res => {
-
       if (res) {
-
         const response_success = helpers.createResponse(200,
           {
-            'message': 'Successfully changed team name.',
-            'response': res
+            "message": "Successfully changed team name.",
+            "response": res
           });
 
         callback(null, response_success);
         return response_success;
-
       }
-
     }).catch(err => {
-
       const response_fail = helpers.createResponse(403, {
-        message: 'Could not change team name.',
-        'response': err
+        message: "Could not change team name.",
+        "response": err
       });
 
       callback(null, response_fail);
       return response_fail;
-
     });
-
   } catch(err) {
-
     console.error(err);
     callback(null, err);
     return null;
-
   }
-
 };
 
 export const viewPoints = async (event, ctx, callback) => {
@@ -219,7 +181,6 @@ export const changePoints = async (event, ctx, callback) => {
 };
 
 export const addQRScan = async (event, ctx, callback) => {
-
   /*
     !!!! DEPRECATED: use the QR microservice for client facing calls.
 
@@ -230,58 +191,46 @@ export const addQRScan = async (event, ctx, callback) => {
    */
 
   try {
-
     const data = JSON.parse(event.body);
 
     helpers.checkPayloadProps(data, {
-      user_id: { required: true, type: 'string' },
-      qr_code_id: { required: true, type: 'string' },
-      eventID: { required: true, type: 'string' },
-      year: { required: true, type: 'number' },
-      points: { required: false, type: 'number' },
+      user_id: { required: true, type: "string" },
+      qr_code_id: { required: true, type: "string" },
+      eventID: { required: true, type: "string" },
+      year: { required: true, type: "number" },
+      points: { required: false, type: "number" },
     });
 
     const points = data.points ? data.points : 0;
 
     await teamHelpers.addQRScan(data.user_id, data.qr_code_id, data.eventID, data.year, points).then(res => {
-
       if (res) {
-
         const response_success = helpers.createResponse(200,
           {
-            'message': 'Successfully added QR code to scannedQRs array of team.',
-            'response': res
+            "message": "Successfully added QR code to scannedQRs array of team.",
+            "response": res
           });
 
         callback(null, response_success);
         return response_success;
-
       }
-
     }).catch(err => {
-
       const response_fail = helpers.createResponse(403, {
-        message: 'Could not add QR code to scannedQRs array of team.',
-        'response': err
+        message: "Could not add QR code to scannedQRs array of team.",
+        "response": err
       });
 
       callback(null, response_fail);
       return response_fail;
-
     });
-
   } catch(err) {
-
     console.error(err);
     callback(null, err);
     return null;
-
   }
-
 };
 
 export const checkQRScanned = async (event, ctx, callback) => {
-
   /*
     !!!! DEPRECATED: use the QR microservice for client facing calls.
 
@@ -291,47 +240,38 @@ export const checkQRScanned = async (event, ctx, callback) => {
    */
 
   try {
-
     const data = JSON.parse(event.body);
 
     helpers.checkPayloadProps(data, {
-      user_id: { required: true, type: 'string' },
-      qr_code_id: { required: true, type: 'string' },
-      eventID: { required: true, type: 'string' },
-      year: { required: true, type: 'number' },
+      user_id: { required: true, type: "string" },
+      qr_code_id: { required: true, type: "string" },
+      eventID: { required: true, type: "string" },
+      year: { required: true, type: "number" },
     });
 
     await teamHelpers.checkQRScanned(data.user_id, data.qr_code_id, data.eventID, data.year).then(bool => {
-
       const response_success = helpers.createResponse(200,
         {
-          'message': 'Attached boolean for check if QR code has been scanned for that user\'s team; refer to "response" field.',
-          'response': bool
+          "message": "Attached boolean for check if QR code has been scanned for that user's team; refer to \"response\" field.",
+          "response": bool
         });
 
       callback(null, response_success);
       return response_success;
-
     }).catch(err => {
-
       const response_fail = helpers.createResponse(403, {
-        message: 'Could not check if QR code has been scanned.',
-        'response': err
+        message: "Could not check if QR code has been scanned.",
+        "response": err
       });
 
       callback(null, response_fail);
       return response_fail;
-
     });
-
   } catch(err) {
-
     console.error(err);
     callback(null, err);
     return null;
-
   }
-
 };
 
 export const addTransaction = async (event, ctx, callback) => {
