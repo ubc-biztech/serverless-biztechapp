@@ -25,10 +25,10 @@
         "indent": ["warn", 2],
         "no-prototype-builtins": "off",
         "no-trailing-spaces": ["warn", { "ignoreComments": true }],
-        "no-unused-vars": "warn",
+        "no-unused-vars": ["warn", { "args": "none" }],
         "object-curly-spacing": ["warn", "always"],
-        "padded-blocks": ["warn", "always"],
-        "quotes": ["warn", "single"],
+        "padded-blocks": ["warn", "never"],
+        "quotes": ["warn", "double"],
         "semi": ["warn", "always"],
         "space-in-parens": ["warn", "never"]
     }

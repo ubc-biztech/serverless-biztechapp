@@ -1,6 +1,6 @@
-import AWS from 'aws-sdk';
-import { v4 as uuidv4 } from 'uuid';
-import { USER_REGISTRATIONS_TABLE } from '../../constants/tables';
+import AWS from "aws-sdk";
+import { v4 as uuidv4 } from "uuid";
+import { USER_REGISTRATIONS_TABLE } from "../../constants/tables";
 
 export default {
   /**
@@ -10,23 +10,21 @@ export default {
    * @return {registeredCount checkedInCount waitlistCount}
    */
   getEventCounts: async function (eventIDAndYear) {
-
     const docClient = new AWS.DynamoDB.DocumentClient();
     const params = {
       TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
-      FilterExpression: '#eventIDYear = :query',
+      FilterExpression: "#eventIDYear = :query",
       ExpressionAttributeNames: {
-        '#eventIDYear': 'eventID;year'
+        "#eventIDYear": "eventID;year"
       },
       ExpressionAttributeValues: {
-        ':query': eventIDAndYear
+        ":query": eventIDAndYear
       }
     };
     return await docClient
       .scan(params)
       .promise()
       .then(result => {
-
         let counts = {
           registeredCount: 0,
           checkedInCount: 0,
@@ -34,37 +32,27 @@ export default {
         };
 
         result.Items.forEach(item => {
-
           if (!item.isPartner) {
-
             switch (item.registrationStatus) {
-
-            case 'registered':
+            case "registered":
               counts.registeredCount++;
               break;
-            case 'checkedIn':
+            case "checkedIn":
               counts.checkedInCount++;
               break;
-            case 'waitlist':
+            case "waitlist":
               counts.waitlistCount++;
               break;
-
             }
-
           }
-
         });
 
         return counts;
-
       })
       .catch(error => {
-
         console.error(error);
         return null;
-
       });
-
   },
   /**
  * Inserts a unique uuid into each registrationQuestion, if it does not already exist
@@ -72,15 +60,11 @@ export default {
  * @returns a new Array, with a unique questionId in each question
  */
   addIdsToRegistrationQuestions: function (registrationQuestions) {
-
     return registrationQuestions.map((question) => {
-
       return {
         ...question,
         questionId: question.questionId || uuidv4(),
       };
-
     });
-
   },
 };
