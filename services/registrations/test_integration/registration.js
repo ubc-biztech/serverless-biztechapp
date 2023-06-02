@@ -127,7 +127,7 @@ describe("registration integration", function () {
           expect(body.size).to.equal(2);
           for(const entry of body.data) {
             expect(entry.id).to.equal(INTEGRATION_TEST_PERSISTENT_USER_EMAIL);
-            if (entry["eventID;year"] == `${INTEGRATION_TEST_PERSISTENT_EVENT_ID};${INTEGRATION_TEST_PERSISTENT_YEAR}`) {
+            if (entry["eventID;year"] === `${INTEGRATION_TEST_PERSISTENT_EVENT_ID};${INTEGRATION_TEST_PERSISTENT_YEAR}`) {
               expect(entry.registrationStatus).to.equal("checkedIn");
             }
             if (entry["eventID;year"] === `${INTEGRATION_TEST_PERSISTENT_EVENT_ID_2};${INTEGRATION_TEST_PERSISTENT_YEAR_2}`) {

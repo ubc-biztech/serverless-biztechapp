@@ -16,11 +16,11 @@ const nonexistentEmail = "nonexistent@gmail.com";
 describe("memberGet", () => {
   before(() => {
     AWSMock.mock("DynamoDB.DocumentClient", "get", function (params, callback) {
-      if (params.Key.id == email) {
+      if (params.Key.id === email) {
         Promise.resolve(callback(null, {
           Item: "not null member"
         }));
-      } else if (params.Key.id == nonexistentEmail) {
+      } else if (params.Key.id === nonexistentEmail) {
         Promise.resolve(callback(null, {
           Item: null
         }));
