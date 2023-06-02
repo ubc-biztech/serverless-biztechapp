@@ -18,11 +18,15 @@ describe("userGet", () => {
     AWSMock.mock("DynamoDB.DocumentClient", "get", function (params, callback){
       if (params.Key.id == email) {
         Promise.resolve(
-          callback(null, { Item: "not null user" })
+          callback(null, {
+            Item: "not null user"
+          })
         );
       } else if  (params.Key.id == nonexistentEmail) {
         Promise.resolve(
-          callback(null, { Item: null })
+          callback(null, {
+            Item: null
+          })
         );
       }
     });

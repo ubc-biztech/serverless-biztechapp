@@ -24,7 +24,9 @@ describe("stickerCreate", () => {
         ...stickerPayload,
         id: params.Key.id
       };
-      callback(null, { Item: returnValue });
+      callback(null, {
+        Item: returnValue
+      });
     });
 
     AWSMock.mock("DynamoDB.DocumentClient", "put", (params, callback) => {
@@ -46,7 +48,9 @@ describe("stickerCreate", () => {
     };
     delete invalidPayload.id;
 
-    const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(invalidPayload)
+    });
     expect(response.statusCode).to.be.equal(406);
   });
 
@@ -56,7 +60,9 @@ describe("stickerCreate", () => {
     };
     delete invalidPayload.name;
 
-    const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(invalidPayload)
+    });
     expect(response.statusCode).to.be.equal(406);
   });
 
@@ -66,17 +72,23 @@ describe("stickerCreate", () => {
     };
     delete invalidPayload.url;
 
-    const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(invalidPayload)
+    });
     expect(response.statusCode).to.be.equal(406);
   });
 
   it("return 201 for successfully creating a sticker", async() => {
-    const response = await wrapped.run({ body: JSON.stringify(stickerPayload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(stickerPayload)
+    });
     expect(response.statusCode).to.be.equal(201);
   });
 
   it("return 409 for trying to create a sticker with the same id", async() => {
-    const response = await wrapped.run({ body: JSON.stringify(stickerPayload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(stickerPayload)
+    });
     expect(response.statusCode).to.be.equal(409);
   });
 });

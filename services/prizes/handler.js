@@ -1,7 +1,11 @@
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
-import { isEmpty } from "../../lib/utils";
-import { PRIZES_TABLE } from "../../constants/tables";
+import {
+  isEmpty
+} from "../../lib/utils";
+import {
+  PRIZES_TABLE
+} from "../../constants/tables";
 
 export const getAll = async (event, ctx, callback) => {
   try {
@@ -9,7 +13,8 @@ export const getAll = async (event, ctx, callback) => {
     const prizes = await db.scan(PRIZES_TABLE);
 
     // re-organize the response
-    let response = {};
+    let response = {
+    };
     if(prizes !== null) response = helpers.createResponse(200, prizes);
 
     // return the response object
@@ -28,11 +33,24 @@ export const create = async (event, ctx, callback) => {
 
     // check request body
     helpers.checkPayloadProps(data, {
-      id: { required: true, type: "string" },
-      name: { required: true, type: "string" },
-      imageHash: { type: "string" },
-      price: { required: true, type: "number" },
-      links: { type: "object" }
+      id: {
+        required: true,
+        type: "string"
+      },
+      name: {
+        required: true,
+        type: "string"
+      },
+      imageHash: {
+        type: "string"
+      },
+      price: {
+        required: true,
+        type: "number"
+      },
+      links: {
+        type: "object"
+      }
     });
 
     // check if there are prizes with the given id
@@ -74,10 +92,18 @@ export const update = async (event, ctx, callback) => {
 
     // check request body
     helpers.checkPayloadProps(data, {
-      name: { type: "string" },
-      imageHash: { type: "string" },
-      price: { type: "number" },
-      links: { type: "object" }
+      name: {
+        type: "string"
+      },
+      imageHash: {
+        type: "string"
+      },
+      price: {
+        type: "number"
+      },
+      links: {
+        type: "object"
+      }
     });
 
     // check that the id exists

@@ -1,9 +1,15 @@
 import helpers from "../../lib/handlerHelpers";
-import { isValidEmail } from "../../lib/utils";
-import { updateHelper } from "../registrations/handler";
+import {
+  isValidEmail
+} from "../../lib/utils";
+import {
+  updateHelper
+} from "../registrations/handler";
 import db from "../../lib/db";
 const AWS = require("aws-sdk");
-const { USERS_TABLE, MEMBERS2023_TABLE, USER_REGISTRATIONS_TABLE } = require("../../constants/tables");
+const {
+  USERS_TABLE, MEMBERS2023_TABLE, USER_REGISTRATIONS_TABLE
+} = require("../../constants/tables");
 const stripe = require("stripe")(
   process.env.ENVIRONMENT === "PROD" ?
     "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"
@@ -399,7 +405,9 @@ export const webhook = async(event, ctx, callback) => {
 export const payment = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
-    const { paymentImages } = data;
+    const {
+      paymentImages
+    } = data;
     delete data.paymentImages;
 
     const session = await stripe.checkout.sessions.create({
@@ -448,12 +456,16 @@ export const cancel = async (event, ctx, callback) => {
   const sig = event.headers["Stripe-Signature"];
   const eventData = stripe.webhooks.constructEvent(event.body, sig, cancelSecret);
   const data = eventData.data.object.metadata;
-  const { email, eventID, year, paymentType } = data;
+  const {
+    email, eventID, year, paymentType
+  } = data;
   if (paymentType === "Event") {
     try {
       const eventIDAndYear = eventID + ";" + year;
 
-      const res = await db.deleteOne(email, USER_REGISTRATIONS_TABLE, { ["eventID;year"]: eventIDAndYear });
+      const res = await db.deleteOne(email, USER_REGISTRATIONS_TABLE, {
+        ["eventID;year"]: eventIDAndYear
+      });
 
       const response = helpers.createResponse(200, {
         message: "Registration entry Deleted!",

@@ -17,7 +17,9 @@ describe("userGetAll", () => {
   it("successfully returns 200 and empty array when no users exist", async () => {
     AWSMock.mock("DynamoDB.DocumentClient", "scan", function (params, callback){
       Promise.resolve(
-        callback(null, { Items: null })
+        callback(null, {
+          Items: null
+        })
       );
     });
     const response = await wrapped.run();

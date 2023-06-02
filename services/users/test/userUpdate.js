@@ -30,12 +30,16 @@ describe("userUpdate", () => {
         ...testEntry,
         id: params.Key.id
       };
-      callback(null, { Item: returnValue });
+      callback(null, {
+        Item: returnValue
+      });
     });
 
     AWSMock.mock("DynamoDB.DocumentClient", "update", function (params, callback) {
       Promise.resolve(
-        callback(null, { Item: "not null user" })
+        callback(null, {
+          Item: "not null user"
+        })
       );
     });
   });
@@ -49,7 +53,9 @@ describe("userUpdate", () => {
 
     const response = await wrapped.run({
       body: JSON.stringify(testEntry),
-      pathParameters: { email: badEmail }
+      pathParameters: {
+        email: badEmail
+      }
     });
     expect(response.statusCode).to.equal(406);
   });
@@ -59,7 +65,9 @@ describe("userUpdate", () => {
 
     const response = await wrapped.run({
       body: JSON.stringify(testEntry),
-      pathParameters: { email: unknownEmail }
+      pathParameters: {
+        email: unknownEmail
+      }
     });
     expect(response.statusCode).to.equal(404);
   });

@@ -7,7 +7,9 @@ import AWSMock from "aws-sdk-mock";
 import mochaPlugin from "serverless-mocha-plugin";
 const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper("eventGetAll", "/handler.js", "getAll");
-import { EVENTS_TABLE, USER_REGISTRATIONS_TABLE } from "../../../constants/tables";
+import {
+  EVENTS_TABLE, USER_REGISTRATIONS_TABLE
+} from "../../../constants/tables";
 
 //Number of events in 2020, from './data/events.json'
 const TEST_YEAR = 2020;
@@ -60,7 +62,11 @@ describe("eventGetAll", () => {
   });
 
   it("return 200 response for getting all events for year 2020", async () => {
-    const response = await wrapped.run({ queryStringParameters: { year: TEST_YEAR } });
+    const response = await wrapped.run({
+      queryStringParameters: {
+        year: TEST_YEAR
+      }
+    });
     expect(response.statusCode).to.be.equal(200);
 
     const body = JSON.parse(response.body);
@@ -73,7 +79,11 @@ describe("eventGetAll", () => {
   });
 
   it("return 200 response for getting all events with id \"existingEvent3\"", async () => {
-    const response = await wrapped.run({ queryStringParameters: { id: TEST_ID } });
+    const response = await wrapped.run({
+      queryStringParameters: {
+        id: TEST_ID
+      }
+    });
     expect(response.statusCode).to.be.equal(200);
 
     const body = JSON.parse(response.body);

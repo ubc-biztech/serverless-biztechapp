@@ -2,8 +2,12 @@ const AWS = require("aws-sdk");
 
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
-import { isEmpty, isValidEmail } from "../../lib/utils";
-import { USERS_TABLE, EVENTS_TABLE } from "../../constants/tables";
+import {
+  isEmpty, isValidEmail
+} from "../../lib/utils";
+import {
+  USERS_TABLE, EVENTS_TABLE
+} from "../../constants/tables";
 
 export const create = async (event, ctx, callback) => {
   const docClient = new AWS.DynamoDB.DocumentClient();
@@ -234,19 +238,32 @@ export const favouriteEvent = async (event, ctx, callback) => {
     const data = JSON.parse(event.body);
 
     helpers.checkPayloadProps(data, {
-      eventID: { required: true, type: "string" },
-      year: { required: true, type: "number" },
-      isFavourite: { required: true, type: "boolean" },
+      eventID: {
+        required: true,
+        type: "string"
+      },
+      year: {
+        required: true,
+        type: "number"
+      },
+      isFavourite: {
+        required: true,
+        type: "boolean"
+      },
     });
 
-    const { eventID, year, isFavourite } = data;
+    const {
+      eventID, year, isFavourite
+    } = data;
     const eventIDAndYear = eventID + ";" + year;
 
     const email = event.pathParameters.email;
     if (email == null || !isValidEmail(email))
       throw helpers.inputError("Invalid email", email);
 
-    const existingEvent = await db.getOne(eventID, EVENTS_TABLE, { year });
+    const existingEvent = await db.getOne(eventID, EVENTS_TABLE, {
+      year
+    });
     if (isEmpty(existingEvent))
       throw helpers.notFoundResponse("event", eventID, year);
 
@@ -285,7 +302,8 @@ export const favouriteEvent = async (event, ctx, callback) => {
         null,
         helpers.createResponse(200, {
           message: successMsg,
-          response: {},
+          response: {
+          },
         })
       );
       return null;
@@ -303,7 +321,9 @@ export const favouriteEvent = async (event, ctx, callback) => {
     expressionAttributeValues[":eventIDAndYear"] = eventIDAndYear; // string data type, for conditionExpression
 
     const params = {
-      Key: { id: email },
+      Key: {
+        id: email
+      },
       TableName: USERS_TABLE + process.env.ENVIRONMENT,
       ExpressionAttributeNames: expressionAttributeNames,
       ExpressionAttributeValues: expressionAttributeValues,

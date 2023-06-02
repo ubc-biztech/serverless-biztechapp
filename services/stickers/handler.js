@@ -1,7 +1,11 @@
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
-import { isEmpty } from "../../lib/utils";
-import { STICKERS_TABLE } from "../../constants/tables";
+import {
+  isEmpty
+} from "../../lib/utils";
+import {
+  STICKERS_TABLE
+} from "../../constants/tables";
 
 export const getAll = async(event, ctx, callback) => {
   try {
@@ -9,7 +13,8 @@ export const getAll = async(event, ctx, callback) => {
     const stickers = await db.scan(STICKERS_TABLE);
 
     // re-organize the response
-    let response = {};
+    let response = {
+    };
     if (stickers !== null) response = helpers.createResponse(200, stickers);
 
     // return the response object
@@ -25,9 +30,18 @@ export const create = async(event, ctx, callback) => {
     const data = JSON.parse(event.body);
 
     helpers.checkPayloadProps(data, {
-      id: { required: true, type: "string" },
-      name: { required: true, type: "string" },
-      url: { required: true, type: "string" }
+      id: {
+        required: true,
+        type: "string"
+      },
+      name: {
+        required: true,
+        type: "string"
+      },
+      url: {
+        required: true,
+        type: "string"
+      }
     });
 
     const existingSticker = await db.getOne(data.id, STICKERS_TABLE);

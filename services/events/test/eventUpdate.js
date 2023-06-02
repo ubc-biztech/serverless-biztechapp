@@ -7,7 +7,9 @@ import AWSMock from "aws-sdk-mock";
 import mochaPlugin from "serverless-mocha-plugin";
 const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper("eventUpdate", "/handler.js", "update");
-import { EVENTS_TABLE } from "../../../constants/tables";
+import {
+  EVENTS_TABLE
+} from "../../../constants/tables";
 
 const updatePayload = {
   id: "existingEvent1",
@@ -28,7 +30,10 @@ const updatePayload = {
 };
 
 describe("eventUpdate", () => {
-  const existingEvents = [{ id: "existingEvent1", year: 2020 }];
+  const existingEvents = [{
+    id: "existingEvent1",
+    year: 2020
+  }];
 
   before(() => {
     // Mocks the GET request to DyanmoDB
@@ -36,10 +41,18 @@ describe("eventUpdate", () => {
       // Check if the table exists first
       if (params.TableName.includes(EVENTS_TABLE)) {
         // Check if an entry with the same id and year already exists in our table
-        if (params.Key.id && params.Key.year && existingEvents.some(key => key.id === params.Key.id && key.year === params.Key.year)) callback(null, { Item: { id: params.Key.id, year: params.Key.year, capac: 100 } });
+        if (params.Key.id && params.Key.year && existingEvents.some(key => key.id === params.Key.id && key.year === params.Key.year)) callback(null, {
+          Item: {
+            id: params.Key.id,
+            year: params.Key.year,
+            capac: 100
+          }
+        });
 
         // Id and year does not exist in our table
-        else callback(null, { Item: null });
+        else callback(null, {
+          Item: null
+        });
       }
     });
 
@@ -56,7 +69,10 @@ describe("eventUpdate", () => {
   });
 
   it("return 400 for trying to update an event with no id", async () => {
-    const response = await wrapped.run({ pathParameters: {} });
+    const response = await wrapped.run({
+      pathParameters: {
+      }
+    });
     expect(response.statusCode).to.be.equal(400);
   });
 
@@ -64,7 +80,10 @@ describe("eventUpdate", () => {
     const unknownId = "nonExistingEvent";
     const validYear = existingEvents[0].year;
     const response = await wrapped.run({
-      pathParameters: { id: unknownId, year: validYear },
+      pathParameters: {
+        id: unknownId,
+        year: validYear
+      },
       body: JSON.stringify(updatePayload)
     });
     expect(response.statusCode).to.be.equal(404);
@@ -74,7 +93,10 @@ describe("eventUpdate", () => {
     const validId = existingEvents[0].id;
     const unknownYear = 12345;
     const response = await wrapped.run({
-      pathParameters: { id: validId, year: unknownYear },
+      pathParameters: {
+        id: validId,
+        year: unknownYear
+      },
       body: JSON.stringify(updatePayload)
     });
     expect(response.statusCode).to.be.equal(404);
@@ -85,7 +107,10 @@ describe("eventUpdate", () => {
     const validYear = existingEvents[0].year;
 
     const response = await wrapped.run({
-      pathParameters: { id: validId, year: validYear },
+      pathParameters: {
+        id: validId,
+        year: validYear
+      },
       body: JSON.stringify(updatePayload)
     });
     expect(response.statusCode).to.be.equal(200);

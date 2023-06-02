@@ -1,12 +1,19 @@
-import { v4 as uuidv4 } from "uuid";
+import {
+  v4 as uuidv4
+} from "uuid";
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
-import { isEmpty } from "../../lib/utils";
-import { TRANSACTIONS_TABLE, USERS_TABLE } from "../../constants/tables";
+import {
+  isEmpty
+} from "../../lib/utils";
+import {
+  TRANSACTIONS_TABLE, USERS_TABLE
+} from "../../constants/tables";
 
 export const getAll = async (event, ctx, callback) => {
   try {
-    const filters = {};
+    const filters = {
+    };
 
     // check if a query was provided
     const userId = event && event.queryStringParameters && event.queryStringParameters.userId;
@@ -22,7 +29,8 @@ export const getAll = async (event, ctx, callback) => {
     // scan the table
     const transaction = await db.scan(TRANSACTIONS_TABLE, filters);
 
-    let items = {};
+    let items = {
+    };
 
     // re-organize the response
     if(userId && transaction !== null) {
@@ -32,7 +40,8 @@ export const getAll = async (event, ctx, callback) => {
     }
     else if(userId) {
       items.count = 0;
-      items.transactions = {};
+      items.transactions = {
+      };
       items.totalCredits = 0;
     }
     else if(transaction !== null) items = transaction;
@@ -55,9 +64,18 @@ export const create = async (event, ctx, callback) => {
 
     // check request body
     helpers.checkPayloadProps(data, {
-      userId: { required: true, type: "number" },
-      reason: { required: true, type: "string" },
-      credits: { required: true, type: "number" },
+      userId: {
+        required: true,
+        type: "number"
+      },
+      reason: {
+        required: true,
+        type: "string"
+      },
+      credits: {
+        required: true,
+        type: "number"
+      },
     });
 
     // check that the user id exists

@@ -7,15 +7,22 @@ import AWSMock from "aws-sdk-mock";
 import mochaPlugin from "serverless-mocha-plugin";
 const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper("eventGet", "/handler.js", "get");
-import { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } from "../../../constants/tables";
+import {
+  EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE
+} from "../../../constants/tables";
 
 import eventData from "./events.json";
 const event = eventData.Items[0];
-const getEventResponse = { Item: event };
+const getEventResponse = {
+  Item: event
+};
 import getEventRegistrationResponse from "./eventRegistrations.json";
 
 describe("eventGet", () => {
-  const existingEvents = [{ id: "existingEvent1", year: 2020 }];
+  const existingEvents = [{
+    id: "existingEvent1",
+    year: 2020
+  }];
 
   before(() => {
     // Mocks the GET request to DyanmoDB
@@ -26,7 +33,9 @@ describe("eventGet", () => {
         if (params.Key.id && params.Key.year && existingEvents.some(key => key.id === params.Key.id && key.year === params.Key.year)) callback(null, getEventResponse);
 
         // Id and year does not exist in our table
-        else callback(null, { Item: null });
+        else callback(null, {
+          Item: null
+        });
       }
     });
 
@@ -44,10 +53,19 @@ describe("eventGet", () => {
 
       if(tables.includes(USERS_TABLE)) {
         const table = tables[0];
-        const response = { Responses: {} };
+        const response = {
+          Responses: {
+          }
+        };
 
         // return users here
-        response.Responses[table] = [{ id: 1 }, { id: 2 }, { id: 3 }];
+        response.Responses[table] = [{
+          id: 1
+        }, {
+          id: 2
+        }, {
+          id: 3
+        }];
 
         callback(null, response);
       } else callback(new Error("error during batch get!"));
@@ -60,14 +78,24 @@ describe("eventGet", () => {
   it("return 404 for trying to get an event with unknown id", async () => {
     const unknownId = "nonExistingEvent";
     const validYear = existingEvents[0].year;
-    const response = await wrapped.run({ pathParameters: { id: unknownId, year:validYear } });
+    const response = await wrapped.run({
+      pathParameters: {
+        id: unknownId,
+        year:validYear
+      }
+    });
     expect(response.statusCode).to.be.equal(404);
   });
 
   it("return 404 for trying to get an event with unknown year", async () => {
     const validId = existingEvents[0].id;
     const unknownYear = 12345;
-    const response = await wrapped.run({ pathParameters: { id: validId, year:unknownYear } });
+    const response = await wrapped.run({
+      pathParameters: {
+        id: validId,
+        year:unknownYear
+      }
+    });
     expect(response.statusCode).to.be.equal(404);
   });
 
@@ -75,7 +103,12 @@ describe("eventGet", () => {
     const validId = existingEvents[0].id;
     const validYear = existingEvents[0].year;
 
-    const response = await wrapped.run({ pathParameters: { id: validId, year:validYear } });
+    const response = await wrapped.run({
+      pathParameters: {
+        id: validId,
+        year:validYear
+      }
+    });
     expect(response.statusCode).to.be.equal(200);
   });
 
@@ -83,7 +116,16 @@ describe("eventGet", () => {
     const validId = existingEvents[0].id;
     const validYear = existingEvents[0].year;
 
-    const response = await wrapped.run({ queryStringParameters: { count: "true", users: "true" }, pathParameters: { id: validId, year: validYear } });
+    const response = await wrapped.run({
+      queryStringParameters: {
+        count: "true",
+        users: "true"
+      },
+      pathParameters: {
+        id: validId,
+        year: validYear
+      }
+    });
     expect(response.statusCode).to.be.equal(406);
   });
 
@@ -91,7 +133,15 @@ describe("eventGet", () => {
     const validId = existingEvents[0].id;
     const validYear = existingEvents[0].year;
 
-    const response = await wrapped.run({ queryStringParameters: { count: "true" }, pathParameters: { id: validId, year: validYear } });
+    const response = await wrapped.run({
+      queryStringParameters: {
+        count: "true"
+      },
+      pathParameters: {
+        id: validId,
+        year: validYear
+      }
+    });
     expect(response.statusCode).to.be.equal(200);
 
     const body = JSON.parse(response.body);
@@ -104,7 +154,15 @@ describe("eventGet", () => {
     const validId = existingEvents[0].id;
     const validYear = existingEvents[0].year;
 
-    const response = await wrapped.run({ queryStringParameters: { users: "true" }, pathParameters: { id: validId, year: validYear } });
+    const response = await wrapped.run({
+      queryStringParameters: {
+        users: "true"
+      },
+      pathParameters: {
+        id: validId,
+        year: validYear
+      }
+    });
     expect(response.statusCode).to.be.equal(200);
 
     const body = JSON.parse(response.body);

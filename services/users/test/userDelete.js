@@ -27,7 +27,9 @@ describe("userDelete", () => {
         ...userPayload,
         id: params.Key.id
       };
-      callback(null, { Item: returnValue });
+      callback(null, {
+        Item: returnValue
+      });
     });
 
     AWSMock.mock("DynamoDB.DocumentClient", "delete", (params, callback) => {
@@ -43,19 +45,30 @@ describe("userDelete", () => {
   });
 
   it("return 400 for trying to delete a user with no email", async () => {
-    const response = await wrapped.run({ pathParameters: {} });
+    const response = await wrapped.run({
+      pathParameters: {
+      }
+    });
     expect(response.statusCode).to.be.equal(400);
   });
 
   it("return 404 for trying to delete a user that does not exist", async () => {
     const invalidEmail = "asdf@gmail.com";
 
-    const response = await wrapped.run({ pathParameters: { email: invalidEmail } });
+    const response = await wrapped.run({
+      pathParameters: {
+        email: invalidEmail
+      }
+    });
     expect(response.statusCode).to.be.equal(404);
   });
 
   it("return 200 for successfully deleting a user", async () => {
-    const response = await wrapped.run({ pathParameters: { email: email } });
+    const response = await wrapped.run({
+      pathParameters: {
+        email: email
+      }
+    });
     expect(response.statusCode).to.be.equal(200);
   });
 });

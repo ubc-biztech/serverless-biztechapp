@@ -17,9 +17,13 @@ describe("memberGet", () => {
   before(() => {
     AWSMock.mock("DynamoDB.DocumentClient", "get", function (params, callback) {
       if (params.Key.id == email) {
-        Promise.resolve(callback(null, { Item: "not null member" }));
+        Promise.resolve(callback(null, {
+          Item: "not null member"
+        }));
       } else if (params.Key.id == nonexistentEmail) {
-        Promise.resolve(callback(null, { Item: null }));
+        Promise.resolve(callback(null, {
+          Item: null
+        }));
       }
     });
   });
