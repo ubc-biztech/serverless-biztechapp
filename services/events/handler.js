@@ -260,18 +260,18 @@ export const get = async (event, ctx, callback) => {
 
     //TODO: fix the else-if conditions
     // if both count and users are true, throw error 
-    if (queryString && queryString.count == "true" && queryString.users == "true") {
+    if (queryString && queryString.count === "true" && queryString.users === "true") {
       throw helpers.createResponse(406, {
         message: "Only one true parameter is permissible at a time"
       });
-    } else if (queryString && queryString.count == "true") {
+    } else if (queryString && queryString.count === "true") {
       // return counts
       const counts = await eventHelpers.getEventCounts(`${id};${year}`);
 
       const response = helpers.createResponse(200, counts);
       callback(null, response);
       return null;
-    } else if (queryString && queryString.users == "true") {
+    } else if (queryString && queryString.users === "true") {
       let registrationList = [];
 
       try {
