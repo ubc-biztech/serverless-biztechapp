@@ -10,11 +10,21 @@ let wrapped = mochaPlugin.getWrapper("registrationGet", "/handler.js", "get");
 
 const email = "test@gmail.com";
 
-const registrationPayload = [{ id: email, ["eventID;year"]: "event;2020", updatedAt: 1600669844493 }, { id: email, ["eventID;year"]: "event;2020", updatedAt: 1600669844493 }];
+const registrationPayload = [{
+  id: email,
+  ["eventID;year"]: "event;2020",
+  updatedAt: 1600669844493
+}, {
+  id: email,
+  ["eventID;year"]: "event;2020",
+  updatedAt: 1600669844493
+}];
 
 describe("registrationUpdateHelper", () => {
   before(() => {
-    const callbackReturn = { Items: registrationPayload };
+    const callbackReturn = {
+      Items: registrationPayload
+    };
 
     AWSMock.mock("DynamoDB.DocumentClient", "scan", function (params, callback) {
       callback(null, callbackReturn);

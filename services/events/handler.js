@@ -3,9 +3,15 @@ import AWS from "aws-sdk";
 import eventHelpers from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
-import { alphabeticalComparer, isEmpty } from "../../lib/utils";
-import { MAX_BATCH_ITEM_COUNT } from "../../constants/dynamodb";
-import { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } from "../../constants/tables";
+import {
+  alphabeticalComparer, isEmpty
+} from "../../lib/utils";
+import {
+  MAX_BATCH_ITEM_COUNT
+} from "../../constants/dynamodb";
+import {
+  EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE
+} from "../../constants/tables";
 
 export const create = async (event, ctx, callback) => {
   try {
@@ -13,12 +19,22 @@ export const create = async (event, ctx, callback) => {
     const data = JSON.parse(event.body);
 
     helpers.checkPayloadProps(data, {
-      id: { required: true },
-      year: { required: true, type: "number" },
-      capac: { required: true, type: "number" }
+      id: {
+        required: true
+      },
+      year: {
+        required: true,
+        type: "number"
+      },
+      capac: {
+        required: true,
+        type: "number"
+      }
     });
 
-    const existingEvent = await db.getOne(data.id, EVENTS_TABLE, { year: data.year });
+    const existingEvent = await db.getOne(data.id, EVENTS_TABLE, {
+      year: data.year
+    });
     if(!isEmpty(existingEvent)) throw helpers.duplicateResponse("event id and year", data);
 
 
@@ -88,9 +104,13 @@ export const del = async (event, ctx, callback) => {
     const year = parseInt(event.pathParameters.year, 10);
     if(isNaN(year)) throw helpers.inputError("Year path parameter must be a number", event.pathParameters);
 
-    const existingEvent = await db.getOne(id, EVENTS_TABLE, { year });
+    const existingEvent = await db.getOne(id, EVENTS_TABLE, {
+      year
+    });
     if(isEmpty(existingEvent)) throw helpers.notFoundResponse("event", id);
-    const res = await db.deleteOne(id, EVENTS_TABLE, { year });
+    const res = await db.deleteOne(id, EVENTS_TABLE, {
+      year
+    });
 
     const response = helpers.createResponse(200, {
       message: `Deleted event with id '${id}' for the year ${year}!`,
@@ -110,7 +130,8 @@ export const del = async (event, ctx, callback) => {
 // /events 
 export const getAll = async (event, ctx, callback) => {
   try {
-    let filterExpression = {};
+    let filterExpression = {
+    };
 
     //Set up query by year if exists
     if(event && event.queryStringParameters && event.queryStringParameters.hasOwnProperty("year")) {
@@ -162,7 +183,9 @@ export const update = async (event, ctx, callback) => {
     const year = parseInt(event.pathParameters.year, 10);
     if(isNaN(year)) throw helpers.inputError("Year path parameter must be a number", event.pathParameters);
 
-    const existingEvent = await db.getOne(id, EVENTS_TABLE, { year });
+    const existingEvent = await db.getOne(id, EVENTS_TABLE, {
+      year
+    });
     if(isEmpty(existingEvent)) throw helpers.notFoundResponse("event", id, year);
     const data = JSON.parse(event.body);
     if (Array.isArray(data.registrationQuestions)) {
@@ -191,10 +214,16 @@ export const update = async (event, ctx, callback) => {
 
     // construct the param object
     let params = {
-      Key: { id, year },
+      Key: {
+        id,
+        year
+      },
       TableName: EVENTS_TABLE + process.env.ENVIRONMENT,
       ExpressionAttributeValues: expressionAttributeValues,
-      ExpressionAttributeNames: { ...expressionAttributeNames, "#vyear": "year" },
+      ExpressionAttributeNames: {
+        ...expressionAttributeNames,
+        "#vyear": "year"
+      },
       UpdateExpression: updateExpression,
       ReturnValues: "UPDATED_NEW",
       ConditionExpression: "attribute_exists(id) and attribute_exists(#vyear)"
@@ -273,7 +302,8 @@ export const get = async (event, ctx, callback) => {
         });
       }
       let keysForRequest = registrationList.map(registrationObj => {
-        const keyEntry = {};
+        const keyEntry = {
+        };
         keyEntry.id = registrationObj.id;
         return keyEntry;
       });
@@ -312,7 +342,9 @@ export const get = async (event, ctx, callback) => {
       return null;
     } else {
       // if none of the optional params are true, then return the event
-      const event = await db.getOne(id, EVENTS_TABLE, { year });
+      const event = await db.getOne(id, EVENTS_TABLE, {
+        year
+      });
 
       if(isEmpty(event)) throw helpers.notFoundResponse("event", id, year);
 

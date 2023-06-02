@@ -7,7 +7,9 @@ import AWSMock from "aws-sdk-mock";
 import mochaPlugin from "serverless-mocha-plugin";
 const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper("eventCreate", "/handler.js", "create");
-import { EVENTS_TABLE } from "../../../constants/tables";
+import {
+  EVENTS_TABLE
+} from "../../../constants/tables";
 
 const eventPayload = {
   id: "localTestEvent",
@@ -55,10 +57,14 @@ describe("eventCreate", () => {
       if (params.TableName.includes(EVENTS_TABLE)) {
         // Check if an entry with the same id and year already exists in our table
         if (params.Key.id && params.Key.year && createdEventsIdAndYear.some(key => key.id === params.Key.id && key.year === params.Key.year))
-          callback(null, { Item: eventPayloadWithRegistrationQuestionIds });
+          callback(null, {
+            Item: eventPayloadWithRegistrationQuestionIds
+          });
 
         // Id and year does not exist in our table
-        else callback(null, { Item: null });
+        else callback(null, {
+          Item: null
+        });
       }
     });
 
@@ -69,7 +75,10 @@ describe("eventCreate", () => {
 
       // Created this new entry in our table
       else {
-        createdEventsIdAndYear.push({ id: params.Item.id, year: params.Item.year });
+        createdEventsIdAndYear.push({
+          id: params.Item.id,
+          year: params.Item.year
+        });
         callback(null, "Successfully put item in DynamoDB");
       }
     });
@@ -85,7 +94,9 @@ describe("eventCreate", () => {
     };
     delete invalidPayload.id;
 
-    const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(invalidPayload)
+    });
     expect(response.statusCode).to.be.equal(406);
   });
 
@@ -95,7 +106,9 @@ describe("eventCreate", () => {
     };
     delete invalidPayload.year;
 
-    const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(invalidPayload)
+    });
     expect(response.statusCode).to.be.equal(406);
   });
 
@@ -105,7 +118,9 @@ describe("eventCreate", () => {
     };
     delete invalidPayload.capac;
 
-    const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(invalidPayload)
+    });
     expect(response.statusCode).to.be.equal(406);
   });
 
@@ -114,7 +129,9 @@ describe("eventCreate", () => {
       ...eventPayload,
     };
 
-    const response = await wrapped.run({ body: JSON.stringify(payload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(payload)
+    });
     expect(response.statusCode).to.be.equal(201);
   });
 
@@ -123,7 +140,9 @@ describe("eventCreate", () => {
       ...eventPayload,
     };
 
-    const response = await wrapped.run({ body: JSON.stringify(payload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(payload)
+    });
     expect(response.statusCode).to.be.equal(409);
   });
 
@@ -134,7 +153,9 @@ describe("eventCreate", () => {
       id: "localTestEvent"
     };
 
-    const response = await wrapped.run({ body: JSON.stringify(payload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(payload)
+    });
     expect(response.statusCode).to.be.equal(201);
   });
 
@@ -146,7 +167,9 @@ describe("eventCreate", () => {
     };
     console.log(payload);
 
-    const response = await wrapped.run({ body: JSON.stringify(payload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(payload)
+    });
     expect(response.statusCode).to.be.equal(201);
   });
 });

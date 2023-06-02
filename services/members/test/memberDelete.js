@@ -19,7 +19,9 @@ describe("memberDelete", () => {
       if(existingMembers.includes(params.Key.id)) returnValue = {
         id: params.Key.id
       };
-      callback(null, { Item: returnValue });
+      callback(null, {
+        Item: returnValue
+      });
     });
 
     AWSMock.mock("DynamoDB.DocumentClient", "delete", (params, callback) => {
@@ -35,22 +37,35 @@ describe("memberDelete", () => {
   });
 
   it("returns 200 when deleting a member", async () => {
-    const response = await wrapped.run({ pathParameters: { email : email } });
+    const response = await wrapped.run({
+      pathParameters: {
+        email : email
+      }
+    });
     expect(response.statusCode).to.equal(200);
   });
 
   it("returns 406 when deleting a member with invalid email", async () => {
-    const response = await wrapped.run({ pathParameters: { email : "232wdwd" } });
+    const response = await wrapped.run({
+      pathParameters: {
+        email : "232wdwd"
+      }
+    });
     expect(response.statusCode).to.equal(406);
   });
 
   it("returns 404 when deleting a member that does not exist", async () => {
-    const response = await wrapped.run({ pathParameters: { email : "invalidmember@gmail.com" } });
+    const response = await wrapped.run({
+      pathParameters: {
+        email : "invalidmember@gmail.com"
+      }
+    });
     expect(response.statusCode).to.equal(404);
   });
 
   it("returns 400 when deleting a member with no email", async () => {
-    const response = await wrapped.run({});
+    const response = await wrapped.run({
+    });
     expect(response.statusCode).to.equal(400);
   });
 });

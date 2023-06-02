@@ -28,7 +28,9 @@ describe("prizeCreate", () => {
         ...prizePayload,
         id: params.Key.id
       };
-      callback(null, { Item: returnValue });
+      callback(null, {
+        Item: returnValue
+      });
     });
 
     AWSMock.mock("DynamoDB.DocumentClient", "put", (params, callback) => {
@@ -50,7 +52,9 @@ describe("prizeCreate", () => {
     };
     delete invalidPayload.id;
 
-    const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(invalidPayload)
+    });
     expect(response.statusCode).to.be.equal(406);
   });
 
@@ -60,7 +64,9 @@ describe("prizeCreate", () => {
     };
     delete invalidPayload.name;
 
-    const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(invalidPayload)
+    });
     expect(response.statusCode).to.be.equal(406);
   });
 
@@ -70,7 +76,9 @@ describe("prizeCreate", () => {
     };
     delete invalidPayload.price;
 
-    const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(invalidPayload)
+    });
     expect(response.statusCode).to.be.equal(406);
   });
 
@@ -80,7 +88,9 @@ describe("prizeCreate", () => {
       name: 123456789
     };
 
-    const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(invalidPayload)
+    });
     expect(response.statusCode).to.be.equal(406);
   });
 
@@ -90,7 +100,9 @@ describe("prizeCreate", () => {
       imageHash: 123456789
     };
 
-    const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(invalidPayload)
+    });
     expect(response.statusCode).to.be.equal(406);
   });
 
@@ -100,7 +112,9 @@ describe("prizeCreate", () => {
       price: "not a price"
     };
 
-    const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(invalidPayload)
+    });
     expect(response.statusCode).to.be.equal(406);
   });
 
@@ -110,17 +124,23 @@ describe("prizeCreate", () => {
       links: "not a link object"
     };
 
-    const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(invalidPayload)
+    });
     expect(response.statusCode).to.be.equal(406);
   });
 
   it("return 201 for successfully creating a prize", async () => {
-    const response = await wrapped.run({ body: JSON.stringify(prizePayload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(prizePayload)
+    });
     expect(response.statusCode).to.be.equal(201);
   });
 
   it("return 409 for trying to create a prize with the same id", async () => {
-    const response = await wrapped.run({ body: JSON.stringify(prizePayload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(prizePayload)
+    });
     expect(response.statusCode).to.be.equal(409);
   });
 });

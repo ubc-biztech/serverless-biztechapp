@@ -8,7 +8,9 @@ import mochaPlugin from "serverless-mocha-plugin";
 const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper("transactionCreate", "/handler.js", "create");
 
-import { USERS_TABLE } from "../../../constants/tables";
+import {
+  USERS_TABLE
+} from "../../../constants/tables";
 
 const transactionPayload = {
   userId: 77777777,
@@ -28,13 +30,21 @@ describe("transactionCreate", () => {
       let returnValue = null;
       if(params.TableName.includes(USERS_TABLE) && userCredits[params.Key.id] !== undefined) {
         // if searching for users
-        returnValue = { id: params.Key.id, credits: userCredits[params.Key.id] };
+        returnValue = {
+          id: params.Key.id,
+          credits: userCredits[params.Key.id]
+        };
       }
       else if(createdTransactionIds.includes(params.Key.id)) {
         // if searching for transactions
-        returnValue = { ...transactionPayload, id: params.Key.id };
+        returnValue = {
+          ...transactionPayload,
+          id: params.Key.id
+        };
       }
-      callback(null, { Item: returnValue });
+      callback(null, {
+        Item: returnValue
+      });
     });
 
     AWSMock.mock("DynamoDB.DocumentClient", "put", (params, callback) => {
@@ -56,7 +66,9 @@ describe("transactionCreate", () => {
     };
     delete invalidPayload.userId;
 
-    const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(invalidPayload)
+    });
     expect(response.statusCode).to.be.equal(406);
   });
 
@@ -66,7 +78,9 @@ describe("transactionCreate", () => {
     };
     delete invalidPayload.reason;
 
-    const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(invalidPayload)
+    });
     expect(response.statusCode).to.be.equal(406);
   });
 
@@ -76,7 +90,9 @@ describe("transactionCreate", () => {
     };
     delete invalidPayload.credits;
 
-    const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(invalidPayload)
+    });
     expect(response.statusCode).to.be.equal(406);
   });
 
@@ -86,7 +102,9 @@ describe("transactionCreate", () => {
       userId: "not a user id"
     };
 
-    const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(invalidPayload)
+    });
     expect(response.statusCode).to.be.equal(406);
   });
 
@@ -96,7 +114,9 @@ describe("transactionCreate", () => {
       reason: 123456789
     };
 
-    const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(invalidPayload)
+    });
     expect(response.statusCode).to.be.equal(406);
   });
 
@@ -106,7 +126,9 @@ describe("transactionCreate", () => {
       credits: "not a credit"
     };
 
-    const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(invalidPayload)
+    });
     expect(response.statusCode).to.be.equal(406);
   });
 
@@ -116,12 +138,16 @@ describe("transactionCreate", () => {
       userId: 11111111
     };
 
-    const response = await wrapped.run({ body: JSON.stringify(invalidPayload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(invalidPayload)
+    });
     expect(response.statusCode).to.be.equal(404);
   });
 
   it("return 201 for successfully creating a transaction", async () => {
-    const response = await wrapped.run({ body: JSON.stringify(transactionPayload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(transactionPayload)
+    });
     expect(response.statusCode).to.be.equal(201);
   });
 
@@ -132,7 +158,9 @@ describe("transactionCreate", () => {
       credits: -100
     };
 
-    const response = await wrapped.run({ body: JSON.stringify(payload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(payload)
+    });
     expect(response.statusCode).to.be.equal(202);
   });
 
@@ -144,7 +172,9 @@ describe("transactionCreate", () => {
       credits: -100
     };
 
-    const response = await wrapped.run({ body: JSON.stringify(payload) });
+    const response = await wrapped.run({
+      body: JSON.stringify(payload)
+    });
     expect(response.statusCode).to.be.equal(201);
   });
 });

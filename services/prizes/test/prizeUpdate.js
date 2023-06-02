@@ -27,7 +27,9 @@ describe("prizeUpdate", () => {
         ...updatePayload,
         id: params.Key.id
       };
-      callback(null, { Item: returnValue });
+      callback(null, {
+        Item: returnValue
+      });
     });
 
     AWSMock.mock("DynamoDB.DocumentClient", "update", (params, callback) => {
@@ -53,7 +55,9 @@ describe("prizeUpdate", () => {
     const unknownId = "unknownid";
 
     const response = await wrapped.run({
-      pathParameters: { id: unknownId },
+      pathParameters: {
+        id: unknownId
+      },
       body: JSON.stringify(updatePayload)
     });
     expect(response.statusCode).to.be.equal(404);
@@ -66,7 +70,9 @@ describe("prizeUpdate", () => {
     };
 
     const response = await wrapped.run({
-      pathParameters: { id: "prize001" },
+      pathParameters: {
+        id: "prize001"
+      },
       body: JSON.stringify(invalidPayload)
     });
     expect(response.statusCode).to.be.equal(406);
@@ -79,7 +85,9 @@ describe("prizeUpdate", () => {
     };
 
     const response = await wrapped.run({
-      pathParameters: { id: "prize001" },
+      pathParameters: {
+        id: "prize001"
+      },
       body: JSON.stringify(invalidPayload)
     });
     expect(response.statusCode).to.be.equal(406);
@@ -92,7 +100,9 @@ describe("prizeUpdate", () => {
     };
 
     const response = await wrapped.run({
-      pathParameters: { id: "prize001" },
+      pathParameters: {
+        id: "prize001"
+      },
       body: JSON.stringify(invalidPayload)
     });
     expect(response.statusCode).to.be.equal(406);
@@ -105,7 +115,9 @@ describe("prizeUpdate", () => {
     };
 
     const response = await wrapped.run({
-      pathParameters: { id: "prize001" },
+      pathParameters: {
+        id: "prize001"
+      },
       body: JSON.stringify(invalidPayload)
     });
     expect(response.statusCode).to.be.equal(406);
@@ -113,7 +125,9 @@ describe("prizeUpdate", () => {
 
   it("return 200 for successfully updating a prize", async () => {
     const response = await wrapped.run({
-      pathParameters: { id: "prize002" },
+      pathParameters: {
+        id: "prize002"
+      },
       body: JSON.stringify(updatePayload)
     });
     expect(response.statusCode).to.be.equal(200);

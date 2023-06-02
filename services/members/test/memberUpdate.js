@@ -30,14 +30,18 @@ describe("memberUpdate", () => {
           ...testEntry,
           id: params.Key.id,
         };
-      callback(null, { Item: returnValue });
+      callback(null, {
+        Item: returnValue
+      });
     });
 
     AWSMock.mock(
       "DynamoDB.DocumentClient",
       "update",
       function (params, callback) {
-        Promise.resolve(callback(null, { Item: "not null user" }));
+        Promise.resolve(callback(null, {
+          Item: "not null user"
+        }));
       }
     );
   });
@@ -51,7 +55,9 @@ describe("memberUpdate", () => {
 
     const response = await wrapped.run({
       body: JSON.stringify(testEntry),
-      pathParameters: { email: badEmail },
+      pathParameters: {
+        email: badEmail
+      },
     });
     expect(response.statusCode).to.equal(406);
   });
@@ -61,7 +67,9 @@ describe("memberUpdate", () => {
 
     const response = await wrapped.run({
       body: JSON.stringify(testEntry),
-      pathParameters: { email: unknownEmail },
+      pathParameters: {
+        email: unknownEmail
+      },
     });
     expect(response.statusCode).to.equal(404);
   });
@@ -69,7 +77,9 @@ describe("memberUpdate", () => {
   it("returns 200 when given valid data", async () => {
     const response = await wrapped.run({
       body: JSON.stringify(testEntry),
-      pathParameters: { email },
+      pathParameters: {
+        email
+      },
     });
     expect(response.statusCode).to.equal(200);
   });

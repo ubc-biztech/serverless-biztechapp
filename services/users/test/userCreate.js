@@ -30,7 +30,9 @@ describe("userCreate", () => {
   });
 
   it("returns 201 when given valid data", async () => {
-    const response = await wrapped.run({ body: JSON.stringify(testEntry) });
+    const response = await wrapped.run({
+      body: JSON.stringify(testEntry)
+    });
     expect(response.statusCode).to.equal(201);
     const responseBody = JSON.parse(response.body);
     expect(responseBody.params.Item.id).to.equal(email);
@@ -43,7 +45,9 @@ describe("userCreate", () => {
     };
     delete body.email;
 
-    const response = await wrapped.run({ body: JSON.stringify(body) });
+    const response = await wrapped.run({
+      body: JSON.stringify(body)
+    });
     expect(response.statusCode).to.equal(406);
     const responseBody = JSON.parse(response.body);
     expect(responseBody.message).to.equal("Invalid email");
@@ -55,7 +59,9 @@ describe("userCreate", () => {
       email: "adminUser@ubcbiztech.com",
     };
 
-    const response = await wrapped.run({ body: JSON.stringify(body) });
+    const response = await wrapped.run({
+      body: JSON.stringify(body)
+    });
     expect(response.statusCode).to.equal(201);
     const responseBody = JSON.parse(response.body);
     expect(responseBody.params.Item.admin).to.equal(true);

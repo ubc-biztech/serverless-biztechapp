@@ -1,6 +1,8 @@
 import teamHelpers from "./helpers";
 import helpers from "../../lib/handlerHelpers";
-import { TEAMS_TABLE } from "../../constants/tables";
+import {
+  TEAMS_TABLE
+} from "../../constants/tables";
 import db from "../../lib/db.js";
 
 /*
@@ -24,10 +26,22 @@ export const makeTeam = async (event, ctx, callback) => {
     const data = JSON.parse(event.body);
 
     helpers.checkPayloadProps(data, {
-      team_name: { required: true, type: "string" },
-      eventID: { required: true, type: "string" },
-      year: { required: true, type: "number" },
-      memberIDs: { required: true, type: "object" }, // 'object' means array in this case
+      team_name: {
+        required: true,
+        type: "string"
+      },
+      eventID: {
+        required: true,
+        type: "string"
+      },
+      year: {
+        required: true,
+        type: "number"
+      },
+      memberIDs: {
+        required: true,
+        type: "object"
+      }, // 'object' means array in this case
     });
 
     await teamHelpers.makeTeam(data.team_name, data.eventID, data.year, data.memberIDs).then(res => {
@@ -67,9 +81,18 @@ export const getTeamFromUserID = async (event, ctx, callback) => {
   const data = JSON.parse(event.body);
 
   helpers.checkPayloadProps(data, {
-    user_id: { required: true, type: "string" },
-    eventID: { required: true, type: "string" },
-    year: { required: true, type: "number" },
+    user_id: {
+      required: true,
+      type: "string"
+    },
+    eventID: {
+      required: true,
+      type: "string"
+    },
+    year: {
+      required: true,
+      type: "number"
+    },
   });
 
   await teamHelpers._getTeamFromUserRegistration(data.user_id, data.eventID, data.year).then(res => {
@@ -96,7 +119,9 @@ export const getTeamFromUserID = async (event, ctx, callback) => {
 
 export const get = async (event, ctx, callback) => {
   if (!event.pathParameters || !event.pathParameters.eventID || !event.pathParameters.year) throw helpers.missingPathParamResponse("event", "year");
-  const { eventID, year } = event.pathParameters;
+  const {
+    eventID, year
+  } = event.pathParameters;
 
   try {
     const eventIDYear = eventID + ";" + year;
@@ -139,10 +164,22 @@ export const changeTeamName = async (event, ctx, callback) => {
     const data = JSON.parse(event.body);
 
     helpers.checkPayloadProps(data, {
-      user_id: { required: true, type: "string" },
-      eventID: { required: true, type: "string" },
-      year: { required: true, type: "number" },
-      team_name: { required: true, type: "string" },
+      user_id: {
+        required: true,
+        type: "string"
+      },
+      eventID: {
+        required: true,
+        type: "string"
+      },
+      year: {
+        required: true,
+        type: "number"
+      },
+      team_name: {
+        required: true,
+        type: "string"
+      },
     });
 
     await teamHelpers.changeTeamName(data.user_id, data.eventID, data.year, data.team_name).then(res => {
@@ -194,11 +231,26 @@ export const addQRScan = async (event, ctx, callback) => {
     const data = JSON.parse(event.body);
 
     helpers.checkPayloadProps(data, {
-      user_id: { required: true, type: "string" },
-      qr_code_id: { required: true, type: "string" },
-      eventID: { required: true, type: "string" },
-      year: { required: true, type: "number" },
-      points: { required: false, type: "number" },
+      user_id: {
+        required: true,
+        type: "string"
+      },
+      qr_code_id: {
+        required: true,
+        type: "string"
+      },
+      eventID: {
+        required: true,
+        type: "string"
+      },
+      year: {
+        required: true,
+        type: "number"
+      },
+      points: {
+        required: false,
+        type: "number"
+      },
     });
 
     const points = data.points ? data.points : 0;
@@ -243,10 +295,22 @@ export const checkQRScanned = async (event, ctx, callback) => {
     const data = JSON.parse(event.body);
 
     helpers.checkPayloadProps(data, {
-      user_id: { required: true, type: "string" },
-      qr_code_id: { required: true, type: "string" },
-      eventID: { required: true, type: "string" },
-      year: { required: true, type: "number" },
+      user_id: {
+        required: true,
+        type: "string"
+      },
+      qr_code_id: {
+        required: true,
+        type: "string"
+      },
+      eventID: {
+        required: true,
+        type: "string"
+      },
+      year: {
+        required: true,
+        type: "number"
+      },
     });
 
     await teamHelpers.checkQRScanned(data.user_id, data.qr_code_id, data.eventID, data.year).then(bool => {

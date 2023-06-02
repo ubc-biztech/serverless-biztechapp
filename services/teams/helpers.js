@@ -1,6 +1,10 @@
 import AWS from "aws-sdk";
-import { v4 as uuidv4 } from "uuid";
-import { USER_REGISTRATIONS_TABLE, TEAMS_TABLE } from "../../constants/tables";
+import {
+  v4 as uuidv4
+} from "uuid";
+import {
+  USER_REGISTRATIONS_TABLE, TEAMS_TABLE
+} from "../../constants/tables";
 import helpers from "../../lib/handlerHelpers.js";
 import db from "../../lib/db.js";
 
@@ -76,7 +80,7 @@ export default {
       Item: team
     };
 
-    return await docClient.put(params).promise().then(_ => {
+    return await docClient.put(params).promise().then(() => {
       return team;
     });
   },
@@ -89,8 +93,8 @@ export default {
     const eventID_year = eventID + ";" + year;
 
     // First, check if ALL members are registered for the event with eventID;year. Iterate through memberIDs.
-    for (let i = 0; i < memberIDs.length; i++) {
-      const memberID = memberIDs[i];
+    for (const element of memberIDs) {
+      const memberID = element;
 
       // get user's registration
       await db.getOne(memberID, USER_REGISTRATIONS_TABLE, {
@@ -115,12 +119,13 @@ export default {
         transactions: [],
         inventory: [],
         submission: "",
-        metadata: {}
+        metadata: {
+        }
       }
     };
 
     try {
-      return await docClient.put(params).promise().then(res => {
+      return await docClient.put(params).promise().then(() => {
         // update all members' teamIDs in the User Registrations table
         for (const element of memberIDs) {
           const memberID = element;
@@ -143,7 +148,7 @@ export default {
             docClient.put({
               TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
               Item: res
-            }).promise().then(res => {
+            }).promise().then(() => {
 
             }).catch(err => {
               console.log(err);

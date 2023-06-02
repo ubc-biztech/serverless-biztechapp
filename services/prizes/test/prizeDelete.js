@@ -28,7 +28,9 @@ describe("prizeDelete", () => {
         ...prizePayload,
         id: params.Key.id
       };
-      callback(null, { Item: returnValue });
+      callback(null, {
+        Item: returnValue
+      });
     });
 
 
@@ -45,21 +47,32 @@ describe("prizeDelete", () => {
   });
 
   it("return 400 for trying to delete a prize with no id", async () => {
-    const response = await wrapped.run({ pathParameters: {} });
+    const response = await wrapped.run({
+      pathParameters: {
+      }
+    });
     expect(response.statusCode).to.be.equal(400);
   });
 
   it("return 404 for trying to delete a prize that doesn't exist", async () => {
     const unknownId = "nonExistantPrize";
 
-    const response = await wrapped.run({ pathParameters: { id: unknownId } });
+    const response = await wrapped.run({
+      pathParameters: {
+        id: unknownId
+      }
+    });
     expect(response.statusCode).to.be.equal(404);
   });
 
   it("return 200 for successfully deleting a prize", async () => {
     const validId = existingPrizes[0];
 
-    const response = await wrapped.run({ pathParameters: { id: validId } });
+    const response = await wrapped.run({
+      pathParameters: {
+        id: validId
+      }
+    });
     expect(response.statusCode).to.be.equal(200);
   });
 });

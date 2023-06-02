@@ -13,7 +13,8 @@ describe("hello", () => {
   });
 
   it("hello test", async () => {
-    const response = await wrapped.run({});
+    const response = await wrapped.run({
+    });
     const body = JSON.parse(response.body);
     expect(response).to.not.be.empty;
     expect(body.message).to.equal("Yeet!");

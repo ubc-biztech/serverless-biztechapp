@@ -14,7 +14,9 @@ describe("transactionGetAll", () => {
   before(() => {
     AWSMock.mock("DynamoDB.DocumentClient", "scan", (params, callback) => {
       const response = (params && params.ExpressionAttributeValues)
-        ? { Items: getTransactionsResponse.Items.filter((transaction) => params.ExpressionAttributeValues[":query"] === transaction.userId) }
+        ? {
+          Items: getTransactionsResponse.Items.filter((transaction) => params.ExpressionAttributeValues[":query"] === transaction.userId)
+        }
         : getTransactionsResponse;
       callback(null, response);
     });
@@ -39,7 +41,11 @@ describe("transactionGetAll", () => {
   });
 
   it("return 200 response for getting all transactions for a specific user", async () => {
-    const response = await wrapped.run({ queryStringParameters: { userId: 77777771 } });
+    const response = await wrapped.run({
+      queryStringParameters: {
+        userId: 77777771
+      }
+    });
     expect(response.statusCode).to.be.equal(200);
 
     const body = JSON.parse(response.body);

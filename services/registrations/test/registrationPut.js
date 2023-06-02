@@ -7,7 +7,9 @@ import mochaPlugin from "serverless-mocha-plugin";
 const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper("registrationPut", "/handler.js", "put");
 import AWSMock from "aws-sdk-mock";
-import { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } from "../../../constants/tables";
+import {
+  EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE
+} from "../../../constants/tables";
 
 const email = "test@gmail.com";
 const email2 = "test2@gmail.com";
@@ -53,20 +55,35 @@ describe("registrationPut", () => {
   before(() => {
     AWSMock.mock("DynamoDB.DocumentClient", "get", (params, callback) => {
       if(params.TableName.includes(EVENTS_TABLE)) {
-        if(params.Key.id === "event" && params.Key.year === 2020) callback(null, { Item: eventResponse });
-        else callback(null, { Item: null });
+        if(params.Key.id === "event" && params.Key.year === 2020) callback(null, {
+          Item: eventResponse
+        });
+        else callback(null, {
+          Item: null
+        });
       }
       else if(params.TableName.includes(USERS_TABLE)) {
-        if(params.Key.id === email) callback(null, { Item: userResponse });
-        else if(params.Key.id === email2) callback(null, { Item: { ...userResponse, id: email2 } });
-        else callback(null, { Item: null });
+        if(params.Key.id === email) callback(null, {
+          Item: userResponse
+        });
+        else if(params.Key.id === email2) callback(null, {
+          Item: {
+            ...userResponse,
+            id: email2
+          }
+        });
+        else callback(null, {
+          Item: null
+        });
       }
       return null;
     });
 
     AWSMock.mock("DynamoDB.DocumentClient", "scan", (params, callback) => {
       if(params.TableName.includes(USER_REGISTRATIONS_TABLE)) {
-        callback(null, { Items: registrationsResponse });
+        callback(null, {
+          Items: registrationsResponse
+        });
         return null;
       }
     });
@@ -74,7 +91,9 @@ describe("registrationPut", () => {
     AWSMock.mock("DynamoDB.DocumentClient", "update", (params, callback) => {
       // for PUT (different from POST)
       // throw error if doesnt exist (only check for email2)
-      if(params.Key.id === email2 && params.Key["eventID;year"] === "event;2020") callback({ code: "ConditionalCheckFailedException" });
+      if(params.Key.id === email2 && params.Key["eventID;year"] === "event;2020") callback({
+        code: "ConditionalCheckFailedException"
+      });
       else callback(null, "Updated!");
 
       return null;

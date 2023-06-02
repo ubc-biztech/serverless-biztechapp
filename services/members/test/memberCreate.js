@@ -32,7 +32,9 @@ describe("memberCreate", () => {
   });
 
   it("returns 201 when given valid data", async () => {
-    const response = await wrapped.run({ body: JSON.stringify(testEntry) });
+    const response = await wrapped.run({
+      body: JSON.stringify(testEntry)
+    });
     expect(response.statusCode).to.equal(201);
     const responseBody = JSON.parse(response.body);
     expect(responseBody.params.Item.id).to.equal(email);
@@ -44,7 +46,9 @@ describe("memberCreate", () => {
     };
     delete body.email;
 
-    const response = await wrapped.run({ body: JSON.stringify(body) });
+    const response = await wrapped.run({
+      body: JSON.stringify(body)
+    });
     expect(response.statusCode).to.equal(406);
     const responseBody = JSON.parse(response.body);
     expect(responseBody.message).to.equal("Invalid email");
@@ -56,7 +60,9 @@ describe("memberCreate", () => {
     };
     delete body.verificationCode;
 
-    const response = await wrapped.run({ body: JSON.stringify(body) });
+    const response = await wrapped.run({
+      body: JSON.stringify(body)
+    });
     expect(response.statusCode).to.equal(401);
     const responseBody = JSON.parse(response.body);
     expect(responseBody.message).to.equal("Missing verification code");
@@ -68,7 +74,9 @@ describe("memberCreate", () => {
     };
     body.verificationCode = "invalidCode";
 
-    const response = await wrapped.run({ body: JSON.stringify(body) });
+    const response = await wrapped.run({
+      body: JSON.stringify(body)
+    });
     expect(response.statusCode).to.equal(401);
     const responseBody = JSON.parse(response.body);
     expect(responseBody.message).to.equal("Invalid verification code");

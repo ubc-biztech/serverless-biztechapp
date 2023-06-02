@@ -1,7 +1,9 @@
 "use strict";
 import chai from "chai";
 const expect = chai.expect;
-import { INTEGRATION_TEST_MEMBER_EMAIL } from "../../../constants/test";
+import {
+  INTEGRATION_TEST_MEMBER_EMAIL
+} from "../../../constants/test";
 
 import helpers from "../../../lib/testHelpers";
 

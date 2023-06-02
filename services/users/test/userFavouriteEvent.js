@@ -7,7 +7,9 @@ import mochaPlugin from "serverless-mocha-plugin";
 const expect = mochaPlugin.chai.expect;
 import AWSMock from "aws-sdk-mock";
 let wrapped = mochaPlugin.getWrapper("userFavEvent", "/handler.js", "favouriteEvent");
-import { USERS_TABLE, EVENTS_TABLE } from "../../../constants/tables";
+import {
+  USERS_TABLE, EVENTS_TABLE
+} from "../../../constants/tables";
 
 const testEntry = {
   eventID: "some event id",
@@ -28,16 +30,28 @@ describe("userFavEvent", () => {
   before(() => {
     AWSMock.mock("DynamoDB.DocumentClient", "get", (params, callback) => {
       if(params.TableName.includes(USERS_TABLE) && params.Key.id === email) {
-        callback(null, { Item: userObject });
+        callback(null, {
+          Item: userObject
+        });
       }
       else if(params.TableName.includes(EVENTS_TABLE) && params.Key.id === "some event id" && params.Key.year === 2020) {
-        callback(null, { Item: { id: "some event id", year: 2020, capac: 100 } });
+        callback(null, {
+          Item: {
+            id: "some event id",
+            year: 2020,
+            capac: 100
+          }
+        });
       }
-      else callback(null, { Item: null });
+      else callback(null, {
+        Item: null
+      });
     });
 
     AWSMock.mock("DynamoDB.DocumentClient", "update", function (params, callback) {
-      callback(null, { Item: "not null user" });
+      callback(null, {
+        Item: "not null user"
+      });
     });
   });
 
