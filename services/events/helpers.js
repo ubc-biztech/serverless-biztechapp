@@ -1,39 +1,41 @@
-import AWS from 'aws-sdk';
+import AWS from '../../lib/aws';
 import { v4 as uuidv4 } from 'uuid';
 import { USER_REGISTRATIONS_TABLE } from '../../constants/tables';
 
 export default {
   /**
-   * Takes a semicolon separated event ID and year and returns an object containing
-   * registeredCount, checkedInCount and waitlistCount for that event
-   * @param {String} eventIDAndYear
-   * @return {registeredCount checkedInCount waitlistCount}
-   */
+	 * Takes a semicolon separated event ID and year and returns an object containing
+	 * registeredCount, checkedInCount and waitlistCount for that event
+	 * @param {String} eventIDAndYear
+	 * @return {registeredCount checkedInCount waitlistCount}
+	 */
   getEventCounts: async function (eventIDAndYear) {
 
     const docClient = new AWS.DynamoDB.DocumentClient();
     const params = {
-      TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
+      TableName:
+				USER_REGISTRATIONS_TABLE +
+				(process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ''),
       FilterExpression: '#eventIDYear = :query',
       ExpressionAttributeNames: {
-        '#eventIDYear': 'eventID;year'
+        '#eventIDYear': 'eventID;year',
       },
       ExpressionAttributeValues: {
-        ':query': eventIDAndYear
-      }
+        ':query': eventIDAndYear,
+      },
     };
     return await docClient
       .scan(params)
       .promise()
-      .then(result => {
+      .then((result) => {
 
         let counts = {
           registeredCount: 0,
           checkedInCount: 0,
-          waitlistCount: 0
+          waitlistCount: 0,
         };
 
-        result.Items.forEach(item => {
+        result.Items.forEach((item) => {
 
           if (!item.isPartner) {
 
@@ -58,7 +60,7 @@ export default {
         return counts;
 
       })
-      .catch(error => {
+      .catch((error) => {
 
         console.error(error);
         return null;
@@ -67,10 +69,10 @@ export default {
 
   },
   /**
- * Inserts a unique uuid into each registrationQuestion, if it does not already exist
- * @param {Array} registrationQuestions 
- * @returns a new Array, with a unique questionId in each question
- */
+	 * Inserts a unique uuid into each registrationQuestion, if it does not already exist
+	 * @param {Array} registrationQuestions
+	 * @returns a new Array, with a unique questionId in each question
+	 */
   addIdsToRegistrationQuestions: function (registrationQuestions) {
 
     return registrationQuestions.map((question) => {

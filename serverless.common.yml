@@ -9,7 +9,8 @@ custom:
   prune:
     automatic: true
     number: 3
-
+  serverless-offline:
+    port: 4000
   serverless-mocha-plugin:
     # use test template to overwrite plugin usage of commonjs
     testTemplate: ../../lib/testTemplate.ejs
@@ -32,3 +33,5 @@ custom:
   	
 plugins:
   - serverless-dynamodb-local
+  - serverless-offline
+

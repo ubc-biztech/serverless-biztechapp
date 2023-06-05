@@ -1,7 +1,7 @@
 import helpers from '../../lib/handlerHelpers';
 import db from '../../lib/db';
 import { isEmpty, isValidEmail } from '../../lib/utils';
-const AWS = require('aws-sdk');
+import AWS from '../../lib/aws';
 const { MEMBERS2023_TABLE } = require('../../constants/tables');
 
 export const create = async (event, ctx, callback) => {
@@ -39,7 +39,9 @@ export const create = async (event, ctx, callback) => {
       createdAt: timestamp,
       updatedAt: timestamp,
     },
-    TableName: MEMBERS2023_TABLE + process.env.ENVIRONMENT,
+    TableName:
+			MEMBERS2023_TABLE +
+			(process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ''),
     ConditionExpression: 'attribute_not_exists(id)',
   };
 
@@ -84,11 +86,12 @@ export const get = async (event, ctx, callback) => {
   try {
 
     // eslint-disable-next-line
-    if (!event.pathParameters || !event.pathParameters.email)
+		if (!event.pathParameters || !event.pathParameters.email)
       throw helpers.missingIdQueryResponse('email');
     const email = event.pathParameters.email;
 
-    if (!isValidEmail(email)) throw helpers.inputError('Invalid email', email);
+    if (!isValidEmail(email))
+      throw helpers.inputError('Invalid email', email);
     const member = await db.getOne(email, MEMBERS2023_TABLE);
     if (isEmpty(member)) throw helpers.notFoundResponse('member', email);
 
@@ -135,15 +138,16 @@ export const update = async (event, ctx, callback) => {
   try {
 
     // eslint-disable-next-line
-    if (!event.pathParameters || !event.pathParameters.id)
+		if (!event.pathParameters || !event.pathParameters.id)
       throw helpers.missingIdQueryResponse('email');
 
     const email = event.pathParameters.id;
-    if (!isValidEmail(email)) throw helpers.inputError('Invalid email', email);
+    if (!isValidEmail(email))
+      throw helpers.inputError('Invalid email', email);
 
     const existingMember = await db.getOne(email, MEMBERS2023_TABLE);
     // eslint-disable-next-line
-    if (isEmpty(existingMember))
+		if (isEmpty(existingMember))
       throw helpers.notFoundResponse('member', email);
 
     const data = JSON.parse(event.body);
@@ -174,10 +178,12 @@ export const del = async (event, ctx, callback) => {
       throw helpers.missingIdQueryResponse('email');
 
     const email = event.pathParameters.id;
-    if (!isValidEmail(email)) throw helpers.inputError('Invalid email', email);
+    if (!isValidEmail(email))
+      throw helpers.inputError('Invalid email', email);
     // check that the member exists
     const existingMember = await db.getOne(email, MEMBERS2023_TABLE);
-    if (isEmpty(existingMember)) throw helpers.notFoundResponse('Member', email);
+    if (isEmpty(existingMember))
+      throw helpers.notFoundResponse('Member', email);
 
     const res = await db.deleteOne(email, MEMBERS2023_TABLE);
     const response = helpers.createResponse(200, {

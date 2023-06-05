@@ -1,4 +1,4 @@
-import AWS from 'aws-sdk';
+import AWS from '../../lib/aws';
 import { USER_REGISTRATIONS_TABLE } from '../../constants/tables';
 import sgMail from '@sendgrid/mail';
 const ics = require('ics');
@@ -7,36 +7,38 @@ sgMail.setApiKey(process.env.SENDGRID_KEY);
 
 export default {
   /**
-   * Takes a semicolon separated event ID and year and returns an object containing
-   * registeredCount, checkedInCount and waitlistCount for that event
-   * @param {String} eventIDAndYear
-   * @return {registeredCount checkedInCount waitlistCount}
-   */
+	 * Takes a semicolon separated event ID and year and returns an object containing
+	 * registeredCount, checkedInCount and waitlistCount for that event
+	 * @param {String} eventIDAndYear
+	 * @return {registeredCount checkedInCount waitlistCount}
+	 */
   getEventCounts: async function (eventIDAndYear) {
 
     const docClient = new AWS.DynamoDB.DocumentClient();
     const params = {
-      TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
+      TableName:
+				USER_REGISTRATIONS_TABLE +
+				(process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ''),
       FilterExpression: '#eventIDYear = :query',
       ExpressionAttributeNames: {
-        '#eventIDYear': 'eventID;year'
+        '#eventIDYear': 'eventID;year',
       },
       ExpressionAttributeValues: {
-        ':query': eventIDAndYear
-      }
+        ':query': eventIDAndYear,
+      },
     };
     return await docClient
       .scan(params)
       .promise()
-      .then(result => {
+      .then((result) => {
 
         let counts = {
           registeredCount: 0,
           checkedInCount: 0,
-          waitlistCount: 0
+          waitlistCount: 0,
         };
 
-        result.Items.forEach(item => {
+        result.Items.forEach((item) => {
 
           if (!item.isPartner) {
 
@@ -61,7 +63,7 @@ export default {
         return counts;
 
       })
-      .catch(error => {
+      .catch((error) => {
 
         console.error(error);
         return null;
@@ -93,7 +95,7 @@ export default {
     const duration = {
       hours: endDate.getHours() - startDate.getHours(),
       minutes: endDate.getMinutes() - startDate.getMinutes(),
-      seconds: endDate.getSeconds() - startDate.getSeconds()
+      seconds: endDate.getSeconds() - startDate.getSeconds(),
     };
 
     // convert startDate from PST/PDT to UTC (to avoid AWS-dependent local time conversion)
@@ -104,7 +106,13 @@ export default {
     // startDate.setMinutes(startDate.getMinutes() + offset);
 
     // startDateArray follows format [year, month, day, hour, minute]
-    const startDateArray = [startDate.getFullYear(), startDate.getMonth() + 1, startDate.getDate(), startDate.getHours(), startDate.getMinutes()];
+    const startDateArray = [
+      startDate.getFullYear(),
+      startDate.getMonth() + 1,
+      startDate.getDate(),
+      startDate.getHours(),
+      startDate.getMinutes(),
+    ];
 
     const eventDetails = {
       title: ename,
@@ -120,7 +128,7 @@ export default {
       url: 'https://www.ubcbiztech.com',
       organizer: {
         name: 'UBC BizTech',
-        email: 'info@ubcbiztech.com'
+        email: 'info@ubcbiztech.com',
       },
       attendees: [
         {
@@ -128,17 +136,17 @@ export default {
           email: user.id,
           rsvp: true,
           partstat: 'NEEDS-ACTION',
-          role: 'REQ-PARTICIPANT'
+          role: 'REQ-PARTICIPANT',
         },
         {
           name: 'UBC BizTech',
           email: 'info@ubcbiztech.com',
           rsvp: true,
           partstat: 'ACCEPTED',
-          role: 'CHAIR'
-        }
+          role: 'CHAIR',
+        },
       ],
-      method: 'REQUEST'
+      method: 'REQUEST',
     };
 
     const { error, value } = ics.createEvent(eventDetails);
@@ -160,7 +168,7 @@ export default {
       to: user.id,
       from: {
         email: 'info@ubcbiztech.com',
-        name: 'UBC BizTech'
+        name: 'UBC BizTech',
       },
       attachments: [
         {
@@ -168,14 +176,14 @@ export default {
           filename: 'invite.ics',
           type: 'text/calendar;method=REQUEST',
           content: base64Cal,
-          disposition: 'attachment'
-        }
+          disposition: 'attachment',
+        },
       ],
       dynamic_template_data: dynamicCalendarMsg.dynamic_template_data,
-      templateId: dynamicCalendarMsg.templateId
+      templateId: dynamicCalendarMsg.templateId,
     };
 
     return sgMail.send(msg);
 
-  }
+  },
 };

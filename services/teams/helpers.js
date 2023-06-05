@@ -1,4 +1,4 @@
-import AWS from 'aws-sdk';
+import AWS from '../../lib/aws';
 import { v4 as uuidv4 } from 'uuid';
 import { USER_REGISTRATIONS_TABLE, TEAMS_TABLE } from '../../constants/tables';
 import helpers from '../../lib/handlerHelpers.js';
@@ -29,60 +29,67 @@ export default {
 
     const eventID_year = eventID + ';' + year;
 
-    return await db.getOne(userID, USER_REGISTRATIONS_TABLE, {
-      'eventID;year': eventID_year
-    }).then(res => {
+    return await db
+      .getOne(userID, USER_REGISTRATIONS_TABLE, {
+        'eventID;year': eventID_year,
+      })
+      .then((res) => {
 
-      if (res) {
+        if (res) {
 
-        return res.teamID;
+          return res.teamID;
 
-      } else {
+        } else {
 
-        return null;
+          return null;
 
-      }
+        }
 
-    }).then(teamID => {
+      })
+      .then((teamID) => {
 
-      if (teamID) {
+        if (teamID) {
 
-        return new Promise((resolve, reject) => {
+          return new Promise((resolve, reject) => {
 
-          const docClient = new AWS.DynamoDB.DocumentClient();
+            const docClient = new AWS.DynamoDB.DocumentClient();
 
-          // Partition key is teamID, sort key is eventID;year
-          const params = {
-            TableName: TEAMS_TABLE + process.env.ENVIRONMENT,
-            Key: {
-              id: teamID,
-              'eventID;year': eventID_year
-            }
-          };
+            // Partition key is teamID, sort key is eventID;year
+            const params = {
+              TableName:
+								TEAMS_TABLE +
+								(process.env.ENVIRONMENT
+								  ? process.env.ENVIRONMENT
+								  : ''),
+              Key: {
+                id: teamID,
+                'eventID;year': eventID_year,
+              },
+            };
 
-          docClient.get(params, (err, data) => {
+            docClient.get(params, (err, data) => {
 
-            if (err) {
+              if (err) {
 
-              reject(err);
+                reject(err);
 
-            } else {
+              } else {
 
-              resolve(data.Item);
+                resolve(data.Item);
 
-            }
+              }
+
+            });
 
           });
 
-        });
+        } else {
 
-      } else {
+          return null;
 
-        return null;
+        }
 
-      }
-
-    });
+      });
 
   },
   async _putTeam(team) {
@@ -95,15 +102,20 @@ export default {
     const docClient = new AWS.DynamoDB.DocumentClient();
 
     const params = {
-      TableName: TEAMS_TABLE + process.env.ENVIRONMENT,
-      Item: team
+      TableName:
+				TEAMS_TABLE +
+				(process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ''),
+      Item: team,
     };
 
-    return await docClient.put(params).promise().then(_ => {
+    return await docClient
+      .put(params)
+      .promise()
+      .then((_) => {
 
-      return team;
+        return team;
 
-    });
+      });
 
   },
   async makeTeam(team_name, eventID, year, memberIDs) {
@@ -121,96 +133,124 @@ export default {
       const memberID = memberIDs[i];
 
       // get user's registration
-      await db.getOne(memberID, USER_REGISTRATIONS_TABLE, {
-        'eventID;year': eventID_year
-      }).then(res => {
+      await db
+        .getOne(memberID, USER_REGISTRATIONS_TABLE, {
+          'eventID;year': eventID_year,
+        })
+        .then((res) => {
 
-        if (!res) {
+          if (!res) {
 
-          throw helpers.inputError('User ' + memberID + ' is not registered for event ' + eventID_year, 403);
+            throw helpers.inputError(
+              'User ' +
+								memberID +
+								' is not registered for event ' +
+								eventID_year,
+              403
+            );
 
-        }
+          }
 
-      });
+        });
 
     }
 
     const params = {
-      TableName: TEAMS_TABLE + process.env.ENVIRONMENT,
+      TableName:
+				TEAMS_TABLE +
+				(process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ''),
       Item: {
         id: uuidv4(),
         teamName: team_name,
         'eventID;year': eventID + ';' + year,
         memberIDs: memberIDs,
-        scannedQRs: [] ,
+        scannedQRs: [],
         points: 0,
         pointsSpent: 0,
         transactions: [],
         inventory: [],
         submission: '',
-        metadata: {}
-      }
+        metadata: {},
+      },
     };
 
     try {
 
-      return await docClient.put(params).promise().then(res => {
+      return await docClient
+        .put(params)
+        .promise()
+        .then((res) => {
 
-        // update all members' teamIDs in the User Registrations table
-        for (let i = 0; i < memberIDs.length; i++) {
+          // update all members' teamIDs in the User Registrations table
+          for (let i = 0; i < memberIDs.length; i++) {
 
-          const memberID = memberIDs[i];
+            const memberID = memberIDs[i];
 
-          // get user's registration
-          db.getOne(memberID, USER_REGISTRATIONS_TABLE, {
-            'eventID;year': eventID_year
-          }).then(res => {
+            // get user's registration
+            db.getOne(memberID, USER_REGISTRATIONS_TABLE, {
+              'eventID;year': eventID_year,
+            })
+              .then((res) => {
 
-            if (res.teamID) {
+                if (res.teamID) {
 
-              // if user is already on a team, remove them from that team on the Teams table
-              this._getTeamFromUserRegistration(memberID, eventID, year).then(team => {
+                  // if user is already on a team, remove them from that team on the Teams table
+                  this._getTeamFromUserRegistration(
+                    memberID,
+                    eventID,
+                    year
+                  ).then((team) => {
 
-                team.memberIDs = team.memberIDs.filter(id => id !== memberID);
-                this._putTeam(team);
+                    team.memberIDs = team.memberIDs.filter(
+                      (id) => id !== memberID
+                    );
+                    this._putTeam(team);
+
+                  });
+
+                }
+
+                // update user's registration
+                res.teamID = params.Item.id;
+
+                docClient
+                  .put({
+                    TableName:
+											USER_REGISTRATIONS_TABLE +
+											(process.env.ENVIRONMENT
+											  ? process.env.ENVIRONMENT
+											  : ''),
+                    Item: res,
+                  })
+                  .promise()
+                  .then((res) => {})
+                  .catch((err) => {
+
+                    console.log(err);
+                    throw new Error(err);
+
+                  });
+
+              })
+              .catch((err) => {
+
+                console.log(err);
+                throw new Error(err);
 
               });
 
-            }
+          }
 
-            // update user's registration
-            res.teamID = params.Item.id;
+          // return newly created team
+          return params.Item;
 
-            docClient.put({
-              TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
-              Item: res
-            }).promise().then(res => {
+        })
+        .catch((err) => {
 
-            }).catch(err => {
+          console.log(err);
+          throw new Error(err);
 
-              console.log(err);
-              throw new Error(err);
-
-            });
-
-          }).catch(err => {
-
-            console.log(err);
-            throw new Error(err);
-
-          });
-
-        }
-
-        // return newly created team
-        return params.Item;
-
-      }).catch(err => {
-
-        console.log(err);
-        throw new Error(err);
-
-      });
+        });
 
     } catch (err) {
 
@@ -229,18 +269,19 @@ export default {
    */
 
     // get user's team using helper function _getTeamFromUserRegistration
-    return await this._getTeamFromUserRegistration(user_id, eventID, year).then(team => {
+    return await this._getTeamFromUserRegistration(user_id, eventID, year)
+      .then((team) => {
 
-      // check if qr_code_id is in scannedQRs
-      return team.scannedQRs.includes(qr_code_id);
+        // check if qr_code_id is in scannedQRs
+        return team.scannedQRs.includes(qr_code_id);
 
-    }).catch(err => {
+      })
+      .catch((err) => {
 
-      console.log(err);
-      throw new Error(err);
+        console.log(err);
+        throw new Error(err);
 
-    });
-
+      });
 
   },
   async addQRScan(user_id, qr_code_id, eventID, year, points) {
@@ -250,7 +291,11 @@ export default {
    */
 
     // get user's team using helper function _getTeamFromUserRegistration
-    return await this._getTeamFromUserRegistration(user_id, eventID, year).then(team => {
+    return await this._getTeamFromUserRegistration(
+      user_id,
+      eventID,
+      year
+    ).then((team) => {
 
       // add qr_code_id to scannedQRs
       team.scannedQRs.push(qr_code_id);
@@ -272,15 +317,17 @@ export default {
       // put team in Teams table
       return new Promise((resolve, reject) => {
 
-        this._putTeam(team).then(res => {
+        this._putTeam(team)
+          .then((res) => {
 
-          resolve(res);
+            resolve(res);
 
-        }).catch(err => {
+          })
+          .catch((err) => {
 
-          reject(err);
+            reject(err);
 
-        });
+          });
 
       });
 
@@ -293,25 +340,31 @@ export default {
         Changes a team's name in the Teams table
    */
 
-    return await this._getTeamFromUserRegistration(user_id, eventID, year).then(team => {
+    return await this._getTeamFromUserRegistration(
+      user_id,
+      eventID,
+      year
+    ).then((team) => {
 
       team.teamName = team_name;
 
       return new Promise((resolve, reject) => {
 
-        this._putTeam(team).then(res => {
+        this._putTeam(team)
+          .then((res) => {
 
-          resolve(res);
+            resolve(res);
 
-        }).catch(err => {
+          })
+          .catch((err) => {
 
-          reject(err);
+            reject(err);
 
-        });
+          });
 
       });
 
     });
 
-  }
+  },
 };

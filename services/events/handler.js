@@ -1,11 +1,15 @@
-import AWS from 'aws-sdk';
+import AWS from '../../lib/aws';
 
 import eventHelpers from './helpers';
 import helpers from '../../lib/handlerHelpers';
 import db from '../../lib/db';
 import { alphabeticalComparer, isEmpty } from '../../lib/utils';
 import { MAX_BATCH_ITEM_COUNT } from '../../constants/dynamodb';
-import { EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE } from '../../constants/tables';
+import {
+  EVENTS_TABLE,
+  USERS_TABLE,
+  USER_REGISTRATIONS_TABLE,
+} from '../../constants/tables';
 
 export const create = async (event, ctx, callback) => {
 
@@ -17,12 +21,14 @@ export const create = async (event, ctx, callback) => {
     helpers.checkPayloadProps(data, {
       id: { required: true },
       year: { required: true, type: 'number' },
-      capac: { required: true, type: 'number' }
+      capac: { required: true, type: 'number' },
     });
 
-    const existingEvent = await db.getOne(data.id, EVENTS_TABLE, { year: data.year });
-    if(!isEmpty(existingEvent)) throw helpers.duplicateResponse('event id and year', data);
-
+    const existingEvent = await db.getOne(data.id, EVENTS_TABLE, {
+      year: data.year,
+    });
+    if (!isEmpty(existingEvent))
+      throw helpers.duplicateResponse('event id and year', data);
 
     const item = {
       id: data.id,
@@ -54,13 +60,19 @@ export const create = async (event, ctx, callback) => {
 
     if (Array.isArray(data.registrationQuestions)) {
 
-      item.registrationQuestions = eventHelpers.addIdsToRegistrationQuestions(data.registrationQuestions);
+      item.registrationQuestions =
+				eventHelpers.addIdsToRegistrationQuestions(
+				  data.registrationQuestions
+				);
 
     }
 
     if (Array.isArray(data.partnerRegistrationQuestions)) {
 
-      item.partnerRegistrationQuestions = eventHelpers.addIdsToRegistrationQuestions(data.partnerRegistrationQuestions);
+      item.partnerRegistrationQuestions =
+				eventHelpers.addIdsToRegistrationQuestions(
+				  data.partnerRegistrationQuestions
+				);
 
     }
 
@@ -69,14 +81,13 @@ export const create = async (event, ctx, callback) => {
     const response = helpers.createResponse(201, {
       message: `Created event with id ${data.id} for the year ${data.year}!`,
       response: res,
-      item
+      item,
     });
 
     callback(null, response);
     return null;
 
-  }
-  catch(err) {
+  } catch (err) {
 
     console.error(err);
     callback(null, err);
@@ -89,30 +100,34 @@ export const create = async (event, ctx, callback) => {
 // DELETE /events/{id}/{year}
 // eslint-disable-next-line
 export const del = async (event, ctx, callback) => {
-
   try {
 
-    if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('event');
+    if (!event.pathParameters || !event.pathParameters.id)
+      throw helpers.missingIdQueryResponse('event');
     const id = event.pathParameters.id;
-    if(!event.pathParameters.year) throw helpers.missingPathParamResponse('event', 'year');
+    if (!event.pathParameters.year)
+      throw helpers.missingPathParamResponse('event', 'year');
 
     const year = parseInt(event.pathParameters.year, 10);
-    if(isNaN(year)) throw helpers.inputError('Year path parameter must be a number', event.pathParameters);
+    if (isNaN(year))
+      throw helpers.inputError(
+        'Year path parameter must be a number',
+        event.pathParameters
+      );
 
     const existingEvent = await db.getOne(id, EVENTS_TABLE, { year });
-    if(isEmpty(existingEvent)) throw helpers.notFoundResponse('event', id);
+    if (isEmpty(existingEvent)) throw helpers.notFoundResponse('event', id);
     const res = await db.deleteOne(id, EVENTS_TABLE, { year });
 
     const response = helpers.createResponse(200, {
       message: `Deleted event with id '${id}' for the year ${year}!`,
-      response: res
+      response: res,
     });
 
     callback(null, response);
     return null;
 
-  }
-  catch(err) {
+  } catch (err) {
 
     console.error(err);
     callback(null, err);
@@ -122,7 +137,7 @@ export const del = async (event, ctx, callback) => {
 
 };
 
-// /events 
+// /events
 export const getAll = async (event, ctx, callback) => {
 
   try {
@@ -130,19 +145,27 @@ export const getAll = async (event, ctx, callback) => {
     let filterExpression = {};
 
     //Set up query by year if exists
-    if(event && event.queryStringParameters && event.queryStringParameters.hasOwnProperty('year')) {
+    if (
+      event &&
+			event.queryStringParameters &&
+			event.queryStringParameters.hasOwnProperty('year')
+    ) {
 
       const year = parseInt(event.queryStringParameters.year, 10);
-      if(isNaN(year)) throw helpers.inputError('Year query parameter must be a number', event.queryStringParameters);
+      if (isNaN(year))
+        throw helpers.inputError(
+          'Year query parameter must be a number',
+          event.queryStringParameters
+        );
 
       filterExpression = {
         FilterExpression: '#vyear = :query',
         ExpressionAttributeNames: {
-          '#vyear': 'year'
+          '#vyear': 'year',
         },
         ExpressionAttributeValues: {
-          ':query': year
-        }
+          ':query': year,
+        },
       };
 
     }
@@ -150,16 +173,24 @@ export const getAll = async (event, ctx, callback) => {
     // scan
     let events = await db.scan(EVENTS_TABLE, filterExpression);
 
-    if(event && event.queryStringParameters && event.queryStringParameters.hasOwnProperty('id')) {
+    if (
+      event &&
+			event.queryStringParameters &&
+			event.queryStringParameters.hasOwnProperty('id')
+    ) {
 
-      events = events.filter(eventItem => eventItem.id === event.queryStringParameters.id);
+      events = events.filter(
+        (eventItem) => eventItem.id === event.queryStringParameters.id
+      );
 
     }
 
     // get event counts
-    for(event of events) {
+    for (event of events) {
 
-      event.counts = await eventHelpers.getEventCounts(`${event.id};${event.year}`);
+      event.counts = await eventHelpers.getEventCounts(
+        `${event.id};${event.year}`
+      );
 
     }
     // sort the events by startDate
@@ -168,8 +199,7 @@ export const getAll = async (event, ctx, callback) => {
     const response = helpers.createResponse(200, events);
     callback(null, response);
 
-  }
-  catch(err) {
+  } catch (err) {
 
     console.error(err);
     callback(null, err);
@@ -184,15 +214,22 @@ export const update = async (event, ctx, callback) => {
 
   try {
 
-    if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('event');
+    if (!event.pathParameters || !event.pathParameters.id)
+      throw helpers.missingIdQueryResponse('event');
     const id = event.pathParameters.id;
-    if(!event.pathParameters.year) throw helpers.missingPathParamResponse('event', 'year');
+    if (!event.pathParameters.year)
+      throw helpers.missingPathParamResponse('event', 'year');
 
     const year = parseInt(event.pathParameters.year, 10);
-    if(isNaN(year)) throw helpers.inputError('Year path parameter must be a number', event.pathParameters);
+    if (isNaN(year))
+      throw helpers.inputError(
+        'Year path parameter must be a number',
+        event.pathParameters
+      );
 
     const existingEvent = await db.getOne(id, EVENTS_TABLE, { year });
-    if(isEmpty(existingEvent)) throw helpers.notFoundResponse('event', id, year);
+    if (isEmpty(existingEvent))
+      throw helpers.notFoundResponse('event', id, year);
     const data = JSON.parse(event.body);
     if (Array.isArray(data.registrationQuestions)) {
 
@@ -200,7 +237,10 @@ export const update = async (event, ctx, callback) => {
 
         if (!data.registrationQuestions[i].questionId) {
 
-          data.registrationQuestions[i] = eventHelpers.addIdsToRegistrationQuestions([data.registrationQuestions[i]])[0];
+          data.registrationQuestions[i] =
+						eventHelpers.addIdsToRegistrationQuestions([
+						  data.registrationQuestions[i],
+						])[0];
 
         }
 
@@ -214,7 +254,10 @@ export const update = async (event, ctx, callback) => {
 
         if (!data.partnerRegistrationQuestions[i].questionId) {
 
-          data.partnerRegistrationQuestions[i] = eventHelpers.addIdsToRegistrationQuestions([data.partnerRegistrationQuestions[i]])[0];
+          data.partnerRegistrationQuestions[i] =
+						eventHelpers.addIdsToRegistrationQuestions([
+						  data.partnerRegistrationQuestions[i],
+						])[0];
 
         }
 
@@ -223,36 +266,42 @@ export const update = async (event, ctx, callback) => {
     }
     //Since we have a sort key, can't use helpers.updateDB()
     const docClient = new AWS.DynamoDB.DocumentClient();
+    console.log(docClient);
 
     const {
       updateExpression,
       expressionAttributeValues,
-      expressionAttributeNames
+      expressionAttributeNames,
     } = db.createUpdateExpression(data);
 
     // construct the param object
     let params = {
       Key: { id, year },
-      TableName: EVENTS_TABLE + process.env.ENVIRONMENT,
+      TableName:
+				EVENTS_TABLE +
+				(process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ''),
       ExpressionAttributeValues: expressionAttributeValues,
-      ExpressionAttributeNames: { ...expressionAttributeNames, '#vyear': 'year' },
+      ExpressionAttributeNames: {
+        ...expressionAttributeNames,
+        '#vyear': 'year',
+      },
       UpdateExpression: updateExpression,
       ReturnValues: 'UPDATED_NEW',
-      ConditionExpression: 'attribute_exists(id) and attribute_exists(#vyear)'
+      ConditionExpression:
+				'attribute_exists(id) and attribute_exists(#vyear)',
     };
 
     const res = await docClient.update(params).promise();
 
     const response = helpers.createResponse(200, {
       message: `Updated event with id ${id} and year ${year}!`,
-      response: res
+      response: res,
     });
 
     callback(null, response);
     return null;
 
-  }
-  catch(err) {
+  } catch (err) {
 
     console.error(err);
     callback(null, err);
@@ -267,21 +316,31 @@ export const get = async (event, ctx, callback) => {
 
   try {
 
-    if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse('event');
+    if (!event.pathParameters || !event.pathParameters.id)
+      throw helpers.missingIdQueryResponse('event');
     const id = event.pathParameters.id;
-    if(!event.pathParameters.year) throw helpers.missingPathParamResponse('event', 'year');
+    if (!event.pathParameters.year)
+      throw helpers.missingPathParamResponse('event', 'year');
 
     const year = parseInt(event.pathParameters.year, 10);
-    if(isNaN(year)) throw helpers.inputError('Year path parameter must be a number', event.pathParameters);
+    if (isNaN(year))
+      throw helpers.inputError(
+        'Year path parameter must be a number',
+        event.pathParameters
+      );
 
     const queryString = event.queryStringParameters;
 
     //TODO: fix the else-if conditions
-    // if both count and users are true, throw error 
-    if (queryString && queryString.count == 'true' && queryString.users == 'true') {
+    // if both count and users are true, throw error
+    if (
+      queryString &&
+			queryString.count == 'true' &&
+			queryString.users == 'true'
+    ) {
 
       throw helpers.createResponse(406, {
-        message: 'Only one true parameter is permissible at a time'
+        message: 'Only one true parameter is permissible at a time',
       });
 
     } else if (queryString && queryString.count == 'true') {
@@ -302,11 +361,11 @@ export const get = async (event, ctx, callback) => {
         const filters = {
           FilterExpression: '#idyear = :query',
           ExpressionAttributeNames: {
-            '#idyear':'eventID;year'
+            '#idyear': 'eventID;year',
           },
           ExpressionAttributeValues: {
-            ':query': `${id};${year}`
-          }
+            ':query': `${id};${year}`,
+          },
         };
 
         /**
@@ -319,16 +378,19 @@ export const get = async (event, ctx, callback) => {
           registrationStatus: 'registered'
         }
        */
-        registrationList = await db.scan(USER_REGISTRATIONS_TABLE, filters);
+        registrationList = await db.scan(
+          USER_REGISTRATIONS_TABLE,
+          filters
+        );
 
-      } catch(err) {
+      } catch (err) {
 
         throw helpers.createResponse(500, {
-          message: 'Unable to scan registration table.'
+          message: 'Unable to scan registration table.',
         });
 
       }
-      let keysForRequest = registrationList.map(registrationObj => {
+      let keysForRequest = registrationList.map((registrationObj) => {
 
         const keyEntry = {};
         keyEntry.id = registrationObj.id;
@@ -346,32 +408,50 @@ export const get = async (event, ctx, callback) => {
 
       }
 
-      const result = await Promise.all(keyBatches.map(batch => (
-
-        db.batchGet(batch, USERS_TABLE + process.env.ENVIRONMENT)
-
-      )));
+      const result = await Promise.all(
+        keyBatches.map((batch) =>
+          db.batchGet(
+            batch,
+            USERS_TABLE +
+							(process.env.ENVIRONMENT
+							  ? process.env.ENVIRONMENT
+							  : '')
+          )
+        )
+      );
 
       // extract what's inside
-      const flattenResults = result.flatMap(batchResult => batchResult.Responses[`${USERS_TABLE}${process.env.ENVIRONMENT}`]);
+      const flattenResults = result.flatMap(
+        (batchResult) =>
+          batchResult.Responses[
+            `${USERS_TABLE}${process.env.ENVIRONMENT}`
+          ]
+      );
 
-      const resultsWithRegistrationStatus = flattenResults.map(item => {
+      const resultsWithRegistrationStatus = flattenResults.map((item) => {
 
-        const registrationObj = registrationList.filter(registrationObject => {
+        const registrationObj = registrationList.filter(
+          (registrationObject) => {
 
-          // find the same user in 'registrationList' and attach the registrationStatus
-          return registrationObject.id === item.id;
+            // find the same user in 'registrationList' and attach the registrationStatus
+            return registrationObject.id === item.id;
 
-        });
+          }
+        );
 
-        if (registrationObj[0]) item.registrationStatus = registrationObj[0].registrationStatus;
+        if (registrationObj[0])
+          item.registrationStatus =
+						registrationObj[0].registrationStatus;
         else item.registrationStatus = '';
         return item;
 
       });
 
       resultsWithRegistrationStatus.sort(alphabeticalComparer('lname'));
-      const response = helpers.createResponse(200, resultsWithRegistrationStatus);
+      const response = helpers.createResponse(
+        200,
+        resultsWithRegistrationStatus
+      );
       callback(null, response);
       return null;
 
@@ -380,7 +460,8 @@ export const get = async (event, ctx, callback) => {
       // if none of the optional params are true, then return the event
       const event = await db.getOne(id, EVENTS_TABLE, { year });
 
-      if(isEmpty(event)) throw helpers.notFoundResponse('event', id, year);
+      if (isEmpty(event))
+        throw helpers.notFoundResponse('event', id, year);
 
       const response = helpers.createResponse(200, event);
       callback(null, response);
@@ -388,14 +469,14 @@ export const get = async (event, ctx, callback) => {
 
     }
 
-  }
-  catch(err) {
+  } catch (err) {
 
     console.error(err);
 
     // need a way to come up with a proper response in case any logic throws errors
     let response = err;
-    if(!response || !response.statusCode || !response.headers) response = helpers.createResponse(502,);
+    if (!response || !response.statusCode || !response.headers)
+      response = helpers.createResponse(502);
 
     callback(null, err);
     return null;

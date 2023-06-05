@@ -2,20 +2,29 @@ import helpers from '../../lib/handlerHelpers';
 import { isValidEmail } from '../../lib/utils';
 import { updateHelper } from '../registrations/handler';
 import db from '../../lib/db';
-const AWS = require('aws-sdk');
-const { USERS_TABLE, MEMBERS2023_TABLE, USER_REGISTRATIONS_TABLE } = require('../../constants/tables');
+import AWS from '../../lib/aws';
+const {
+  USERS_TABLE,
+  MEMBERS2023_TABLE,
+  USER_REGISTRATIONS_TABLE,
+} = require('../../constants/tables');
 const stripe = require('stripe')(
-  process.env.ENVIRONMENT === 'PROD' ?
-    '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'
-    :
-    'sk_test_51KOxOlBAxwbCreS7JRQtvZCnCgLmn8tjK7WPHDGjpw0s4vfVHLwbcrZZvQLmd5cY7zKRIsfj3pnEDDHTy3G81Tuf00v9ygIBrC'
+  process.env.ENVIRONMENT === 'PROD'
+    ? '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'
+    : 'sk_test_51KOxOlBAxwbCreS7JRQtvZCnCgLmn8tjK7WPHDGjpw0s4vfVHLwbcrZZvQLmd5cY7zKRIsfj3pnEDDHTy3G81Tuf00v9ygIBrC'
 );
 // endpoint secret - different for each webhook
-const endpointSecret = process.env.ENVIRONMENT === 'PROD' ? 'whsec_IOXyPRmf3bsliM3PfWXFhvkmHGeSMekf' : 'whsec_TYSFr29HQ4bIPu649lgkxOrlPjrDOe2l';
-const cancelSecret = process.env.ENVIRONMENT === 'PROD' ? 'whsec_aX8umTlvtlmg0H2KCGDc9Er9Iej6TP8D' : 'whsec_N81csvvnTAqicFpuV5o9JQfx6McImtPR';
+const endpointSecret =
+	process.env.ENVIRONMENT === 'PROD'
+	  ? 'whsec_IOXyPRmf3bsliM3PfWXFhvkmHGeSMekf'
+	  : 'whsec_TYSFr29HQ4bIPu649lgkxOrlPjrDOe2l';
+const cancelSecret =
+	process.env.ENVIRONMENT === 'PROD'
+	  ? 'whsec_aX8umTlvtlmg0H2KCGDc9Er9Iej6TP8D'
+	  : 'whsec_N81csvvnTAqicFpuV5o9JQfx6McImtPR';
 
 // Creates the member here
-export const webhook = async(event, ctx, callback) => {
+export const webhook = async (event, ctx, callback) => {
 
   const userMemberSignup = async (data) => {
 
@@ -28,14 +37,16 @@ export const webhook = async(event, ctx, callback) => {
     const cognitoParams = {
       ClientId: '5tc2jshu03i3bmtl1clsov96dt',
       Username: data.email,
-      UserAttributes: [{
-        Name: 'name',
-        Value: data.fname + ' ' + data.lname
-      },
-      {
-        Name: 'custom:student_id',
-        Value: data.student_number
-      },],
+      UserAttributes: [
+        {
+          Name: 'name',
+          Value: data.fname + ' ' + data.lname,
+        },
+        {
+          Name: 'custom:student_id',
+          Value: data.student_number,
+        },
+      ],
       Password: data.password,
     };
 
@@ -47,7 +58,8 @@ export const webhook = async(event, ctx, callback) => {
 
     //assume the created user is biztech admin if using biztech email
     if (
-      email.substring(email.indexOf('@') + 1, email.length) === 'ubcbiztech.com'
+      email.substring(email.indexOf('@') + 1, email.length) ===
+			'ubcbiztech.com'
     ) {
 
       isBiztechAdmin = true;
@@ -71,7 +83,9 @@ export const webhook = async(event, ctx, callback) => {
         updatedAt: timestamp,
         admin: isBiztechAdmin,
       },
-      TableName: USERS_TABLE + process.env.ENVIRONMENT,
+      TableName:
+				USERS_TABLE +
+				(process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ''),
       ConditionExpression: 'attribute_not_exists(id)',
     };
 
@@ -98,52 +112,60 @@ export const webhook = async(event, ctx, callback) => {
         createdAt: timestamp,
         updatedAt: timestamp,
       },
-      TableName: MEMBERS2023_TABLE + process.env.ENVIRONMENT,
+      TableName:
+				MEMBERS2023_TABLE +
+				(process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ''),
       ConditionExpression: 'attribute_not_exists(id)',
     };
 
-    await docClient.put(userParams).promise().catch((error) => {
+    await docClient
+      .put(userParams)
+      .promise()
+      .catch((error) => {
 
-      let response;
-      if (error.code === 'ConditionalCheckFailedException') {
+        let response;
+        if (error.code === 'ConditionalCheckFailedException') {
 
-        response = helpers.createResponse(
-          409,
-          'User could not be created because email already exists'
-        );
+          response = helpers.createResponse(
+            409,
+            'User could not be created because email already exists'
+          );
 
-      } else {
+        } else {
 
-        response = helpers.createResponse(
-          502,
-          'Internal Server Error occurred'
-        );
+          response = helpers.createResponse(
+            502,
+            'Internal Server Error occurred'
+          );
 
-      }
-      callback(null, response);
+        }
+        callback(null, response);
 
-    });
-    await docClient.put(memberParams).promise().catch((error) => {
+      });
+    await docClient
+      .put(memberParams)
+      .promise()
+      .catch((error) => {
 
-      let response;
-      if (error.code === 'ConditionalCheckFailedException') {
+        let response;
+        if (error.code === 'ConditionalCheckFailedException') {
 
-        response = helpers.createResponse(
-          409,
-          'Member could not be created because email already exists'
-        );
+          response = helpers.createResponse(
+            409,
+            'Member could not be created because email already exists'
+          );
 
-      } else {
+        } else {
 
-        response = helpers.createResponse(
-          502,
-          'Internal Server Error occurred'
-        );
+          response = helpers.createResponse(
+            502,
+            'Internal Server Error occurred'
+          );
 
-      }
-      callback(null, response);
+        }
+        callback(null, response);
 
-    });
+      });
 
     const response = helpers.createResponse(201, {
       message: 'Created user and member!',
@@ -163,7 +185,8 @@ export const webhook = async(event, ctx, callback) => {
 
     //assume the created user is biztech admin if using biztech email
     if (
-      email.substring(email.indexOf('@') + 1, email.length) === 'ubcbiztech.com'
+      email.substring(email.indexOf('@') + 1, email.length) ===
+			'ubcbiztech.com'
     ) {
 
       isBiztechAdmin = true;
@@ -208,7 +231,9 @@ export const webhook = async(event, ctx, callback) => {
         createdAt: timestamp,
         updatedAt: timestamp,
       },
-      TableName: MEMBERS2023_TABLE + process.env.ENVIRONMENT,
+      TableName:
+				MEMBERS2023_TABLE +
+				(process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ''),
       ConditionExpression: 'attribute_not_exists(id)',
     };
 
@@ -224,27 +249,30 @@ export const webhook = async(event, ctx, callback) => {
       callback(null, response);
 
     });
-    await docClient.put(memberParams).promise().catch((error) => {
+    await docClient
+      .put(memberParams)
+      .promise()
+      .catch((error) => {
 
-      let response;
-      if (error.code === 'ConditionalCheckFailedException') {
+        let response;
+        if (error.code === 'ConditionalCheckFailedException') {
 
-        response = helpers.createResponse(
-          409,
-          'Member could not be created because email already exists'
-        );
+          response = helpers.createResponse(
+            409,
+            'Member could not be created because email already exists'
+          );
 
-      } else {
+        } else {
 
-        response = helpers.createResponse(
-          502,
-          'Internal Server Error occurred'
-        );
+          response = helpers.createResponse(
+            502,
+            'Internal Server Error occurred'
+          );
 
-      }
-      callback(null, response);
+        }
+        callback(null, response);
 
-    });
+      });
 
     const response = helpers.createResponse(201, {
       message: 'Created member and updated user!',
@@ -262,7 +290,10 @@ export const webhook = async(event, ctx, callback) => {
       const body = {
         eventID: data.eventID,
         year: Number(data.year),
-        registrationStatus: eventIDAndYear === 'produhacks;2023' ? 'waitlist' : 'registered',
+        registrationStatus:
+					eventIDAndYear === 'produhacks;2023'
+					  ? 'waitlist'
+					  : 'registered',
       };
       await updateHelper(body, false, data.email, data.fname);
       const response = helpers.createResponse(200, {
@@ -285,12 +316,16 @@ export const webhook = async(event, ctx, callback) => {
 
   try {
 
-    eventData = stripe.webhooks.constructEvent(event.body, sig, endpointSecret);
+    eventData = stripe.webhooks.constructEvent(
+      event.body,
+      sig,
+      endpointSecret
+    );
 
-  } catch(err) {
+  } catch (err) {
 
     return helpers.createResponse(400, {
-      message: `Webhook Error: ${err}`
+      message: `Webhook Error: ${err}`,
     });
 
   }
@@ -318,7 +353,7 @@ export const webhook = async(event, ctx, callback) => {
       break;
     default:
       return helpers.createResponse(400, {
-        message: 'Webhook Error: unidentified payment type'
+        message: 'Webhook Error: unidentified payment type',
       });
 
     }
@@ -354,7 +389,7 @@ export const payment = async (event, ctx, callback) => {
       mode: 'payment',
       success_url: data.success_url,
       cancel_url: data.cancel_url,
-      expires_at: Math.round(new Date().getTime() / 1000) + 1800
+      expires_at: Math.round(new Date().getTime() / 1000) + 1800,
     });
 
     if (data.paymentType === 'Event') {
@@ -362,7 +397,7 @@ export const payment = async (event, ctx, callback) => {
       const body = {
         eventID: data.eventID,
         year: Number(data.year),
-        checkoutLink: session.url
+        checkoutLink: session.url,
       };
       await updateHelper(body, false, data.email, data.fname);
 
@@ -386,7 +421,11 @@ export const cancel = async (event, ctx, callback) => {
 
   // NOTE: cancel webhook currently only operates correctly for events i.e. payment incomplete
   const sig = event.headers['Stripe-Signature'];
-  const eventData = stripe.webhooks.constructEvent(event.body, sig, cancelSecret);
+  const eventData = stripe.webhooks.constructEvent(
+    event.body,
+    sig,
+    cancelSecret
+  );
   const data = eventData.data.object.metadata;
   const { email, eventID, year, paymentType } = data;
   if (paymentType === 'Event') {
@@ -395,17 +434,19 @@ export const cancel = async (event, ctx, callback) => {
 
       const eventIDAndYear = eventID + ';' + year;
 
-      const res = await db.deleteOne(email, USER_REGISTRATIONS_TABLE, { ['eventID;year']: eventIDAndYear });
+      const res = await db.deleteOne(email, USER_REGISTRATIONS_TABLE, {
+        ['eventID;year']: eventIDAndYear,
+      });
 
       const response = helpers.createResponse(200, {
         message: 'Registration entry Deleted!',
-        response: res
+        response: res,
       });
 
       callback(null, response);
       return null;
 
-    } catch(err) {
+    } catch (err) {
 
       callback(null, err);
       return null;
@@ -415,7 +456,7 @@ export const cancel = async (event, ctx, callback) => {
   } else {
 
     return helpers.createResponse(400, {
-      message: 'Webhook Error: unidentified payment type'
+      message: 'Webhook Error: unidentified payment type',
     });
 
   }

@@ -1,4 +1,4 @@
-const AWS = require('aws-sdk');
+import AWS from '../../lib/aws';
 
 import helpers from '../../lib/handlerHelpers';
 import db from '../../lib/db';
@@ -19,7 +19,8 @@ export const create = async (event, ctx, callback) => {
 
   //assume the created user is biztech admin if using biztech email
   if (
-    email.substring(email.indexOf('@') + 1, email.length) === 'ubcbiztech.com'
+    email.substring(email.indexOf('@') + 1, email.length) ===
+		'ubcbiztech.com'
   ) {
 
     isBiztechAdmin = true;
@@ -43,19 +44,24 @@ export const create = async (event, ctx, callback) => {
       updatedAt: timestamp,
       admin: isBiztechAdmin,
     },
-    TableName: USERS_TABLE + process.env.ENVIRONMENT,
+    TableName:
+			USERS_TABLE +
+			(process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ''),
     ConditionExpression: 'attribute_not_exists(id)',
   };
   //check whether the favedEventsArray body param meets the requirements
   if (
     data.hasOwnProperty('favedEventsArray') &&
-    Array.isArray(data.favedEventsArray)
+		Array.isArray(data.favedEventsArray)
   ) {
 
     let favedEventsArray = data.favedEventsArray;
     if (!favedEventsArray.length === 0) {
 
-      callback(null, helpers.inputError('the favedEventsArray is empty', data));
+      callback(
+        null,
+        helpers.inputError('the favedEventsArray is empty', data)
+      );
 
     }
     if (
@@ -86,7 +92,7 @@ export const create = async (event, ctx, callback) => {
     }
     //if all conditions met, add favedEventsArray as a Set to userParams
     userParams.Item['favedEventsID;year'] =
-      docClient.createSet(favedEventsArray);
+			docClient.createSet(favedEventsArray);
 
   }
 
@@ -202,7 +208,8 @@ export const get = async (event, ctx, callback) => {
     if (!event.pathParameters || !event.pathParameters.email)
       throw helpers.missingIdQueryResponse('email');
     const email = event.pathParameters.email;
-    if (!isValidEmail(email)) throw helpers.inputError('Invalid email', email);
+    if (!isValidEmail(email))
+      throw helpers.inputError('Invalid email', email);
     const user = await db.getOne(email, USERS_TABLE);
     if (isEmpty(user)) throw helpers.notFoundResponse('user', email);
 
@@ -228,10 +235,12 @@ export const update = async (event, ctx, callback) => {
       throw helpers.missingIdQueryResponse('event');
 
     const email = event.pathParameters.email;
-    if (!isValidEmail(email)) throw helpers.inputError('Invalid email', email);
+    if (!isValidEmail(email))
+      throw helpers.inputError('Invalid email', email);
 
     const existingUser = await db.getOne(email, USERS_TABLE);
-    if (isEmpty(existingUser)) throw helpers.notFoundResponse('user', email);
+    if (isEmpty(existingUser))
+      throw helpers.notFoundResponse('user', email);
 
     const data = JSON.parse(event.body);
     const res = await db.updateDB(email, data, USERS_TABLE);
@@ -301,7 +310,8 @@ export const favouriteEvent = async (event, ctx, callback) => {
       throw helpers.notFoundResponse('event', eventID, year);
 
     const existingUser = await db.getOne(email, USERS_TABLE);
-    if (isEmpty(existingUser)) throw helpers.notFoundResponse('user', email);
+    if (isEmpty(existingUser))
+      throw helpers.notFoundResponse('user', email);
 
     const favedEventsList = existingUser['favedEventsID;year']
       ? existingUser['favedEventsID;year'].values
@@ -311,22 +321,22 @@ export const favouriteEvent = async (event, ctx, callback) => {
     let conditionExpression = '';
     if (
       isFavourite &&
-      (!favedEventsList || !favedEventsList.includes(eventIDAndYear))
+			(!favedEventsList || !favedEventsList.includes(eventIDAndYear))
     ) {
 
       updateExpression = 'add #favedEvents :eventsIDAndYear';
       conditionExpression =
-        'attribute_exists(id) and (not contains(#favedEvents, :eventIDAndYear))'; // if eventID already exists, don't perform add operation
+				'attribute_exists(id) and (not contains(#favedEvents, :eventIDAndYear))'; // if eventID already exists, don't perform add operation
 
     } else if (
       !isFavourite &&
-      favedEventsList &&
-      favedEventsList.includes(eventIDAndYear)
+			favedEventsList &&
+			favedEventsList.includes(eventIDAndYear)
     ) {
 
       updateExpression = 'delete #favedEvents :eventsIDAndYear';
       conditionExpression =
-        'attribute_exists(id) and contains(#favedEvents, :eventIDAndYear)'; // if eventID does not exist, don't perform delete operation
+				'attribute_exists(id) and contains(#favedEvents, :eventIDAndYear)'; // if eventID does not exist, don't perform delete operation
 
     } else {
 
@@ -334,7 +344,7 @@ export const favouriteEvent = async (event, ctx, callback) => {
       //OR if user is trying to unfavourite an event that is not favourited
       //In either of these cases, do nothing, but return a success message.
       let successMsg =
-        'Already ' + (isFavourite ? 'favourited' : 'unfavourited');
+				'Already ' + (isFavourite ? 'favourited' : 'unfavourited');
       successMsg += ` event with eventID ${eventID} for the year ${year}`;
       callback(
         null,
@@ -360,7 +370,9 @@ export const favouriteEvent = async (event, ctx, callback) => {
 
     const params = {
       Key: { id: email },
-      TableName: USERS_TABLE + process.env.ENVIRONMENT,
+      TableName:
+				USERS_TABLE +
+				(process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ''),
       ExpressionAttributeNames: expressionAttributeNames,
       ExpressionAttributeValues: expressionAttributeValues,
       UpdateExpression: updateExpression,
@@ -403,7 +415,8 @@ export const del = async (event, ctx, callback) => {
     const email = event.pathParameters.email;
     // check that the user exists
     const existingUser = await db.getOne(email, USERS_TABLE);
-    if (isEmpty(existingUser)) throw helpers.notFoundResponse('User', email);
+    if (isEmpty(existingUser))
+      throw helpers.notFoundResponse('User', email);
 
     const res = await db.deleteOne(email, USERS_TABLE);
     const response = helpers.createResponse(200, {
