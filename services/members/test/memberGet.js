@@ -17,13 +17,9 @@ describe("memberGet", () => {
   before(() => {
     AWSMock.mock("DynamoDB.DocumentClient", "get", function (params, callback) {
       if (params.Key.id == email) {
-        Promise.resolve(callback(null, {
-          Item: "not null member"
-        }));
+        Promise.resolve(callback(null, { Item: "not null member" }));
       } else if (params.Key.id == nonexistentEmail) {
-        Promise.resolve(callback(null, {
-          Item: null
-        }));
+        Promise.resolve(callback(null, { Item: null }));
       }
     });
   });
@@ -35,8 +31,8 @@ describe("memberGet", () => {
   it("should return 406 for trying to get a member with invalid email", async () => {
     const response = await wrapped.run({
       pathParameters: {
-        email: "asdf",
-      },
+        email: "asdf"
+      }
     });
     expect(response).to.not.be.empty;
     expect(response.statusCode).to.equal(406);
@@ -45,8 +41,8 @@ describe("memberGet", () => {
   it("should return 404 for trying to get a member that does not exist", async () => {
     const response = await wrapped.run({
       pathParameters: {
-        email: nonexistentEmail,
-      },
+        email: nonexistentEmail
+      }
     });
     expect(response).to.not.be.empty;
     expect(response.statusCode).to.equal(404);
@@ -55,8 +51,8 @@ describe("memberGet", () => {
   it("should return 200 for successfully getting a member", async () => {
     const response = await wrapped.run({
       pathParameters: {
-        email: email,
-      },
+        email: email
+      }
     });
     expect(response).to.not.be.empty;
     expect(response.statusCode).to.equal(200);

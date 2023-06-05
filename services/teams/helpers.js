@@ -1,10 +1,6 @@
 import AWS from "../../lib/aws";
-import {
-  v4 as uuidv4
-} from "uuid";
-import {
-  USER_REGISTRATIONS_TABLE, TEAMS_TABLE
-} from "../../constants/tables";
+import { v4 as uuidv4 } from "uuid";
+import { USER_REGISTRATIONS_TABLE, TEAMS_TABLE } from "../../constants/tables";
 import helpers from "../../lib/handlerHelpers.js";
 import db from "../../lib/db.js";
 
@@ -137,8 +133,7 @@ export default {
         transactions: [],
         inventory: [],
         submission: "",
-        metadata: {
-        }
+        metadata: {}
       }
     };
 

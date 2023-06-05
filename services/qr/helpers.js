@@ -5,9 +5,7 @@ import {
   USER_REGISTRATIONS_TABLE,
   QRS_TABLE
 } from "../../constants/tables";
-import {
-  isValidEmail
-} from "../../lib/utils.js";
+import { isValidEmail } from "../../lib/utils.js";
 import helpers from "../../lib/handlerHelpers.js";
 import db from "../../lib/db.js";
 
@@ -25,9 +23,7 @@ export default {
      */
 
     return await db
-      .getOne(id, QRS_TABLE, {
-        "eventID;year": eventIDAndYear
-      })
+      .getOne(id, QRS_TABLE, { "eventID;year": eventIDAndYear })
       .then((res) => {
         return res;
       });
@@ -44,9 +40,7 @@ export default {
 
     */
 
-    const {
-      eventID, year, qrCodeID, negativePointsConfirmed
-    } = data;
+    const { eventID, year, qrCodeID, negativePointsConfirmed } = data;
     const eventIDAndYear = eventID + ";" + year;
 
     //Check if eventID exists and is string. Check if year exists and is number.

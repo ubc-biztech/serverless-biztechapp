@@ -1,7 +1,5 @@
 import AWS from "../../lib/aws";
-import {
-  USER_REGISTRATIONS_TABLE
-} from "../../constants/tables";
+import { USER_REGISTRATIONS_TABLE } from "../../constants/tables";
 import sgMail from "@sendgrid/mail";
 const ics = require("ics");
 
@@ -9,24 +7,24 @@ sgMail.setApiKey(process.env.SENDGRID_KEY);
 
 export default {
   /**
-	 * Takes a semicolon separated event ID and year and returns an object containing
-	 * registeredCount, checkedInCount and waitlistCount for that event
-	 * @param {String} eventIDAndYear
-	 * @return {registeredCount checkedInCount waitlistCount}
-	 */
+   * Takes a semicolon separated event ID and year and returns an object containing
+   * registeredCount, checkedInCount and waitlistCount for that event
+   * @param {String} eventIDAndYear
+   * @return {registeredCount checkedInCount waitlistCount}
+   */
   getEventCounts: async function (eventIDAndYear) {
     const docClient = new AWS.DynamoDB.DocumentClient();
     const params = {
       TableName:
-				USER_REGISTRATIONS_TABLE +
-				(process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
+        USER_REGISTRATIONS_TABLE +
+        (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
       FilterExpression: "#eventIDYear = :query",
       ExpressionAttributeNames: {
-        "#eventIDYear": "eventID;year",
+        "#eventIDYear": "eventID;year"
       },
       ExpressionAttributeValues: {
-        ":query": eventIDAndYear,
-      },
+        ":query": eventIDAndYear
+      }
     };
     return await docClient
       .scan(params)
@@ -35,21 +33,21 @@ export default {
         let counts = {
           registeredCount: 0,
           checkedInCount: 0,
-          waitlistCount: 0,
+          waitlistCount: 0
         };
 
         result.Items.forEach((item) => {
           if (!item.isPartner) {
             switch (item.registrationStatus) {
-            case "registered":
-              counts.registeredCount++;
-              break;
-            case "checkedIn":
-              counts.checkedInCount++;
-              break;
-            case "waitlist":
-              counts.waitlistCount++;
-              break;
+              case "registered":
+                counts.registeredCount++;
+                break;
+              case "checkedIn":
+                counts.checkedInCount++;
+                break;
+              case "waitlist":
+                counts.waitlistCount++;
+                break;
             }
           }
         });
@@ -71,9 +69,7 @@ export default {
     return sgMail.send(msg);
   },
   sendCalendarInvite: async (event, user, dynamicCalendarMsg) => {
-    let {
-      ename, description, elocation, startDate, endDate
-    } = event;
+    let { ename, description, elocation, startDate, endDate } = event;
 
     // parse start and end dates into event duration object (hours, minutes, seconds)
     startDate = new Date(startDate);
@@ -82,7 +78,7 @@ export default {
     const duration = {
       hours: endDate.getHours() - startDate.getHours(),
       minutes: endDate.getMinutes() - startDate.getMinutes(),
-      seconds: endDate.getSeconds() - startDate.getSeconds(),
+      seconds: endDate.getSeconds() - startDate.getSeconds()
     };
 
     // convert startDate from PST/PDT to UTC (to avoid AWS-dependent local time conversion)
@@ -98,7 +94,7 @@ export default {
       startDate.getMonth() + 1,
       startDate.getDate(),
       startDate.getHours(),
-      startDate.getMinutes(),
+      startDate.getMinutes()
     ];
 
     const eventDetails = {
@@ -115,7 +111,7 @@ export default {
       url: "https://www.ubcbiztech.com",
       organizer: {
         name: "UBC BizTech",
-        email: "info@ubcbiztech.com",
+        email: "info@ubcbiztech.com"
       },
       attendees: [
         {
@@ -123,22 +119,20 @@ export default {
           email: user.id,
           rsvp: true,
           partstat: "NEEDS-ACTION",
-          role: "REQ-PARTICIPANT",
+          role: "REQ-PARTICIPANT"
         },
         {
           name: "UBC BizTech",
           email: "info@ubcbiztech.com",
           rsvp: true,
           partstat: "ACCEPTED",
-          role: "CHAIR",
-        },
+          role: "CHAIR"
+        }
       ],
-      method: "REQUEST",
+      method: "REQUEST"
     };
 
-    const {
-      error, value
-    } = ics.createEvent(eventDetails);
+    const { error, value } = ics.createEvent(eventDetails);
 
     if (error) {
       console.log(error);
@@ -155,7 +149,7 @@ export default {
       to: user.id,
       from: {
         email: "info@ubcbiztech.com",
-        name: "UBC BizTech",
+        name: "UBC BizTech"
       },
       attachments: [
         {
@@ -163,13 +157,13 @@ export default {
           filename: "invite.ics",
           type: "text/calendar;method=REQUEST",
           content: base64Cal,
-          disposition: "attachment",
-        },
+          disposition: "attachment"
+        }
       ],
       dynamic_template_data: dynamicCalendarMsg.dynamic_template_data,
-      templateId: dynamicCalendarMsg.templateId,
+      templateId: dynamicCalendarMsg.templateId
     };
 
     return sgMail.send(msg);
-  },
+  }
 };
