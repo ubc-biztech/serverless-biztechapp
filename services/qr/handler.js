@@ -2,9 +2,13 @@ import AWS from "../../lib/aws";
 
 import registrationHelpers from "./helpers";
 import helpers from "../../lib/handlerHelpers";
-import { isEmpty } from "../../lib/utils";
+import {
+  isEmpty
+} from "../../lib/utils";
 import db from "../../lib/db";
-import { EVENTS_TABLE, QRS_TABLE } from "../../constants/tables";
+import {
+  EVENTS_TABLE, QRS_TABLE
+} from "../../constants/tables";
 
 /*
   Returns Status Code 200 when QR code is scanned successfully
@@ -30,12 +34,30 @@ export const post = async (event, ctx, callback) => {
     const data = JSON.parse(event.body);
 
     helpers.checkPayloadProps(data, {
-      qrCodeID: { required: true, type: "string" },
-      eventID: { required: true, type: "string" },
-      year: { required: true, type: "number" },
-      email: { required: true, type: "string" },
-      negativePointsConfirmed: { required: true, type: "boolean" }, // true if the user has confirmed negative point QR scans
-      admin: { required: false, type: "boolean" } // TODO: Admin possibility if gated actions required in the future
+      qrCodeID: {
+        required: true,
+        type: "string"
+      },
+      eventID: {
+        required: true,
+        type: "string"
+      },
+      year: {
+        required: true,
+        type: "number"
+      },
+      email: {
+        required: true,
+        type: "string"
+      },
+      negativePointsConfirmed: {
+        required: true,
+        type: "boolean"
+      }, // true if the user has confirmed negative point QR scans
+      admin: {
+        required: false,
+        type: "boolean"
+      } // TODO: Admin possibility if gated actions required in the future
     });
 
     await registrationHelpers
@@ -85,7 +107,8 @@ export const post = async (event, ctx, callback) => {
 
 export const get = async (event, ctx, callback) => {
   try {
-    const qrs = await db.scan(QRS_TABLE, {});
+    const qrs = await db.scan(QRS_TABLE, {
+    });
     const response = helpers.createResponse(200, qrs);
     callback(null, response);
     return response;
@@ -105,9 +128,13 @@ export const getOne = async (event, ctx, callback) => {
       !event.pathParameters.year
     )
       throw helpers.missingPathParamResponse("id", "event", "year");
-    const { id, eventID, year } = event.pathParameters;
+    const {
+      id, eventID, year
+    } = event.pathParameters;
     const eventIDAndYear = eventID + ";" + year;
-    const qr = await db.scan(id, QRS_TABLE, { "eventID;year": eventIDAndYear });
+    const qr = await db.scan(id, QRS_TABLE, {
+      "eventID;year": eventIDAndYear
+    });
     const response = helpers.createResponse(200, qr);
     callback(null, response);
     return response;
@@ -189,7 +216,9 @@ export const update = async (event, ctx, callback) => {
       !event.pathParameters.year
     )
       throw helpers.missingPathParamResponse("id", "event", "year");
-    const { id, eventID, year } = event.pathParameters;
+    const {
+      id, eventID, year
+    } = event.pathParameters;
     const eventIDAndYear = eventID + ";" + year;
 
     const existingQR = await db.getOne(id, QRS_TABLE, {
@@ -249,7 +278,9 @@ export const del = async (event, ctx, callback) => {
       !event.pathParameters.year
     )
       throw helpers.missingPathParamResponse("id", "event", "year");
-    const { id, eventID, year } = event.pathParameters;
+    const {
+      id, eventID, year
+    } = event.pathParameters;
     const eventIDAndYear = eventID + ";" + year;
 
     const existingQR = await db.getOne(id, QRS_TABLE, {

@@ -2,8 +2,12 @@ import AWS from "../../lib/aws";
 import registrationHelpers from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
-import { isEmpty, isValidEmail } from "../../lib/utils";
-import { EVENTS_TABLE, USER_REGISTRATIONS_TABLE } from "../../constants/tables";
+import {
+  isEmpty, isValidEmail
+} from "../../lib/utils";
+import {
+  EVENTS_TABLE, USER_REGISTRATIONS_TABLE
+} from "../../constants/tables";
 
 // const CHECKIN_COUNT_SANITY_CHECK = 500;
 
@@ -15,7 +19,9 @@ import { EVENTS_TABLE, USER_REGISTRATIONS_TABLE } from "../../constants/tables";
      if they are registered, waitlisted, or cancelled, but not if checkedIn
 */
 export async function updateHelper(data, createNew, email, fname) {
-  const { eventID, year } = data;
+  const {
+    eventID, year
+  } = data;
   const eventIDAndYear = eventID + ";" + year;
 
   console.log(data);
@@ -46,7 +52,9 @@ export async function updateHelper(data, createNew, email, fname) {
   // if(isEmpty(existingUser)) throw helpers.notFoundResponse('User', email);
 
   // Check if the event exists
-  const existingEvent = await db.getOne(eventID, EVENTS_TABLE, { year });
+  const existingEvent = await db.getOne(eventID, EVENTS_TABLE, {
+    year
+  });
   if (isEmpty(existingEvent))
     throw helpers.notFoundResponse("Event", eventID, year);
 
@@ -136,7 +144,10 @@ async function createRegistration(
 
     // Because biztechRegistration table has a sort key, we cannot use helpers.updateDB()
     let params = {
-      Key: { id: email, ["eventID;year"]: eventIDAndYear },
+      Key: {
+        id: email,
+        ["eventID;year"]: eventIDAndYear
+      },
       TableName:
         USER_REGISTRATIONS_TABLE +
         (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
@@ -192,7 +203,9 @@ export async function sendEmail(user, existingEvent, registrationStatus, id) {
     const userEmail = user.id;
     const userName = user.fname;
 
-    if (!userEmail) throw { message: "User does not have an e-mail address!" };
+    if (!userEmail) throw {
+      message: "User does not have an e-mail address!"
+    };
 
     // template id for registered and waitlist
     let tempId = "d-11d4bfcbebdf42b686f5e7d0977aa952";
@@ -287,10 +300,22 @@ export const post = async (event, ctx, callback) => {
     if (!isValidEmail(data.email))
       throw helpers.inputError("Invalid email", data.email);
     helpers.checkPayloadProps(data, {
-      email: { required: true, type: "string" },
-      eventID: { required: true, type: "string" },
-      year: { required: true, type: "number" },
-      registrationStatus: { required: true, type: "string" }
+      email: {
+        required: true,
+        type: "string"
+      },
+      eventID: {
+        required: true,
+        type: "string"
+      },
+      year: {
+        required: true,
+        type: "number"
+      },
+      registrationStatus: {
+        required: true,
+        type: "string"
+      }
     });
 
     const existingReg = await db.getOne(data.email, USER_REGISTRATIONS_TABLE, {
@@ -356,10 +381,22 @@ export const put = async (event, ctx, callback) => {
     if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
     // Check that parameters are valid
     helpers.checkPayloadProps(data, {
-      eventID: { required: true, type: "string" },
-      year: { required: true, type: "number" },
-      registrationStatus: { required: false, type: "string" },
-      points: { required: false, type: "number" }
+      eventID: {
+        required: true,
+        type: "string"
+      },
+      year: {
+        required: true,
+        type: "number"
+      },
+      registrationStatus: {
+        required: false,
+        type: "string"
+      },
+      points: {
+        required: false,
+        type: "number"
+      }
     });
 
     const response = await updateHelper(
@@ -473,8 +510,14 @@ export const del = async (event, ctx, callback) => {
     const email = event.pathParameters.email;
     if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
     helpers.checkPayloadProps(data, {
-      eventID: { required: true, type: "string" },
-      year: { required: true, type: "number" }
+      eventID: {
+        required: true,
+        type: "string"
+      },
+      year: {
+        required: true,
+        type: "number"
+      }
     });
 
     const eventIDAndYear = data.eventID + ";" + data.year;

@@ -1,6 +1,10 @@
 import helpers from "../../lib/handlerHelpers";
-import { isValidEmail } from "../../lib/utils";
-import { updateHelper } from "../registrations/handler";
+import {
+  isValidEmail
+} from "../../lib/utils";
+import {
+  updateHelper
+} from "../registrations/handler";
 import db from "../../lib/db";
 import AWS from "../../lib/aws";
 const {
@@ -294,19 +298,19 @@ export const webhook = async (event, ctx, callback) => {
     }
 
     switch (data.paymentType) {
-      case "UserMember":
-        await userMemberSignup(data);
-        break;
-      case "Member":
-        await memberSignup(data);
-        break;
-      case "Event":
-        await eventRegistration(data);
-        break;
-      default:
-        return helpers.createResponse(400, {
-          message: "Webhook Error: unidentified payment type"
-        });
+    case "UserMember":
+      await userMemberSignup(data);
+      break;
+    case "Member":
+      await memberSignup(data);
+      break;
+    case "Event":
+      await eventRegistration(data);
+      break;
+    default:
+      return helpers.createResponse(400, {
+        message: "Webhook Error: unidentified payment type"
+      });
     }
   }
 };
@@ -314,7 +318,9 @@ export const webhook = async (event, ctx, callback) => {
 export const payment = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
-    const { paymentImages } = data;
+    const {
+      paymentImages
+    } = data;
     delete data.paymentImages;
 
     const session = await stripe.checkout.sessions.create({
@@ -367,7 +373,9 @@ export const cancel = async (event, ctx, callback) => {
     cancelSecret
   );
   const data = eventData.data.object.metadata;
-  const { email, eventID, year, paymentType } = data;
+  const {
+    email, eventID, year, paymentType
+  } = data;
   if (paymentType === "Event") {
     try {
       const eventIDAndYear = eventID + ";" + year;

@@ -3,8 +3,12 @@ import AWS from "../../lib/aws";
 import eventHelpers from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
-import { alphabeticalComparer, isEmpty } from "../../lib/utils";
-import { MAX_BATCH_ITEM_COUNT } from "../../constants/dynamodb";
+import {
+  alphabeticalComparer, isEmpty
+} from "../../lib/utils";
+import {
+  MAX_BATCH_ITEM_COUNT
+} from "../../constants/dynamodb";
 import {
   EVENTS_TABLE,
   USERS_TABLE,
@@ -111,9 +115,13 @@ export const del = async (event, ctx, callback) => {
         event.pathParameters
       );
 
-    const existingEvent = await db.getOne(id, EVENTS_TABLE, { year });
+    const existingEvent = await db.getOne(id, EVENTS_TABLE, {
+      year
+    });
     if (isEmpty(existingEvent)) throw helpers.notFoundResponse("event", id);
-    const res = await db.deleteOne(id, EVENTS_TABLE, { year });
+    const res = await db.deleteOne(id, EVENTS_TABLE, {
+      year
+    });
 
     const response = helpers.createResponse(200, {
       message: `Deleted event with id '${id}' for the year ${year}!`,
@@ -132,7 +140,8 @@ export const del = async (event, ctx, callback) => {
 // /events
 export const getAll = async (event, ctx, callback) => {
   try {
-    let filterExpression = {};
+    let filterExpression = {
+    };
 
     //Set up query by year if exists
     if (
@@ -205,7 +214,9 @@ export const update = async (event, ctx, callback) => {
         event.pathParameters
       );
 
-    const existingEvent = await db.getOne(id, EVENTS_TABLE, { year });
+    const existingEvent = await db.getOne(id, EVENTS_TABLE, {
+      year
+    });
     if (isEmpty(existingEvent))
       throw helpers.notFoundResponse("event", id, year);
     const data = JSON.parse(event.body);
@@ -340,7 +351,8 @@ export const get = async (event, ctx, callback) => {
         });
       }
       let keysForRequest = registrationList.map((registrationObj) => {
-        const keyEntry = {};
+        const keyEntry = {
+        };
         keyEntry.id = registrationObj.id;
         return keyEntry;
       });
