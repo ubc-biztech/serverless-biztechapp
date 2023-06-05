@@ -1,8 +1,8 @@
-'use strict';
-import chai from 'chai';
+"use strict";
+import chai from "chai";
 const expect = chai.expect;
 
-import helpers from '../../../lib/testHelpers';
+import helpers from "../../../lib/testHelpers";
 import {
   INTEGRATION_TEST_EVENT_ID,
   INTEGRATION_TEST_YEAR,
@@ -10,163 +10,137 @@ import {
   INTEGRATION_TEST_PERSISTENT_YEAR,
   INTEGRATION_TEST_NON_EXISTANT_EVENT_ID,
   INTEGRATION_TEST_NON_EXISTANT_YEAR,
-} from '../../../constants/test';
+} from "../../../constants/test";
 
-const SERVICE = 'events';
+const SERVICE = "events";
 
-describe('events integration', function () {
-
+describe("events integration", function () {
   this.timeout(10000);
 
-  describe('events/{id}/{year} integration', function () {
-
-    describe('events/{id}/{year} GET tests', function () {
-
-      it('event GET with no additional params returns 200 on an event that exists', async () => {
-
+  describe("events/{id}/{year} integration", function () {
+    describe("events/{id}/{year} GET tests", function () {
+      it("event GET with no additional params returns 200 on an event that exists", async () => {
         const payload = {
           pathParameters: {
             id: INTEGRATION_TEST_PERSISTENT_EVENT_ID,
             year: INTEGRATION_TEST_PERSISTENT_YEAR
           }
         };
-        return helpers.invokeLambda(SERVICE, 'eventGet', JSON.stringify(payload))
+        return helpers.invokeLambda(SERVICE, "eventGet", JSON.stringify(payload))
           .then(([statusCode, body]) => {
-
             expect(statusCode).to.equal(200);
             expect(body.id).to.equal(INTEGRATION_TEST_PERSISTENT_EVENT_ID);
-            expect(body).to.have.property('capac');
-
+            expect(body).to.have.property("capac");
           });
-
       });
 
-      it('event GET when event doesn\'t exist returns 404', async () => {
-
+      it("event GET when event doesn't exist returns 404", async () => {
         const payload = {
           pathParameters: {
             id: INTEGRATION_TEST_NON_EXISTANT_EVENT_ID,
             year: INTEGRATION_TEST_PERSISTENT_YEAR
           }
         };
-        return helpers.invokeLambda(SERVICE, 'eventGet', JSON.stringify(payload))
+        return helpers.invokeLambda(SERVICE, "eventGet", JSON.stringify(payload))
           .then(([statusCode]) => {
-
             expect(statusCode).to.equal(404);
-
           });
-
       });
 
-      it('event GET when year doesn\'t exist returns 404', async () => {
-
+      it("event GET when year doesn't exist returns 404", async () => {
         const payload = {
           pathParameters: {
             id: INTEGRATION_TEST_PERSISTENT_EVENT_ID,
             year: INTEGRATION_TEST_NON_EXISTANT_YEAR
           }
         };
-        return helpers.invokeLambda(SERVICE, 'eventGet', JSON.stringify(payload))
+        return helpers.invokeLambda(SERVICE, "eventGet", JSON.stringify(payload))
           .then(([statusCode]) => {
-
             expect(statusCode).to.equal(404);
-
           });
-
       });
 
-      it('event GET with count true and users false returns 200', async () => {
-
+      it("event GET with count true and users false returns 200", async () => {
         const payload = {
           pathParameters: {
             id: INTEGRATION_TEST_PERSISTENT_EVENT_ID,
             year: INTEGRATION_TEST_PERSISTENT_YEAR
           },
           queryStringParameters: {
-            count: 'true',
-            users: 'false'
+            count: "true",
+            users: "false"
           }
         };
-        return helpers.invokeLambda(SERVICE, 'eventGet', JSON.stringify(payload))
+        return helpers.invokeLambda(SERVICE, "eventGet", JSON.stringify(payload))
           .then(([statusCode, body]) => {
-
             expect(statusCode).to.equal(200);
-            expect(body).to.have.property('registeredCount');
-            expect(body).to.have.property('checkedInCount');
-            expect(body).to.have.property('waitlistCount');
-
+            expect(body).to.have.property("registeredCount");
+            expect(body).to.have.property("checkedInCount");
+            expect(body).to.have.property("waitlistCount");
           });
-
       });
 
-      it('event GET with count false and users true returns 200', async () => {
-
+      it("event GET with count false and users true returns 200", async () => {
         const payload = {
           pathParameters: {
             id: INTEGRATION_TEST_PERSISTENT_EVENT_ID,
             year: INTEGRATION_TEST_PERSISTENT_YEAR
           },
           queryStringParameters: {
-            count: 'false',
-            users: 'true'
+            count: "false",
+            users: "true"
           }
         };
-        return helpers.invokeLambda(SERVICE, 'eventGet', JSON.stringify(payload))
+        return helpers.invokeLambda(SERVICE, "eventGet", JSON.stringify(payload))
           .then(([statusCode]) => {
-
             expect(statusCode).to.equal(200);
-
           });
-
       });
-
     });
 
-    describe('events/{id}/{year} PATCH tests', function () {
-
+    describe("events/{id}/{year} PATCH tests", function () {
       const updatePayload = {
-        ename: 'Updated Event',
-        description: 'DO NOT DELETE',
+        ename: "Updated Event",
+        description: "DO NOT DELETE",
         capac: 100,
-        facebookUrl: 'https://www.facebook.com/BizTechUBC/',
-        imageUrl: 'https://www.facebook.com/BizTechUBC/',
-        elocation: 'UBC Sauder',
+        facebookUrl: "https://www.facebook.com/BizTechUBC/",
+        imageUrl: "https://www.facebook.com/BizTechUBC/",
+        elocation: "UBC Sauder",
         longitude: -120.10,
         latitude: 78.03,
         registrationQuestions: [
           {
-            questionId: 'b6b6d6d6-c54f-45f7-8cd0-6f3a354e2796',
-            type: 'textField',
-            label: 'This is a test question?',
+            questionId: "b6b6d6d6-c54f-45f7-8cd0-6f3a354e2796",
+            type: "textField",
+            label: "This is a test question?",
             required: true,
           }
         ],
-        feedback: 'updated-test-feedback-form-link',
+        feedback: "updated-test-feedback-form-link",
       };
 
       // fields that are different in the updatePayload: ename, description, capac, elocation, longitude, latitude, registrationQuestions, feedback
       const defaultPayload = {
-        ename: 'integrationTestEventName',
-        description: 'default test event description',
+        ename: "integrationTestEventName",
+        description: "default test event description",
         capac: 50,
-        facebookUrl: 'https://www.facebook.com/BizTechUBC/',
-        imageUrl: 'https://www.facebook.com/BizTechUBC/',
-        elocation: 'UBC Nest',
+        facebookUrl: "https://www.facebook.com/BizTechUBC/",
+        imageUrl: "https://www.facebook.com/BizTechUBC/",
+        elocation: "UBC Nest",
         longitude: 120.00,
         latitude: -78.00,
         registrationQuestions: [
           {
-            questionId: 'c2bc026e-9659-42ef-9f01-5522b4deb5d0',
-            type: 'checkbox',
-            label: 'This is a checkbox?',
+            questionId: "c2bc026e-9659-42ef-9f01-5522b4deb5d0",
+            type: "checkbox",
+            label: "This is a checkbox?",
             required: false,
           }
         ],
-        feedback: 'test-feedback-form-link',
+        feedback: "test-feedback-form-link",
       };
 
-      it('event PATCH returns 200 on update success', async () => {
-
+      it("event PATCH returns 200 on update success", async () => {
         // update integrationTestEvent to defaultPayload
         let payload = {
           pathParameters: {
@@ -175,11 +149,9 @@ describe('events integration', function () {
           },
           body: JSON.stringify(defaultPayload)
         };
-        await helpers.invokeLambda(SERVICE, 'eventUpdate', JSON.stringify(payload))
+        await helpers.invokeLambda(SERVICE, "eventUpdate", JSON.stringify(payload))
           .then(([statusCode]) => {
-
             expect(statusCode).to.equal(200);
-
           });
 
         payload = {
@@ -189,9 +161,8 @@ describe('events integration', function () {
           }
         };
         // check that integrationTestEvent was updated
-        await helpers.invokeLambda(SERVICE, 'eventGet', JSON.stringify(payload))
+        await helpers.invokeLambda(SERVICE, "eventGet", JSON.stringify(payload))
           .then(([statusCode, body]) => {
-
             expect(statusCode).to.equal(200);
             expect(body.elocation).to.equal(defaultPayload.elocation);
             expect(body.imageUrl).to.equal(defaultPayload.imageUrl);
@@ -201,7 +172,6 @@ describe('events integration', function () {
             expect(body.longitude).to.equal(defaultPayload.longitude);
             expect(body.registrationQuestions).to.have.deep.members(defaultPayload.registrationQuestions);
             expect(body.feedback).to.equal(defaultPayload.feedback);
-
           });
 
         // update integrationTestEvent to updatePayload
@@ -212,17 +182,14 @@ describe('events integration', function () {
           },
           body: JSON.stringify(updatePayload)
         };
-        await helpers.invokeLambda(SERVICE, 'eventUpdate', JSON.stringify(payload))
+        await helpers.invokeLambda(SERVICE, "eventUpdate", JSON.stringify(payload))
           .then(([statusCode]) => {
-
             expect(statusCode).to.equal(200);
-
           });
 
         // check that integrationTestEvent was updated
-        return helpers.invokeLambda(SERVICE, 'eventGet', JSON.stringify(payload))
+        return helpers.invokeLambda(SERVICE, "eventGet", JSON.stringify(payload))
           .then(([statusCode, body]) => {
-
             expect(statusCode).to.equal(200);
             expect(body.elocation).to.equal(updatePayload.elocation);
             expect(body.imageUrl).to.equal(updatePayload.imageUrl);
@@ -232,13 +199,10 @@ describe('events integration', function () {
             expect(body.longitude).to.equal(updatePayload.longitude);
             expect(body.registrationQuestions).to.have.deep.members(updatePayload.registrationQuestions);
             expect(body.feedback).to.equal(updatePayload.feedback);
-
           });
-
       });
 
-      it('event PATCH returns 404 when event not found', async () => {
-
+      it("event PATCH returns 404 when event not found", async () => {
         const payload = {
           pathParameters: {
             id: INTEGRATION_TEST_NON_EXISTANT_EVENT_ID,
@@ -247,55 +211,39 @@ describe('events integration', function () {
           body: JSON.stringify(defaultPayload)
         };
 
-        return helpers.invokeLambda(SERVICE, 'eventUpdate', JSON.stringify(payload))
+        return helpers.invokeLambda(SERVICE, "eventUpdate", JSON.stringify(payload))
           .then(([statusCode]) => {
-
             expect(statusCode).to.equal(404);
-
           });
-
       });
-
     });
-
   });
 
-  describe('events/ integration', function () {
-
-    describe('events/ GET tests', function () {
-
-      it('events GET returns 200 on success', async () => {
-
-        return helpers.invokeLambda(SERVICE, 'eventGetAll', '')
+  describe("events/ integration", function () {
+    describe("events/ GET tests", function () {
+      it("events GET returns 200 on success", async () => {
+        return helpers.invokeLambda(SERVICE, "eventGetAll", "")
           .then(([statusCode]) => {
-
             expect(statusCode).to.equal(200);
-
           });
-
       });
-
     });
 
-    describe('events/ POST tests', function () {
-
-      it('events POST returns 201 on success', async () => {
-
+    describe("events/ POST tests", function () {
+      it("events POST returns 201 on success", async () => {
         let payload = {
           body: JSON.stringify({
             id: INTEGRATION_TEST_EVENT_ID,
             year: INTEGRATION_TEST_YEAR,
-            ename: 'test',
+            ename: "test",
             capac: 200000,
-            img: 'someImageUrl'
+            img: "someImageUrl"
           })
         };
-        await helpers.invokeLambda(SERVICE, 'eventCreate', JSON.stringify(payload))
+        await helpers.invokeLambda(SERVICE, "eventCreate", JSON.stringify(payload))
           .then(([statusCode, body]) => {
-
             expect(statusCode).to.equal(201);
             expect(body.message).to.equal(`Created event with id ${INTEGRATION_TEST_EVENT_ID} for the year ${INTEGRATION_TEST_YEAR}!`);
-
           });
 
         payload = {
@@ -305,38 +253,28 @@ describe('events integration', function () {
           }
         };
 
-        return helpers.invokeLambda(SERVICE, 'eventDelete', JSON.stringify(payload))
+        return helpers.invokeLambda(SERVICE, "eventDelete", JSON.stringify(payload))
           .then(([statusCode]) => {
-
             expect(statusCode).to.equal(200);
-
           });
-
       });
 
-      it('events POST returns 409 when event id already exists', async () => {
-
+      it("events POST returns 409 when event id already exists", async () => {
         const payload = {
           body: JSON.stringify({
             id: INTEGRATION_TEST_PERSISTENT_EVENT_ID,
             year: INTEGRATION_TEST_PERSISTENT_YEAR,
-            ename: 'test',
+            ename: "test",
             capac: 20000,
-            img: 'someImgUrl'
+            img: "someImgUrl"
           })
         };
-        return helpers.invokeLambda(SERVICE, 'eventCreate', JSON.stringify(payload))
+        return helpers.invokeLambda(SERVICE, "eventCreate", JSON.stringify(payload))
           .then(([statusCode, body]) => {
-
             expect(statusCode).to.equal(409);
-            expect(body.message).to.equal('A database entry with the same \'event id and year\' already exists!');
-
+            expect(body.message).to.equal("A database entry with the same 'event id and year' already exists!");
           });
-
       });
-
     });
-
   });
-
 });
