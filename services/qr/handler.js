@@ -1,10 +1,14 @@
-import AWS from '../../lib/aws';
+import AWS from "../../lib/aws";
 
-import registrationHelpers from './helpers';
-import helpers from '../../lib/handlerHelpers';
-import { isEmpty } from '../../lib/utils';
-import db from '../../lib/db';
-import { EVENTS_TABLE, QRS_TABLE } from '../../constants/tables';
+import registrationHelpers from "./helpers";
+import helpers from "../../lib/handlerHelpers";
+import {
+  isEmpty
+} from "../../lib/utils";
+import db from "../../lib/db";
+import {
+  EVENTS_TABLE, QRS_TABLE
+} from "../../constants/tables";
 
 /*
   Returns Status Code 200 when QR code is scanned successfully
@@ -15,7 +19,6 @@ import { EVENTS_TABLE, QRS_TABLE } from '../../constants/tables';
 
 // Endpoint: POST /qr
 export const post = async (event, ctx, callback) => {
-
   /* Processes a QR code scan and tries to update the user's points in the Registrations database
 
   Args:
@@ -28,154 +31,159 @@ export const post = async (event, ctx, callback) => {
    */
 
   try {
-
     const data = JSON.parse(event.body);
 
     helpers.checkPayloadProps(data, {
-      qrCodeID: { required: true, type: 'string' },
-      eventID: { required: true, type: 'string' },
-      year: { required: true, type: 'number' },
-      email: { required: true, type: 'string' },
-      negativePointsConfirmed: { required: true, type: 'boolean' }, // true if the user has confirmed negative point QR scans
-      admin: { required: false, type: 'boolean' }, // TODO: Admin possibility if gated actions required in the future
+      qrCodeID: {
+        required: true,
+        type: "string"
+      },
+      eventID: {
+        required: true,
+        type: "string"
+      },
+      year: {
+        required: true,
+        type: "number"
+      },
+      email: {
+        required: true,
+        type: "string"
+      },
+      negativePointsConfirmed: {
+        required: true,
+        type: "boolean"
+      }, // true if the user has confirmed negative point QR scans
+      admin: {
+        required: false,
+        type: "boolean"
+      }, // TODO: Admin possibility if gated actions required in the future
     });
 
     await registrationHelpers
       .qrScanPostHelper(data, data.email)
       .then((res) => {
-
-        if (res.hasOwnProperty('errorMessage')) {
-
+        if (res.hasOwnProperty("errorMessage")) {
           if (
             res.errorMessage ===
-						'Team scan would result in negative points'
+						"Team scan would result in negative points"
           ) {
-
             const response_fail = helpers.createResponse(406, {
-              message: 'ERROR: ' + res.errorMessage,
+              message: "ERROR: " + res.errorMessage,
               response: res,
             });
 
             callback(null, response_fail);
             return response_fail;
-
           }
 
           const response_fail = helpers.createResponse(403, {
-            message: 'ERROR: ' + res.errorMessage,
+            message: "ERROR: " + res.errorMessage,
             response: res,
           });
 
           callback(null, response_fail);
           return response_fail;
-
         }
 
         const response_success = helpers.createResponse(200, {
-          message: 'Successfully scanned QR code.',
+          message: "Successfully scanned QR code.",
           response: res,
         });
 
         callback(null, response_success);
         return response_success;
-
       })
       .catch((err) => {
-
         console.error(err);
         callback(null, err);
         return null;
-
       });
-
   } catch (err) {
-
     console.error(err);
     callback(null, err);
     return null;
-
   }
-
 };
 
 export const get = async (event, ctx, callback) => {
-
   try {
-
-    const qrs = await db.scan(QRS_TABLE, {});
+    const qrs = await db.scan(QRS_TABLE, {
+    });
     const response = helpers.createResponse(200, qrs);
     callback(null, response);
     return response;
-
   } catch (err) {
-
     console.log(err);
     callback(null, err);
     return null;
-
   }
-
 };
 
 export const getOne = async (event, ctx, callback) => {
-
   try {
-
     if (
       !event.pathParameters ||
 			!event.pathParameters.id ||
 			!event.pathParameters.eventID ||
 			!event.pathParameters.year
     )
-      throw helpers.missingPathParamResponse('id', 'event', 'year');
-    const { id, eventID, year } = event.pathParameters;
-    const eventIDAndYear = eventID + ';' + year;
+      throw helpers.missingPathParamResponse("id", "event", "year");
+    const {
+      id, eventID, year
+    } = event.pathParameters;
+    const eventIDAndYear = eventID + ";" + year;
     const qr = await db.scan(id, QRS_TABLE, {
-      'eventID;year': eventIDAndYear,
+      "eventID;year": eventIDAndYear,
     });
     const response = helpers.createResponse(200, qr);
     callback(null, response);
     return response;
-
   } catch (err) {
-
     console.log(err);
     callback(null, err);
     return null;
-
   }
-
 };
 
 export const create = async (event, ctx, callback) => {
-
   try {
-
     const timestamp = new Date().getTime();
     const data = JSON.parse(event.body);
 
     helpers.checkPayloadProps(data, {
-      id: { required: true },
-      eventID: { required: true, type: 'string' },
-      year: { required: true, type: 'number' },
-      points: { required: true, type: 'number' },
+      id: {
+        required: true
+      },
+      eventID: {
+        required: true,
+        type: "string"
+      },
+      year: {
+        required: true,
+        type: "number"
+      },
+      points: {
+        required: true,
+        type: "number"
+      },
     });
 
-    const eventIDAndYear = data.eventID + ';' + data.year;
+    const eventIDAndYear = data.eventID + ";" + data.year;
     const existingQR = await db.getOne(data.id, QRS_TABLE, {
-      'eventID;year': eventIDAndYear,
+      "eventID;year": eventIDAndYear,
     });
     if (!isEmpty(existingQR))
-      throw helpers.duplicateResponse('id and event', data);
+      throw helpers.duplicateResponse("id and event", data);
     const existingEvent = await db.getOne(data.eventID, EVENTS_TABLE, {
       year: data.year,
     });
     if (isEmpty(existingEvent))
-      throw helpers.inputError('Event does not exist', data);
+      throw helpers.inputError("Event does not exist", data);
 
     const item = {
       id: data.id,
-      'eventID;year': eventIDAndYear,
+      "eventID;year": eventIDAndYear,
       points: data.points,
       isActive: data.isActive,
       isUnlimitedScans: data.isUnlimitedScans,
@@ -193,36 +201,32 @@ export const create = async (event, ctx, callback) => {
 
     callback(null, response);
     return null;
-
   } catch (err) {
-
     console.log(err);
     callback(null, err);
     return null;
-
   }
-
 };
 
 export const update = async (event, ctx, callback) => {
-
   try {
-
     if (
       !event.pathParameters ||
 			!event.pathParameters.id ||
 			!event.pathParameters.eventID ||
 			!event.pathParameters.year
     )
-      throw helpers.missingPathParamResponse('id', 'event', 'year');
-    const { id, eventID, year } = event.pathParameters;
-    const eventIDAndYear = eventID + ';' + year;
+      throw helpers.missingPathParamResponse("id", "event", "year");
+    const {
+      id, eventID, year
+    } = event.pathParameters;
+    const eventIDAndYear = eventID + ";" + year;
 
     const existingQR = await db.getOne(id, QRS_TABLE, {
-      'eventID;year': eventIDAndYear,
+      "eventID;year": eventIDAndYear,
     });
     if (isEmpty(existingQR))
-      throw helpers.notFoundResponse('QR', id, eventIDAndYear);
+      throw helpers.notFoundResponse("QR", id, eventIDAndYear);
     const data = JSON.parse(event.body);
 
     const docClient = new AWS.DynamoDB.DocumentClient();
@@ -234,16 +238,21 @@ export const update = async (event, ctx, callback) => {
     } = db.createUpdateExpression(data);
 
     let params = {
-      Key: { id, eventIDAndYear },
+      Key: {
+        id,
+        eventIDAndYear
+      },
       TableName:
 				QRS_TABLE +
-				(process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ''),
+				(process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
       ExpressionAttributeValues: expressionAttributeValues,
-      ExpressionAttributeNames: { ...expressionAttributeNames },
+      ExpressionAttributeNames: {
+        ...expressionAttributeNames
+      },
       UpdateExpression: updateExpression,
-      ReturnValues: 'UPDATED_NEW',
+      ReturnValues: "UPDATED_NEW",
       ConditionExpression:
-				'attribute_exists(id) and attribute_exists(eventID;year)',
+				"attribute_exists(id) and attribute_exists(eventID;year)",
     };
 
     const res = await docClient.update(params).promise();
@@ -255,39 +264,35 @@ export const update = async (event, ctx, callback) => {
 
     callback(null, response);
     return null;
-
   } catch (err) {
-
     console.log(err);
     callback(null, err);
     return null;
-
   }
-
 };
 
 export const del = async (event, ctx, callback) => {
-
   try {
-
     if (
       !event.pathParameters ||
 			!event.pathParameters.id ||
 			!event.pathParameters.eventID ||
 			!event.pathParameters.year
     )
-      throw helpers.missingPathParamResponse('id', 'event', 'year');
-    const { id, eventID, year } = event.pathParameters;
-    const eventIDAndYear = eventID + ';' + year;
+      throw helpers.missingPathParamResponse("id", "event", "year");
+    const {
+      id, eventID, year
+    } = event.pathParameters;
+    const eventIDAndYear = eventID + ";" + year;
 
     const existingQR = await db.getOne(id, QRS_TABLE, {
-      'eventID;year': eventIDAndYear,
+      "eventID;year": eventIDAndYear,
     });
     if (isEmpty(existingQR))
-      throw helpers.notFoundResponse('QR', id, eventIDAndYear);
+      throw helpers.notFoundResponse("QR", id, eventIDAndYear);
 
     const res = await db.deleteOne(id, QRS_TABLE, {
-      'eventID;year': eventIDAndYear,
+      "eventID;year": eventIDAndYear,
     });
 
     const response = helpers.createResponse(200, {
@@ -297,13 +302,9 @@ export const del = async (event, ctx, callback) => {
 
     callback(null, response);
     return null;
-
   } catch (err) {
-
     console.log(err);
     callback(null, err);
     return null;
-
   }
-
 };

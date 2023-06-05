@@ -1,7 +1,9 @@
-import AWS from '../../lib/aws';
-import { USER_REGISTRATIONS_TABLE } from '../../constants/tables';
-import sgMail from '@sendgrid/mail';
-const ics = require('ics');
+import AWS from "../../lib/aws";
+import {
+  USER_REGISTRATIONS_TABLE
+} from "../../constants/tables";
+import sgMail from "@sendgrid/mail";
+const ics = require("ics");
 
 sgMail.setApiKey(process.env.SENDGRID_KEY);
 
@@ -13,25 +15,23 @@ export default {
 	 * @return {registeredCount checkedInCount waitlistCount}
 	 */
   getEventCounts: async function (eventIDAndYear) {
-
     const docClient = new AWS.DynamoDB.DocumentClient();
     const params = {
       TableName:
 				USER_REGISTRATIONS_TABLE +
-				(process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ''),
-      FilterExpression: '#eventIDYear = :query',
+				(process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
+      FilterExpression: "#eventIDYear = :query",
       ExpressionAttributeNames: {
-        '#eventIDYear': 'eventID;year',
+        "#eventIDYear": "eventID;year",
       },
       ExpressionAttributeValues: {
-        ':query': eventIDAndYear,
+        ":query": eventIDAndYear,
       },
     };
     return await docClient
       .scan(params)
       .promise()
       .then((result) => {
-
         let counts = {
           registeredCount: 0,
           checkedInCount: 0,
@@ -39,54 +39,41 @@ export default {
         };
 
         result.Items.forEach((item) => {
-
           if (!item.isPartner) {
-
             switch (item.registrationStatus) {
-
-            case 'registered':
+            case "registered":
               counts.registeredCount++;
               break;
-            case 'checkedIn':
+            case "checkedIn":
               counts.checkedInCount++;
               break;
-            case 'waitlist':
+            case "waitlist":
               counts.waitlistCount++;
               break;
-
             }
-
           }
-
         });
 
         return counts;
-
       })
       .catch((error) => {
-
         console.error(error);
         return null;
-
       });
-
   },
   sendDynamicQR: (msg) => {
-
     if (!msg.from) {
-
       // default from address
-      msg.from = 'info@ubcbiztech.com';
-
+      msg.from = "info@ubcbiztech.com";
     }
 
     // in the future if you want to restrict to prod, use process.env.ENVIRONMENT === 'PROD'
     return sgMail.send(msg);
-
   },
   sendCalendarInvite: async (event, user, dynamicCalendarMsg) => {
-
-    let { ename, description, elocation, startDate, endDate } = event;
+    let {
+      ename, description, elocation, startDate, endDate
+    } = event;
 
     // parse start and end dates into event duration object (hours, minutes, seconds)
     startDate = new Date(startDate);
@@ -118,65 +105,65 @@ export default {
       title: ename,
       description,
       location: elocation,
-      startInputType: 'local',
+      startInputType: "local",
       start: startDateArray,
       // end: [2021, 2, 3],
       duration,
-      status: 'CONFIRMED',
-      busyStatus: 'BUSY',
-      productId: 'BizTech',
-      url: 'https://www.ubcbiztech.com',
+      status: "CONFIRMED",
+      busyStatus: "BUSY",
+      productId: "BizTech",
+      url: "https://www.ubcbiztech.com",
       organizer: {
-        name: 'UBC BizTech',
-        email: 'info@ubcbiztech.com',
+        name: "UBC BizTech",
+        email: "info@ubcbiztech.com",
       },
       attendees: [
         {
-          name: user.firstName + ' ' + user.lastName,
+          name: user.firstName + " " + user.lastName,
           email: user.id,
           rsvp: true,
-          partstat: 'NEEDS-ACTION',
-          role: 'REQ-PARTICIPANT',
+          partstat: "NEEDS-ACTION",
+          role: "REQ-PARTICIPANT",
         },
         {
-          name: 'UBC BizTech',
-          email: 'info@ubcbiztech.com',
+          name: "UBC BizTech",
+          email: "info@ubcbiztech.com",
           rsvp: true,
-          partstat: 'ACCEPTED',
-          role: 'CHAIR',
+          partstat: "ACCEPTED",
+          role: "CHAIR",
         },
       ],
-      method: 'REQUEST',
+      method: "REQUEST",
     };
 
-    const { error, value } = ics.createEvent(eventDetails);
+    const {
+      error, value
+    } = ics.createEvent(eventDetails);
 
     if (error) {
-
       console.log(error);
       return error;
-
     }
 
     // convert ics to base64
-    const base64 = Buffer.from(value).toString('base64');
-    const base64Cal = base64.toString('base64');
+    const base64 = Buffer.from(value).toString("base64");
+    const base64Cal = base64.toString("base64");
 
     // send the email for the calendar invite
     // for the qr code email, go to handlers.js
     const msg = {
       to: user.id,
       from: {
-        email: 'info@ubcbiztech.com',
-        name: 'UBC BizTech',
+        email: "info@ubcbiztech.com",
+        name: "UBC BizTech",
       },
       attachments: [
         {
-          name: 'invite.ics',
-          filename: 'invite.ics',
-          type: 'text/calendar;method=REQUEST',
+          name: "invite.ics",
+          filename: "invite.ics",
+          type: "text/calendar;method=REQUEST",
           content: base64Cal,
-          disposition: 'attachment',
+          disposition: "attachment",
         },
       ],
       dynamic_template_data: dynamicCalendarMsg.dynamic_template_data,
@@ -184,6 +171,5 @@ export default {
     };
 
     return sgMail.send(msg);
-
   },
 };
