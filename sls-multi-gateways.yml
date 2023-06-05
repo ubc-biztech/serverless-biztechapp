@@ -1,0 +1,36 @@
+port: 4001
+stage:
+services:
+  - srvName: events
+    srvPath: events
+    srvSource: services/events
+  - srvName: hello
+    srvPath: hello
+    srvSource: services/hello
+  - srvName: members
+    srvPath: members
+    srvSource: services/members
+  - srvName: payments
+    srvPath: payments
+    srvSource: services/payments
+  - srvName: prizes
+    srvPath: prizes
+    srvSource: services/prizes
+  - srvName: qr
+    srvPath: qr
+    srvSource: services/qr
+  - srvName: registrations
+    srvPath: registrations
+    srvSource: services/registrations
+  - srvName: stickers
+    srvPath: stickers
+    srvSource: services/stickers
+  - srvName: teams
+    srvPath: teams
+    srvSource: services/teams
+  - srvName: transactions
+    srvPath: transactions
+    srvSource: services/transactions
+  - srvName: users
+    srvPath: users
+    srvSource: services/users
