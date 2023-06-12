@@ -17,7 +17,9 @@ These instructions will get you a copy of the project up and running on your loc
 
     ```
     $ npm install
+    $ npm run install
     ```
+    The second command will install the dependencies for each handler
 
 3. Install the serverless cli globally:
 
@@ -48,7 +50,19 @@ These instructions will get you a copy of the project up and running on your loc
     $ export AWS_SECRET_ACCESS_KEY = <AWS_SECRET_ACCESS_KEY>
     ```
 
-7. Your setup is ready for development!
+7. Develop Locally:
+    Ensure that you have DynamoDB local setup (check notion)
+
+    ```
+        npm run init:db
+        npm run dev
+    ```
+
+8. Deploying 
+    Use this to test the branch on the staging branch
+    ```
+        sls deploy
+    ```
 
 
 ## Development
@@ -137,7 +151,7 @@ Our serverless API is deployed into different environments:
 To deploy to this environment, run the following in each service file:
 
 ```
-sls deploy
+npm run dev
 ```
 
 ### Staging
