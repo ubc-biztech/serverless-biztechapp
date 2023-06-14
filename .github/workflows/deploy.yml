@@ -1,11 +1,11 @@
-name: Deploy Staging
-
-on: pull_request
+name: Deploy on merge
+'on':
+  push:
+    branches: [ dev, master ]
 
 jobs:
  deploy-staging:
    runs-on: ubuntu-latest
-
    steps:
    - uses: actions/checkout@v2
    - name: Use Node.js ${{ matrix.node-version }}
@@ -30,14 +30,24 @@ jobs:
    - name: Install dependencies
      run: npm ci
 
-   - name: 'Deploy and test Staging'
+   - name: 'Deploy Dev'
+     if: github.ref == 'refs/heads/dev'
      env:
        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
        SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
      run: |
       cd services
-      for DIR in *; do (cd $DIR  && npx sls deploy --stage staging --conceal && cd ..) & done; wait
-      echo "Finished deployment in staging"
-      for DIR in *; do (cd $DIR && npx sls invoke test --compilers js:babel-core/register --stage staging && cd ..) & done; wait
-      echo "Finished running tests in staging environment"
+      for DIR in *; do (cd $DIR  && npx sls deploy --conceal && cd ..) & done; wait
+      echo "Finished deployment in dev"
+
+   - name: 'Deploy Dev'
+     if: github.ref == 'refs/heads/master'
+     env:
+       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+       SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
+     run: |
+      cd services
+      for DIR in *; do (cd $DIR  && npx sls deploy --stage prod --conceal && cd ..) & done; wait
+      echo "Finished deployment in prod"
