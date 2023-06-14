@@ -4,7 +4,7 @@ name: Deploy on merge
     branches: [ dev, master ]
 
 jobs:
- deploy-staging:
+ deploy:
    runs-on: ubuntu-latest
    steps:
    - uses: actions/checkout@v2
@@ -41,7 +41,7 @@ jobs:
       for DIR in *; do (cd $DIR  && npx sls deploy --conceal && cd ..) & done; wait
       echo "Finished deployment in dev"
 
-   - name: 'Deploy Dev'
+   - name: 'Deploy Prod'
      if: github.ref == 'refs/heads/master'
      env:
        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
