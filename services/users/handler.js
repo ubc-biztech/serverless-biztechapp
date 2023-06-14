@@ -1,17 +1,11 @@
-import AWS from "../../lib/aws";
+import docClient from "../../lib/docClient";
 
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
-import {
-  isEmpty, isValidEmail
-} from "../../lib/utils";
-import {
-  USERS_TABLE, EVENTS_TABLE
-} from "../../constants/tables";
+import { isEmpty, isValidEmail } from "../../lib/utils";
+import { USERS_TABLE, EVENTS_TABLE } from "../../constants/tables";
 
 export const create = async (event, ctx, callback) => {
-  const docClient = new AWS.DynamoDB.DocumentClient();
-
   const timestamp = new Date().getTime();
   const data = JSON.parse(event.body);
   if (!isValidEmail(data.email))
@@ -233,8 +227,6 @@ export const getAll = async (event, ctx, callback) => {
 };
 
 export const favouriteEvent = async (event, ctx, callback) => {
-  const docClient = new AWS.DynamoDB.DocumentClient();
-
   try {
     const data = JSON.parse(event.body);
 
@@ -253,9 +245,7 @@ export const favouriteEvent = async (event, ctx, callback) => {
       }
     });
 
-    const {
-      eventID, year, isFavourite
-    } = data;
+    const { eventID, year, isFavourite } = data;
     const eventIDAndYear = eventID + ";" + year;
 
     const email = event.pathParameters.email;
@@ -303,8 +293,7 @@ export const favouriteEvent = async (event, ctx, callback) => {
         null,
         helpers.createResponse(200, {
           message: successMsg,
-          response: {
-          }
+          response: {}
         })
       );
       return null;

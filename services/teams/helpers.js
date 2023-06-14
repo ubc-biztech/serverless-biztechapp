@@ -1,10 +1,6 @@
-import AWS from "../../lib/aws";
-import {
-  v4 as uuidv4
-} from "uuid";
-import {
-  USER_REGISTRATIONS_TABLE, TEAMS_TABLE
-} from "../../constants/tables";
+import docClient from "../../lib/docClient";
+import { v4 as uuidv4 } from "uuid";
+import { USER_REGISTRATIONS_TABLE, TEAMS_TABLE } from "../../constants/tables";
 import helpers from "../../lib/handlerHelpers.js";
 import db from "../../lib/db.js";
 
@@ -46,8 +42,6 @@ export default {
       .then((teamID) => {
         if (teamID) {
           return new Promise((resolve, reject) => {
-            const docClient = new AWS.DynamoDB.DocumentClient();
-
             // Partition key is teamID, sort key is eventID;year
             const params = {
               TableName:
@@ -78,8 +72,6 @@ export default {
         Partition key is teamID, sort key is eventID;year
    */
 
-    const docClient = new AWS.DynamoDB.DocumentClient();
-
     const params = {
       TableName:
         TEAMS_TABLE + (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
@@ -98,7 +90,6 @@ export default {
       Creates a team in the Teams table according to the Table Schema.
      */
 
-    const docClient = new AWS.DynamoDB.DocumentClient();
     const eventID_year = eventID + ";" + year;
 
     // First, check if ALL members are registered for the event with eventID;year. Iterate through memberIDs.
@@ -137,8 +128,7 @@ export default {
         transactions: [],
         inventory: [],
         submission: "",
-        metadata: {
-        }
+        metadata: {}
       }
     };
 

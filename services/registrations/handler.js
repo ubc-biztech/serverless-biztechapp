@@ -1,13 +1,9 @@
-import AWS from "../../lib/aws";
+import docClient from "../../lib/docClient";
 import registrationHelpers from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
-import {
-  isEmpty, isValidEmail
-} from "../../lib/utils";
-import {
-  EVENTS_TABLE, USER_REGISTRATIONS_TABLE
-} from "../../constants/tables";
+import { isEmpty, isValidEmail } from "../../lib/utils";
+import { EVENTS_TABLE, USER_REGISTRATIONS_TABLE } from "../../constants/tables";
 
 // const CHECKIN_COUNT_SANITY_CHECK = 500;
 
@@ -19,9 +15,7 @@ import {
      if they are registered, waitlisted, or cancelled, but not if checkedIn
 */
 export async function updateHelper(data, createNew, email, fname) {
-  const {
-    eventID, year
-  } = data;
+  const { eventID, year } = data;
   const eventIDAndYear = eventID + ";" + year;
 
   console.log(data);
@@ -121,7 +115,6 @@ async function createRegistration(
   createNew
 ) {
   try {
-    const docClient = new AWS.DynamoDB.DocumentClient();
     const formResponse = removeDefaultKeys(data);
 
     const updateObject = {
@@ -203,9 +196,10 @@ export async function sendEmail(user, existingEvent, registrationStatus, id) {
     const userEmail = user.id;
     const userName = user.fname;
 
-    if (!userEmail) throw {
-      message: "User does not have an e-mail address!"
-    };
+    if (!userEmail)
+      throw {
+        message: "User does not have an e-mail address!"
+      };
 
     // template id for registered and waitlist
     let tempId = "d-11d4bfcbebdf42b686f5e7d0977aa952";

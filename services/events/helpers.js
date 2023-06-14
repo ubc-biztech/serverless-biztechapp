@@ -1,10 +1,6 @@
-import AWS from "../../lib/aws";
-import {
-  v4 as uuidv4
-} from "uuid";
-import {
-  USER_REGISTRATIONS_TABLE
-} from "../../constants/tables";
+import docClient from "../../lib/docClient";
+import { v4 as uuidv4 } from "uuid";
+import { USER_REGISTRATIONS_TABLE } from "../../constants/tables";
 
 export default {
   /**
@@ -14,7 +10,6 @@ export default {
    * @return {registeredCount checkedInCount waitlistCount}
    */
   getEventCounts: async function (eventIDAndYear) {
-    const docClient = new AWS.DynamoDB.DocumentClient();
     const params = {
       TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
       FilterExpression: "#eventIDYear = :query",
@@ -38,15 +33,15 @@ export default {
         result.Items.forEach((item) => {
           if (!item.isPartner) {
             switch (item.registrationStatus) {
-            case "registered":
-              counts.registeredCount++;
-              break;
-            case "checkedIn":
-              counts.checkedInCount++;
-              break;
-            case "waitlist":
-              counts.waitlistCount++;
-              break;
+              case "registered":
+                counts.registeredCount++;
+                break;
+              case "checkedIn":
+                counts.checkedInCount++;
+                break;
+              case "waitlist":
+                counts.waitlistCount++;
+                break;
             }
           }
         });

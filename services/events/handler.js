@@ -1,14 +1,10 @@
-import AWS from "../../lib/aws";
+import docClient from "../../lib/docClient";
 
 import eventHelpers from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
-import {
-  alphabeticalComparer, isEmpty
-} from "../../lib/utils";
-import {
-  MAX_BATCH_ITEM_COUNT
-} from "../../constants/dynamodb";
+import { alphabeticalComparer, isEmpty } from "../../lib/utils";
+import { MAX_BATCH_ITEM_COUNT } from "../../constants/dynamodb";
 import {
   EVENTS_TABLE,
   USERS_TABLE,
@@ -140,8 +136,7 @@ export const del = async (event, ctx, callback) => {
 // /events
 export const getAll = async (event, ctx, callback) => {
   try {
-    let filterExpression = {
-    };
+    let filterExpression = {};
 
     //Set up query by year if exists
     if (
@@ -242,7 +237,6 @@ export const update = async (event, ctx, callback) => {
       }
     }
     //Since we have a sort key, can't use helpers.updateDB()
-    const docClient = new AWS.DynamoDB.DocumentClient();
     console.log(docClient);
 
     const {
@@ -351,8 +345,7 @@ export const get = async (event, ctx, callback) => {
         });
       }
       let keysForRequest = registrationList.map((registrationObj) => {
-        const keyEntry = {
-        };
+        const keyEntry = {};
         keyEntry.id = registrationObj.id;
         return keyEntry;
       });

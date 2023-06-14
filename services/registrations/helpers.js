@@ -1,7 +1,5 @@
-import AWS from "../../lib/aws";
-import {
-  USER_REGISTRATIONS_TABLE
-} from "../../constants/tables";
+import docClient from "../../lib/docClient";
+import { USER_REGISTRATIONS_TABLE } from "../../constants/tables";
 import sgMail from "@sendgrid/mail";
 const ics = require("ics");
 
@@ -15,7 +13,6 @@ export default {
    * @return {registeredCount checkedInCount waitlistCount}
    */
   getEventCounts: async function (eventIDAndYear) {
-    const docClient = new AWS.DynamoDB.DocumentClient();
     const params = {
       TableName:
         USER_REGISTRATIONS_TABLE +
@@ -41,15 +38,15 @@ export default {
         result.Items.forEach((item) => {
           if (!item.isPartner) {
             switch (item.registrationStatus) {
-            case "registered":
-              counts.registeredCount++;
-              break;
-            case "checkedIn":
-              counts.checkedInCount++;
-              break;
-            case "waitlist":
-              counts.waitlistCount++;
-              break;
+              case "registered":
+                counts.registeredCount++;
+                break;
+              case "checkedIn":
+                counts.checkedInCount++;
+                break;
+              case "waitlist":
+                counts.waitlistCount++;
+                break;
             }
           }
         });
@@ -71,9 +68,7 @@ export default {
     return sgMail.send(msg);
   },
   sendCalendarInvite: async (event, user, dynamicCalendarMsg) => {
-    let {
-      ename, description, elocation, startDate, endDate
-    } = event;
+    let { ename, description, elocation, startDate, endDate } = event;
 
     // parse start and end dates into event duration object (hours, minutes, seconds)
     startDate = new Date(startDate);
@@ -136,9 +131,7 @@ export default {
       method: "REQUEST"
     };
 
-    const {
-      error, value
-    } = ics.createEvent(eventDetails);
+    const { error, value } = ics.createEvent(eventDetails);
 
     if (error) {
       console.log(error);

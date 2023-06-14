@@ -1,16 +1,10 @@
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
-import {
-  isEmpty, isValidEmail
-} from "../../lib/utils";
-import AWS from "../../lib/aws";
-const {
-  MEMBERS2023_TABLE
-} = require("../../constants/tables");
+import { isEmpty, isValidEmail } from "../../lib/utils";
+import docClient from "../../lib/docClient";
+const { MEMBERS2023_TABLE } = require("../../constants/tables");
 
 export const create = async (event, ctx, callback) => {
-  const docClient = new AWS.DynamoDB.DocumentClient();
-
   const timestamp = new Date().getTime();
   const data = JSON.parse(event.body);
   if (!isValidEmail(data.email)) {
@@ -100,8 +94,7 @@ export const getAll = async (event, ctx, callback) => {
     const members = await db.scan(MEMBERS2023_TABLE);
 
     // re-organize the response
-    let response = {
-    };
+    let response = {};
     if (members !== null) response = helpers.createResponse(200, members);
 
     // return the response object

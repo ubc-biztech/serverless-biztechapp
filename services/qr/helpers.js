@@ -1,13 +1,11 @@
-import AWS from "../../lib/aws";
+import docClient from "../../lib/docClient";
 import {
   EVENTS_TABLE,
   TEAMS_TABLE,
   USER_REGISTRATIONS_TABLE,
   QRS_TABLE
 } from "../../constants/tables";
-import {
-  isValidEmail
-} from "../../lib/utils.js";
+import { isValidEmail } from "../../lib/utils.js";
 import helpers from "../../lib/handlerHelpers.js";
 import db from "../../lib/db.js";
 
@@ -44,9 +42,7 @@ export default {
 
     */
 
-    const {
-      eventID, year, qrCodeID, negativePointsConfirmed
-    } = data;
+    const { eventID, year, qrCodeID, negativePointsConfirmed } = data;
     const eventIDAndYear = eventID + ";" + year;
 
     //Check if eventID exists and is string. Check if year exists and is number.
@@ -114,7 +110,6 @@ export default {
 
     try {
       // query the user's registration for the event
-      const docClient = new AWS.DynamoDB.DocumentClient();
       const params = {
         TableName:
           USER_REGISTRATIONS_TABLE +
@@ -307,8 +302,6 @@ export default {
       .then((teamID) => {
         if (teamID) {
           return new Promise((resolve, reject) => {
-            const docClient = new AWS.DynamoDB.DocumentClient();
-
             // Partition key is teamID, sort key is eventID;year
             const params = {
               TableName:
@@ -422,8 +415,6 @@ export default {
         Puts a team in the Teams table according to the Table Schema.
         Partition key is teamID, sort key is eventID;year
    */
-
-    const docClient = new AWS.DynamoDB.DocumentClient();
 
     const params = {
       TableName:
