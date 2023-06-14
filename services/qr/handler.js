@@ -2,9 +2,13 @@ import docClient from "../../lib/docClient";
 
 import registrationHelpers from "./helpers";
 import helpers from "../../lib/handlerHelpers";
-import { isEmpty } from "../../lib/utils";
+import {
+  isEmpty
+} from "../../lib/utils";
 import db from "../../lib/db";
-import { EVENTS_TABLE, QRS_TABLE } from "../../constants/tables";
+import {
+  EVENTS_TABLE, QRS_TABLE
+} from "../../constants/tables";
 
 /*
   Returns Status Code 200 when QR code is scanned successfully
@@ -103,7 +107,8 @@ export const post = async (event, ctx, callback) => {
 
 export const get = async (event, ctx, callback) => {
   try {
-    const qrs = await db.scan(QRS_TABLE, {});
+    const qrs = await db.scan(QRS_TABLE, {
+    });
     const response = helpers.createResponse(200, qrs);
     callback(null, response);
     return response;
@@ -123,7 +128,9 @@ export const getOne = async (event, ctx, callback) => {
       !event.pathParameters.year
     )
       throw helpers.missingPathParamResponse("id", "event", "year");
-    const { id, eventID, year } = event.pathParameters;
+    const {
+      id, eventID, year
+    } = event.pathParameters;
     const eventIDAndYear = eventID + ";" + year;
     const qr = await db.scan(id, QRS_TABLE, {
       "eventID;year": eventIDAndYear
@@ -209,7 +216,9 @@ export const update = async (event, ctx, callback) => {
       !event.pathParameters.year
     )
       throw helpers.missingPathParamResponse("id", "event", "year");
-    const { id, eventID, year } = event.pathParameters;
+    const {
+      id, eventID, year
+    } = event.pathParameters;
     const eventIDAndYear = eventID + ";" + year;
 
     const existingQR = await db.getOne(id, QRS_TABLE, {
@@ -267,7 +276,9 @@ export const del = async (event, ctx, callback) => {
       !event.pathParameters.year
     )
       throw helpers.missingPathParamResponse("id", "event", "year");
-    const { id, eventID, year } = event.pathParameters;
+    const {
+      id, eventID, year
+    } = event.pathParameters;
     const eventIDAndYear = eventID + ";" + year;
 
     const existingQR = await db.getOne(id, QRS_TABLE, {
