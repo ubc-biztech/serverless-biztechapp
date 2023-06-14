@@ -2,6 +2,6 @@ import helpers from "../../lib/handlerHelpers";
 
 export const hello = async () => {
   return helpers.createResponse(200, {
-    message: "test new github actions deploy"
+    message: "test github action deploy 2"
   });
 };

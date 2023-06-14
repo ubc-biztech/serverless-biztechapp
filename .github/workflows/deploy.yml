@@ -38,7 +38,7 @@ jobs:
        SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
      run: |
       cd services
-      for DIR in *; do (cd $DIR  && npx sls deploy --conceal && cd ..) & done; wait
+      for DIR in *; do (cd $DIR && sls deploy --conceal && cd ..) & done; wait
       echo "Finished deployment in dev"
 
    - name: 'Deploy Prod'
@@ -49,5 +49,5 @@ jobs:
        SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
      run: |
       cd services
-      for DIR in *; do (cd $DIR  && npx sls deploy --stage prod --conceal && cd ..) & done; wait
+      for DIR in *; do (cd $DIR && sls deploy --stage prod --conceal && cd ..) & done; wait
       echo "Finished deployment in prod"
