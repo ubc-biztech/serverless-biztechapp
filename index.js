@@ -1,9 +1,7 @@
 #!/usr/bin/env node
 
 import concurrently from "concurrently";
-import {
-  readConfigFile, runProxy, runServices
-} from "./handler.js";
+import { readConfigFile, runProxy, runServices } from "./handler.js";
 
 const prefixColors = [
   "blue",
@@ -13,7 +11,7 @@ const prefixColors = [
   "white",
   "gray",
   "yellow",
-  "red",
+  "red"
 ];
 
 const file = readConfigFile();
@@ -25,8 +23,8 @@ const stage = file.stage || "dev";
 const commands = runServices(services, httpPort, stage, prefixColors);
 
 concurrently(commands, {
-  killOthers: ["failure", "success"],
-}).then();
+  killOthers: ["failure", "success"]
+});
 
 process.on("SIGINT", () => {
   console.log("");

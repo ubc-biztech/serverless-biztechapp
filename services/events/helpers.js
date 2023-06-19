@@ -1,10 +1,6 @@
 import docClient from "../../lib/docClient";
-import {
-  v4 as uuidv4
-} from "uuid";
-import {
-  USER_REGISTRATIONS_TABLE
-} from "../../constants/tables";
+import { v4 as uuidv4 } from "uuid";
+import { USER_REGISTRATIONS_TABLE } from "../../constants/tables";
 
 export default {
   /**
@@ -15,7 +11,9 @@ export default {
    */
   getEventCounts: async function (eventIDAndYear) {
     const params = {
-      TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
+      TableName:
+        USER_REGISTRATIONS_TABLE +
+        (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
       FilterExpression: "#eventIDYear = :query",
       ExpressionAttributeNames: {
         "#eventIDYear": "eventID;year"
@@ -37,15 +35,15 @@ export default {
         result.Items.forEach((item) => {
           if (!item.isPartner) {
             switch (item.registrationStatus) {
-            case "registered":
-              counts.registeredCount++;
-              break;
-            case "checkedIn":
-              counts.checkedInCount++;
-              break;
-            case "waitlist":
-              counts.waitlistCount++;
-              break;
+              case "registered":
+                counts.registeredCount++;
+                break;
+              case "checkedIn":
+                counts.checkedInCount++;
+                break;
+              case "waitlist":
+                counts.waitlistCount++;
+                break;
             }
           }
         });

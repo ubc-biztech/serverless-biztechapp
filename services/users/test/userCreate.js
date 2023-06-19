@@ -23,7 +23,7 @@ describe("userCreate", () => {
     AWSMock.mock("DynamoDB.DocumentClient", "put", function (params, callback) {
       Promise.resolve(
         callback(null, {
-          Item: "not null user",
+          Item: "not null user"
         })
       );
     });
@@ -41,7 +41,7 @@ describe("userCreate", () => {
 
   it("returns 406 when not given email", async () => {
     const body = {
-      ...testEntry,
+      ...testEntry
     };
     delete body.email;
 
@@ -56,7 +56,7 @@ describe("userCreate", () => {
   it("returns 201 and sets user as admin", async () => {
     const body = {
       ...testEntry,
-      email: "adminUser@ubcbiztech.com",
+      email: "adminUser@ubcbiztech.com"
     };
 
     const response = await wrapped.run({
