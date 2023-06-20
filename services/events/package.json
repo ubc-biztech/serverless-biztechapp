@@ -5,5 +5,9 @@
     "itest": "npm run itest events --prefix ../../",
     "utest": "npm run utest events --prefix ../../",
     "test": "npm run utest events --prefix ../../ && npm run itest events --prefix ../../"
+  },
+  "devDependencies": {
+    "serverless-offline": "^8.8.0",
+    "webpack-cli": "^5.1.1"
   }
 }

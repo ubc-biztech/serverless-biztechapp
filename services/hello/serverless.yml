@@ -4,6 +4,7 @@ tenant: ianmh
 app: biztechapp
 
 plugins:
+  - serverless-offline
   - serverless-domain-manager
   - serverless-bundle
   - serverless-prune-plugin

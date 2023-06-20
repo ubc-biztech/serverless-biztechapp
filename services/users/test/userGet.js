@@ -15,14 +15,14 @@ const email = "test@gmail.com";
 const nonexistentEmail = "nonexistent@gmail.com";
 describe("userGet", () => {
   before(() => {
-    AWSMock.mock("DynamoDB.DocumentClient", "get", function (params, callback){
-      if (params.Key.id === email) {
+    AWSMock.mock("DynamoDB.DocumentClient", "get", function (params, callback) {
+      if (params.Key.id == email) {
         Promise.resolve(
           callback(null, {
             Item: "not null user"
           })
         );
-      } else if  (params.Key.id === nonexistentEmail) {
+      } else if (params.Key.id == nonexistentEmail) {
         Promise.resolve(
           callback(null, {
             Item: null
@@ -36,7 +36,7 @@ describe("userGet", () => {
     AWSMock.restore("DynamoDB.DocumentClient");
   });
 
-  it ("should return 406 for trying to get a user with invalid email", async () => {
+  it("should return 406 for trying to get a user with invalid email", async () => {
     const response = await wrapped.run({
       pathParameters: {
         email: "asdf"
@@ -46,7 +46,7 @@ describe("userGet", () => {
     expect(response.statusCode).to.equal(406);
   });
 
-  it ("should return 404 for trying to get a user that does not exist", async () => {
+  it("should return 404 for trying to get a user that does not exist", async () => {
     const response = await wrapped.run({
       pathParameters: {
         email: nonexistentEmail

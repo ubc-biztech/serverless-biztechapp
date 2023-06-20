@@ -17,7 +17,6 @@
     "rules": {
         // rules that cause errors
         "no-var": "error",
-
         // rules that cause warnings
         "array-bracket-spacing": ["warn", "never"],
         "array-bracket-newline": ["warn", "consistent"],

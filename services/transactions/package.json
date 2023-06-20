@@ -8,5 +8,8 @@
     "itest": "npm run itest transactions --prefix ../../",
     "utest": "npm run utest transactions --prefix ../../",
     "test": "npm run utest transactions --prefix ../../ && npm run itest transactions --prefix ../../"
+  },
+  "devDependencies": {
+    "serverless-offline": "^8.8.0"
   }
 }

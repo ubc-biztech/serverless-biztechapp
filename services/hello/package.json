@@ -6,5 +6,8 @@
     "itest": "npm run itest hello --prefix ../../",
     "utest": "npm run utest hello --prefix ../../",
     "test": "npm run utest hello --prefix ../../ && npm run itest hello --prefix ../../"
+  },
+  "devDependencies": {
+    "serverless-offline": "^8.8.0"
   }
 }

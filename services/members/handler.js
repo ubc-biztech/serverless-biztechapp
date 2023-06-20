@@ -3,14 +3,12 @@ import db from "../../lib/db";
 import {
   isEmpty, isValidEmail
 } from "../../lib/utils";
-const AWS = require("aws-sdk");
+import docClient from "../../lib/docClient";
 const {
   MEMBERS2023_TABLE
 } = require("../../constants/tables");
 
 export const create = async (event, ctx, callback) => {
-  const docClient = new AWS.DynamoDB.DocumentClient();
-
   const timestamp = new Date().getTime();
   const data = JSON.parse(event.body);
   if (!isValidEmail(data.email)) {
@@ -38,10 +36,12 @@ export const create = async (event, ctx, callback) => {
       highSchool: data.high_school,
       admin: data.admin,
       createdAt: timestamp,
-      updatedAt: timestamp,
+      updatedAt: timestamp
     },
-    TableName: MEMBERS2023_TABLE + process.env.ENVIRONMENT,
-    ConditionExpression: "attribute_not_exists(id)",
+    TableName:
+      MEMBERS2023_TABLE +
+      (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
+    ConditionExpression: "attribute_not_exists(id)"
   };
 
   await docClient
@@ -50,7 +50,7 @@ export const create = async (event, ctx, callback) => {
     .then(() => {
       const response = helpers.createResponse(201, {
         message: "Created!",
-        params: memberParams,
+        params: memberParams
       });
       callback(null, response);
     })
@@ -129,7 +129,7 @@ export const update = async (event, ctx, callback) => {
     const res = await db.updateDB(email, data, MEMBERS2023_TABLE);
     const response = helpers.createResponse(200, {
       message: `Updated member with email ${email}!`,
-      response: res,
+      response: res
     });
 
     callback(null, response);
@@ -150,12 +150,13 @@ export const del = async (event, ctx, callback) => {
     if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
     // check that the member exists
     const existingMember = await db.getOne(email, MEMBERS2023_TABLE);
-    if (isEmpty(existingMember)) throw helpers.notFoundResponse("Member", email);
+    if (isEmpty(existingMember))
+      throw helpers.notFoundResponse("Member", email);
 
     const res = await db.deleteOne(email, MEMBERS2023_TABLE);
     const response = helpers.createResponse(200, {
       message: "Member deleted!",
-      response: res,
+      response: res
     });
 
     callback(null, response);

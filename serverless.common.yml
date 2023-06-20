@@ -2,14 +2,15 @@ provider:
   stage: ${opt:stage, 'dev'}
   apiKeys:
     - ${opt:stage, 'dev'}-api-key
-  runtime: nodejs12.x
+  runtime: nodejs16.x
   region: us-west-2
 
 custom:
   prune:
     automatic: true
     number: 3
-
+  serverless-offline:
+    port: 4000
   serverless-mocha-plugin:
     # use test template to overwrite plugin usage of commonjs
     testTemplate: ../../lib/testTemplate.ejs
@@ -29,3 +30,8 @@ custom:
     endpointType: 'edge'
     apiType: rest
     autoDomain: false
+  	
+plugins:
+  - serverless-dynamodb-local
+  - serverless-offline
+

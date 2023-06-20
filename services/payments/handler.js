@@ -6,41 +6,50 @@ import {
   updateHelper
 } from "../registrations/handler";
 import db from "../../lib/db";
+import docClient from "../../lib/docClient";
 const AWS = require("aws-sdk");
 const {
-  USERS_TABLE, MEMBERS2023_TABLE, USER_REGISTRATIONS_TABLE
+  USERS_TABLE,
+  MEMBERS2023_TABLE,
+  USER_REGISTRATIONS_TABLE
 } = require("../../constants/tables");
 const stripe = require("stripe")(
-  process.env.ENVIRONMENT === "PROD" ?
-    "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"
-    :
-    "sk_test_51KOxOlBAxwbCreS7JRQtvZCnCgLmn8tjK7WPHDGjpw0s4vfVHLwbcrZZvQLmd5cY7zKRIsfj3pnEDDHTy3G81Tuf00v9ygIBrC"
+  process.env.ENVIRONMENT === "PROD"
+    ? "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"
+    : "sk_test_51KOxOlBAxwbCreS7JRQtvZCnCgLmn8tjK7WPHDGjpw0s4vfVHLwbcrZZvQLmd5cY7zKRIsfj3pnEDDHTy3G81Tuf00v9ygIBrC"
 );
 // endpoint secret - different for each webhook
-const endpointSecret = process.env.ENVIRONMENT === "PROD" ? "whsec_IOXyPRmf3bsliM3PfWXFhvkmHGeSMekf" : "whsec_TYSFr29HQ4bIPu649lgkxOrlPjrDOe2l";
-const cancelSecret = process.env.ENVIRONMENT === "PROD" ? "whsec_aX8umTlvtlmg0H2KCGDc9Er9Iej6TP8D" : "whsec_N81csvvnTAqicFpuV5o9JQfx6McImtPR";
+const endpointSecret =
+  process.env.ENVIRONMENT === "PROD"
+    ? "whsec_IOXyPRmf3bsliM3PfWXFhvkmHGeSMekf"
+    : "whsec_TYSFr29HQ4bIPu649lgkxOrlPjrDOe2l";
+const cancelSecret =
+  process.env.ENVIRONMENT === "PROD"
+    ? "whsec_aX8umTlvtlmg0H2KCGDc9Er9Iej6TP8D"
+    : "whsec_N81csvvnTAqicFpuV5o9JQfx6McImtPR";
 
 // Creates the member here
-export const webhook = async(event, ctx, callback) => {
+export const webhook = async (event, ctx, callback) => {
   const userMemberSignup = async (data) => {
     const cognito = new AWS.CognitoIdentityServiceProvider({
-      apiVersion: "2016-04-18",
+      apiVersion: "2016-04-18"
     });
-    const docClient = new AWS.DynamoDB.DocumentClient();
     const timestamp = new Date().getTime();
 
     const cognitoParams = {
       ClientId: "5tc2jshu03i3bmtl1clsov96dt",
       Username: data.email,
-      UserAttributes: [{
-        Name: "name",
-        Value: data.fname + " " + data.lname
-      },
-      {
-        Name: "custom:student_id",
-        Value: data.student_number
-      },],
-      Password: data.password,
+      UserAttributes: [
+        {
+          Name: "name",
+          Value: data.fname + " " + data.lname
+        },
+        {
+          Name: "custom:student_id",
+          Value: data.student_number
+        }
+      ],
+      Password: data.password
     };
 
     await cognito.signUp(cognitoParams).promise();
@@ -71,10 +80,11 @@ export const webhook = async(event, ctx, callback) => {
         isMember: true,
         createdAt: timestamp,
         updatedAt: timestamp,
-        admin: isBiztechAdmin,
+        admin: isBiztechAdmin
       },
-      TableName: USERS_TABLE + process.env.ENVIRONMENT,
-      ConditionExpression: "attribute_not_exists(id)",
+      TableName:
+        USERS_TABLE + (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
+      ConditionExpression: "attribute_not_exists(id)"
     };
 
     const memberParams = {
@@ -98,159 +108,58 @@ export const webhook = async(event, ctx, callback) => {
         highSchool: data.high_school,
         admin: isBiztechAdmin,
         createdAt: timestamp,
-        updatedAt: timestamp,
+        updatedAt: timestamp
       },
-      TableName: MEMBERS2023_TABLE + process.env.ENVIRONMENT,
-      ConditionExpression: "attribute_not_exists(id)",
+      TableName:
+        MEMBERS2023_TABLE +
+        (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
+      ConditionExpression: "attribute_not_exists(id)"
     };
 
-    await docClient.put(userParams).promise().catch((error) => {
-      let response;
-      if (error.code === "ConditionalCheckFailedException") {
-        response = helpers.createResponse(
-          409,
-          "User could not be created because email already exists"
-        );
-      } else {
-        response = helpers.createResponse(
-          502,
-          "Internal Server Error occurred"
-        );
-      }
-      callback(null, response);
-    });
-
-    await docClient.put(memberParams).promise().catch((error) => {
-      let response;
-      if (error.code === "ConditionalCheckFailedException") {
-        response = helpers.createResponse(
-          409,
-          "Member could not be created because email already exists"
-        );
-      } else {
-        response = helpers.createResponse(
-          502,
-          "Internal Server Error occurred"
-        );
-      }
-      callback(null, response);
-    });
+    await docClient
+      .put(userParams)
+      .promise()
+      .catch((error) => {
+        let response;
+        if (error.code === "ConditionalCheckFailedException") {
+          response = helpers.createResponse(
+            409,
+            "User could not be created because email already exists"
+          );
+        } else {
+          response = helpers.createResponse(
+            502,
+            "Internal Server Error occurred"
+          );
+        }
+        callback(null, response);
+      });
+    await docClient
+      .put(memberParams)
+      .promise()
+      .catch((error) => {
+        let response;
+        if (error.code === "ConditionalCheckFailedException") {
+          response = helpers.createResponse(
+            409,
+            "Member could not be created because email already exists"
+          );
+        } else {
+          response = helpers.createResponse(
+            502,
+            "Internal Server Error occurred"
+          );
+        }
+        callback(null, response);
+      });
 
     const response = helpers.createResponse(201, {
-      message: "Created user and member!",
-    });
-    callback(null, response);
-  };
-
-  const oauthMemberSignup = async (data) => {
-    const docClient = new AWS.DynamoDB.DocumentClient();
-    const timestamp = new Date().getTime();
-
-    const email = data.email;
-
-    let isBiztechAdmin = false;
-
-    //assume the created user is biztech admin if using biztech email
-    if (
-      email.substring(email.indexOf("@") + 1, email.length) === "ubcbiztech.com"
-    ) {
-      isBiztechAdmin = true;
-    }
-
-    const userParams = {
-      Item: {
-        id: data.email,
-        education: data.education,
-        studentId: data.student_number,
-        fname: data.fname,
-        lname: data.lname,
-        faculty: data.faculty,
-        major: data.major,
-        year: data.year,
-        gender: data.pronouns,
-        diet: data.diet,
-        isMember: true,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        admin: isBiztechAdmin,
-      },
-      TableName: USERS_TABLE + process.env.ENVIRONMENT,
-      ConditionExpression: "attribute_not_exists(id)",
-    };
-
-    const memberParams = {
-      Item: {
-        id: data.email,
-        education: data.education,
-        firstName: data.fname,
-        lastName: data.lname,
-        pronouns: data.pronouns,
-        studentNumber: data.student_number,
-        faculty: data.faculty,
-        year: data.year,
-        major: data.major,
-        prevMember: data.prev_member,
-        international: data.international,
-        topics: data.topics.split(","),
-        diet: data.diet,
-        heardFrom: data.heard_from,
-        heardFromSpecify: data.heardFromSpecify,
-        university: data.university,
-        highSchool: data.high_school,
-        admin: isBiztechAdmin,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      },
-      TableName: MEMBERS2023_TABLE + process.env.ENVIRONMENT,
-      ConditionExpression: "attribute_not_exists(id)",
-    };
-
-    // putting into user table 
-    await docClient.put(userParams).promise().catch((error) => {
-      let response;
-      if (error.code === "ConditionalCheckFailedException") {
-        response = helpers.createResponse(
-          409,
-          "User could not be created because email already exists"
-        );
-      } else {
-        response = helpers.createResponse(
-          502,
-          "Internal Server Error occurred"
-        );
-      }
-      callback(null, response);
-
-      console.log("put user in usertable");
-    });
-
-    // putting into member table 
-    await docClient.put(memberParams).promise().catch((error) => {
-      let response;
-      if (error.code === "ConditionalCheckFailedException") {
-        response = helpers.createResponse(
-          409,
-          "Member could not be created because email already exists"
-        );
-      } else {
-        response = helpers.createResponse(
-          502,
-          "Internal Server Error occurred"
-        );
-      }
-      callback(null, response);
-    });
-
-    console.log("put user in usertable and membertable");
-
-    const response = helpers.createResponse(201, {
-      message: "Created oAuth member and user!",
+      message: "Created user and member!"
     });
     callback(null, response);
   };
 
   const memberSignup = async (data) => {
-    const docClient = new AWS.DynamoDB.DocumentClient();
     const timestamp = new Date().getTime();
 
     const email = data.email;
@@ -276,7 +185,7 @@ export const webhook = async(event, ctx, callback) => {
       gender: data.pronouns,
       diet: data.diet,
       isMember: true,
-      admin: isBiztechAdmin,
+      admin: isBiztechAdmin
     };
 
     const memberParams = {
@@ -300,14 +209,16 @@ export const webhook = async(event, ctx, callback) => {
         highSchool: data.high_school,
         admin: isBiztechAdmin,
         createdAt: timestamp,
-        updatedAt: timestamp,
+        updatedAt: timestamp
       },
-      TableName: MEMBERS2023_TABLE + process.env.ENVIRONMENT,
-      ConditionExpression: "attribute_not_exists(id)",
+      TableName:
+        MEMBERS2023_TABLE +
+        (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
+      ConditionExpression: "attribute_not_exists(id)"
     };
 
-    // for members, we update the user table here 
-    // but if we change the bt web payment body for oauth users from usermember to memebr, 
+    // for members, we update the user table here
+    // but if we change the bt web payment body for oauth users from usermember to memebr,
     // we will neesd a check here to see if user is first time oauth
     // if yes, we want a db.post instead of db.update
     await db.updateDB(email, userParams, USERS_TABLE).catch((error) => {
@@ -320,24 +231,27 @@ export const webhook = async(event, ctx, callback) => {
 
       callback(null, response);
     });
-    await docClient.put(memberParams).promise().catch((error) => {
-      let response;
-      if (error.code === "ConditionalCheckFailedException") {
-        response = helpers.createResponse(
-          409,
-          "Member could not be created because email already exists"
-        );
-      } else {
-        response = helpers.createResponse(
-          502,
-          "Internal Server Error occurred"
-        );
-      }
-      callback(null, response);
-    });
+    await docClient
+      .put(memberParams)
+      .promise()
+      .catch((error) => {
+        let response;
+        if (error.code === "ConditionalCheckFailedException") {
+          response = helpers.createResponse(
+            409,
+            "Member could not be created because email already exists"
+          );
+        } else {
+          response = helpers.createResponse(
+            502,
+            "Internal Server Error occurred"
+          );
+        }
+        callback(null, response);
+      });
 
     const response = helpers.createResponse(201, {
-      message: "Created member and updated user!",
+      message: "Created member and updated user!"
     });
     callback(null, response);
   };
@@ -349,11 +263,12 @@ export const webhook = async(event, ctx, callback) => {
       const body = {
         eventID: data.eventID,
         year: Number(data.year),
-        registrationStatus: eventIDAndYear === "produhacks;2023" ? "waitlist" : "registered",
+        registrationStatus:
+          eventIDAndYear === "produhacks;2023" ? "waitlist" : "registered"
       };
       await updateHelper(body, false, data.email, data.fname);
       const response = helpers.createResponse(200, {
-        message: "Registered user after successful payment",
+        message: "Registered user after successful payment"
       });
       callback(null, response);
     } catch (err) {
@@ -368,13 +283,13 @@ export const webhook = async(event, ctx, callback) => {
 
   try {
     eventData = stripe.webhooks.constructEvent(event.body, sig, endpointSecret);
-  } catch(err) {
+  } catch (err) {
     return helpers.createResponse(400, {
       message: `Webhook Error: ${err}`
     });
   }
 
-  if (eventData.type === "checkout.session.completed") {
+  if (eventData.type == "checkout.session.completed") {
     const data = eventData.data.object.metadata;
 
     if (!isValidEmail(data.email)) {
@@ -384,9 +299,6 @@ export const webhook = async(event, ctx, callback) => {
     switch (data.paymentType) {
     case "UserMember":
       await userMemberSignup(data);
-      break;
-    case "OAuthMember":
-      await oauthMemberSignup(data);
       break;
     case "Member":
       await memberSignup(data);
@@ -418,12 +330,12 @@ export const payment = async (event, ctx, callback) => {
             currency: "CAD",
             product_data: {
               name: data.paymentName,
-              images: paymentImages,
+              images: paymentImages
             },
-            unit_amount: data.paymentPrice,
+            unit_amount: data.paymentPrice
           },
-          quantity: 1,
-        },
+          quantity: 1
+        }
       ],
       metadata: data,
       mode: "payment",
@@ -454,7 +366,11 @@ export const payment = async (event, ctx, callback) => {
 export const cancel = async (event, ctx, callback) => {
   // NOTE: cancel webhook currently only operates correctly for events i.e. payment incomplete
   const sig = event.headers["Stripe-Signature"];
-  const eventData = stripe.webhooks.constructEvent(event.body, sig, cancelSecret);
+  const eventData = stripe.webhooks.constructEvent(
+    event.body,
+    sig,
+    cancelSecret
+  );
   const data = eventData.data.object.metadata;
   const {
     email, eventID, year, paymentType
@@ -474,7 +390,7 @@ export const cancel = async (event, ctx, callback) => {
 
       callback(null, response);
       return null;
-    } catch(err) {
+    } catch (err) {
       callback(null, err);
       return null;
     }

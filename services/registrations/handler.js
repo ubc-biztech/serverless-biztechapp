@@ -1,4 +1,4 @@
-import AWS from "aws-sdk";
+import docClient from "../../lib/docClient";
 import registrationHelpers from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
@@ -31,8 +31,16 @@ export async function updateHelper(data, createNew, email, fname) {
   const id = `${email};${eventIDAndYear};${fname}`;
 
   //Check if eventID exists and is string. Check if year exists and is number.
-  if(typeof eventID !== "string" || typeof year !== "number" || isNaN(year) || !isValidEmail(email)) {
-    throw helpers.inputError("Incorrect types for eventID and year in registration.updateHelper", data);
+  if (
+    typeof eventID !== "string" ||
+    typeof year !== "number" ||
+    isNaN(year) ||
+    !isValidEmail(email)
+  ) {
+    throw helpers.inputError(
+      "Incorrect types for eventID and year in registration.updateHelper",
+      data
+    );
   }
 
   if (data.isPartner !== undefined) {
@@ -47,34 +55,35 @@ export async function updateHelper(data, createNew, email, fname) {
   const existingEvent = await db.getOne(eventID, EVENTS_TABLE, {
     year
   });
-  if(isEmpty(existingEvent)) throw helpers.notFoundResponse("Event", eventID, year);
+  if (isEmpty(existingEvent))
+    throw helpers.notFoundResponse("Event", eventID, year);
 
   let registrationStatus = data.registrationStatus;
 
   if (registrationStatus) {
     // Check if the event is full
-    if (registrationStatus === "registered") {
+    if (registrationStatus == "registered") {
       const counts = await registrationHelpers.getEventCounts(eventIDAndYear);
 
-      if (counts === null) {
+      if (counts == null) {
         throw db.dynamoErrorResponse({
           code: "DYNAMODB ERROR",
-          time: new Date().getTime(),
+          time: new Date().getTime()
         });
       }
 
-      if (counts.registeredCount >= existingEvent.capac) registrationStatus = "waitlist";
+      if (counts.registeredCount >= existingEvent.capac)
+        registrationStatus = "waitlist";
     }
 
     const user = {
       id: email,
-      fname,
+      fname
     };
     // try to send the registration and calendar emails
     try {
       await sendEmail(user, existingEvent, registrationStatus, id);
-    }
-    catch(err) {
+    } catch (err) {
       // if email sending failed, that user's email probably does not exist
       throw helpers.createResponse(500, {
         statusCode: 500,
@@ -84,32 +93,46 @@ export async function updateHelper(data, createNew, email, fname) {
     }
   }
 
-  const response = await createRegistration(registrationStatus, data, email, eventIDAndYear, createNew);
+  const response = await createRegistration(
+    registrationStatus,
+    data,
+    email,
+    eventIDAndYear,
+    createNew
+  );
   return response;
 }
 
-function removeDefaultKeys(data){
+function removeDefaultKeys(data) {
   const formResponse = data;
-  const ignoreKeys = ["eventID","year","email"];
+  const ignoreKeys = ["eventID", "year", "email"];
 
   Object.keys(formResponse).forEach(function (key) {
-    if(ignoreKeys.includes(key)) delete formResponse[key];
+    if (ignoreKeys.includes(key)) delete formResponse[key];
   });
   return formResponse;
 }
 
-async function createRegistration(registrationStatus, data, email, eventIDAndYear, createNew) {
+async function createRegistration(
+  registrationStatus,
+  data,
+  email,
+  eventIDAndYear,
+  createNew
+) {
   try {
-    const docClient = new AWS.DynamoDB.DocumentClient();
     const formResponse = removeDefaultKeys(data);
 
     const updateObject = {
-      ...formResponse,
+      ...formResponse
     };
 
-    let conditionExpression = "attribute_exists(id) and attribute_exists(#eventIDYear)";
+    let conditionExpression =
+      "attribute_exists(id) and attribute_exists(#eventIDYear)";
     // if we are creating a new object, the condition expression needs to be different
-    if (createNew) conditionExpression = "attribute_not_exists(id) and attribute_not_exists(#eventIDYear)";
+    if (createNew)
+      conditionExpression =
+        "attribute_not_exists(id) and attribute_not_exists(#eventIDYear)";
 
     // construct the update expressions
     const {
@@ -121,10 +144,12 @@ async function createRegistration(registrationStatus, data, email, eventIDAndYea
     // Because biztechRegistration table has a sort key, we cannot use helpers.updateDB()
     let params = {
       Key: {
-        "id": email,
+        id: email,
         ["eventID;year"]: eventIDAndYear
       },
-      TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
+      TableName:
+        USER_REGISTRATIONS_TABLE +
+        (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
       ExpressionAttributeValues: expressionAttributeValues,
       ExpressionAttributeNames: {
         ...expressionAttributeNames,
@@ -141,7 +166,7 @@ async function createRegistration(registrationStatus, data, email, eventIDAndYea
     let statusCode = 200;
 
     // different status code if created new entry
-    if(createNew) {
+    if (createNew) {
       message = `User with email ${email} successfully registered (created) to status '${registrationStatus}'!`;
       statusCode = 201;
     }
@@ -153,16 +178,18 @@ async function createRegistration(registrationStatus, data, email, eventIDAndYea
     });
 
     return response;
-  } catch(err) {
+  } catch (err) {
     let errorResponse = db.dynamoErrorResponse(err);
     const errBody = JSON.parse(errorResponse.body);
 
     // customize the error messsage if it is caused by the 'ConditionExpression' check
-    if(errBody.code === "ConditionalCheckFailedException") {
+    if (errBody.code === "ConditionalCheckFailedException") {
       errorResponse.statusCode = 409;
       errBody.statusCode = 409;
-      if(createNew) errBody.message = `Create error because the registration entry for user '${email}' and with eventID;year'${eventIDAndYear}' already exists`;
-      else errBody.message = `Update error because the registration entry for user '${email}' and with eventID;year '${eventIDAndYear}' does not exist`;
+      if (createNew)
+        errBody.message = `Create error because the registration entry for user '${email}' and with eventID;year'${eventIDAndYear}' already exists`;
+      else
+        errBody.message = `Update error because the registration entry for user '${email}' and with eventID;year '${eventIDAndYear}' does not exist`;
       errorResponse.body = JSON.stringify(errBody);
     }
     throw errorResponse;
@@ -171,25 +198,26 @@ async function createRegistration(registrationStatus, data, email, eventIDAndYea
 
 export async function sendEmail(user, existingEvent, registrationStatus, id) {
   if (registrationStatus === "incomplete") return;
-  if(registrationStatus !== "checkedIn") {
+  if (registrationStatus !== "checkedIn") {
     const userEmail = user.id;
     const userName = user.fname;
 
-    if(!userEmail) throw {
-      message: "User does not have an e-mail address!"
-    };
+    if (!userEmail)
+      throw {
+        message: "User does not have an e-mail address!"
+      };
 
     // template id for registered and waitlist
     let tempId = "d-11d4bfcbebdf42b686f5e7d0977aa952";
     let tempCalendarId = "d-b517e4c407e4421a8886140caceba551";
 
-    if (registrationStatus === "cancelled") {
+    if (registrationStatus == "cancelled") {
       tempId = "d-8d272b62693e40c6b469a365f7c04443";
       tempCalendarId = false;
     }
 
     let status = registrationStatus;
-    if (registrationStatus === "waitlist") {
+    if (registrationStatus == "waitlist") {
       tempId = "d-8d272b62693e40c6b469a365f7c04443";
       status = "waitlisted";
     }
@@ -204,7 +232,8 @@ export async function sendEmail(user, existingEvent, registrationStatus, id) {
       },
       templateId: tempId,
       dynamic_template_data: {
-        subject: "BizTech " + existingEvent.ename + " Event Registration Confirmation",
+        subject:
+          "BizTech " + existingEvent.ename + " Event Registration Confirmation",
         name: userName,
         registrationStatus: status,
         eventName: existingEvent.ename,
@@ -217,15 +246,20 @@ export async function sendEmail(user, existingEvent, registrationStatus, id) {
 
     // format the event date from startDate like "October 19 9:00 AM PDT" (ensure it's PST/PDT) then append location
     // check if PDT or PST
-    const timeZone = startDate.getTimezoneOffset() === 420 ? "PDT" : "PST";
-    const eventDate = startDate.toLocaleString("en-US", {
-      timeZone: "America/Los_Angeles",
-      month: "long",
-      day: "numeric",
-      hour: "numeric",
-      minute: "numeric",
-      hour12: true
-    }) + " " + timeZone + " — " + existingEvent.elocation;
+    const timeZone = startDate.getTimezoneOffset() == 420 ? "PDT" : "PST";
+    const eventDate =
+      startDate.toLocaleString("en-US", {
+        timeZone: "America/Los_Angeles",
+        month: "long",
+        day: "numeric",
+        hour: "numeric",
+        minute: "numeric",
+        hour12: true
+      }) +
+      " " +
+      timeZone +
+      " — " +
+      existingEvent.elocation;
 
     // format event day like "October 19"
     const eventDay = startDate.toLocaleString("en-US", {
@@ -245,12 +279,17 @@ export async function sendEmail(user, existingEvent, registrationStatus, id) {
         EVENT_DATE: eventDate,
         EVENT_DAY: eventDay,
         EVENT_URL: "https://app.ubcbiztech.com/events",
-        SUBJECT: `[BizTech Confirmation] ${existingEvent.ename} on ${eventDay}`,
+        SUBJECT: `[BizTech Confirmation] ${existingEvent.ename} on ${eventDay}`
       }
     };
 
     await registrationHelpers.sendDynamicQR(dynamicMsg);
-    if (registrationStatus === "registered" && tempCalendarId) await registrationHelpers.sendCalendarInvite(existingEvent, user, dynamicCalendarMsg);
+    if (registrationStatus === "registered" && tempCalendarId)
+      await registrationHelpers.sendCalendarInvite(
+        existingEvent,
+        user,
+        dynamicCalendarMsg
+      );
   }
 }
 
@@ -258,7 +297,8 @@ export const post = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
 
-    if(!isValidEmail(data.email)) throw helpers.inputError("Invalid email", data.email);
+    if (!isValidEmail(data.email))
+      throw helpers.inputError("Invalid email", data.email);
     helpers.checkPayloadProps(data, {
       email: {
         required: true,
@@ -273,9 +313,9 @@ export const post = async (event, ctx, callback) => {
         type: "number"
       },
       registrationStatus: {
-        required: true ,
+        required: true,
         type: "string"
-      },
+      }
     });
 
     const existingReg = await db.getOne(data.email, USER_REGISTRATIONS_TABLE, {
@@ -305,8 +345,7 @@ export const post = async (event, ctx, callback) => {
       callback(null, response);
       return null;
     }
-  }
-  catch(err) {
+  } catch (err) {
     console.error(err);
     callback(null, err);
     return null;
@@ -332,13 +371,14 @@ export const post = async (event, ctx, callback) => {
  */
 export const put = async (event, ctx, callback) => {
   try {
-    if(!event.pathParameters || !event.pathParameters.email) throw helpers.missingIdQueryResponse("user");
+    if (!event.pathParameters || !event.pathParameters.email)
+      throw helpers.missingIdQueryResponse("user");
 
     const email = event.pathParameters.email;
 
     const data = JSON.parse(event.body);
 
-    if(!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
+    if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
     // Check that parameters are valid
     helpers.checkPayloadProps(data, {
       eventID: {
@@ -350,7 +390,7 @@ export const put = async (event, ctx, callback) => {
         type: "number"
       },
       registrationStatus: {
-        required: false ,
+        required: false,
         type: "string"
       },
       points: {
@@ -359,28 +399,40 @@ export const put = async (event, ctx, callback) => {
       }
     });
 
-    const response = await updateHelper(data, false, email, event.pathParameters.fname);
+    const response = await updateHelper(
+      data,
+      false,
+      email,
+      event.pathParameters.fname
+    );
 
     callback(null, response);
     return null;
-  }
-  catch(err) {
+  } catch (err) {
     console.error(err);
     callback(null, err);
     return null;
   }
 };
 
-
 // Return list of entries with the matching id
 export const get = async (event, ctx, callback) => {
   try {
     const queryString = event.queryStringParameters;
-    if(!queryString || (!queryString.eventID && !queryString.year && !queryString.email)) throw helpers.missingIdQueryResponse("eventID/year/user ");
+    if (
+      !queryString ||
+      (!queryString.eventID && !queryString.year && !queryString.email)
+    )
+      throw helpers.missingIdQueryResponse("eventID/year/user ");
 
     const email = queryString.email;
-    if((queryString.eventID && !queryString.year) || (!queryString.eventID && queryString.year)) {
-      throw helpers.missingIdQueryResponse("eventID or year (must have both or neither)");
+    if (
+      (queryString.eventID && !queryString.year) ||
+      (!queryString.eventID && queryString.year)
+    ) {
+      throw helpers.missingIdQueryResponse(
+        "eventID or year (must have both or neither)"
+      );
     }
 
     let timeStampFilter;
@@ -393,7 +445,10 @@ export const get = async (event, ctx, callback) => {
     let registrations = [];
 
     // if eventID and year was given
-    if (queryString.hasOwnProperty("eventID") && queryString.hasOwnProperty("year")) {
+    if (
+      queryString.hasOwnProperty("eventID") &&
+      queryString.hasOwnProperty("year")
+    ) {
       const eventIDAndYear = queryString.eventID + ";" + queryString.year;
       const filterExpression = {
         FilterExpression: "#eventIDyear = :query",
@@ -408,10 +463,12 @@ export const get = async (event, ctx, callback) => {
       registrations = await db.scan(USER_REGISTRATIONS_TABLE, filterExpression);
 
       // filter by id query, if given
-      if(queryString.hasOwnProperty("email")) {
-        registrations = registrations.filter(entry => entry.id === email);
+      if (queryString.hasOwnProperty("email")) {
+        registrations = registrations.filter((entry) => entry.id === email);
       }
-    } else { // if eventID and year was not given (only id)
+    } else {
+      // if eventID and year was not given (only id)
+
       const filterExpression = {
         FilterExpression: "id = :query",
         ExpressionAttributeValues: {
@@ -423,8 +480,10 @@ export const get = async (event, ctx, callback) => {
     }
 
     // filter by timestamp, if given
-    if(timeStampFilter) {
-      registrations = registrations.filter(entry => entry.updatedAt > timeStampFilter);
+    if (timeStampFilter) {
+      registrations = registrations.filter(
+        (entry) => entry.updatedAt > timeStampFilter
+      );
     }
 
     const response = helpers.createResponse(200, {
@@ -434,7 +493,7 @@ export const get = async (event, ctx, callback) => {
 
     callback(null, response);
     return null;
-  } catch(err) {
+  } catch (err) {
     callback(null, err);
     return null;
   }
@@ -445,16 +504,17 @@ export const del = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
 
-    if(!event.pathParameters || !event.pathParameters.email) throw helpers.missingIdQueryResponse("registration");
+    if (!event.pathParameters || !event.pathParameters.email)
+      throw helpers.missingIdQueryResponse("registration");
 
     const email = event.pathParameters.email;
-    if(!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
+    if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
     helpers.checkPayloadProps(data, {
-      eventID : {
-        required: true ,
+      eventID: {
+        required: true,
         type: "string"
       },
-      year : {
+      year: {
         required: true,
         type: "number"
       }
@@ -473,7 +533,7 @@ export const del = async (event, ctx, callback) => {
 
     callback(null, response);
     return null;
-  } catch(err) {
+  } catch (err) {
     callback(null, err);
     return null;
   }

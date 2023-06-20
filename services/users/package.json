@@ -4,6 +4,10 @@
   "scripts": {
     "itest": "npm run itest users --prefix ../../",
     "utest": "npm run utest users --prefix ../../",
-    "test": "npm run utest users --prefix ../../ && npm run itest users --prefix ../../"
+    "test": "npm run utest users --prefix ../../ && npm run itest users --prefix ../../",
+    "prestart": "node ../../scripts/fix-sls-offline.js"
+  },
+  "devDependencies": {
+    "serverless-offline": "^8.8.0"
   }
 }

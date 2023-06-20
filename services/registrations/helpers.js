@@ -1,4 +1,4 @@
-import AWS from "aws-sdk";
+import docClient from "../../lib/docClient";
 import {
   USER_REGISTRATIONS_TABLE
 } from "../../constants/tables";
@@ -15,9 +15,10 @@ export default {
    * @return {registeredCount checkedInCount waitlistCount}
    */
   getEventCounts: async function (eventIDAndYear) {
-    const docClient = new AWS.DynamoDB.DocumentClient();
     const params = {
-      TableName: USER_REGISTRATIONS_TABLE + process.env.ENVIRONMENT,
+      TableName:
+        USER_REGISTRATIONS_TABLE +
+        (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
       FilterExpression: "#eventIDYear = :query",
       ExpressionAttributeNames: {
         "#eventIDYear": "eventID;year"
@@ -29,14 +30,14 @@ export default {
     return await docClient
       .scan(params)
       .promise()
-      .then(result => {
+      .then((result) => {
         let counts = {
           registeredCount: 0,
           checkedInCount: 0,
           waitlistCount: 0
         };
 
-        result.Items.forEach(item => {
+        result.Items.forEach((item) => {
           if (!item.isPartner) {
             switch (item.registrationStatus) {
             case "registered":
@@ -54,7 +55,7 @@ export default {
 
         return counts;
       })
-      .catch(error => {
+      .catch((error) => {
         console.error(error);
         return null;
       });
@@ -91,7 +92,13 @@ export default {
     // startDate.setMinutes(startDate.getMinutes() + offset);
 
     // startDateArray follows format [year, month, day, hour, minute]
-    const startDateArray = [startDate.getFullYear(), startDate.getMonth() + 1, startDate.getDate(), startDate.getHours(), startDate.getMinutes()];
+    const startDateArray = [
+      startDate.getFullYear(),
+      startDate.getMonth() + 1,
+      startDate.getDate(),
+      startDate.getHours(),
+      startDate.getMinutes()
+    ];
 
     const eventDetails = {
       title: ename,

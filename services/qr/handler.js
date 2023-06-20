@@ -1,4 +1,4 @@
-import AWS from "aws-sdk";
+import docClient from "../../lib/docClient";
 
 import registrationHelpers from "./helpers";
 import helpers from "../../lib/handlerHelpers";
@@ -47,55 +47,58 @@ export const post = async (event, ctx, callback) => {
         type: "number"
       },
       email: {
-        required: true ,
+        required: true,
         type: "string"
       },
       negativePointsConfirmed: {
-        required: true ,
+        required: true,
         type: "boolean"
       }, // true if the user has confirmed negative point QR scans
       admin: {
-        required: false ,
+        required: false,
         type: "boolean"
-      }, // TODO: Admin possibility if gated actions required in the future
+      } // TODO: Admin possibility if gated actions required in the future
     });
 
-    await registrationHelpers.qrScanPostHelper(data, data.email).then(res => {
-      if (res.hasOwnProperty("errorMessage")) {
-        if (res.errorMessage === "Team scan would result in negative points") {
-          const response_fail = helpers.createResponse(406, {
+    await registrationHelpers
+      .qrScanPostHelper(data, data.email)
+      .then((res) => {
+        if (res.hasOwnProperty("errorMessage")) {
+          if (
+            res.errorMessage === "Team scan would result in negative points"
+          ) {
+            const response_fail = helpers.createResponse(406, {
+              message: "ERROR: " + res.errorMessage,
+              response: res
+            });
+
+            callback(null, response_fail);
+            return response_fail;
+          }
+
+          const response_fail = helpers.createResponse(403, {
             message: "ERROR: " + res.errorMessage,
-            "response": res
+            response: res
           });
 
           callback(null, response_fail);
           return response_fail;
         }
 
-        const response_fail = helpers.createResponse(403, {
-          message: "ERROR: " + res.errorMessage,
-          "response": res
+        const response_success = helpers.createResponse(200, {
+          message: "Successfully scanned QR code.",
+          response: res
         });
 
-        callback(null, response_fail);
-        return response_fail;
-      }
-
-      const response_success = helpers.createResponse(200,
-        {
-          "message": "Successfully scanned QR code.",
-          "response": res
-        });
-
-      callback(null, response_success);
-      return response_success;
-    }).catch(err => {
-      console.error(err);
-      callback(null, err);
-      return null;
-    });
-  }
-  catch(err) {
+        callback(null, response_success);
+        return response_success;
+      })
+      .catch((err) => {
+        console.error(err);
+        callback(null, err);
+        return null;
+      });
+  } catch (err) {
     console.error(err);
     callback(null, err);
     return null;
@@ -118,7 +121,13 @@ export const get = async (event, ctx, callback) => {
 
 export const getOne = async (event, ctx, callback) => {
   try {
-    if (!event.pathParameters || !event.pathParameters.id || !event.pathParameters.eventID || !event.pathParameters.year) throw helpers.missingPathParamResponse("id", "event", "year");
+    if (
+      !event.pathParameters ||
+      !event.pathParameters.id ||
+      !event.pathParameters.eventID ||
+      !event.pathParameters.year
+    )
+      throw helpers.missingPathParamResponse("id", "event", "year");
     const {
       id, eventID, year
     } = event.pathParameters;
@@ -156,18 +165,20 @@ export const create = async (event, ctx, callback) => {
       points: {
         required: true,
         type: "number"
-      },
+      }
     });
 
     const eventIDAndYear = data.eventID + ";" + data.year;
     const existingQR = await db.getOne(data.id, QRS_TABLE, {
       "eventID;year": eventIDAndYear
     });
-    if (!isEmpty(existingQR)) throw helpers.duplicateResponse("id and event", data);
+    if (!isEmpty(existingQR))
+      throw helpers.duplicateResponse("id and event", data);
     const existingEvent = await db.getOne(data.eventID, EVENTS_TABLE, {
       year: data.year
     });
-    if (isEmpty(existingEvent)) throw helpers.inputError("Event does not exist", data);
+    if (isEmpty(existingEvent))
+      throw helpers.inputError("Event does not exist", data);
 
     const item = {
       id: data.id,
@@ -176,7 +187,7 @@ export const create = async (event, ctx, callback) => {
       isActive: data.isActive,
       isUnlimitedScans: data.isUnlimitedScans,
       createdAt: timestamp,
-      updatedAt: timestamp,
+      updatedAt: timestamp
     };
 
     const res = await db.create(item, QRS_TABLE);
@@ -198,7 +209,13 @@ export const create = async (event, ctx, callback) => {
 
 export const update = async (event, ctx, callback) => {
   try {
-    if (!event.pathParameters || !event.pathParameters.id || !event.pathParameters.eventID || !event.pathParameters.year) throw helpers.missingPathParamResponse("id", "event", "year");
+    if (
+      !event.pathParameters ||
+      !event.pathParameters.id ||
+      !event.pathParameters.eventID ||
+      !event.pathParameters.year
+    )
+      throw helpers.missingPathParamResponse("id", "event", "year");
     const {
       id, eventID, year
     } = event.pathParameters;
@@ -207,10 +224,9 @@ export const update = async (event, ctx, callback) => {
     const existingQR = await db.getOne(id, QRS_TABLE, {
       "eventID;year": eventIDAndYear
     });
-    if (isEmpty(existingQR)) throw helpers.notFoundResponse("QR", id, eventIDAndYear);
+    if (isEmpty(existingQR))
+      throw helpers.notFoundResponse("QR", id, eventIDAndYear);
     const data = JSON.parse(event.body);
-
-    const docClient = new AWS.DynamoDB.DocumentClient();
 
     const {
       updateExpression,
@@ -223,14 +239,16 @@ export const update = async (event, ctx, callback) => {
         id,
         eventIDAndYear
       },
-      TableName: QRS_TABLE + process.env.ENVIRONMENT,
+      TableName:
+        QRS_TABLE + (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
       ExpressionAttributeValues: expressionAttributeValues,
       ExpressionAttributeNames: {
         ...expressionAttributeNames
       },
       UpdateExpression: updateExpression,
       ReturnValues: "UPDATED_NEW",
-      ConditionExpression: "attribute_exists(id) and attribute_exists(eventID;year)"
+      ConditionExpression:
+        "attribute_exists(id) and attribute_exists(eventID;year)"
     };
 
     const res = await docClient.update(params).promise();
@@ -251,17 +269,23 @@ export const update = async (event, ctx, callback) => {
 
 export const del = async (event, ctx, callback) => {
   try {
-    if (!event.pathParameters || !event.pathParameters.id || !event.pathParameters.eventID || !event.pathParameters.year) throw helpers.missingPathParamResponse("id", "event", "year");
+    if (
+      !event.pathParameters ||
+      !event.pathParameters.id ||
+      !event.pathParameters.eventID ||
+      !event.pathParameters.year
+    )
+      throw helpers.missingPathParamResponse("id", "event", "year");
     const {
       id, eventID, year
     } = event.pathParameters;
     const eventIDAndYear = eventID + ";" + year;
 
-
     const existingQR = await db.getOne(id, QRS_TABLE, {
       "eventID;year": eventIDAndYear
     });
-    if (isEmpty(existingQR)) throw helpers.notFoundResponse("QR", id, eventIDAndYear);
+    if (isEmpty(existingQR))
+      throw helpers.notFoundResponse("QR", id, eventIDAndYear);
 
     const res = await db.deleteOne(id, QRS_TABLE, {
       "eventID;year": eventIDAndYear

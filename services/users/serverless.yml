@@ -3,6 +3,8 @@ tenant: ianmh
 app: biztechapp
 
 plugins:
+  - serverless-dynamodb-local
+  - serverless-offline
   - serverless-domain-manager
   - serverless-bundle
   - serverless-prune-plugin
