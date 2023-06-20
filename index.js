@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 
 import concurrently from "concurrently";
-import { readConfigFile, runProxy, runServices } from "./handler.js";
+import {
+  readConfigFile, runProxy, runServices
+} from "./handler.js";
 
 const prefixColors = [
   "blue",
