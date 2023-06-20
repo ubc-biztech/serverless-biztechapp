@@ -7,6 +7,6 @@
     "test": "npm run utest stickers --prefix ../../ && npm run itest stickers --prefix ../../"
   },
   "devDependencies": {
-    "serverless-offline": "^7.1.0"
+    "serverless-offline": "^8.8.0"
   }
 }

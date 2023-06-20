@@ -8,6 +8,6 @@
     "prestart": "node ../../scripts/fix-sls-offline.js"
   },
   "devDependencies": {
-    "serverless-offline": "^7.1.0"
+    "serverless-offline": "^8.8.0"
   }
 }

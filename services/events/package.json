@@ -7,7 +7,7 @@
     "test": "npm run utest events --prefix ../../ && npm run itest events --prefix ../../"
   },
   "devDependencies": {
-    "serverless-offline": "^7.1.0",
+    "serverless-offline": "^8.8.0",
     "webpack-cli": "^5.1.1"
   }
 }

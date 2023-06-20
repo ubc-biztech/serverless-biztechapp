@@ -2,7 +2,7 @@ provider:
   stage: ${opt:stage, 'dev'}
   apiKeys:
     - ${opt:stage, 'dev'}-api-key
-  runtime: nodejs12.x
+  runtime: nodejs16.x
   region: us-west-2
 
 custom:

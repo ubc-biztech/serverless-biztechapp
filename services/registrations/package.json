@@ -11,6 +11,6 @@
     "test": "npm run utest registrations --prefix ../../ && npm run itest registrations --prefix ../../"
   },
   "devDependencies": {
-    "serverless-offline": "^7.1.0"
+    "serverless-offline": "^8.8.0"
   }
 }

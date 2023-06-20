@@ -22,9 +22,11 @@ const stage = file.stage || "dev";
 
 const commands = runServices(services, httpPort, stage, prefixColors);
 
-concurrently(commands, {
+const result = concurrently(commands, {
   killOthers: ["failure", "success"]
 });
+
+result.then();
 
 process.on("SIGINT", () => {
   console.log("");

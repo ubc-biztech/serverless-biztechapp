@@ -10,6 +10,6 @@
     "test": "npm run utest transactions --prefix ../../ && npm run itest transactions --prefix ../../"
   },
   "devDependencies": {
-    "serverless-offline": "^7.1.0"
+    "serverless-offline": "^8.8.0"
   }
 }
