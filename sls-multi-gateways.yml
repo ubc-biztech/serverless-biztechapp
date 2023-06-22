@@ -19,12 +19,18 @@ services:
   - srvName: qr
     srvPath: qr
     srvSource: services/qr
+  - srvName: qr
+    srvPath: qrscan
+    srvSource: services/qr
   - srvName: registrations
     srvPath: registrations
     srvSource: services/registrations
   - srvName: stickers
     srvPath: stickers
     srvSource: services/stickers
+  - srvName: teams
+    srvPath: team
+    srvSource: services/teams
   - srvName: teams
     srvPath: teams
     srvSource: services/teams
