@@ -30,6 +30,7 @@ const cancelSecret =
 
 // Creates the member here
 export const webhook = async (event, ctx, callback) => {
+  console.log("webhook called");
   const userMemberSignup = async (data) => {
     const cognito = new AWS.CognitoIdentityServiceProvider({
       apiVersion: "2016-04-18"
@@ -317,6 +318,7 @@ export const webhook = async (event, ctx, callback) => {
 export const payment = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
+    console.log(data)
     const {
       paymentImages
     } = data;
