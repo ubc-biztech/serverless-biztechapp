@@ -128,12 +128,13 @@ export const webhook = async (event, ctx, callback) => {
             "User could not be created because email already exists"
           );
         } else {
+          console.log(error);
           response = helpers.createResponse(
             502,
             "Internal Server Error occurred"
           );
         }
-        callback(null, response);
+        callback(null, error);
       });
     await docClient
       .put(memberParams)
@@ -146,12 +147,13 @@ export const webhook = async (event, ctx, callback) => {
             "Member could not be created because email already exists"
           );
         } else {
+          console.log(error);
           response = helpers.createResponse(
             502,
             "Internal Server Error occurred"
           );
         }
-        callback(null, response);
+        callback(null, error);
       });
 
     const response = helpers.createResponse(201, {
@@ -318,7 +320,7 @@ export const webhook = async (event, ctx, callback) => {
 export const payment = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
-    console.log(data)
+    console.log(data);
     const {
       paymentImages
     } = data;
