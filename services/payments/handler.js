@@ -30,7 +30,6 @@ const cancelSecret =
 
 // Creates the member here
 export const webhook = async (event, ctx, callback) => {
-  console.log("webhook called");
   const userMemberSignup = async (data) => {
     const cognito = new AWS.CognitoIdentityServiceProvider({
       apiVersion: "2016-04-18"
@@ -128,13 +127,12 @@ export const webhook = async (event, ctx, callback) => {
             "User could not be created because email already exists"
           );
         } else {
-          console.log(error);
           response = helpers.createResponse(
             502,
             "Internal Server Error occurred"
           );
         }
-        callback(null, error);
+        callback(null, response);
       });
     await docClient
       .put(memberParams)
@@ -147,13 +145,12 @@ export const webhook = async (event, ctx, callback) => {
             "Member could not be created because email already exists"
           );
         } else {
-          console.log(error);
           response = helpers.createResponse(
             502,
             "Internal Server Error occurred"
           );
         }
-        callback(null, error);
+        callback(null, response);
       });
 
     const response = helpers.createResponse(201, {
