@@ -10,7 +10,7 @@ import docClient from "../../lib/docClient";
 const AWS = require("aws-sdk");
 const {
   USERS_TABLE,
-  MEMBERS2023_TABLE,
+  MEMBERS2024_TABLE,
   USER_REGISTRATIONS_TABLE
 } = require("../../constants/tables");
 const stripe = require("stripe")(
@@ -111,7 +111,7 @@ export const webhook = async (event, ctx, callback) => {
         updatedAt: timestamp
       },
       TableName:
-        MEMBERS2023_TABLE +
+        MEMBERS2024_TABLE +
         (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
       ConditionExpression: "attribute_not_exists(id)"
     };
@@ -212,7 +212,7 @@ export const webhook = async (event, ctx, callback) => {
         updatedAt: timestamp
       },
       TableName:
-        MEMBERS2023_TABLE +
+        MEMBERS2024_TABLE +
         (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
       ConditionExpression: "attribute_not_exists(id)"
     };
@@ -317,6 +317,7 @@ export const webhook = async (event, ctx, callback) => {
 export const payment = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
+    console.log(data);
     const {
       paymentImages
     } = data;
