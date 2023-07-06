@@ -317,7 +317,6 @@ export const webhook = async (event, ctx, callback) => {
 export const payment = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
-    console.log(data);
     const {
       paymentImages
     } = data;
