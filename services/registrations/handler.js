@@ -486,6 +486,13 @@ export const get = async (event, ctx, callback) => {
       );
     }
 
+    // filter by partner, if given
+
+    if (queryString.hasOwnProperty("isPartner")){
+      const isPartner = queryString.isPartner === "true" ? true : false
+      registrations = registrations.filter(entry => entry.isPartner === isPartner)
+    } 
+
     const response = helpers.createResponse(200, {
       size: registrations.length,
       data: registrations
