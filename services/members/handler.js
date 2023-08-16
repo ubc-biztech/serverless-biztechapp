@@ -3,14 +3,12 @@ import db from "../../lib/db";
 import {
   isEmpty, isValidEmail
 } from "../../lib/utils";
-const AWS = require("aws-sdk");
+import docClient from "../../lib/docClient";
 const {
-  MEMBERS2023_TABLE
+  MEMBERS2024_TABLE
 } = require("../../constants/tables");
 
 export const create = async (event, ctx, callback) => {
-  const docClient = new AWS.DynamoDB.DocumentClient();
-
   const timestamp = new Date().getTime();
   const data = JSON.parse(event.body);
   if (!isValidEmail(data.email)) {
@@ -38,10 +36,12 @@ export const create = async (event, ctx, callback) => {
       highSchool: data.high_school,
       admin: data.admin,
       createdAt: timestamp,
-      updatedAt: timestamp,
+      updatedAt: timestamp
     },
-    TableName: MEMBERS2023_TABLE + process.env.ENVIRONMENT,
-    ConditionExpression: "attribute_not_exists(id)",
+    TableName:
+    MEMBERS2024_TABLE +
+      (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
+    ConditionExpression: "attribute_not_exists(id)"
   };
 
   await docClient
@@ -50,7 +50,7 @@ export const create = async (event, ctx, callback) => {
     .then(() => {
       const response = helpers.createResponse(201, {
         message: "Created!",
-        params: memberParams,
+        params: memberParams
       });
       callback(null, response);
     })
@@ -79,7 +79,7 @@ export const get = async (event, ctx, callback) => {
     const email = event.pathParameters.email;
 
     if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
-    const member = await db.getOne(email, MEMBERS2023_TABLE);
+    const member = await db.getOne(email, MEMBERS2024_TABLE);
     if (isEmpty(member)) throw helpers.notFoundResponse("member", email);
 
     const response = helpers.createResponse(200, member);
@@ -95,7 +95,7 @@ export const get = async (event, ctx, callback) => {
 export const getAll = async (event, ctx, callback) => {
   try {
     // scan the table
-    const members = await db.scan(MEMBERS2023_TABLE);
+    const members = await db.scan(MEMBERS2024_TABLE);
 
     // re-organize the response
     let response = {
@@ -120,16 +120,16 @@ export const update = async (event, ctx, callback) => {
     const email = event.pathParameters.id;
     if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
 
-    const existingMember = await db.getOne(email, MEMBERS2023_TABLE);
+    const existingMember = await db.getOne(email, MEMBERS2024_TABLE);
     // eslint-disable-next-line
     if (isEmpty(existingMember))
       throw helpers.notFoundResponse("member", email);
 
     const data = JSON.parse(event.body);
-    const res = await db.updateDB(email, data, MEMBERS2023_TABLE);
+    const res = await db.updateDB(email, data, MEMBERS2024_TABLE);
     const response = helpers.createResponse(200, {
       message: `Updated member with email ${email}!`,
-      response: res,
+      response: res
     });
 
     callback(null, response);
@@ -149,13 +149,14 @@ export const del = async (event, ctx, callback) => {
     const email = event.pathParameters.id;
     if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
     // check that the member exists
-    const existingMember = await db.getOne(email, MEMBERS2023_TABLE);
-    if (isEmpty(existingMember)) throw helpers.notFoundResponse("Member", email);
+    const existingMember = await db.getOne(email, MEMBERS2024_TABLE);
+    if (isEmpty(existingMember))
+      throw helpers.notFoundResponse("Member", email);
 
-    const res = await db.deleteOne(email, MEMBERS2023_TABLE);
+    const res = await db.deleteOne(email, MEMBERS2024_TABLE);
     const response = helpers.createResponse(200, {
       message: "Member deleted!",
-      response: res,
+      response: res
     });
 
     callback(null, response);

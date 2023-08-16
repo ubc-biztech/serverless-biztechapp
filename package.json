@@ -3,7 +3,17 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
+    "copy-dynamodb-table": "^2.2.1",
+    "dotenv": "^16.0.3",
     "ics": "^2.40.0",
+    "serverless-dynamodb-local": "^0.2.40",
+    "concurrently": "^6.2.0",
+    "express": "^4.17.1",
+    "express-http-proxy": "^1.6.2",
+    "fs": "0.0.1-security",
+    "http-proxy-middleware": "^2.0.0",
+    "path": "^0.12.7",
+    "yaml": "^1.10.2",
     "serverless": "^1.83.3"
   },
   "scripts": {
@@ -13,7 +23,12 @@
     "utest": "./scripts/run_utests.sh",
     "test": "npm run utest && npm run itest",
     "lint": "eslint . --fix",
-    "pre-commit-msg": "echo 'Fixing lint problems'..."
+    "pre-commit-msg": "echo 'Fixing lint problems'...",
+    "pretty": "prettier --write \"./**/*.{js,jsx,ts,tsx,json}\"",
+    "fix-sls-offline": "find services/* -maxdepth 0 -type d -exec sh -c 'cd \"{}\" && node ../../scripts/fix-sls-offline.js' \\;",
+    "install": "find services/* -maxdepth 0 -type d -exec sh -c 'cd \"{}\" && npm i --save-dev' \\;",
+    "dev": "node ./index.js",
+    "init:db": "cd scripts && node ./initlocal.js"
   },
   "devDependencies": {
     "aws-sdk-mock": "^5.1.0",

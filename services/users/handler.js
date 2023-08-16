@@ -1,4 +1,4 @@
-const AWS = require("aws-sdk");
+import docClient from "../../lib/docClient";
 
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
@@ -10,8 +10,6 @@ import {
 } from "../../constants/tables";
 
 export const create = async (event, ctx, callback) => {
-  const docClient = new AWS.DynamoDB.DocumentClient();
-
   const timestamp = new Date().getTime();
   const data = JSON.parse(event.body);
   if (!isValidEmail(data.email))
@@ -42,10 +40,11 @@ export const create = async (event, ctx, callback) => {
       isMember: data.isMember,
       createdAt: timestamp,
       updatedAt: timestamp,
-      admin: isBiztechAdmin,
+      admin: isBiztechAdmin
     },
-    TableName: USERS_TABLE + process.env.ENVIRONMENT,
-    ConditionExpression: "attribute_not_exists(id)",
+    TableName:
+      USERS_TABLE + (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
+    ConditionExpression: "attribute_not_exists(id)"
   };
   //check whether the favedEventsArray body param meets the requirements
   if (
@@ -132,7 +131,7 @@ export const create = async (event, ctx, callback) => {
     .then(() => {
       const response = helpers.createResponse(201, {
         message: "Created!",
-        params: userParams,
+        params: userParams
       });
       callback(null, response);
     })
@@ -203,7 +202,7 @@ export const update = async (event, ctx, callback) => {
     const res = await db.updateDB(email, data, USERS_TABLE);
     const response = helpers.createResponse(200, {
       message: `Updated event with email ${email}!`,
-      response: res,
+      response: res
     });
 
     callback(null, response);
@@ -232,8 +231,6 @@ export const getAll = async (event, ctx, callback) => {
 };
 
 export const favouriteEvent = async (event, ctx, callback) => {
-  const docClient = new AWS.DynamoDB.DocumentClient();
-
   try {
     const data = JSON.parse(event.body);
 
@@ -249,7 +246,7 @@ export const favouriteEvent = async (event, ctx, callback) => {
       isFavourite: {
         required: true,
         type: "boolean"
-      },
+      }
     });
 
     const {
@@ -258,7 +255,7 @@ export const favouriteEvent = async (event, ctx, callback) => {
     const eventIDAndYear = eventID + ";" + year;
 
     const email = event.pathParameters.email;
-    if (email === null || !isValidEmail(email))
+    if (email == null || !isValidEmail(email))
       throw helpers.inputError("Invalid email", email);
 
     const existingEvent = await db.getOne(eventID, EVENTS_TABLE, {
@@ -303,7 +300,7 @@ export const favouriteEvent = async (event, ctx, callback) => {
         helpers.createResponse(200, {
           message: successMsg,
           response: {
-          },
+          }
         })
       );
       return null;
@@ -311,12 +308,12 @@ export const favouriteEvent = async (event, ctx, callback) => {
 
     let expressionAttributeNames;
     expressionAttributeNames = {
-      "#favedEvents": "favedEventsID;year",
+      "#favedEvents": "favedEventsID;year"
     };
 
     let expressionAttributeValues;
     expressionAttributeValues = {
-      ":eventsIDAndYear": docClient.createSet([eventIDAndYear]), // set data type, for updateExpression
+      ":eventsIDAndYear": docClient.createSet([eventIDAndYear]) // set data type, for updateExpression
     };
     expressionAttributeValues[":eventIDAndYear"] = eventIDAndYear; // string data type, for conditionExpression
 
@@ -324,11 +321,12 @@ export const favouriteEvent = async (event, ctx, callback) => {
       Key: {
         id: email
       },
-      TableName: USERS_TABLE + process.env.ENVIRONMENT,
+      TableName:
+        USERS_TABLE + (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
       ExpressionAttributeNames: expressionAttributeNames,
       ExpressionAttributeValues: expressionAttributeValues,
       UpdateExpression: updateExpression,
-      ConditionExpression: conditionExpression,
+      ConditionExpression: conditionExpression
     };
 
     const res = await docClient.update(params).promise();
@@ -339,7 +337,7 @@ export const favouriteEvent = async (event, ctx, callback) => {
       null,
       helpers.createResponse(200, {
         message: successMsg,
-        response: res,
+        response: res
       })
     );
     return null;
@@ -366,7 +364,7 @@ export const del = async (event, ctx, callback) => {
     const res = await db.deleteOne(email, USERS_TABLE);
     const response = helpers.createResponse(200, {
       message: "User deleted!",
-      response: res,
+      response: res
     });
 
     callback(null, response);

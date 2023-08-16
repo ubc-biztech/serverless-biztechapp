@@ -9,5 +9,8 @@
     "itest": "npm run itest registrations --prefix ../../",
     "utest": "npm run utest registrations --prefix ../../",
     "test": "npm run utest registrations --prefix ../../ && npm run itest registrations --prefix ../../"
+  },
+  "devDependencies": {
+    "serverless-offline": "^8.8.0"
   }
 }
