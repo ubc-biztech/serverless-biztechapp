@@ -21,7 +21,9 @@ export default {
       year: year
     });
     const cappedQuestions = [];
+    console.log(event);
     event.registrationQuestions.forEach(question => {
+      console.log(question);
       if (question.participantCap) {
         const choices = question.choices.split(",");
         const caps = question.participantCap.split(",");

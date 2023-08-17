@@ -183,7 +183,7 @@ export const getAll = async (event, ctx, callback) => {
     // get event counts
     for (event of events) {
       event.counts = await eventHelpers.getEventCounts(
-        `${event.id};${event.year}`
+        event.id, event.year
       );
     }
     // sort the events by startDate
@@ -311,7 +311,7 @@ export const get = async (event, ctx, callback) => {
       });
     } else if (queryString && queryString.count == "true") {
       // return counts
-      const counts = await eventHelpers.getEventCounts(`${id};${year}`);
+      const counts = await eventHelpers.getEventCounts(id,year);
 
       const response = helpers.createResponse(200, counts);
       callback(null, response);
