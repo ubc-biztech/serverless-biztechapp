@@ -75,18 +75,18 @@ export async function updateHelper(data, createNew, email, fname) {
       if (counts.registeredCount >= existingEvent.capac)
         registrationStatus = "waitlist";
 
-      // check if workshop is full
-      counts.dynamicCounts.forEach(count => {
-        const response = dynamicResponses[`${count.questionId}`];
-        const dynamicWorkshopCount = count.counts.find(questionChoice => questionChoice.label === response);
-        if (dynamicWorkshopCount.count && dynamicWorkshopCount.count.count === dynamicWorkshopCount.count.cap) {
-          throw helpers.createResponse(401, {
-            statusCode: 401,
-            code: "WORKSHOP ERROR",
-            message: `${response} is full!`
-          });
-        }
-      });
+      // backend check if workshop is full. No longer needed for applicable.
+      // counts.dynamicCounts.forEach(count => {
+      //   const response = dynamicResponses[`${count.questionId}`];
+      //   const dynamicWorkshopCount = count.counts.find(questionChoice => questionChoice.label === response);
+      //   if (dynamicWorkshopCount.count && dynamicWorkshopCount.count.count === dynamicWorkshopCount.count.cap) {
+      //     throw helpers.createResponse(401, {
+      //       statusCode: 401,
+      //       code: "WORKSHOP ERROR",
+      //       message: `${response} is full!`
+      //     });
+      //   }
+      // });
     }
 
     const user = {

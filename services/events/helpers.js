@@ -5,6 +5,8 @@ import {
 import {
   USER_REGISTRATIONS_TABLE
 } from "../../constants/tables";
+import registrationHelpers from "../registrations/helpers";
+
 
 export default {
   /**
@@ -13,52 +15,7 @@ export default {
    * @param {String} eventIDAndYear
    * @return {registeredCount checkedInCount waitlistCount}
    */
-  getEventCounts: async function (eventIDAndYear) {
-    const params = {
-      TableName:
-        USER_REGISTRATIONS_TABLE +
-        (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
-      FilterExpression: "#eventIDYear = :query",
-      ExpressionAttributeNames: {
-        "#eventIDYear": "eventID;year"
-      },
-      ExpressionAttributeValues: {
-        ":query": eventIDAndYear
-      }
-    };
-    return await docClient
-      .scan(params)
-      .promise()
-      .then((result) => {
-        let counts = {
-          registeredCount: 0,
-          checkedInCount: 0,
-          waitlistCount: 0
-        };
-
-        result.Items.forEach((item) => {
-          if (!item.isPartner) {
-            switch (item.registrationStatus) {
-            case "registered":
-              counts.registeredCount++;
-              break;
-            case "checkedIn":
-              counts.checkedInCount++;
-              break;
-            case "waitlist":
-              counts.waitlistCount++;
-              break;
-            }
-          }
-        });
-
-        return counts;
-      })
-      .catch((error) => {
-        console.error(error);
-        return null;
-      });
-  },
+  getEventCounts: registrationHelpers.getEventCounts,
   /**
    * Inserts a unique uuid into each registrationQuestion, if it does not already exist
    * @param {Array} registrationQuestions
