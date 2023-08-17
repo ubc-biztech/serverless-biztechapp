@@ -148,13 +148,13 @@ export const get = async (event, ctx, callback) => {
 
 // STUBS or unused functions below
 
-export const changeTeam = async (event, ctx, callback) => {
+// export const changeTeam = async (event, ctx, callback) => {
 
-};
+// };
 
-export const addMember = async (event, ctx, callback) => {
+// export const addMember = async (event, ctx, callback) => {
 
-};
+// };
 
 export const changeTeamName = async (event, ctx, callback) => {
   /*
@@ -209,13 +209,13 @@ export const changeTeamName = async (event, ctx, callback) => {
   }
 };
 
-export const viewPoints = async (event, ctx, callback) => {
+// export const viewPoints = async (event, ctx, callback) => {
 
-};
+// };
 
-export const changePoints = async (event, ctx, callback) => {
+// export const changePoints = async (event, ctx, callback) => {
 
-};
+// };
 
 export const addQRScan = async (event, ctx, callback) => {
   /*
@@ -338,18 +338,18 @@ export const checkQRScanned = async (event, ctx, callback) => {
   }
 };
 
-export const addTransaction = async (event, ctx, callback) => {
+// export const addTransaction = async (event, ctx, callback) => {
 
-};
+// };
 
-export const getTransactions = async (event, ctx, callback) => {
+// export const getTransactions = async (event, ctx, callback) => {
 
-};
+// };
 
-export const addInventory = async (event, ctx, callback) => {
+// export const addInventory = async (event, ctx, callback) => {
 
-};
+// };
 
-export const getTeamInventory = async (event, ctx, callback) => {
+// export const getTeamInventory = async (event, ctx, callback) => {
 
-};
+// };

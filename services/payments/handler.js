@@ -289,7 +289,7 @@ export const webhook = async (event, ctx, callback) => {
     });
   }
 
-  if (eventData.type == "checkout.session.completed") {
+  if (eventData.type === "checkout.session.completed") {
     const data = eventData.data.object.metadata;
 
     if (!isValidEmail(data.email)) {

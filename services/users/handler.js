@@ -93,7 +93,7 @@ export const create = async (event, ctx, callback) => {
   //     .promise()
   //     .then(async result => {
 
-  //       if (result.Item == null) {
+  //       if (result.Item === null) {
 
   //         const response = helpers.createResponse(
   //           404,
@@ -255,7 +255,7 @@ export const favouriteEvent = async (event, ctx, callback) => {
     const eventIDAndYear = eventID + ";" + year;
 
     const email = event.pathParameters.email;
-    if (email == null || !isValidEmail(email))
+    if (email === null || !isValidEmail(email))
       throw helpers.inputError("Invalid email", email);
 
     const existingEvent = await db.getOne(eventID, EVENTS_TABLE, {

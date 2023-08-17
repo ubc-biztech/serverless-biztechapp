@@ -85,7 +85,7 @@ export default {
     return await docClient
       .put(params)
       .promise()
-      .then((_) => {
+      .then(() => {
         return team;
       });
   },
@@ -141,7 +141,7 @@ export default {
       return await docClient
         .put(params)
         .promise()
-        .then((res) => {
+        .then(() => {
           // update all members' teamIDs in the User Registrations table
           for (let i = 0; i < memberIDs.length; i++) {
             const memberID = memberIDs[i];
@@ -176,7 +176,7 @@ export default {
                     Item: res
                   })
                   .promise()
-                  .then((res) => {})
+                  .then(() => {})
                   .catch((err) => {
                     console.log(err);
                     throw new Error(err);
