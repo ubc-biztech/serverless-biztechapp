@@ -2,12 +2,8 @@ import docClient from "../../lib/docClient";
 import registrationHelpers from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
-import {
-  isEmpty, isValidEmail
-} from "../../lib/utils";
-import {
-  EVENTS_TABLE, USER_REGISTRATIONS_TABLE
-} from "../../constants/tables";
+import { isEmpty, isValidEmail } from "../../lib/utils";
+import { EVENTS_TABLE, USER_REGISTRATIONS_TABLE } from "../../constants/tables";
 
 // const CHECKIN_COUNT_SANITY_CHECK = 500;
 
@@ -19,9 +15,7 @@ import {
      if they are registered, waitlisted, or cancelled, but not if checkedIn
 */
 export async function updateHelper(data, createNew, email, fname) {
-  const {
-    eventID, year, dynamicResponses
-  } = data;
+  const { eventID, year, dynamicResponses } = data;
   const eventIDAndYear = eventID + ";" + year;
 
   console.log(data);
@@ -64,8 +58,7 @@ export async function updateHelper(data, createNew, email, fname) {
     // Check if the event is full
     if (registrationStatus == "registered") {
       const counts = await registrationHelpers.getEventCounts(eventID, year);
-
-      if (counts == null) {
+      if (counts === null) {
         throw db.dynamoErrorResponse({
           code: "DYNAMODB ERROR",
           time: new Date().getTime()
@@ -224,13 +217,13 @@ export async function sendEmail(user, existingEvent, registrationStatus, id) {
     let tempId = "d-11d4bfcbebdf42b686f5e7d0977aa952";
     let tempCalendarId = "d-b517e4c407e4421a8886140caceba551";
 
-    if (registrationStatus == "cancelled") {
+    if (registrationStatus === "cancelled") {
       tempId = "d-8d272b62693e40c6b469a365f7c04443";
       tempCalendarId = false;
     }
 
     let status = registrationStatus;
-    if (registrationStatus == "waitlist") {
+    if (registrationStatus === "waitlist") {
       tempId = "d-8d272b62693e40c6b469a365f7c04443";
       status = "waitlisted";
     }
@@ -259,7 +252,7 @@ export async function sendEmail(user, existingEvent, registrationStatus, id) {
 
     // format the event date from startDate like "October 19 9:00 AM PDT" (ensure it's PST/PDT) then append location
     // check if PDT or PST
-    const timeZone = startDate.getTimezoneOffset() == 420 ? "PDT" : "PST";
+    const timeZone = startDate.getTimezoneOffset() === 420 ? "PDT" : "PST";
     const eventDate =
       startDate.toLocaleString("en-US", {
         timeZone: "America/Los_Angeles",
@@ -496,6 +489,14 @@ export const get = async (event, ctx, callback) => {
     if (timeStampFilter) {
       registrations = registrations.filter(
         (entry) => entry.updatedAt > timeStampFilter
+      );
+    }
+
+    // filter by partner, if given
+    if (queryString.hasOwnProperty("isPartner")) {
+      const isPartner = queryString.isPartner === "true";
+      registrations = registrations.filter(
+        (entry) => entry.isPartner === isPartner
       );
     }
 

@@ -338,7 +338,7 @@ export default {
     // get user's team using helper function _getTeamFromUserRegistration
     return await this._getTeamFromUserRegistration(user_id, eventID, year)
       .then((team) => {
-        if (team == null) {
+        if (team === null) {
           // produce error: user is not on a team
           throw new Error(
             "This event is set to use teams, but the user is not on a team."
@@ -406,7 +406,7 @@ export default {
 
     // put team in Teams table
     return await this._putTeam(team)
-      .then((_) => {
+      .then(() => {
         return team.points;
       })
       .catch((err) => {
