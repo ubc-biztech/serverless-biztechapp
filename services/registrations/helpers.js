@@ -1,8 +1,10 @@
 import docClient from "../../lib/docClient";
 import {
+  EVENTS_TABLE,
   USER_REGISTRATIONS_TABLE
 } from "../../constants/tables";
 import sgMail from "@sendgrid/mail";
+import db from "../../lib/db";
 const ics = require("ics");
 
 sgMail.setApiKey(process.env.SENDGRID_KEY);
@@ -14,7 +16,29 @@ export default {
    * @param {String} eventIDAndYear
    * @return {registeredCount checkedInCount waitlistCount}
    */
-  getEventCounts: async function (eventIDAndYear) {
+  getEventCounts: async function (eventID, year) {
+    const event = await db.getOne(eventID, EVENTS_TABLE, {
+      year: year
+    });
+    const cappedQuestions = [];
+    console.log(event);
+    event.registrationQuestions.forEach(question => {
+      console.log(question);
+      if (question.participantCap) {
+        const choices = question.choices.split(",");
+        const caps = question.participantCap.split(",");
+        const cappedQuestionObject = {
+          questionId: question.questionId,
+          caps: choices.map((choice, i) => {
+            return {
+              label: choice,
+              cap: parseInt(caps[i])
+            };
+          })
+        };
+        cappedQuestions.push(cappedQuestionObject);
+      }
+    });
     const params = {
       TableName:
         USER_REGISTRATIONS_TABLE +
@@ -24,7 +48,7 @@ export default {
         "#eventIDYear": "eventID;year"
       },
       ExpressionAttributeValues: {
-        ":query": eventIDAndYear
+        ":query": eventID + ";" + year
       }
     };
     return await docClient
@@ -34,7 +58,19 @@ export default {
         let counts = {
           registeredCount: 0,
           checkedInCount: 0,
-          waitlistCount: 0
+          waitlistCount: 0,
+          dynamicCounts: cappedQuestions.map(question => {
+            return {
+              questionId: question.questionId,
+              counts: question.caps.map(cap => {
+                return {
+                  label: cap.label,
+                  count: 0,
+                  cap: cap.cap
+                };
+              })
+            };
+          })
         };
 
         result.Items.forEach((item) => {
@@ -51,6 +87,12 @@ export default {
               break;
             }
           }
+          cappedQuestions.forEach(question => {
+            const response = item.dynamicResponses[`${question.questionId}`];
+            const dynamicCount = counts.dynamicCounts.find(count => count.questionId === question.questionId);
+            const workshopCount = dynamicCount.counts.find(question => question.label === response);
+            workshopCount.count += 1;
+          });
         });
 
         return counts;
