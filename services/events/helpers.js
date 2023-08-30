@@ -3,6 +3,8 @@ import {
 } from "uuid";
 import registrationHelpers from "../registrations/helpers";
 
+import registrationHelpers from "../registrations/helpers";
+
 
 export default {
   /**
