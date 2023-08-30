@@ -20,7 +20,7 @@ import {
 */
 export async function updateHelper(data, createNew, email, fname) {
   const {
-    eventID, year, dynamicResponses
+    eventID, year
   } = data;
   const eventIDAndYear = eventID + ";" + year;
 
@@ -74,19 +74,6 @@ export async function updateHelper(data, createNew, email, fname) {
 
       if (counts.registeredCount >= existingEvent.capac)
         registrationStatus = "waitlist";
-
-      // backend check if workshop is full. No longer needed for applicable.
-      // counts.dynamicCounts.forEach(count => {
-      //   const response = dynamicResponses[`${count.questionId}`];
-      //   const dynamicWorkshopCount = count.counts.find(questionChoice => questionChoice.label === response);
-      //   if (dynamicWorkshopCount.count && dynamicWorkshopCount.count.count === dynamicWorkshopCount.count.cap) {
-      //     throw helpers.createResponse(401, {
-      //       statusCode: 401,
-      //       code: "WORKSHOP ERROR",
-      //       message: `${response} is full!`
-      //     });
-      //   }
-      // });
     }
 
     const user = {

@@ -1,10 +1,6 @@
-import docClient from "../../lib/docClient";
 import {
   v4 as uuidv4
 } from "uuid";
-import {
-  USER_REGISTRATIONS_TABLE
-} from "../../constants/tables";
 import registrationHelpers from "../registrations/helpers";
 
 
