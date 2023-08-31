@@ -2,12 +2,8 @@ import docClient from "../../lib/docClient";
 import registrationHelpers from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
-import {
-  isEmpty, isValidEmail
-} from "../../lib/utils";
-import {
-  EVENTS_TABLE, USER_REGISTRATIONS_TABLE
-} from "../../constants/tables";
+import { isEmpty, isValidEmail } from "../../lib/utils";
+import { EVENTS_TABLE, USER_REGISTRATIONS_TABLE } from "../../constants/tables";
 
 // const CHECKIN_COUNT_SANITY_CHECK = 500;
 
@@ -19,9 +15,7 @@ import {
      if they are registered, waitlisted, or cancelled, but not if checkedIn
 */
 export async function updateHelper(data, createNew, email, fname) {
-  const {
-    eventID, year
-  } = data;
+  const { eventID, year, dynamicResponses } = data;
   const eventIDAndYear = eventID + ";" + year;
 
   console.log(data);
@@ -62,9 +56,8 @@ export async function updateHelper(data, createNew, email, fname) {
 
   if (registrationStatus) {
     // Check if the event is full
-    if (registrationStatus === "registered") {
-      const counts = await registrationHelpers.getEventCounts(eventIDAndYear);
-
+    if (registrationStatus == "registered") {
+      const counts = await registrationHelpers.getEventCounts(eventID, year);
       if (counts === null) {
         throw db.dynamoErrorResponse({
           code: "DYNAMODB ERROR",
@@ -74,6 +67,19 @@ export async function updateHelper(data, createNew, email, fname) {
 
       if (counts.registeredCount >= existingEvent.capac)
         registrationStatus = "waitlist";
+
+      // backend check if workshop is full. No longer needed for applicable.
+      // counts.dynamicCounts.forEach(count => {
+      //   const response = dynamicResponses[`${count.questionId}`];
+      //   const dynamicWorkshopCount = count.counts.find(questionChoice => questionChoice.label === response);
+      //   if (dynamicWorkshopCount.count && dynamicWorkshopCount.count.count === dynamicWorkshopCount.count.cap) {
+      //     throw helpers.createResponse(401, {
+      //       statusCode: 401,
+      //       code: "WORKSHOP ERROR",
+      //       message: `${response} is full!`
+      //     });
+      //   }
+      // });
     }
 
     const user = {
@@ -487,9 +493,11 @@ export const get = async (event, ctx, callback) => {
     }
 
     // filter by partner, if given
-    if (queryString.hasOwnProperty("isPartner")){
+    if (queryString.hasOwnProperty("isPartner")) {
       const isPartner = queryString.isPartner === "true";
-      registrations = registrations.filter(entry => entry.isPartner === isPartner);
+      registrations = registrations.filter(
+        (entry) => entry.isPartner === isPartner
+      );
     }
 
     const response = helpers.createResponse(200, {
