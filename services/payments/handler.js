@@ -264,7 +264,7 @@ export const webhook = async (event, ctx, callback) => {
         eventID: data.eventID,
         year: Number(data.year),
         registrationStatus:
-          eventIDAndYear === "produhacks;2023" ? "waitlist" : "registered"
+          eventIDAndYear === "hello-hacks;2023" ? "waitlist" : "registered"
       };
       await updateHelper(body, false, data.email, data.fname);
       const response = helpers.createResponse(200, {
