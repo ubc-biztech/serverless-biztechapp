@@ -2,8 +2,12 @@ import docClient from "../../lib/docClient";
 import registrationHelpers from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
-import { isEmpty, isValidEmail } from "../../lib/utils";
-import { EVENTS_TABLE, USER_REGISTRATIONS_TABLE } from "../../constants/tables";
+import {
+  isEmpty, isValidEmail
+} from "../../lib/utils";
+import {
+  EVENTS_TABLE, USER_REGISTRATIONS_TABLE
+} from "../../constants/tables";
 
 // const CHECKIN_COUNT_SANITY_CHECK = 500;
 
@@ -15,7 +19,9 @@ import { EVENTS_TABLE, USER_REGISTRATIONS_TABLE } from "../../constants/tables";
      if they are registered, waitlisted, or cancelled, but not if checkedIn
 */
 export async function updateHelper(data, createNew, email, fname) {
-  const { eventID, year, dynamicResponses } = data;
+  const {
+    eventID, year
+  } = data;
   const eventIDAndYear = eventID + ";" + year;
 
   console.log(data);
@@ -56,8 +62,10 @@ export async function updateHelper(data, createNew, email, fname) {
 
   if (registrationStatus) {
     // Check if the event is full
-    if (registrationStatus == "registered") {
+    if (registrationStatus === "registered") {
       const counts = await registrationHelpers.getEventCounts(eventID, year);
+      const counts = await registrationHelpers.getEventCounts(eventID, year);
+
       if (counts === null) {
         throw db.dynamoErrorResponse({
           code: "DYNAMODB ERROR",
@@ -67,35 +75,24 @@ export async function updateHelper(data, createNew, email, fname) {
 
       if (counts.registeredCount >= existingEvent.capac)
         registrationStatus = "waitlist";
-
-      // backend check if workshop is full. No longer needed for applicable.
-      // counts.dynamicCounts.forEach(count => {
-      //   const response = dynamicResponses[`${count.questionId}`];
-      //   const dynamicWorkshopCount = count.counts.find(questionChoice => questionChoice.label === response);
-      //   if (dynamicWorkshopCount.count && dynamicWorkshopCount.count.count === dynamicWorkshopCount.count.cap) {
-      //     throw helpers.createResponse(401, {
-      //       statusCode: 401,
-      //       code: "WORKSHOP ERROR",
-      //       message: `${response} is full!`
-      //     });
-      //   }
-      // });
     }
 
     const user = {
       id: email,
       fname
     };
-    // try to send the registration and calendar emails
-    try {
-      await sendEmail(user, existingEvent, registrationStatus, id);
-    } catch (err) {
-      // if email sending failed, that user's email probably does not exist
-      throw helpers.createResponse(500, {
-        statusCode: 500,
-        code: "SENDGRID ERROR",
-        message: `Sending Email Error!: ${err.message}`
-      });
+    if (registrationStatus === "registered") {
+      // try to send the registration and calendar emails
+      try {
+        await sendEmail(user, existingEvent, registrationStatus, id);
+      } catch (err) {
+        // if email sending failed, that user's email probably does not exist
+        throw helpers.createResponse(500, {
+          statusCode: 500,
+          code: "SENDGRID ERROR",
+          message: `Sending Email Error!: ${err.message}`
+        });
+      }
     }
   }
 
@@ -495,9 +492,7 @@ export const get = async (event, ctx, callback) => {
     // filter by partner, if given
     if (queryString.hasOwnProperty("isPartner")) {
       const isPartner = queryString.isPartner === "true";
-      registrations = registrations.filter(
-        (entry) => entry.isPartner === isPartner
-      );
+      registrations = registrations.filter(entry => entry.isPartner === isPartner);
     }
 
     const response = helpers.createResponse(200, {
