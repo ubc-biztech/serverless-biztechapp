@@ -56,7 +56,7 @@ export async function updateHelper(data, createNew, email, fname) {
 
   if (registrationStatus) {
     // Check if the event is full
-    if (registrationStatus == "registered") {
+    if (registrationStatus === "registered" && data.isPartner !== true) {
       const counts = await registrationHelpers.getEventCounts(eventID, year);
       if (counts === null) {
         throw db.dynamoErrorResponse({
