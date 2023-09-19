@@ -80,16 +80,18 @@ export async function updateHelper(data, createNew, email, fname) {
       id: email,
       fname
     };
-    // try to send the registration and calendar emails
-    try {
-      await sendEmail(user, existingEvent, registrationStatus, id);
-    } catch (err) {
-      // if email sending failed, that user's email probably does not exist
-      throw helpers.createResponse(500, {
-        statusCode: 500,
-        code: "SENDGRID ERROR",
-        message: `Sending Email Error!: ${err.message}`
-      });
+    if (registrationStatus === "registered") {
+      // try to send the registration and calendar emails
+      try {
+        await sendEmail(user, existingEvent, registrationStatus, id);
+      } catch (err) {
+        // if email sending failed, that user's email probably does not exist
+        throw helpers.createResponse(500, {
+          statusCode: 500,
+          code: "SENDGRID ERROR",
+          message: `Sending Email Error!: ${err.message}`
+        });
+      }
     }
   }
 
@@ -487,7 +489,7 @@ export const get = async (event, ctx, callback) => {
     }
 
     // filter by partner, if given
-    if (queryString.hasOwnProperty("isPartner")){
+    if (queryString.hasOwnProperty("isPartner")) {
       const isPartner = queryString.isPartner === "true";
       registrations = registrations.filter(entry => entry.isPartner === isPartner);
     }
