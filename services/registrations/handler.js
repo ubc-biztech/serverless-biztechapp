@@ -2,8 +2,12 @@ import docClient from "../../lib/docClient";
 import registrationHelpers from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
-import { isEmpty, isValidEmail } from "../../lib/utils";
-import { EVENTS_TABLE, USER_REGISTRATIONS_TABLE } from "../../constants/tables";
+import {
+  isEmpty, isValidEmail
+} from "../../lib/utils";
+import {
+  EVENTS_TABLE, USER_REGISTRATIONS_TABLE
+} from "../../constants/tables";
 
 // const CHECKIN_COUNT_SANITY_CHECK = 500;
 
@@ -15,7 +19,9 @@ import { EVENTS_TABLE, USER_REGISTRATIONS_TABLE } from "../../constants/tables";
      if they are registered, waitlisted, or cancelled, but not if checkedIn
 */
 export async function updateHelper(data, createNew, email, fname) {
-  const { eventID, year, dynamicResponses } = data;
+  const {
+    eventID, year, dynamicResponses
+  } = data;
   const eventIDAndYear = eventID + ";" + year;
 
   console.log(data);
@@ -56,7 +62,7 @@ export async function updateHelper(data, createNew, email, fname) {
 
   if (registrationStatus) {
     // Check if the event is full
-    if (registrationStatus == "registered") {
+    if (registrationStatus === "registered") {
       const counts = await registrationHelpers.getEventCounts(eventID, year);
       if (counts === null) {
         throw db.dynamoErrorResponse({
@@ -289,7 +295,9 @@ export async function sendEmail(user, existingEvent, registrationStatus, id) {
       }
     };
 
-    await registrationHelpers.sendDynamicQR(dynamicMsg);
+    if (existingEvent.id !== "hello-hacks") {
+      await registrationHelpers.sendDynamicQR(dynamicMsg);
+    }
     if (registrationStatus === "registered" && tempCalendarId)
       await registrationHelpers.sendCalendarInvite(
         existingEvent,
