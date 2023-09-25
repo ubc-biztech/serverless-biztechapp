@@ -295,7 +295,7 @@ export async function sendEmail(user, existingEvent, registrationStatus, id) {
       }
     };
 
-    if (id !== "hello-hacks") {
+    if (existingEvent.id !== "hello-hacks") {
       await registrationHelpers.sendDynamicQR(dynamicMsg);
     }
     if (registrationStatus === "registered" && tempCalendarId)
