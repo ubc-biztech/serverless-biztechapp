@@ -56,7 +56,7 @@ export async function updateHelper(data, createNew, email, fname) {
 
   if (registrationStatus) {
     // Check if the event is full
-    if (registrationStatus == "registered") {
+    if (registrationStatus === "registered") {
       const counts = await registrationHelpers.getEventCounts(eventID, year);
       if (counts === null) {
         throw db.dynamoErrorResponse({
@@ -289,7 +289,9 @@ export async function sendEmail(user, existingEvent, registrationStatus, id) {
       }
     };
 
-    await registrationHelpers.sendDynamicQR(dynamicMsg);
+    if (id !== "hello-hacks") {
+      await registrationHelpers.sendDynamicQR(dynamicMsg);
+    }
     if (registrationStatus === "registered" && tempCalendarId)
       await registrationHelpers.sendCalendarInvite(
         existingEvent,
