@@ -8,6 +8,9 @@ const {
   MEMBERS2024_TABLE
 } = require("../../constants/tables");
 const {
+  MEMBERS2023_TABLE
+} = require("../../constants/tables");
+const {
   MEMBERS2022_TABLE
 } = require("../../constants/tables");
 const {
@@ -106,15 +109,18 @@ export const getAll = async (event, ctx, callback) => {
     // Get the table name based on the year from query param
     let tableName;
     switch (year) {
-    case "2021":
-      tableName = MEMBERSHIPS2021_TABLE;
-      break;
-    case "2022":
-      tableName = MEMBERS2022_TABLE;
-      break;
-    case "2024":
-      tableName = MEMBERS2024_TABLE;
-      break;
+      case "2021":
+        tableName = MEMBERSHIPS2021_TABLE;
+        break;
+      case "2022":
+        tableName = MEMBERS2022_TABLE;
+        break;
+      case "2023":
+        tableName = MEMBERS2023_TABLE;
+        break;
+      case "2024":
+        tableName = MEMBERS2024_TABLE;
+        break;
     }
     const members = await db.scan(tableName);
     // const members = await db.scan(MEMBERS2024_TABLE);
