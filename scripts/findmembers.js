@@ -14,7 +14,7 @@ const awsConfig = {
 const cognitoISP = new AWS.CognitoIdentityServiceProvider(awsConfig);
 
 const userPoolId = "us-west-2_w0R176hhp";
-const filter = `username ^= "Google"`;
+const filter = "username ^= \"Google\"";
 
 const getCountsByEmail = async (emails) => {
     const counts = [];
@@ -31,7 +31,7 @@ const getCountsByEmail = async (emails) => {
                 counts.push(email);
             }
         } catch (error) {
-            console.error('Error', error);
+            console.error("Error", error);
         }
     }
 
@@ -54,13 +54,13 @@ cognitoISP.listUsers({
         const result = [];
         recentUsers.forEach(user => {
             user.Attributes.forEach(attribute => {
-                if (attribute.Name === 'email') {
-                    result.push(attribute.Value)
+                if (attribute.Name === "email") {
+                    result.push(attribute.Value);
                 }
-            })
+            });
         });
         getCountsByEmail(result).then(counts => {
-            console.log('EnDangered Emails', counts);
+            console.log("Endangered Emails", counts);
         });
     }
 });
