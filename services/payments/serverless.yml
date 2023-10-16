@@ -18,6 +18,10 @@ provider:
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     SENDGRID_KEY: ${param:SENDGRID_KEY}
+    STRIPE_DEV_CANCEL: ${param:STRIPE_DEV_CANCEL}
+    STRIPE_DEV_ENDPOINT: ${param:STRIPE_DEV_ENDPOINT}
+    STRIPE_PROD_CANCEL: ${param:STRIPE_PROD_CANCEL}
+    STRIPE_PROD_ENDPOINT: ${param:STRIPE_PROD_ENDPOINT}
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
     restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
