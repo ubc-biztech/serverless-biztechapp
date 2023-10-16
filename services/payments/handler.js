@@ -135,7 +135,7 @@ export const webhook = async (event, ctx, callback) => {
       message: "Created user and member!"
     });
     callback(null, response);
-  }
+  };
   const userMemberSignup = async (data) => {
     const cognito = new AWS.CognitoIdentityServiceProvider({
       apiVersion: "2016-04-18"
