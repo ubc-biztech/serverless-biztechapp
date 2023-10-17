@@ -59,7 +59,10 @@ export async function updateHelper(data, createNew, email, fname) {
     throw helpers.notFoundResponse("Event", eventID, year);
 
   let registrationStatus = data.registrationStatus;
-
+  let applicationStatus = data.applicationStatus;
+  console.log("_----------")
+  console.log(applicationStatus)
+  console.log("_----------")
   if (registrationStatus) {
     // Check if the event is full
     if (registrationStatus === "registered") {
@@ -107,6 +110,7 @@ export async function updateHelper(data, createNew, email, fname) {
 
   const response = await createRegistration(
     registrationStatus,
+    applicationStatus,
     data,
     email,
     eventIDAndYear,
@@ -127,6 +131,7 @@ function removeDefaultKeys(data) {
 
 async function createRegistration(
   registrationStatus,
+  applicationStatus,
   data,
   email,
   eventIDAndYear,
@@ -355,7 +360,6 @@ export const post = async (event, ctx, callback) => {
       }
     } else {
       const response = await updateHelper(data, true, data.email, data.fname);
-
       callback(null, response);
       return null;
     }
@@ -391,7 +395,6 @@ export const put = async (event, ctx, callback) => {
     const email = event.pathParameters.email;
 
     const data = JSON.parse(event.body);
-
     if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
     // Check that parameters are valid
     helpers.checkPayloadProps(data, {
@@ -410,6 +413,10 @@ export const put = async (event, ctx, callback) => {
       points: {
         required: false,
         type: "number"
+      },
+      applicationStatus: {
+        required: false,
+        type: "string"
       }
     });
 
