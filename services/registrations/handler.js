@@ -261,8 +261,8 @@ export async function sendEmail(user, existingEvent, userStatus, id, emailType =
       dynamic_template_data: {
         subject:
           emailType === "application" ?
-          "BizTech " + existingEvent.ename + " Event Application Status"
-          : "BizTech " + existingEvent.ename + " Event Registration Confirmation",
+            "BizTech " + existingEvent.ename + " Event Application Status"
+            : "BizTech " + existingEvent.ename + " Event Registration Confirmation",
         name: userName,
         registrationStatus: status,
         eventName: existingEvent.ename,
@@ -358,14 +358,14 @@ export const post = async (event, ctx, callback) => {
           message: "Redirect to link",
           url: existingReg.checkoutLink
         });
-        
+
         callback(null, response);
         return response;
       } else {
         const response = helpers.createResponse(400, {
           message: "You are already registered for this event!"
         });
-        
+
         callback(null, response);
         return response;
       }
