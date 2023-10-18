@@ -20,11 +20,9 @@ import {
 */
 export async function updateHelper(data, createNew, email, fname) {
   const {
-    eventID, year, dynamicResponses
+    eventID, year, dynamicResponses, registrationStatus, applicationStatus
   } = data;
   const eventIDAndYear = eventID + ";" + year;
-
-  console.log(data);
   console.log("CloudWatch debugging purposes");
 
   // for the QR code, we pass this to SendGrid
@@ -58,14 +56,26 @@ export async function updateHelper(data, createNew, email, fname) {
   if (isEmpty(existingEvent))
     throw helpers.notFoundResponse("Event", eventID, year);
 
-  let registrationStatus = data.registrationStatus;
-  let applicationStatus = data.applicationStatus;
-  console.log("_----------")
-  console.log(applicationStatus)
-  console.log("_----------")
-  if (registrationStatus) {
+  const user = {
+    id: email,
+    fname
+  };
+  let dynamicRegistrationStatus = registrationStatus;
+  // always check application status first, if not null then we send a application status email, else send regular 
+  if (applicationStatus) {
+    try {
+      await sendEmail(user, existingEvent, applicationStatus, id, "application");
+    } catch (err) {
+      // if email sending failed, that user's email probably does not exist
+      throw helpers.createResponse(500, {
+        statusCode: 500,
+        code: "SENDGRID ERROR",
+        message: `Sending Email Error!: ${err.message}`
+      });
+    }
+  } else if (dynamicRegistrationStatus) {
     // Check if the event is full
-    if (registrationStatus === "registered") {
+    if (dynamicRegistrationStatus === "registered") {
       const counts = await registrationHelpers.getEventCounts(eventID, year);
       if (counts === null) {
         throw db.dynamoErrorResponse({
@@ -75,7 +85,7 @@ export async function updateHelper(data, createNew, email, fname) {
       }
 
       if (counts.registeredCount >= existingEvent.capac)
-        registrationStatus = "waitlist";
+        dynamicRegistrationStatus = "waitlist";
 
       // backend check if workshop is full. No longer needed for applicable.
       // counts.dynamicCounts.forEach(count => {
@@ -90,14 +100,9 @@ export async function updateHelper(data, createNew, email, fname) {
       //   }
       // });
     }
-
-    const user = {
-      id: email,
-      fname
-    };
     // try to send the registration and calendar emails
     try {
-      await sendEmail(user, existingEvent, registrationStatus, id);
+      await sendEmail(user, existingEvent, dynamicRegistrationStatus, id);
     } catch (err) {
       // if email sending failed, that user's email probably does not exist
       throw helpers.createResponse(500, {
@@ -109,7 +114,7 @@ export async function updateHelper(data, createNew, email, fname) {
   }
 
   const response = await createRegistration(
-    registrationStatus,
+    dynamicRegistrationStatus,
     applicationStatus,
     data,
     email,
@@ -213,9 +218,9 @@ async function createRegistration(
   }
 }
 
-export async function sendEmail(user, existingEvent, registrationStatus, id) {
-  if (registrationStatus === "incomplete") return;
-  if (registrationStatus !== "checkedIn") {
+export async function sendEmail(user, existingEvent, userStatus, id, emailType = "") {
+  if (userStatus === "incomplete" || userStatus === "rejected" || userStatus === "accepted") return;
+  if (userStatus !== "checkedIn") {
     const userEmail = user.id;
     const userName = user.fname;
 
@@ -228,15 +233,20 @@ export async function sendEmail(user, existingEvent, registrationStatus, id) {
     let tempId = "d-11d4bfcbebdf42b686f5e7d0977aa952";
     let tempCalendarId = "d-b517e4c407e4421a8886140caceba551";
 
-    if (registrationStatus === "cancelled") {
+    if (userStatus === "cancelled") {
       tempId = "d-8d272b62693e40c6b469a365f7c04443";
       tempCalendarId = false;
     }
 
-    let status = registrationStatus;
-    if (registrationStatus === "waitlist") {
+    let status = userStatus;
+    if (userStatus === "waitlist") {
       tempId = "d-8d272b62693e40c6b469a365f7c04443";
       status = "waitlisted";
+    }
+    // for application status email
+    if (userStatus === "reviewing") {
+      tempId = "d-8d272b62693e40c6b469a365f7c04443";
+      status = "reviewing";
     }
 
     // send the email for the registration status (qr code)
@@ -250,7 +260,9 @@ export async function sendEmail(user, existingEvent, registrationStatus, id) {
       templateId: tempId,
       dynamic_template_data: {
         subject:
-          "BizTech " + existingEvent.ename + " Event Registration Confirmation",
+          emailType === "application" ?
+          "BizTech " + existingEvent.ename + " Event Application Status"
+          : "BizTech " + existingEvent.ename + " Event Registration Confirmation",
         name: userName,
         registrationStatus: status,
         eventName: existingEvent.ename,
@@ -303,7 +315,7 @@ export async function sendEmail(user, existingEvent, registrationStatus, id) {
     if (existingEvent.id !== "hello-hacks") {
       await registrationHelpers.sendDynamicQR(dynamicMsg);
     }
-    if (registrationStatus === "registered" && tempCalendarId)
+    if (emailType !== "application" && userStatus === "registered" && tempCalendarId)
       await registrationHelpers.sendCalendarInvite(
         existingEvent,
         user,
@@ -336,7 +348,6 @@ export const post = async (event, ctx, callback) => {
         type: "string"
       }
     });
-
     const existingReg = await db.getOne(data.email, USER_REGISTRATIONS_TABLE, {
       "eventID;year": `${data.eventID};${data.year}`
     });
@@ -347,14 +358,14 @@ export const post = async (event, ctx, callback) => {
           message: "Redirect to link",
           url: existingReg.checkoutLink
         });
-
+        
         callback(null, response);
         return response;
       } else {
         const response = helpers.createResponse(400, {
           message: "You are already registered for this event!"
         });
-
+        
         callback(null, response);
         return response;
       }
