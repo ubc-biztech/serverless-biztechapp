@@ -39,9 +39,6 @@ export const create = async (event, ctx, callback) => {
     });
     if (!isEmpty(existingEvent))
       throw helpers.duplicateResponse("event id and year", data);
-    console.log("_----------");
-    console.log(data);
-    console.log("_----------");
     const item = {
       id: data.id,
       year: data.year,
