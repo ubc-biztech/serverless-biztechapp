@@ -11,7 +11,7 @@ jobs:
    - name: Use Node.js ${{ matrix.node-version }}
      uses: actions/setup-node@v1
      with:
-       node-version: '14.x'
+       node-version: '12.x'
 
    # https://help.github.com/en/actions/configuring-and-managing-workflows/caching-dependencies-to-speed-up-workflows
    - name: Cache node modules
@@ -45,7 +45,13 @@ jobs:
       STRIPE_PROD_ENDPOINT: ${{ secrets.STRIPE_PROD_ENDPOINT }}
      run: |
       cd services
-      for DIR in *; do (cd $DIR && sls deploy --conceal && cd ..) & done; wait
+      for DIR in *; do
+       (cd $DIR && sls deploy --conceal \
+         --param STRIPE_DEV_CANCEL=${{ secrets.STRIPE_DEV_CANCEL }} \
+         --param STRIPE_DEV_ENDPOINT=${{ secrets.STRIPE_DEV_ENDPOINT }} \
+         --param STRIPE_PROD_CANCEL=${{ secrets.STRIPE_PROD_CANCEL }} \
+         --param STRIPE_PROD_ENDPOINT=${{ secrets.STRIPE_PROD_ENDPOINT }} \
+         && cd ..) & done; wait
 
    - name: 'Deploy Prod'
      if: github.ref == 'refs/heads/master'
@@ -60,4 +66,10 @@ jobs:
       STRIPE_PROD_ENDPOINT: ${{ secrets.STRIPE_PROD_ENDPOINT }}
      run: |
       cd services
-      for DIR in *; do (cd $DIR && sls deploy --stage prod --conceal && cd ..) & done; wait
+      for DIR in *; do
+        (cd $DIR && sls deploy --stage prod --conceal \
+          --param STRIPE_DEV_CANCEL=${{ secrets.STRIPE_DEV_CANCEL }} \
+          --param STRIPE_DEV_ENDPOINT=${{ secrets.STRIPE_DEV_ENDPOINT }} \
+          --param STRIPE_PROD_CANCEL=${{ secrets.STRIPE_PROD_CANCEL }} \
+          --param STRIPE_PROD_ENDPOINT=${{ secrets.STRIPE_PROD_ENDPOINT }} \
+          && cd ..) & done; wait
