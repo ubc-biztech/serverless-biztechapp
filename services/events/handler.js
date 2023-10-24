@@ -39,7 +39,6 @@ export const create = async (event, ctx, callback) => {
     });
     if (!isEmpty(existingEvent))
       throw helpers.duplicateResponse("event id and year", data);
-
     const item = {
       id: data.id,
       year: data.year,
@@ -65,7 +64,8 @@ export const create = async (event, ctx, callback) => {
       requiredCheckBoxFields: data.requiredCheckBoxFields,
       unrequiredCheckBoxFields: data.unrequiredCheckBoxFields,
       isPublished: data.isPublished,
-      feedback: data.feedback
+      feedback: data.feedback,
+      isApplicationBased: data.isApplicationBased
     };
 
     if (Array.isArray(data.registrationQuestions)) {
