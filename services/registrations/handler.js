@@ -20,7 +20,7 @@ import {
 */
 export async function updateHelper(data, createNew, email, fname) {
   const {
-    eventID, year, dynamicResponses, registrationStatus, applicationStatus
+    eventID, year, dynamicResponses, registrationStatus, applicationStatus, isPartner
   } = data;
   const eventIDAndYear = eventID + ";" + year;
 
@@ -60,7 +60,8 @@ export async function updateHelper(data, createNew, email, fname) {
 
   const user = {
     id: email,
-    fname
+    fname,
+    isPartner,
   };
   let dynamicRegistrationStatus = registrationStatus;
   // always check application status first, if not null then we send a application status email, else send regular 
@@ -314,9 +315,7 @@ export async function sendEmail(user, existingEvent, userStatus, id, emailType =
       }
     };
 
-    if (existingEvent.id !== "hello-hacks") {
-      await registrationHelpers.sendDynamicQR(dynamicMsg);
-    }
+    await registrationHelpers.sendDynamicQR(dynamicMsg);
     if (emailType !== "application" && userStatus === "registered" && tempCalendarId)
       await registrationHelpers.sendCalendarInvite(
         existingEvent,
