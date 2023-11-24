@@ -110,18 +110,27 @@ export const getAll = async (event, ctx, callback) => {
     let tableName;
     switch (year) {
     case "2021":
-      tableName = MEMBERSHIPS2021_TABLE;
+      tableName =
+          MEMBERSHIPS2021_TABLE +
+          (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : "");
       break;
     case "2022":
-      tableName = MEMBERS2022_TABLE;
+      tableName =
+          MEMBERS2022_TABLE +
+          (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : "");
       break;
     case "2023":
-      tableName = MEMBERS2023_TABLE;
+      tableName =
+          MEMBERS2023_TABLE +
+          (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : "");
       break;
     case "2024":
-      tableName = MEMBERS2024_TABLE;
+      tableName =
+          MEMBERS2024_TABLE +
+          (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : "");
       break;
     }
+
     const members = await db.scan(tableName);
     // const members = await db.scan(MEMBERS2024_TABLE);
 
