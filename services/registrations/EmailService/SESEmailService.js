@@ -183,7 +183,7 @@ export default class SESEmailService {
     <div style="font-size: 15px; text-align: left;">
       <div>
           <p>Hello ${fname},</p>
-          <p>Your registration status for UBC BizTech's ${eventName} event is: <strong>${registrationStatus}</strong>.</p>
+          <p>Your registration status for UBC BizTech's ${eventName} event is: <b>${registrationStatus}</b>.</p>
           <p>Please reach out to our Experiences Team Lead at <a href="mailto:karen@ubcbiztech.com">karen@ubcbiztech.com</a> if this is a mistake.</p>
       </div>
       <img src="${logoBase64}" width="40" height="40" alt="BizTech Logo">
