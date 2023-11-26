@@ -1,13 +1,15 @@
 import docClient from "../../lib/docClient";
 import registrationHelpers from "./helpers";
 import helpers from "../../lib/handlerHelpers";
-import db from "../../lib/db";
+import db from "../../lib/config";
 import {
   isEmpty, isValidEmail
 } from "../../lib/utils";
 import {
   EVENTS_TABLE, USER_REGISTRATIONS_TABLE
 } from "../../constants/tables";
+import SESEmailService from "./EmailService/SESEmailService";
+import awsConfig from "../../lib/docClient";
 
 // const CHECKIN_COUNT_SANITY_CHECK = 500;
 
@@ -231,97 +233,10 @@ export async function sendEmail(user, existingEvent, userStatus, id, emailType =
       throw {
         message: "User does not have an e-mail address!"
       };
-
-    // template id for registered and waitlist
-    let tempId = "d-11d4bfcbebdf42b686f5e7d0977aa952";
-    let tempCalendarId = "d-b517e4c407e4421a8886140caceba551";
-
-    if (userStatus === "cancelled") {
-      tempId = "d-8d272b62693e40c6b469a365f7c04443";
-      tempCalendarId = false;
-    }
-
-    let status = userStatus;
-    if (userStatus === "waitlist") {
-      tempId = "d-8d272b62693e40c6b469a365f7c04443";
-      status = "waitlisted";
-    }
-    // for application status email
-    if (userStatus === "reviewing") {
-      tempId = "d-8d272b62693e40c6b469a365f7c04443";
-      status = "reviewing";
-    }
-
-    // send the email for the registration status (qr code)
-    // for the calendar invite code, go to helpers.js
-    const dynamicMsg = {
-      to: userEmail,
-      from: {
-        email: "info@ubcbiztech.com",
-        name: "UBC BizTech"
-      },
-      templateId: tempId,
-      dynamic_template_data: {
-        subject:
-          emailType === "application" ?
-            "BizTech " + existingEvent.ename + " Event Application Status"
-            : "BizTech " + existingEvent.ename + " Event Registration Confirmation",
-        name: userName,
-        registrationStatus: status,
-        eventName: existingEvent.ename,
-        eventID: id
-      }
-    };
-
-    // objects below are for the calendar invite!
-    const startDate = new Date(existingEvent.startDate);
-
-    // format the event date from startDate like "October 19 9:00 AM PDT" (ensure it's PST/PDT) then append location
-    // check if PDT or PST
-    const timeZone = startDate.getTimezoneOffset() === 420 ? "PDT" : "PST";
-    const eventDate =
-      startDate.toLocaleString("en-US", {
-        timeZone: "America/Los_Angeles",
-        month: "long",
-        day: "numeric",
-        hour: "numeric",
-        minute: "numeric",
-        hour12: true
-      }) +
-      " " +
-      timeZone +
-      " — " +
-      existingEvent.elocation;
-
-    // format event day like "October 19"
-    const eventDay = startDate.toLocaleString("en-US", {
-      timeZone: "America/Los_Angeles",
-      month: "long",
-      day: "numeric"
-    });
-
-    const dynamicCalendarMsg = {
-      templateId: tempCalendarId,
-      dynamic_template_data: {
-        EVENT_NAME: existingEvent.ename,
-        BIZTECH_HOMEPAGE: "https://app.ubcbiztech.com",
-        CURRENT_YEAR: existingEvent.year,
-        FIRST_NAME: user.fname,
-        BANNER_URL: existingEvent.imageUrl,
-        EVENT_DATE: eventDate,
-        EVENT_DAY: eventDay,
-        EVENT_URL: "https://app.ubcbiztech.com/events",
-        SUBJECT: `[BizTech Confirmation] ${existingEvent.ename} on ${eventDay}`
-      }
-    };
-
-    await registrationHelpers.sendDynamicQR(dynamicMsg);
-    if (emailType !== "application" && userStatus === "registered" && tempCalendarId)
-      await registrationHelpers.sendCalendarInvite(
-        existingEvent,
-        user,
-        dynamicCalendarMsg
-      );
+    const SESEmailService = new SESEmailService(awsConfig);
+    await SESEmailService.sendEmail(userEmail, userName, existingEvent.ename, userStatus, emailType);
+    if (emailType !== "application" && userStatus === "registered")
+      await SESEmailService.sendCalendarInvite(existingEvent, user);
   }
 }
 
