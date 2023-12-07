@@ -9,3 +9,4 @@ export const USERS_TABLE = "biztechUsers";
 export const USER_REGISTRATIONS_TABLE = "biztechRegistrations";
 export const QRS_TABLE = "biztechQRs";
 export const TEAMS_TABLE = "biztechTeams";
+export const QR_SCANS_RECORD = "biztechQRScans";
