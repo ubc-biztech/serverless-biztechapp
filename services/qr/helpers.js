@@ -6,9 +6,7 @@ import {
   QRS_TABLE,
   QR_SCANS_RECORD
 } from "../../constants/tables";
-import {
-  isValidEmail
-} from "../../lib/utils.js";
+import { isValidEmail } from "../../lib/utils.js";
 import helpers from "../../lib/handlerHelpers.js";
 import db from "../../lib/db.js";
 
@@ -45,9 +43,7 @@ export default {
 
     */
 
-    const {
-      eventID, year, qrCodeID, negativePointsConfirmed
-    } = data;
+    const { eventID, year, qrCodeID, negativePointsConfirmed } = data;
     const eventIDAndYear = eventID + ";" + year;
 
     //Check if eventID exists and is string. Check if year exists and is number.
@@ -436,10 +432,10 @@ export default {
   },
   async logQRScan(qrCodeID, userID) {
     const scanRecord = {
-      timestamp: new Date().getTime(),
+      timestamp: new Date().getTime().toString(),
       qrCodeID: qrCodeID,
       userID: userID
     };
-    await db.put(scanRecord, QR_SCANS_RECORD);
+    await db.create(scanRecord, QR_SCANS_RECORD);
   }
 };
