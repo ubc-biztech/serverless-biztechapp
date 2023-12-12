@@ -156,12 +156,16 @@ export const create = async (event, ctx, callback) => {
         type: "number"
       },
       points: {
-        required: true,
+        required: false,
         type: "number"
       },
       type: {
         required: true,
         type: "string"
+      },
+      data: {
+        required: false,
+        type: "object"
       }
     });
 
@@ -180,12 +184,13 @@ export const create = async (event, ctx, callback) => {
     const item = {
       id: data.id,
       "eventID;year": eventIDAndYear,
-      points: data.points,
+      points: data.points ? data.points : 0,
       isActive: data.isActive,
       isUnlimitedScans: data.isUnlimitedScans,
       createdAt: timestamp,
       updatedAt: timestamp,
-      type: data.type
+      type: data.type,
+      data: data.data
     };
 
     const res = await db.create(item, QRS_TABLE);
