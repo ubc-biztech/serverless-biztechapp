@@ -107,7 +107,6 @@ export async function updateHelper(data, createNew, email, fname) {
     }
     // try to send the registration and calendar emails
     try {
-      console.log("testing sending email");
       await sendEmail(user, existingEvent, dynamicRegistrationStatus, id);
     } catch (err) {
       // if email sending failed, that user's email probably does not exist

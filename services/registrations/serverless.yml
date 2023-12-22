@@ -46,13 +46,6 @@ provider:
 custom: ${file(../../serverless.common.yml):custom}
 
 functions:
-  testSendEmail:
-    handler: handler.testSendEmail
-    events:
-      - http:
-          path: testSendEmail
-          method: get
-          cors: true
   registrationPost:
     handler: handler.post
     events:
