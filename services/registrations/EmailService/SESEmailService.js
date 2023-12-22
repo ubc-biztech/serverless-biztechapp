@@ -4,6 +4,12 @@ import QRCode from "qrcode";
 import {
   logoBase64
 } from "./constants";
+import {
+  getDefaultCalendarInviteTemplate, getPartnerCalendarInviteTemplate
+} from "./templates/calendarInviteTemplates";
+import {
+  getDefaultQRTemplate, getRegisteredQRTemplate
+} from "./templates/dynamicQRTemplates";
 const ics = require("ics");
 
 export default class SESEmailService {
@@ -40,56 +46,21 @@ export default class SESEmailService {
 
   async sendCalendarInvite(event, user) {
     let {
-      ename, year, description, elocation, startDate, endDate, imageUrl
+      ename, eventID, year, description, elocation, startDate, endDate, imageUrl
     } = event;
     let {
       fname, id, isPartner
     } = user;
 
-    const defaultTemplate =
-    `
-    <div style="margin: auto; font-size: 15px; text-align: left; width: 700px;">
-      <div>
-        <b><p style="font-size: 25px">Hello ${fname}, thanks for registering for ${ename}</p></b>
-        <div style="width: 700px; height: 400px;">
-        <img src="${imageUrl}" alt="banner" style="width: 100%"/>
-        </div>
-        <p>Your QR code is attached to a separate event confirmation email. Please have it ready to scan at the event.</p>
-        <p>Further, if you decline your calendar invitation, you will also need to cancel your registration through the link below.</p>
-        <a href="https://app.ubcbiztech.com/events">Manage your registration</a>
-        <br>
-        <p><b>See more upcoming events</b></p>
-        <p>You can find the details for this event and other upcoming events on your <a href="https://app.ubcbiztech.com/">home page</a>.
-        <br>
-        <p>Meanwhile, if you have any questions or concerns about this event, please reach out to us at <a href="https://www.instagram.com/ubcbiztech">@ubcbiztech</a>.
-        <br>
-        <p>See you at the event, <br><b>The UBC BizTech Team</b></p>
-        <img src="${logoBase64}" width="40" height="40" alt="BizTech Logo">
-      </div>
-    </div>
-    `;
-
-    const partnerTemplate =
-    `
-    <div style="margin: auto; font-size: 15px; text-align: left; width: 700px;">
-      <div>
-        <b><p style="font-size: 25px">Hello ${fname},</p></b>
-        <div style="width: 700px; height: 400px;">
-        <img src="${imageUrl}" alt="banner" style="width: 100%"/>
-        </div>
-        <p>You have been registered for UBC BizTech's <b>${ename}</b> event.</p>
-        <p>Please scan the attached QR code at the sign-in desk at the event.</p>
-        <p>We look forward to hosting you!</p>
-        <p><b>See more upcoming events</b></p>
-        <p>You can find the details for this event and other upcoming events on your <a href="https://app.ubcbiztech.com/">home page</a>.
-        <br>
-        <p>Meanwhile, if you have any questions or concerns about this event, please reach out to the partnerships lead <a href="mailto:kate@ubcbiztech.com">kate@ubcbiztech.com</a>.
-        <br>
-        <p>See you at the event, <br><b>The UBC BizTech Team</b></p>
-        <img src="${logoBase64}" width="40" height="40" alt="BizTech Logo">
-      </div>
-    </div>
-    `;
+    const emailParams = {
+      fname,
+      ename,
+      imageUrl,
+      logoBase64
+    };
+    const rawHtml = user.isPartner ?
+      getPartnerCalendarInviteTemplate(emailParams)
+      : getDefaultCalendarInviteTemplate(emailParams);
 
     // parse start and end dates into event duration object (hours, minutes, seconds)
     startDate = new Date(startDate);
@@ -150,7 +121,7 @@ export default class SESEmailService {
       from: "dev@ubcbiztech.com",
       to: id,
       subject: `[BizTech Confirmation] ${ename} on ${startDate}`,
-      html: user.isPartner ? partnerTemplate : defaultTemplate,
+      html: rawHtml,
       attachDataUrls: true,
       icalEvent: {
         filename: "invitation.ics",
@@ -160,7 +131,7 @@ export default class SESEmailService {
     };
 
     if (isPartner) {
-      const qr = (await QRCode.toDataURL(`${id};${ename};${year};${fname}`)).toString();
+      const qr = (await QRCode.toDataURL(`${id};${eventID};${year};${fname}`)).toString();
       mailOptions.attachments = [
         {
           filename: "qr.png",
@@ -179,68 +150,29 @@ export default class SESEmailService {
     }
   }
 
-  async sendDynamicQR(email, fname, eventName, eventYear, registrationStatus, emailType) {
-    const qr = (await QRCode.toDataURL(`${email};${eventName};${eventYear};${fname}`)).toString();
+  async sendDynamicQR(email, fname, eventName, eventID, eventYear, registrationStatus, emailType) {
+    const qr = (await QRCode.toDataURL(`${email};${eventID};${eventYear};${fname}`)).toString();
 
-    const defaultTemplate =
-    `
-    <div style="font-size: 15px; text-align: left;">
-      <div>
-          <p>Hello ${fname},</p>
-          <p>Your registration status for UBC BizTech's ${eventName} event is: <b>${registrationStatus}</b>.</p>
-          <p>Please reach out to our Experiences Team Lead at <a href="mailto:karen@ubcbiztech.com">karen@ubcbiztech.com</a> if this is a mistake.</p>
-      </div>
-      <img src="${logoBase64}" width="40" height="40" alt="BizTech Logo">
-      <br>
-      <div style="font-size: 8px;">
-          <div>
-              <p>UBC BizTech • 445-2053 Main Mall • Vancouver, BC V6T 1Z2</p>
-          </div>
-          <div>
-              <p>Copyright © 2022 UBC BizTech</p>
-          </div>
-      </div>
-      <div>
-          <u><a href="https://www.facebook.com/BizTechUBC">Facebook</a></u>
-          <u><a href="https://www.instagram.com/ubcbiztech/">Instagram</a></u>
-          <u><a href="https://www.linkedin.com/company/ubcbiztech/mycompany/">LinkedIn</a></u>
-      </div>
-    </div>
-    `;
-
-    const registeredTemplate =
-    `
-    <div style="font-size: 15px; text-align: left;">
-      <div>
-          <p>Hello ${fname},</p>
-          <p>You have been registered for UBC BizTech's <b>${eventName}</b> event.</p>
-          <p>Please scan the attached QR code at the sign-in desk at the event.</p>
-          <p>We look forward to hosting you!</p>
-      </div>
-      <img src="${logoBase64}" width="40" height="40" alt="BizTech Logo">
-      <br>
-      <div style="font-size: 8px;">
-          <div>
-              <p>UBC BizTech • 445-2053 Main Mall • Vancouver, BC V6T 1Z2</p>
-          </div>
-          <div>
-              <p>Copyright © 2022 UBC BizTech</p>
-          </div>
-      </div>
-      <div>
-          <u><a href="https://www.facebook.com/BizTechUBC">Facebook</a></u>
-          <u><a href="https://www.instagram.com/ubcbiztech/">Instagram</a></u>
-          <u><a href="https://www.linkedin.com/company/ubcbiztech/mycompany/">LinkedIn</a></u>
-      </div>
-    </div>
-    `;
+    const emailParams = registrationStatus === "registered" ? {
+      fname,
+      eventName,
+      logoBase64
+    } : {
+      fname,
+      eventName,
+      registrationStatus,
+      logoBase64
+    };
+    const rawHtml = registrationStatus === "registered" ?
+      getRegisteredQRTemplate(emailParams)
+      : getDefaultQRTemplate(emailParams);
 
     // TODO: refactor to pass in template to make this method more reusuable
     let mailOptions = {
       from: "dev@ubcbiztech.com",
-      to: "dev@ubcbiztech.com",
+      to: email,
       subject: `BizTech ${eventName} Event ${emailType === "application" ? "Application" : "Registration"} Status`,
-      html: registrationStatus === "registered" ? registeredTemplate : defaultTemplate,
+      html: rawHtml,
       attachDataUrls: true,//to accept base64 content in messsage
       attachments: [
         {
@@ -252,7 +184,7 @@ export default class SESEmailService {
       ]
     };
 
-    if (registrationStatus === "registered") {
+    if (registrationStatus !== "registered") {
       delete mailOptions.attachments;
     }
 

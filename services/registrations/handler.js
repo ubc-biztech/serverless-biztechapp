@@ -107,6 +107,7 @@ export async function updateHelper(data, createNew, email, fname) {
     }
     // try to send the registration and calendar emails
     try {
+      console.log("testing sending email");
       await sendEmail(user, existingEvent, dynamicRegistrationStatus, id);
     } catch (err) {
       // if email sending failed, that user's email probably does not exist
@@ -236,20 +237,11 @@ export async function sendEmail(user, existingEvent, userStatus, id, emailType =
     }
     const EmailService = new SESEmailService(awsConfig);
     if (!user.isPartner) {
-      await EmailService.sendDynamicQR(userEmail, userName, existingEvent.ename, existingEvent.year, userStatus, emailType);
+      await EmailService.sendDynamicQR(userEmail, userName, existingEvent.ename, existingEvent.id, existingEvent.year, userStatus, emailType);
     }
     if (emailType !== "application" && userStatus === "registered")
       await EmailService.sendCalendarInvite(existingEvent, user);
   }
-}
-
-export const testSendEmail = async (event, ctx, callback) => {
-  const EmailService = new SESEmailService(awsConfig);
-  await EmailService.sendCalendarInvite(
-    {ename: "produhacks", year: 2023, description: "test", elocation: "vancouver", startDate: "July 22, 2023", endDate: "July 25, 2023"},
-    {fname: "allan", id: "dev@ubcbiztech.com", isPartner: true}
-  );
-  callback(null, "hello world");
 }
 
 export const post = async (event, ctx, callback) => {
@@ -378,7 +370,6 @@ export const put = async (event, ctx, callback) => {
 // Return list of entries with the matching id
 export const get = async (event, ctx, callback) => {
   try {
-    console.log("1");
     const queryString = event.queryStringParameters;
     if (
       !queryString ||
@@ -395,7 +386,6 @@ export const get = async (event, ctx, callback) => {
         "eventID or year (must have both or neither)"
       );
     }
-    console.log("2");
     let timeStampFilter;
     if (queryString.hasOwnProperty("afterTimestamp")) {
       timeStampFilter = Number(queryString.afterTimestamp);
@@ -420,7 +410,6 @@ export const get = async (event, ctx, callback) => {
           ":query": eventIDAndYear
         }
       };
-      console.log("3");
       registrations = await db.scan(USER_REGISTRATIONS_TABLE, filterExpression);
 
       // filter by id query, if given
@@ -436,9 +425,7 @@ export const get = async (event, ctx, callback) => {
           ":query": email
         }
       };
-      console.log("4");
       registrations = await db.scan(USER_REGISTRATIONS_TABLE, filterExpression);
-      console.log("5");
     }
 
     // filter by timestamp, if given
@@ -456,12 +443,10 @@ export const get = async (event, ctx, callback) => {
       );
     }
 
-    console.log("6");
     const response = helpers.createResponse(200, {
       size: registrations.length,
       data: registrations
     });
-    console.log("5");
     callback(null, response);
     return null;
   } catch (err) {
