@@ -74,7 +74,7 @@ export async function updateHelper(data, createNew, email, fname) {
       // if email sending failed, that user's email probably does not exist
       throw helpers.createResponse(500, {
         statusCode: 500,
-        code: "SENDGRID ERROR",
+        code: "SES EMAIL SERVICE ERROR",
         message: `Sending Email Error!: ${err.message}`
       });
     }
@@ -105,16 +105,18 @@ export async function updateHelper(data, createNew, email, fname) {
       //   }
       // });
     }
-    // try to send the registration and calendar emails
-    try {
-      await sendEmail(user, existingEvent, dynamicRegistrationStatus, id);
-    } catch (err) {
+    // try to send the registration and calendar emails 
+    if (!isPartner) {
+      try {
+        await sendEmail(user, existingEvent, dynamicRegistrationStatus, id);
+      } catch (err) {
       // if email sending failed, that user's email probably does not exist
-      throw helpers.createResponse(500, {
-        statusCode: 500,
-        code: "SENDGRID ERROR",
-        message: `Sending Email Error!: ${err.message}`
-      });
+        throw helpers.createResponse(500, {
+          statusCode: 500,
+          code: "SENDGRID ERROR",
+          message: `Sending Email Error!: ${err.message}`
+        });
+      }
     }
   }
 
