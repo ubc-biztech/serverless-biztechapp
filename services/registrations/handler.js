@@ -22,7 +22,7 @@ import awsConfig from "../../lib/config";
 */
 export async function updateHelper(data, createNew, email, fname) {
   const {
-    eventID, year, dynamicResponses, registrationStatus, applicationStatus, isPartner
+    eventID, year, dynamicResponses, registrationStatus, applicationStatus
   } = data;
   const eventIDAndYear = eventID + ";" + year;
 
@@ -45,10 +45,6 @@ export async function updateHelper(data, createNew, email, fname) {
     );
   }
 
-  if (data.isPartner !== undefined) {
-    data.isPartner = Boolean(data.isPartner);
-  }
-
   // Check if the user exists
   // const existingUser = await db.getOne(email, USERS_TABLE);
   // if(isEmpty(existingUser)) throw helpers.notFoundResponse('User', email);
@@ -62,8 +58,7 @@ export async function updateHelper(data, createNew, email, fname) {
 
   const user = {
     id: email,
-    fname,
-    isPartner,
+    fname
   };
   let dynamicRegistrationStatus = registrationStatus;
   // always check application status first, if not null then we send a application status email, else send regular 
@@ -106,17 +101,15 @@ export async function updateHelper(data, createNew, email, fname) {
       // });
     }
     // try to send the registration and calendar emails 
-    if (!isPartner) {
-      try {
-        await sendEmail(user, existingEvent, dynamicRegistrationStatus, id);
-      } catch (err) {
-        // if email sending failed, that user's email probably does not exist
-        throw helpers.createResponse(500, {
-          statusCode: 500,
-          code: "SES ERROR",
-          message: `Sending Email Error!: ${err.message}`
-        });
-      }
+    try {
+      await sendEmail(user, existingEvent, dynamicRegistrationStatus);
+    } catch (err) {
+      // if email sending failed, that user's email probably does not exist
+      throw helpers.createResponse(500, {
+        statusCode: 500,
+        code: "SES ERROR",
+        message: `Sending Email Error!: ${err.message}`
+      });
     }
   }
 
@@ -225,7 +218,7 @@ async function createRegistration(
   }
 }
 
-export async function sendEmail(user, existingEvent, userStatus, id, emailType = "") {
+export async function sendEmail(user, existingEvent, userStatus, emailType = "") {
   if (userStatus === "incomplete" || userStatus === "rejected" || userStatus === "accepted") return;
   if (userStatus !== "checkedIn") {
     const userEmail = user.id;
@@ -235,9 +228,16 @@ export async function sendEmail(user, existingEvent, userStatus, id, emailType =
         message: "User does not have an e-mail address!"
       };
     }
-    const EmailService = new SESEmailService(awsConfig);
 
-    // TODO: make partner specific email
+    // TODO: make partner specific email, no emails sent to partners as of now.
+    const existingReg = await db.getOne(user.id, USER_REGISTRATIONS_TABLE, {
+      "eventID;year": `${existingEvent.id};${existingEvent.year}`
+    });
+    if (existingReg.isPartner) {
+      return;
+    }
+
+    const EmailService = new SESEmailService(awsConfig);
     await EmailService.sendDynamicQR(existingEvent, user, userStatus, emailType);
     if (emailType !== "application" && userStatus === "registered")
       await EmailService.sendCalendarInvite(existingEvent, user);
