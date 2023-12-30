@@ -111,12 +111,11 @@ export async function updateHelper(data, createNew, email, fname) {
         await sendEmail(user, existingEvent, dynamicRegistrationStatus, id);
       } catch (err) {
       // if email sending failed, that user's email probably does not exist
-        throw helpers.createResponse(500, {
-          statusCode: 500,
-          code: "SENDGRID ERROR",
-          message: `Sending Email Error!: ${err.message}`
-        });
-      }
+      throw helpers.createResponse(500, {
+        statusCode: 500,
+        code: "SES ERROR",
+        message: `Sending Email Error!: ${err.message}`
+      });
     }
   }
 
@@ -229,7 +228,6 @@ export async function sendEmail(user, existingEvent, userStatus, id, emailType =
   if (userStatus === "incomplete" || userStatus === "rejected" || userStatus === "accepted") return;
   if (userStatus !== "checkedIn") {
     const userEmail = user.id;
-    const userName = user.fname;
 
     if (!userEmail) {
       throw {
@@ -237,10 +235,10 @@ export async function sendEmail(user, existingEvent, userStatus, id, emailType =
       };
     }
     const EmailService = new SESEmailService(awsConfig);
-    if (!user.isPartner) {
-      await EmailService.sendDynamicQR(userEmail, userName, existingEvent.ename, existingEvent.id, existingEvent.year, userStatus, emailType);
-    }
-    if (emailType !== "application" && userStatus === "registered")
+
+    // TODO: make partner specific email without calendar invite
+    await EmailService.sendDynamicQR(existingEvent, user, userStatus, emailType);
+    if (!user.isPartner && emailType !== "application" && userStatus === "registered")
       await EmailService.sendCalendarInvite(existingEvent, user);
   }
 }
