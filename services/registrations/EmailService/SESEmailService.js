@@ -8,7 +8,7 @@ import {
   getDefaultCalendarInviteTemplate, getPartnerCalendarInviteTemplate
 } from "./templates/calendarInviteTemplates";
 import {
-  getDefaultQRTemplate, getPartnerQRTemplate, getRegisteredQRTemplate
+  getDefaultQRTemplate, getRegisteredQRTemplate
 } from "./templates/dynamicQRTemplates";
 const ics = require("ics");
 
