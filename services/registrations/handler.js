@@ -110,12 +110,13 @@ export async function updateHelper(data, createNew, email, fname) {
       try {
         await sendEmail(user, existingEvent, dynamicRegistrationStatus, id);
       } catch (err) {
-      // if email sending failed, that user's email probably does not exist
-      throw helpers.createResponse(500, {
-        statusCode: 500,
-        code: "SES ERROR",
-        message: `Sending Email Error!: ${err.message}`
-      });
+        // if email sending failed, that user's email probably does not exist
+        throw helpers.createResponse(500, {
+          statusCode: 500,
+          code: "SES ERROR",
+          message: `Sending Email Error!: ${err.message}`
+        });
+      }
     }
   }
 
