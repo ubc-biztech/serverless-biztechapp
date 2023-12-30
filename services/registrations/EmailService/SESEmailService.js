@@ -8,7 +8,7 @@ import {
   getDefaultCalendarInviteTemplate, getPartnerCalendarInviteTemplate
 } from "./templates/calendarInviteTemplates";
 import {
-  getDefaultQRTemplate, getRegisteredQRTemplate
+  getDefaultQRTemplate, getPartnerQRTemplate, getRegisteredQRTemplate
 } from "./templates/dynamicQRTemplates";
 const ics = require("ics");
 
@@ -150,34 +150,58 @@ export default class SESEmailService {
     }
   }
 
-  async sendDynamicQR(email, fname, eventName, eventID, eventYear, registrationStatus, emailType) {
-    const qr = (await QRCode.toDataURL(`${email};${eventID};${eventYear};${fname}`)).toString();
+  async sendDynamicQR(event, user, registrationStatus, emailType) {
+    const {
+      id: email, fname, isPartner
+    } = user;
+    const {
+      id, ename, year, imageUrl
+    } = event;
+    console.log("-------");
+    console.log(user);
 
-    const emailParams = registrationStatus === "registered" ? {
-      fname,
-      eventName,
-      logoBase64
-    } : {
-      fname,
-      eventName,
-      registrationStatus,
-      logoBase64
-    };
-    const rawHtml = registrationStatus === "registered" ?
-      getRegisteredQRTemplate(emailParams)
-      : getDefaultQRTemplate(emailParams);
+    const qr = (await QRCode.toDataURL(`${email};${id};${year};${fname}`)).toString();
 
-    // TODO: refactor to pass in template to make this method more reusuable
+    let emailParams;
+    let rawHtml;
+    let subject;
+
+    if (isPartner) {
+      emailParams = {
+        fname,
+        ename,
+        imageUrl,
+        logoBase64
+      };
+      rawHtml = getPartnerQRTemplate(emailParams);
+      subject = `BizTech ${ename} Event Registration Status`;
+    } else {
+      emailParams = registrationStatus === "registered" ? {
+        fname,
+        ename,
+        logoBase64
+      } : {
+        fname,
+        ename,
+        registrationStatus,
+        logoBase64
+      };
+      rawHtml = registrationStatus === "registered" ?
+        getRegisteredQRTemplate(emailParams)
+        : getDefaultQRTemplate(emailParams);
+      subject = `BizTech ${ename} Event ${emailType === "application"  ? "Application" : "Registration"} Status`;
+    }
+
     let mailOptions = {
       from: "dev@ubcbiztech.com",
       to: email,
-      subject: `BizTech ${eventName} Event ${emailType === "application" ? "Application" : "Registration"} Status`,
+      subject: subject,
       html: rawHtml,
-      attachDataUrls: true,//to accept base64 content in messsage
+      attachDataUrls: true,
       attachments: [
         {
           filename: "qr.png",
-          content: qr.split("base64,")[1], //to remove base64 prefix (data:image/png;base64,
+          content: qr.split("base64,")[1],
           encoding: "base64",
           cid: "qr"
         }
