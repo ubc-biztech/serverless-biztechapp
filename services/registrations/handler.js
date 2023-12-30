@@ -235,9 +235,9 @@ export async function sendEmail(user, existingEvent, userStatus, id, emailType =
     }
     const EmailService = new SESEmailService(awsConfig);
 
-    // TODO: make partner specific email without calendar invite
+    // TODO: make partner specific email
     await EmailService.sendDynamicQR(existingEvent, user, userStatus, emailType);
-    if (!user.isPartner && emailType !== "application" && userStatus === "registered")
+    if (emailType !== "application" && userStatus === "registered")
       await EmailService.sendCalendarInvite(existingEvent, user);
   }
 }

@@ -152,45 +152,28 @@ export default class SESEmailService {
 
   async sendDynamicQR(event, user, registrationStatus, emailType) {
     const {
-      id: email, fname, isPartner
+      id: email, fname
     } = user;
     const {
-      id, ename, year, imageUrl
+      id, ename, year
     } = event;
-    console.log("-------");
-    console.log(user);
 
     const qr = (await QRCode.toDataURL(`${email};${id};${year};${fname}`)).toString();
 
-    let emailParams;
-    let rawHtml;
-    let subject;
-
-    if (isPartner) {
-      emailParams = {
-        fname,
-        ename,
-        imageUrl,
-        logoBase64
-      };
-      rawHtml = getPartnerQRTemplate(emailParams);
-      subject = `BizTech ${ename} Event Registration Status`;
-    } else {
-      emailParams = registrationStatus === "registered" ? {
-        fname,
-        ename,
-        logoBase64
-      } : {
-        fname,
-        ename,
-        registrationStatus,
-        logoBase64
-      };
-      rawHtml = registrationStatus === "registered" ?
-        getRegisteredQRTemplate(emailParams)
-        : getDefaultQRTemplate(emailParams);
-      subject = `BizTech ${ename} Event ${emailType === "application"  ? "Application" : "Registration"} Status`;
-    }
+    const emailParams = registrationStatus === "registered" ? {
+      fname,
+      ename,
+      logoBase64
+    } : {
+      fname,
+      ename,
+      registrationStatus,
+      logoBase64
+    };
+    const rawHtml = registrationStatus === "registered" ?
+      getRegisteredQRTemplate(emailParams)
+      : getDefaultQRTemplate(emailParams);
+    const subject = `BizTech ${ename} Event ${emailType === "application"  ? "Application" : "Registration"} Status`;
 
     let mailOptions = {
       from: "dev@ubcbiztech.com",
