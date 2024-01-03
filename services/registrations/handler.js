@@ -328,8 +328,6 @@ export async function sendEmail(user, existingEvent, userStatus, id, emailType =
 export const post = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
-    console.log("this is data");
-    console.log(data);
 
     if (!isValidEmail(data.email))
       throw helpers.inputError("Invalid email", data.email);
