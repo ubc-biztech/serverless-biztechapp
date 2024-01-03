@@ -99,7 +99,6 @@ const readCSV = async (csvFilePath) => {
           csvData.push(cleanedRow);
         })
         .on("end", () => {
-          // console.log(csvData);
           resolve([csvHeader, csvData]);
         })
         .on("error", (error) => {
@@ -132,9 +131,6 @@ const writeToDB = async (
 ) => {
   try {
     const formResponse = removeDefaultKeys(data);
-    console.log("------");
-    console.log(data);
-    console.log("-----=-");
 
     const updateObject = {
       ...formResponse
@@ -172,7 +168,6 @@ const writeToDB = async (
       ReturnValues: "UPDATED_NEW",
       ConditionExpression: conditionExpression
     };
-    console.log(params);
     // do the magic
     await docClient.update(params).promise();
     let message = `User with email ${email} successfully registered (through update) to status '${registrationStatus}'!`;
