@@ -8,6 +8,8 @@ import {
 import {
   EVENTS_TABLE, USER_REGISTRATIONS_TABLE
 } from "../../constants/tables";
+import SESEmailService from "./EmailService/SESEmailService";
+import awsConfig from "../../lib/config";
 
 // const CHECKIN_COUNT_SANITY_CHECK = 500;
 
@@ -20,7 +22,7 @@ import {
 */
 export async function updateHelper(data, createNew, email, fname) {
   const {
-    eventID, year, dynamicResponses, registrationStatus, applicationStatus, isPartner
+    eventID, year, dynamicResponses, registrationStatus, applicationStatus
   } = data;
   const eventIDAndYear = eventID + ";" + year;
 
@@ -43,10 +45,6 @@ export async function updateHelper(data, createNew, email, fname) {
     );
   }
 
-  if (data.isPartner !== undefined) {
-    data.isPartner = Boolean(data.isPartner);
-  }
-
   // Check if the user exists
   // const existingUser = await db.getOne(email, USERS_TABLE);
   // if(isEmpty(existingUser)) throw helpers.notFoundResponse('User', email);
@@ -60,8 +58,7 @@ export async function updateHelper(data, createNew, email, fname) {
 
   const user = {
     id: email,
-    fname,
-    isPartner,
+    fname
   };
   let dynamicRegistrationStatus = registrationStatus;
   // always check application status first, if not null then we send a application status email, else send regular 
@@ -72,7 +69,7 @@ export async function updateHelper(data, createNew, email, fname) {
       // if email sending failed, that user's email probably does not exist
       throw helpers.createResponse(500, {
         statusCode: 500,
-        code: "SENDGRID ERROR",
+        code: "SES EMAIL SERVICE ERROR",
         message: `Sending Email Error!: ${err.message}`
       });
     }
@@ -103,14 +100,14 @@ export async function updateHelper(data, createNew, email, fname) {
       //   }
       // });
     }
-    // try to send the registration and calendar emails
+    // try to send the registration and calendar emails 
     try {
-      await sendEmail(user, existingEvent, dynamicRegistrationStatus, id);
+      await sendEmail(user, existingEvent, dynamicRegistrationStatus);
     } catch (err) {
       // if email sending failed, that user's email probably does not exist
       throw helpers.createResponse(500, {
         statusCode: 500,
-        code: "SENDGRID ERROR",
+        code: "SES ERROR",
         message: `Sending Email Error!: ${err.message}`
       });
     }
@@ -221,107 +218,29 @@ async function createRegistration(
   }
 }
 
-export async function sendEmail(user, existingEvent, userStatus, id, emailType = "") {
+export async function sendEmail(user, existingEvent, userStatus, emailType = "") {
   if (userStatus === "incomplete" || userStatus === "rejected" || userStatus === "accepted") return;
   if (userStatus !== "checkedIn") {
     const userEmail = user.id;
-    const userName = user.fname;
 
-    if (!userEmail)
+    if (!userEmail) {
       throw {
         message: "User does not have an e-mail address!"
       };
-
-    // template id for registered and waitlist
-    let tempId = "d-11d4bfcbebdf42b686f5e7d0977aa952";
-    let tempCalendarId = "d-b517e4c407e4421a8886140caceba551";
-
-    if (userStatus === "cancelled") {
-      tempId = "d-8d272b62693e40c6b469a365f7c04443";
-      tempCalendarId = false;
     }
 
-    let status = userStatus;
-    if (userStatus === "waitlist") {
-      tempId = "d-8d272b62693e40c6b469a365f7c04443";
-      status = "waitlisted";
-    }
-    // for application status email
-    if (userStatus === "reviewing") {
-      tempId = "d-8d272b62693e40c6b469a365f7c04443";
-      status = "reviewing";
-    }
-
-    // send the email for the registration status (qr code)
-    // for the calendar invite code, go to helpers.js
-    const dynamicMsg = {
-      to: userEmail,
-      from: {
-        email: "info@ubcbiztech.com",
-        name: "UBC BizTech"
-      },
-      templateId: tempId,
-      dynamic_template_data: {
-        subject:
-          emailType === "application" ?
-            "BizTech " + existingEvent.ename + " Event Application Status"
-            : "BizTech " + existingEvent.ename + " Event Registration Confirmation",
-        name: userName,
-        registrationStatus: status,
-        eventName: existingEvent.ename,
-        eventID: id
-      }
-    };
-
-    // objects below are for the calendar invite!
-    const startDate = new Date(existingEvent.startDate);
-
-    // format the event date from startDate like "October 19 9:00 AM PDT" (ensure it's PST/PDT) then append location
-    // check if PDT or PST
-    const timeZone = startDate.getTimezoneOffset() === 420 ? "PDT" : "PST";
-    const eventDate =
-      startDate.toLocaleString("en-US", {
-        timeZone: "America/Los_Angeles",
-        month: "long",
-        day: "numeric",
-        hour: "numeric",
-        minute: "numeric",
-        hour12: true
-      }) +
-      " " +
-      timeZone +
-      " — " +
-      existingEvent.elocation;
-
-    // format event day like "October 19"
-    const eventDay = startDate.toLocaleString("en-US", {
-      timeZone: "America/Los_Angeles",
-      month: "long",
-      day: "numeric"
+    // TODO: make partner specific email, no emails sent to partners as of now.
+    const existingReg = await db.getOne(user.id, USER_REGISTRATIONS_TABLE, {
+      "eventID;year": `${existingEvent.id};${existingEvent.year}`
     });
+    if (existingReg.isPartner) {
+      return;
+    }
 
-    const dynamicCalendarMsg = {
-      templateId: tempCalendarId,
-      dynamic_template_data: {
-        EVENT_NAME: existingEvent.ename,
-        BIZTECH_HOMEPAGE: "https://app.ubcbiztech.com",
-        CURRENT_YEAR: existingEvent.year,
-        FIRST_NAME: user.fname,
-        BANNER_URL: existingEvent.imageUrl,
-        EVENT_DATE: eventDate,
-        EVENT_DAY: eventDay,
-        EVENT_URL: "https://app.ubcbiztech.com/events",
-        SUBJECT: `[BizTech Confirmation] ${existingEvent.ename} on ${eventDay}`
-      }
-    };
-
-    await registrationHelpers.sendDynamicQR(dynamicMsg);
-    if (emailType !== "application" && userStatus === "registered" && tempCalendarId)
-      await registrationHelpers.sendCalendarInvite(
-        existingEvent,
-        user,
-        dynamicCalendarMsg
-      );
+    const EmailService = new SESEmailService(awsConfig);
+    await EmailService.sendDynamicQR(existingEvent, user, userStatus, emailType);
+    if (emailType !== "application" && userStatus === "registered")
+      await EmailService.sendCalendarInvite(existingEvent, user);
   }
 }
 
@@ -467,7 +386,6 @@ export const get = async (event, ctx, callback) => {
         "eventID or year (must have both or neither)"
       );
     }
-
     let timeStampFilter;
     if (queryString.hasOwnProperty("afterTimestamp")) {
       timeStampFilter = Number(queryString.afterTimestamp);
@@ -492,7 +410,6 @@ export const get = async (event, ctx, callback) => {
           ":query": eventIDAndYear
         }
       };
-
       registrations = await db.scan(USER_REGISTRATIONS_TABLE, filterExpression);
 
       // filter by id query, if given
@@ -508,7 +425,6 @@ export const get = async (event, ctx, callback) => {
           ":query": email
         }
       };
-
       registrations = await db.scan(USER_REGISTRATIONS_TABLE, filterExpression);
     }
 
@@ -531,7 +447,6 @@ export const get = async (event, ctx, callback) => {
       size: registrations.length,
       data: registrations
     });
-
     callback(null, response);
     return null;
   } catch (err) {
