@@ -45,6 +45,10 @@ export async function updateHelper(data, createNew, email, fname) {
     );
   }
 
+  if (data.isPartner !== undefined) {
+    data.isPartner = Boolean(data.isPartner);
+  }
+
   // Check if the user exists
   // const existingUser = await db.getOne(email, USERS_TABLE);
   // if(isEmpty(existingUser)) throw helpers.notFoundResponse('User', email);
@@ -437,9 +441,9 @@ export const get = async (event, ctx, callback) => {
 
     // filter by partner, if given
     if (queryString.hasOwnProperty("isPartner")) {
-      const isPartner = queryString.isPartner === "true";
+      const isPartner = queryString?.isPartner === "true";
       registrations = registrations.filter(
-        (entry) => entry.isPartner === isPartner
+        (entry) => entry?.isPartner === isPartner
       );
     }
 
