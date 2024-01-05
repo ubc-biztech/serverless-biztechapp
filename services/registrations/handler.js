@@ -441,9 +441,9 @@ export const get = async (event, ctx, callback) => {
 
     // filter by partner, if given
     if (queryString.hasOwnProperty("isPartner")) {
-      const isPartner = queryString?.isPartner === "true";
+      const isPartner = queryString.isPartner === "true";
       registrations = registrations.filter(
-        (entry) => entry?.isPartner === isPartner
+        (entry) => entry.isPartner === isPartner
       );
     }
 

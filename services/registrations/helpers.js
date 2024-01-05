@@ -74,17 +74,17 @@ export default {
         };
 
         result.Items.forEach((item) => {
-          if (!item?.isPartner) {
+          if (item.isPartner !== undefined || !item.isPartner) {
             switch (item.registrationStatus) {
-              case "registered":
-                counts.registeredCount++;
-                break;
-              case "checkedIn":
-                counts.checkedInCount++;
-                break;
-              case "waitlist":
-                counts.waitlistCount++;
-                break;
+            case "registered":
+              counts.registeredCount++;
+              break;
+            case "checkedIn":
+              counts.checkedInCount++;
+              break;
+            case "waitlist":
+              counts.waitlistCount++;
+              break;
             }
           }
           cappedQuestions.forEach(question => {
@@ -190,7 +190,7 @@ export default {
     const base64 = Buffer.from(value).toString("base64");
     const base64Cal = base64.toString("base64");
 
-    const attachments = user?.isPartner ? [] : [
+    const attachments = user.isPartner !== undefined || user.isPartner ? [] : [
       {
         name: "invite.ics",
         filename: "invite.ics",
