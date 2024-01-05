@@ -9,3 +9,5 @@ export const USERS_TABLE = "biztechUsers";
 export const USER_REGISTRATIONS_TABLE = "biztechRegistrations";
 export const QRS_TABLE = "biztechQRs";
 export const TEAMS_TABLE = "biztechTeams";
+
+export const IMMUTABLE_USER_PROPS = ["admin"]; // make sure you check all calls to /user's patch in the frontend if you add to this list

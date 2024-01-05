@@ -6,7 +6,7 @@ import {
   isEmpty, isValidEmail
 } from "../../lib/utils";
 import {
-  USERS_TABLE, EVENTS_TABLE
+  USERS_TABLE, EVENTS_TABLE, IMMUTABLE_USER_PROPS
 } from "../../constants/tables";
 
 export const create = async (event, ctx, callback) => {
@@ -199,6 +199,10 @@ export const update = async (event, ctx, callback) => {
     if (isEmpty(existingUser)) throw helpers.notFoundResponse("user", email);
 
     const data = JSON.parse(event.body);
+
+    const invalidUpdates = Object.keys(data).filter((prop) => IMMUTABLE_USER_PROPS.includes(prop));
+    if (invalidUpdates.length > 0) throw helpers.inputError(`Cannot update ${invalidUpdates.join(", ")}`);
+
     const res = await db.updateDB(email, data, USERS_TABLE);
     const response = helpers.createResponse(200, {
       message: `Updated event with email ${email}!`,
