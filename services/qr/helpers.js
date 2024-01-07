@@ -10,6 +10,7 @@ import {
 } from "../../lib/utils.js";
 import helpers from "../../lib/handlerHelpers.js";
 import db from "../../lib/db.js";
+import WebSocket from "ws";
 
 export default {
   async checkValidQR(id, eventIDAndYear) {
@@ -32,7 +33,7 @@ export default {
         return res;
       });
   },
-  async qrScanPostHelper(data, email) {
+  async qrScanPostHelper(data, email, websocket) {
     /* Checks if the QR code is valid and if so, sends control flow to process the redemption.
 
        Args:
@@ -83,7 +84,8 @@ export default {
           eventIDAndYear,
           qrCodeID,
           eventID,
-          year
+          year,
+          websocket
         );
       }
     });
@@ -95,7 +97,8 @@ export default {
     eventIDAndYear,
     qrCodeID,
     eventID,
-    year
+    year,
+    websocket
   ) {
     /* Processes a QR code redemption via DynamoDB — adds points to user's event registration (Registration table),
     adds the QR code key as being used (Registration table), then returns updated progress.
@@ -244,7 +247,7 @@ export default {
           } else {
             // if event teams are not enabled, just update the user's points
 
-            return docClient
+            const result = docClient
               .update(updateParams)
               .promise()
               .then(() => {
@@ -265,6 +268,21 @@ export default {
                   redemption_type: "user"
                 };
               });
+            console.log("socketing");
+            const ws = new WebSocket("wss://zx441lpsv8.execute-api.us-west-2.amazonaws.com/production/");
+            // WebSocket on open
+            ws.onopen = () => {
+              console.log("WebSocket connected");
+              const message = {
+                action: "sendmessage",
+                message: "leaderboard"
+              };
+              ws.send(JSON.stringify(message));
+              console.log(`sent ${message.message}`);
+              ws.close();
+            };
+
+            return result;
           }
         })
         .catch((error) => {

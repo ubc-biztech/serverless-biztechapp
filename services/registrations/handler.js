@@ -498,3 +498,58 @@ export const del = async (event, ctx, callback) => {
     return null;
   }
 };
+
+export const leaderboard = async (event, ctx, callback) => {
+  try {
+    const queryString = event.queryStringParameters;
+    if (
+      !queryString || (!queryString.eventID && !queryString.year)
+    ) {
+      throw helpers.missingIdQueryResponse("eventID/year");
+    }
+    // if eventID and year was given
+    if (
+      queryString.hasOwnProperty("eventID") &&
+      queryString.hasOwnProperty("year")
+    ) {
+      const eventIDAndYear = queryString.eventID + ";" + queryString.year;
+      const filterExpression = {
+        FilterExpression: "#eventIDyear = :query",
+        ExpressionAttributeNames: {
+          "#eventIDyear": "eventID;year"
+        },
+        ExpressionAttributeValues: {
+          ":query": eventIDAndYear
+        }
+      };
+
+      let registrations = await db.scan(USER_REGISTRATIONS_TABLE, filterExpression);
+      registrations = registrations.filter(user => {
+        if (user.points !== undefined) {
+          return user.points > 0
+        }
+        return false
+      }).map(user => {
+        return {
+          points: user.points,
+          fname: user.basicInformation.fname,
+          lname: user.basicInformation.lname
+        }
+      })
+      registrations.sort((a, b) => b.points - a.points);
+      console.log(registrations)
+      return {
+        statusCode: 200,
+        body: JSON.stringify(registrations),
+      };
+    }
+  } catch (error) {
+    console.error("Error fetching leaderboard:", error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        error: "Internal Server Error"
+      }),
+    };
+  }
+};
