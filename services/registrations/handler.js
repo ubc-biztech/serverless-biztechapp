@@ -526,18 +526,17 @@ export const leaderboard = async (event, ctx, callback) => {
       let registrations = await db.scan(USER_REGISTRATIONS_TABLE, filterExpression);
       registrations = registrations.filter(user => {
         if (user.points !== undefined) {
-          return user.points > 0
+          return user.points > 0;
         }
-        return false
+        return false;
       }).map(user => {
         return {
           points: user.points,
           fname: user.basicInformation.fname,
           lname: user.basicInformation.lname
-        }
-      })
+        };
+      });
       registrations.sort((a, b) => b.points - a.points);
-      console.log(registrations)
       return {
         statusCode: 200,
         body: JSON.stringify(registrations),
