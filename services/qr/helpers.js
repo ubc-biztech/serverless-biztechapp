@@ -440,6 +440,6 @@ export default {
       qrCodeID: qrCodeID,
       userID: userID
     };
-    await db.create(scanRecord, QR_SCANS_RECORD);
+    await db.create(scanRecord, QR_SCANS_RECORD + (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""));
   }
 };
