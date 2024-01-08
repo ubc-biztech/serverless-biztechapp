@@ -103,5 +103,4 @@ functions:
               querystrings:
                 eventID: false
                 year: false
-                afterTimestamp: false
           cors: true
