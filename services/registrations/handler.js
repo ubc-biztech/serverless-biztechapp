@@ -68,7 +68,9 @@ export async function updateHelper(data, createNew, email, fname) {
   // always check application status first, if not null then we send a application status email, else send regular 
   if (applicationStatus) {
     try {
-      await sendEmail(user, existingEvent, applicationStatus, id, "application");
+      if (!data.isPartner) {
+        await sendEmail(user, existingEvent, applicationStatus, id, "application");
+      }
     } catch (err) {
       // if email sending failed, that user's email probably does not exist
       throw helpers.createResponse(500, {
@@ -106,7 +108,9 @@ export async function updateHelper(data, createNew, email, fname) {
     }
     // try to send the registration and calendar emails 
     try {
-      await sendEmail(user, existingEvent, dynamicRegistrationStatus);
+      if (!data.isPartner) {
+        await sendEmail(user, existingEvent, dynamicRegistrationStatus);
+      }
     } catch (err) {
       // if email sending failed, that user's email probably does not exist
       throw helpers.createResponse(500, {
