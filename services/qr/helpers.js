@@ -33,7 +33,7 @@ export default {
         return res;
       });
   },
-  async qrScanPostHelper(data, email, websocket) {
+  async qrScanPostHelper(data, email) {
     /* Checks if the QR code is valid and if so, sends control flow to process the redemption.
 
        Args:
@@ -84,8 +84,7 @@ export default {
           eventIDAndYear,
           qrCodeID,
           eventID,
-          year,
-          websocket
+          year
         );
       }
     });
@@ -97,8 +96,7 @@ export default {
     eventIDAndYear,
     qrCodeID,
     eventID,
-    year,
-    websocket
+    year
   ) {
     /* Processes a QR code redemption via DynamoDB — adds points to user's event registration (Registration table),
     adds the QR code key as being used (Registration table), then returns updated progress.
