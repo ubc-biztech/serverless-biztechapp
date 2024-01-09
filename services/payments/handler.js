@@ -30,30 +30,8 @@ const cancelSecret =
 
 // Creates the member here
 export const webhook = async (event, ctx, callback) => {
-  const userMemberSignup = async (data) => {
-    const cognito = new AWS.CognitoIdentityServiceProvider({
-      apiVersion: "2016-04-18"
-    });
+  const OAuthMemberSignup = async (data) => {
     const timestamp = new Date().getTime();
-
-    const cognitoParams = {
-      ClientId: "5tc2jshu03i3bmtl1clsov96dt",
-      Username: data.email,
-      UserAttributes: [
-        {
-          Name: "name",
-          Value: data.fname + " " + data.lname
-        },
-        {
-          Name: "custom:student_id",
-          Value: data.student_number
-        }
-      ],
-      Password: data.password
-    };
-
-    await cognito.signUp(cognitoParams).promise();
-
     const email = data.email;
 
     let isBiztechAdmin = false;
@@ -157,6 +135,31 @@ export const webhook = async (event, ctx, callback) => {
       message: "Created user and member!"
     });
     callback(null, response);
+  };
+  const userMemberSignup = async (data) => {
+    const cognito = new AWS.CognitoIdentityServiceProvider({
+      apiVersion: "2016-04-18"
+    });
+
+    const cognitoParams = {
+      ClientId: "5tc2jshu03i3bmtl1clsov96dt",
+      Username: data.email,
+      UserAttributes: [
+        {
+          Name: "name",
+          Value: data.fname + " " + data.lname
+        },
+        {
+          Name: "custom:student_id",
+          Value: data.student_number
+        }
+      ],
+      Password: data.password
+    };
+
+    await cognito.signUp(cognitoParams).promise();
+
+    await OAuthMemberSignup(data);
   };
 
   const memberSignup = async (data) => {
@@ -299,6 +302,9 @@ export const webhook = async (event, ctx, callback) => {
     switch (data.paymentType) {
     case "UserMember":
       await userMemberSignup(data);
+      break;
+    case "OAuthMember":
+      await OAuthMemberSignup(data);
       break;
     case "Member":
       await memberSignup(data);

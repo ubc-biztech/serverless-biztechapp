@@ -74,7 +74,7 @@ export default {
         };
 
         result.Items.forEach((item) => {
-          if (!item.isPartner) {
+          if (item.isPartner !== undefined || !item.isPartner) {
             switch (item.registrationStatus) {
             case "registered":
               counts.registeredCount++;
@@ -190,6 +190,16 @@ export default {
     const base64 = Buffer.from(value).toString("base64");
     const base64Cal = base64.toString("base64");
 
+    const attachments = user.isPartner !== undefined || user.isPartner ? [] : [
+      {
+        name: "invite.ics",
+        filename: "invite.ics",
+        type: "text/calendar;method=REQUEST",
+        content: base64Cal,
+        disposition: "attachment"
+      }
+    ];
+
     // send the email for the calendar invite
     // for the qr code email, go to handlers.js
     const msg = {
@@ -198,15 +208,7 @@ export default {
         email: "info@ubcbiztech.com",
         name: "UBC BizTech"
       },
-      attachments: [
-        {
-          name: "invite.ics",
-          filename: "invite.ics",
-          type: "text/calendar;method=REQUEST",
-          content: base64Cal,
-          disposition: "attachment"
-        }
-      ],
+      attachments,
       dynamic_template_data: dynamicCalendarMsg.dynamic_template_data,
       templateId: dynamicCalendarMsg.templateId
     };

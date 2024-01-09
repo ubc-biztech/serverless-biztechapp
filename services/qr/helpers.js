@@ -3,7 +3,8 @@ import {
   EVENTS_TABLE,
   TEAMS_TABLE,
   USER_REGISTRATIONS_TABLE,
-  QRS_TABLE
+  QRS_TABLE,
+  QR_SCANS_RECORD
 } from "../../constants/tables";
 import {
   isValidEmail
@@ -432,5 +433,13 @@ export default {
       .then((team) => {
         return team;
       });
+  },
+  async logQRScan(qrCodeID, userID) {
+    const scanRecord = {
+      timestamp: new Date().getTime().toString(),
+      qrCodeID: qrCodeID,
+      userID: userID
+    };
+    await db.create(scanRecord, QR_SCANS_RECORD);
   }
 };

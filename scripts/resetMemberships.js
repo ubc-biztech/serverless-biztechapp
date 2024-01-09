@@ -1,6 +1,8 @@
 import db from "../lib/db.js";
 import docClient from "../lib/docClient.js";
-import { USERS_TABLE } from "../constants/tables.js";
+import {
+  USERS_TABLE
+} from "../constants/tables.js";
 
 const reset = async () => {
   const members = await db.scan(USERS_TABLE, {
