@@ -83,15 +83,18 @@ export async function updateHelper(data, createNew, email, fname) {
     // Check if the event is full
     if (dynamicRegistrationStatus === "registered") {
       const counts = await registrationHelpers.getEventCounts(eventID, year);
-      if (counts === null) {
+
+      if (counts == null) {
         throw db.dynamoErrorResponse({
           code: "DYNAMODB ERROR",
           time: new Date().getTime()
         });
       }
 
-      if (counts.registeredCount >= existingEvent.capac)
+      if ((counts.registeredCount >= existingEvent.capac) && (!data.isPartner))
         dynamicRegistrationStatus = "waitlist";
+
+
 
       // backend check if workshop is full. No longer needed for applicable.
       // counts.dynamicCounts.forEach(count => {
@@ -440,14 +443,6 @@ export const get = async (event, ctx, callback) => {
     if (timeStampFilter) {
       registrations = registrations.filter(
         (entry) => entry.updatedAt > timeStampFilter
-      );
-    }
-
-    // filter by partner, if given
-    if (queryString.hasOwnProperty("isPartner")) {
-      const isPartner = queryString.isPartner === "true";
-      registrations = registrations.filter(
-        (entry) => entry.isPartner === isPartner
       );
     }
 
