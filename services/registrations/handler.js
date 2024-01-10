@@ -241,7 +241,7 @@ export async function sendEmail(user, existingEvent, userStatus, emailType = "")
     const existingReg = await db.getOne(user.id, USER_REGISTRATIONS_TABLE, {
       "eventID;year": `${existingEvent.id};${existingEvent.year}`
     });
-    if (existingReg.isPartner) {
+    if (existingReg && existingReg.isPartner) {
       return;
     }
 
