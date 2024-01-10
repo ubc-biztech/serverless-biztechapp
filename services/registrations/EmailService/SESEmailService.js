@@ -196,7 +196,6 @@ export default class SESEmailService {
     if (registrationStatus !== "registered") {
       delete mailOptions.attachments;
     }
-    console.log("sent email")
     this.transporter.sendMail(mailOptions, (err, info) => {
       if (err) {
         console.log(err);
