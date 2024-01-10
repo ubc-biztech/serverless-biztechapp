@@ -16,12 +16,14 @@ export default class SESEmailService {
   constructor({
     accessKeyId, secretAccessKey, region = "us-west-2"
   }) {
-    this.ses = new AWS.SES({
-      apiVersion: "2010-12-01",
-      accessKeyId: accessKeyId,
-      secretAccessKey: secretAccessKey,
-      region: region
-    });
+    this.ses = process.env.ENVIRONMENT === "development" ?
+      new AWS.SES({
+        apiVersion: "2010-12-01",
+        accessKeyId: accessKeyId,
+        secretAccessKey: secretAccessKey,
+        region: region
+      }) :
+      new AWS.SES();
     this.transporter = nodemailer.createTransport({
       SES: this.ses
     });
@@ -194,7 +196,7 @@ export default class SESEmailService {
     if (registrationStatus !== "registered") {
       delete mailOptions.attachments;
     }
-
+    console.log("sent email")
     this.transporter.sendMail(mailOptions, (err, info) => {
       if (err) {
         console.log(err);
