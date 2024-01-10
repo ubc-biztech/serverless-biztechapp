@@ -70,15 +70,15 @@ export default {
       result.forEach((item) => {
         if (item.isPartner === undefined || (item.isPartner !== undefined && !item.isPartner)) {
           switch (item.registrationStatus) {
-            case "registered":
-              counts.registeredCount++;
-              break;
-            case "checkedIn":
-              counts.checkedInCount++;
-              break;
-            case "waitlist":
-              counts.waitlistCount++;
-              break;
+          case "registered":
+            counts.registeredCount++;
+            break;
+          case "checkedIn":
+            counts.checkedInCount++;
+            break;
+          case "waitlist":
+            counts.waitlistCount++;
+            break;
           }
         }
         cappedQuestions.forEach(question => {
@@ -88,7 +88,7 @@ export default {
           workshopCount.count += 1;
         });
       });
-      return counts
+      return counts;
     }
     catch (error) {
       console.error(error);
