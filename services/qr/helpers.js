@@ -136,6 +136,17 @@ export default {
             (item) => item.id === email
           );
 
+          // if qr is type partner, check if user has already scanned a qr of type partner
+          // as users can only redeem points for one partner scan. 
+          if (qr.type === "Partner" && this.checkIfAlreadyScannedPartnerQR(userRegistration, eventIDAndYear)) {
+            return {
+              current_points: userRegistration.points,
+              redeemed_points: 0,
+              redemption_type: "user",
+              qr_data: qr.data,
+            };
+          }
+
           // find the user's team if they are on one
           const isEventsTeamEnabled = await this._isEventTeamsEnabled(
             eventIDAndYear
@@ -252,7 +263,8 @@ export default {
                 return {
                   current_points: userRegistration.points,
                   redeemed_points: qr.points,
-                  redemption_type: "user"
+                  redemption_type: "user",
+                  qr_data: qr.data,
                 };
               })
               .catch((error) => {
@@ -441,5 +453,30 @@ export default {
       userID: userID
     };
     await db.create(scanRecord, QR_SCANS_RECORD);
+  },
+  async checkIfAlreadyScannedPartnerQR(userRegistration, eventIDAndYear) {
+    if (!userRegistration.scannedQrs) {
+      return false;
+    }
+
+    const scannedQRIDs = userRegistration.scannedQRs.map(qr => qr.id);
+    const params = {
+      TableName:
+        QRS_TABLE +
+        (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
+      FilterExpression: "#eventIDYear = :query",
+      ExpressionAttributeNames: {
+        "#eventIDYear": "eventID;year"
+      },
+      ExpressionAttributeValues: {
+        ":query": eventIDAndYear
+      }
+    };
+    const allQRs = await docClient.scan(params).promise();
+    if (!allQRs) {
+      return false;
+    }
+    const allQRIDs = allQRs.filter(qr => qr.type === "Partner").map(qr => qr.id);
+    return scannedQRIDs.some(id => allQRIDs.includes(id));
   }
 };
