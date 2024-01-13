@@ -188,7 +188,8 @@ export const create = async (event, ctx, callback) => {
       isUnlimitedScans: data.isUnlimitedScans,
       createdAt: timestamp,
       updatedAt: timestamp,
-      type: data.type
+      type: data.type,
+      data: data.data
     };
 
     const res = await db.create(item, QRS_TABLE);

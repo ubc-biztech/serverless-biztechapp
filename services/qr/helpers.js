@@ -137,8 +137,9 @@ export default {
           );
 
           // if qr is type partner, check if user has already scanned a qr of type partner
-          // as users can only redeem points for one partner scan. 
-          if (qr.type === "Partner" && this.checkIfAlreadyScannedPartnerQR(userRegistration, eventIDAndYear)) {
+          // as users can only redeem points for one partner scan.
+
+          if (qr.type === "Partner" && await this.checkIfAlreadyScannedPartnerQR(userRegistration, eventIDAndYear)) {
             return {
               current_points: userRegistration.points,
               redeemed_points: 0,
@@ -455,11 +456,12 @@ export default {
     await db.create(scanRecord, QR_SCANS_RECORD);
   },
   async checkIfAlreadyScannedPartnerQR(userRegistration, eventIDAndYear) {
-    if (!userRegistration.scannedQrs) {
-      return false;
+    if (!userRegistration.scannedQRs) {
+      return true;
     }
 
-    const scannedQRIDs = userRegistration.scannedQRs.map(qr => qr.id);
+    const scannedQRIDs = JSON.parse(userRegistration.scannedQRs);
+
     const params = {
       TableName:
         QRS_TABLE +
@@ -472,11 +474,17 @@ export default {
         ":query": eventIDAndYear
       }
     };
-    const allQRs = await docClient.scan(params).promise();
+    const allQRs = (await docClient.scan(params).promise()).Items;
     if (!allQRs) {
       return false;
     }
     const allQRIDs = allQRs.filter(qr => qr.type === "Partner").map(qr => qr.id);
-    return scannedQRIDs.some(id => allQRIDs.includes(id));
+
+    for (let s of scannedQRIDs) {
+      if (allQRIDs.includes(s)) {
+        return true;
+      }
+    }
+    return false;
   }
 };
