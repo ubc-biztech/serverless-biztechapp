@@ -537,10 +537,7 @@ export const leaderboard = async (event, ctx, callback) => {
         };
       });
       registrations.sort((a, b) => b.points - a.points);
-      return {
-        statusCode: 200,
-        body: JSON.stringify(registrations),
-      };
+      return helpers.createResponse(200, registrations);
     }
   } catch (error) {
     console.error("Error fetching leaderboard:", error);
