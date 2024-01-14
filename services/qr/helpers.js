@@ -11,6 +11,7 @@ import {
 } from "../../lib/utils.js";
 import helpers from "../../lib/handlerHelpers.js";
 import db from "../../lib/db.js";
+import WebSocket from "ws";
 
 export default {
   async checkValidQR(id, eventIDAndYear) {
@@ -245,7 +246,7 @@ export default {
           } else {
             // if event teams are not enabled, just update the user's points
 
-            return docClient
+            const result = docClient
               .update(updateParams)
               .promise()
               .then(() => {
@@ -266,6 +267,21 @@ export default {
                   redemption_type: "user"
                 };
               });
+            console.log("socketing");
+            const ws = new WebSocket("wss://zx441lpsv8.execute-api.us-west-2.amazonaws.com/production/");
+            // WebSocket on open
+            ws.onopen = () => {
+              console.log("WebSocket connected");
+              const message = {
+                action: "sendmessage",
+                message: "leaderboard"
+              };
+              ws.send(JSON.stringify(message));
+              console.log(`sent ${message.message}`);
+              ws.close();
+            };
+
+            return result;
           }
         })
         .catch((error) => {
