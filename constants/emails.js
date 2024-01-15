@@ -1,3 +1,5 @@
+// emails generated from findCapitals.js script
+
 const CAPITALIZED_EMAILS = [
   {
     "email": "Hashaamzafar2003@Gmail.com",
