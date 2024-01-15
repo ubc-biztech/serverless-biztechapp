@@ -40,9 +40,6 @@ export default {
       }
     });
     const params = {
-      TableName:
-        USER_REGISTRATIONS_TABLE +
-        (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
       FilterExpression: "#eventIDYear = :query",
       ExpressionAttributeNames: {
         "#eventIDYear": "eventID;year"
@@ -51,56 +48,52 @@ export default {
         ":query": eventID + ";" + year
       }
     };
-    return await docClient
-      .scan(params)
-      .promise()
-      .then((result) => {
-        let counts = {
-          registeredCount: 0,
-          checkedInCount: 0,
-          waitlistCount: 0,
-          dynamicCounts: cappedQuestions.map(question => {
-            return {
-              questionId: question.questionId,
-              counts: question.caps.map(cap => {
-                return {
-                  label: cap.label,
-                  count: 0,
-                  cap: cap.cap
-                };
-              })
-            };
-          })
-        };
-
-        result.Items.forEach((item) => {
-          if (item.isPartner !== undefined || !item.isPartner) {
-            switch (item.registrationStatus) {
-            case "registered":
-              counts.registeredCount++;
-              break;
-            case "checkedIn":
-              counts.checkedInCount++;
-              break;
-            case "waitlist":
-              counts.waitlistCount++;
-              break;
-            }
+    try {
+      const result = await db.scan(USER_REGISTRATIONS_TABLE, params);
+      let counts = {
+        registeredCount: 0,
+        checkedInCount: 0,
+        waitlistCount: 0,
+        dynamicCounts: cappedQuestions.map(question => {
+          return {
+            questionId: question.questionId,
+            counts: question.caps.map(cap => {
+              return {
+                label: cap.label,
+                count: 0,
+                cap: cap.cap
+              };
+            })
+          };
+        })
+      };
+      result.forEach((item) => {
+        if (item.isPartner === undefined || (item.isPartner !== undefined && !item.isPartner)) {
+          switch (item.registrationStatus) {
+          case "registered":
+            counts.registeredCount++;
+            break;
+          case "checkedIn":
+            counts.checkedInCount++;
+            break;
+          case "waitlist":
+            counts.waitlistCount++;
+            break;
           }
-          cappedQuestions.forEach(question => {
-            const response = item.dynamicResponses[`${question.questionId}`];
-            const dynamicCount = counts.dynamicCounts.find(count => count.questionId === question.questionId);
-            const workshopCount = dynamicCount.counts.find(question => question.label === response);
-            workshopCount.count += 1;
-          });
+        }
+        cappedQuestions.forEach(question => {
+          const response = item.dynamicResponses[`${question.questionId}`];
+          const dynamicCount = counts.dynamicCounts.find(count => count.questionId === question.questionId);
+          const workshopCount = dynamicCount.counts.find(question => question.label === response);
+          workshopCount.count += 1;
         });
-
-        return counts;
-      })
-      .catch((error) => {
-        console.error(error);
-        return null;
       });
+      return counts;
+    }
+    catch (error) {
+      console.error(error);
+      return null;
+    }
   },
   sendDynamicQR: (msg) => {
     if (!msg.from) {
