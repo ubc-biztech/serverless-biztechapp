@@ -14,7 +14,7 @@ export const create = async (event, ctx, callback) => {
   const data = JSON.parse(event.body);
   if (!isValidEmail(data.email))
     return helpers.inputError("Invalid email", data.email);
-  const email = data.email;
+  const email = data.email.toLowerCase();
 
   let isBiztechAdmin = false;
 
