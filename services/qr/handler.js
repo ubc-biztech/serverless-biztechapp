@@ -65,8 +65,6 @@ export const post = async (event, ctx, callback) => {
       .qrScanPostHelper(data, data.email)
       .then(async (res) => {
         if (res.hasOwnProperty("errorMessage")) {
-          console.log('hi')
-          console.log(res)
           if (
             res.errorMessage === "Team scan would result in negative points"
           ) {
