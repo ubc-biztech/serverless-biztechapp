@@ -59,6 +59,7 @@ export const post = async (event, ctx, callback) => {
         type: "boolean"
       } // TODO: Admin possibility if gated actions required in the future
     });
+    console.log(data);
 
     await registrationHelpers
       .qrScanPostHelper(data, data.email)
@@ -75,6 +76,13 @@ export const post = async (event, ctx, callback) => {
             callback(null, response_fail);
             return response_fail;
           }
+          const response_fail = helpers.createResponse(403, {
+            message: "ERROR: " + res.errorMessage,
+            response: res
+          });
+
+          callback(null, response_fail);
+          return response_fail;
         } else {
           try {
             await registrationHelpers.logQRScan(data.qrCodeID, data.email);
