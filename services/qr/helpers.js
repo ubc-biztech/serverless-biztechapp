@@ -45,7 +45,6 @@ export default {
            result (object): object containing updated points and the points redeemed from the QR code, or error 403 if the QR code is invalid.
 
     */
-
     const {
       eventID, year, qrCodeID, negativePointsConfirmed
     } = data;
@@ -113,13 +112,9 @@ export default {
       result (object): object containing updated points and the points redeemed from the QR code, or -1 if the QR code already used.
 
      */
-
     try {
       // query the user's registration for the event
       const params = {
-        TableName:
-          USER_REGISTRATIONS_TABLE +
-          (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
         FilterExpression: "#eventIDYear = :query",
         ExpressionAttributeNames: {
           "#eventIDYear": "eventID;year"
@@ -128,179 +123,180 @@ export default {
           ":query": eventIDAndYear
         }
       };
-      return await docClient
-        .scan(params)
-        .promise()
-        .then(async (result) => {
-          // find the user's registration
-          const userRegistration = result.Items.find(
-            (item) => item.id === email
-          );
+      const result = await db.scan(USER_REGISTRATIONS_TABLE, params);
+      try {
+        // find the user's registration
+        const userRegistration = result.find(
+          (item) => item.id === email
+        );
 
-          // if qr is type partner, check if user has already scanned a qr of type partner
-          // as users can only redeem points for one partner scan.
+        // if qr is type partner, check if user has already scanned a qr of type partner
+        // as users can only redeem points for one partner scan.
 
-          if (qr.type === "Partner" && await this.checkIfAlreadyScannedPartnerQR(userRegistration, eventIDAndYear)) {
-            return {
-              current_points: userRegistration.points,
-              redeemed_points: 0,
-              redemption_type: "user",
-              qr_data: qr.data,
-            };
-          }
-
-          // find the user's team if they are on one
-          const isEventsTeamEnabled = await this._isEventTeamsEnabled(
-            eventIDAndYear
-          );
-
-          // validate that user has not already scanned this QR code
-          // Parse the user's scanned QR codes
-          const scannedQRs = userRegistration.scannedQRs
-            ? JSON.parse(userRegistration.scannedQRs)
-            : [];
-          // Check if the QR code has already been scanned
-          const qrCodeAlreadyScanned = scannedQRs.includes(qrCodeID);
-
-          if (
-            qrCodeAlreadyScanned &&
-            !qr.isUnlimitedScans &&
-            !isEventsTeamEnabled
-          ) {
-            return {
-              errorMessage:
-                "QR code already scanned by user and is not an unlimited scan QR code",
-              current_points: userRegistration.points
-                ? userRegistration.points
-                : 0,
-              redeemed_points: -1,
-              redemption_type: "user"
-            };
-          }
-
-          // get their points if available and add qr points
-          if (userRegistration && userRegistration.points) {
-            userRegistration.points =
-              parseInt(userRegistration.points) + qr.points;
-          } else {
-            userRegistration.points = qr.points;
-          }
-
-          // update the user's registration with the new points and update the scanned QRs
-          const updateParams = {
-            TableName:
-              USER_REGISTRATIONS_TABLE +
-              (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
-            Key: {
-              id: email,
-              "eventID;year": eventIDAndYear
-            },
-            UpdateExpression: "set points = :points, scannedQRs = :scannedQRs",
-            ExpressionAttributeValues: {
-              ":points": userRegistration.points,
-              ":scannedQRs": JSON.stringify(scannedQRs.concat(qrCodeID))
-            },
-            ReturnValues: "UPDATED_NEW"
+        if (qr.type === "Partner" && await this.checkIfAlreadyScannedPartnerQR(userRegistration, eventIDAndYear)) {
+          return {
+            current_points: userRegistration.points,
+            redeemed_points: 0,
+            redemption_type: "user",
+            qr_data: qr.data,
           };
+        }
 
-          if (isEventsTeamEnabled) {
-            return this._checkQRTeamScanned(
-              email,
-              qrCodeID,
-              eventID,
-              year
-            ).then((res) => {
-              const alreadyScanned = res.alreadyScanned;
-              const team = res.team;
-              if (alreadyScanned && !qr.isUnlimitedScans) {
-                // Team QR code has already been scanned.
+        // find the user's team if they are on one
+        const isEventsTeamEnabled = await this._isEventTeamsEnabled(
+          eventIDAndYear
+        );
+
+        // validate that user has not already scanned this QR code
+        // Parse the user's scanned QR codes
+        const scannedQRs = userRegistration.scannedQRs
+          ? JSON.parse(userRegistration.scannedQRs)
+          : [];
+        // Check if the QR code has already been scanned
+        const qrCodeAlreadyScanned = scannedQRs.includes(qrCodeID);
+
+        if (
+          qrCodeAlreadyScanned &&
+          !qr.isUnlimitedScans &&
+          !isEventsTeamEnabled
+        ) {
+          return {
+            errorMessage:
+              "QR code already scanned by user and is not an unlimited scan QR code",
+            current_points: userRegistration.points
+              ? userRegistration.points
+              : 0,
+            redeemed_points: -1,
+            redemption_type: "user"
+          };
+        }
+
+        // get their points if available and add qr points
+        if (userRegistration && userRegistration.points) {
+          userRegistration.points =
+            parseInt(userRegistration.points) + qr.points;
+        } else {
+          userRegistration.points = qr.points;
+        }
+
+        // update the user's registration with the new points and update the scanned QRs
+        const updateParams = {
+          TableName:
+            USER_REGISTRATIONS_TABLE +
+            (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
+          Key: {
+            id: email,
+            "eventID;year": eventIDAndYear
+          },
+          UpdateExpression: "set points = :points, scannedQRs = :scannedQRs",
+          ExpressionAttributeValues: {
+            ":points": userRegistration.points,
+            ":scannedQRs": JSON.stringify(scannedQRs.concat(qrCodeID))
+          },
+          ReturnValues: "UPDATED_NEW"
+        };
+
+        if (isEventsTeamEnabled) {
+          return this._checkQRTeamScanned(
+            email,
+            qrCodeID,
+            eventID,
+            year
+          ).then((res) => {
+            const alreadyScanned = res.alreadyScanned;
+            const team = res.team;
+            if (alreadyScanned && !qr.isUnlimitedScans) {
+              // Team QR code has already been scanned.
+              return {
+                errorMessage:
+                  "Team QR code already scanned and is not an unlimited scan QR code",
+                current_points: team.points,
+                redeemed_points: 0,
+                redemption_type: "team"
+              };
+            } else {
+              // Check that team scan won't result in negative points
+              // TODO: This is a temporary fix to prevent negative points for TEAMS ONLY. We should move this check much earlier in the process
+              //  - will require a slight refactor to get a Team object from the start, remove the second call in the _checkQRTeamScanned function
+              if (team.points + qr.points < 0) {
                 return {
-                  errorMessage:
-                    "Team QR code already scanned and is not an unlimited scan QR code",
+                  errorMessage: "Team scan would result in negative points",
                   current_points: team.points,
-                  redeemed_points: 0,
-                  redemption_type: "team"
+                  redeemed_points: -1,
+                  redemption_type: "team",
+                  qr_points: qr.points
                 };
-              } else {
-                // Check that team scan won't result in negative points
-                // TODO: This is a temporary fix to prevent negative points for TEAMS ONLY. We should move this check much earlier in the process
-                //  - will require a slight refactor to get a Team object from the start, remove the second call in the _checkQRTeamScanned function
-                if (team.points + qr.points < 0) {
+              }
+
+              // Team QR code can be scanned.
+              return this._addTeamQRScan(team, qrCodeID, qr.points).then(
+                (teamPoints) => {
+                  // update the individual user's registration with the new points (for stats-keeping)
+                  docClient
+                    .update(updateParams)
+                    .promise()
+                    .catch((error) => {
+                      console.error(error);
+                    });
+
                   return {
-                    errorMessage: "Team scan would result in negative points",
-                    current_points: team.points,
-                    redeemed_points: -1,
-                    redemption_type: "team",
-                    qr_points: qr.points
+                    current_points: teamPoints,
+                    redeemed_points: qr.points,
+                    redemption_type: "team"
                   };
                 }
-
-                // Team QR code can be scanned.
-                return this._addTeamQRScan(team, qrCodeID, qr.points).then(
-                  (teamPoints) => {
-                    // update the individual user's registration with the new points (for stats-keeping)
-                    docClient
-                      .update(updateParams)
-                      .promise()
-                      .catch((error) => {
-                        console.error(error);
-                      });
-
-                    return {
-                      current_points: teamPoints,
-                      redeemed_points: qr.points,
-                      redemption_type: "team"
-                    };
-                  }
-                );
-              }
-            });
-          } else {
-            // if event teams are not enabled, just update the user's points
-
-            const result = docClient
-              .update(updateParams)
-              .promise()
-              .then(() => {
-                return {
-                  current_points: userRegistration.points,
-                  redeemed_points: qr.points,
-                  redemption_type: "user",
-                  qr_data: qr.data,
-                };
-              })
-              .catch((error) => {
-                console.error(error);
-                return {
-                  errorMessage: error,
-                  current_points: userRegistration.points
-                    ? userRegistration.points
-                    : 0,
-                  redeemed_points: -1,
-                  redemption_type: "user"
-                };
-              });
-            console.log("socketing");
-            const ws = new WebSocket("wss://zx441lpsv8.execute-api.us-west-2.amazonaws.com/production/");
-            // WebSocket on open
-            ws.onopen = () => {
-              console.log("WebSocket connected");
-              const message = {
-                action: "sendmessage",
-                message: "leaderboard"
+              );
+            }
+          });
+        } else {
+          // if event teams are not enabled, just update the user's points
+          const result = docClient
+            .update(updateParams)
+            .promise()
+            .then(() => {
+              return {
+                current_points: userRegistration.points,
+                redeemed_points: qr.points,
+                redemption_type: "user",
+                qr_data: qr.data,
               };
-              ws.send(JSON.stringify(message));
-              console.log(`sent ${message.message}`);
-              ws.close();
+            })
+            .catch((error) => {
+              console.error(error);
+              return {
+                errorMessage: error,
+                current_points: userRegistration.points
+                  ? userRegistration.points
+                  : 0,
+                redeemed_points: -1,
+                redemption_type: "user"
+              };
+            });
+          console.log("socketing");
+          const ws = new WebSocket("wss://zx441lpsv8.execute-api.us-west-2.amazonaws.com/production/");
+          // WebSocket on open
+          ws.onopen = () => {
+            console.log("WebSocket connected");
+            const message = {
+              action: "sendmessage",
+              message: "leaderboard"
             };
-
-            return result;
-          }
-        })
-        .catch((error) => {
-          console.error(error);
-          return null;
-        });
+            ws.send(JSON.stringify(message));
+            console.log(`sent ${message.message}`);
+            ws.close();
+          };
+          return result;
+        }
+      }
+      catch (error) {
+        console.error(error);
+        return {
+          errorMessage: error,
+          current_points: 0,
+          redeemed_points: -1,
+          redemption_type: "user"
+        };
+      }
     } catch (err) {
       let errorResponse = db.dynamoErrorResponse(err);
       const errBody = JSON.parse(errorResponse.body);
