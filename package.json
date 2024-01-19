@@ -3,18 +3,19 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
-    "copy-dynamodb-table": "^2.2.1",
-    "dotenv": "^16.0.3",
-    "ics": "^2.40.0",
-    "serverless-dynamodb-local": "^0.2.40",
     "concurrently": "^6.2.0",
+    "copy-dynamodb-table": "^2.2.1",
+    "csv-parser": "^3.0.0",
+    "dotenv": "^16.0.3",
     "express": "^4.17.1",
     "express-http-proxy": "^1.6.2",
     "fs": "0.0.1-security",
     "http-proxy-middleware": "^2.0.0",
+    "ics": "^2.40.0",
     "path": "^0.12.7",
-    "yaml": "^1.10.2",
-    "serverless": "^1.83.3"
+    "serverless": "^1.83.3",
+    "serverless-dynamodb-local": "^0.2.40",
+    "yaml": "^1.10.2"
   },
   "scripts": {
     "preitest": "chmod +x ./scripts/run_itests.sh",
