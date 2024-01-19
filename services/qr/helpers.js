@@ -399,7 +399,7 @@ export default {
     return await db
       .getOne(
         eventName,
-        EVENTS_TABLE + (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
+        EVENTS_TABLE,
         {
           year: year
         }
