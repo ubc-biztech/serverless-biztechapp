@@ -27,7 +27,7 @@ export async function updateHelper(data, createNew, email, fname) {
   const eventIDAndYear = eventID + ";" + year;
 
 
-  console.log(data)
+  console.log(data);
   console.log("CloudWatch debugging purposes");
 
   // for the QR code, we pass this to SendGrid
