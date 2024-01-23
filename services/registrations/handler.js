@@ -26,6 +26,7 @@ export async function updateHelper(data, createNew, email, fname) {
   } = data;
   const eventIDAndYear = eventID + ";" + year;
 
+
   console.log(data);
   console.log("CloudWatch debugging purposes");
 

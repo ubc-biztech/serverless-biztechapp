@@ -59,7 +59,6 @@ export const post = async (event, ctx, callback) => {
         type: "boolean"
       } // TODO: Admin possibility if gated actions required in the future
     });
-    console.log(data);
 
     await registrationHelpers
       .qrScanPostHelper(data, data.email)
