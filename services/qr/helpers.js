@@ -272,19 +272,23 @@ export default {
                 redemption_type: "user"
               };
             });
-          console.log("socketing");
-          const ws = new WebSocket("wss://zx441lpsv8.execute-api.us-west-2.amazonaws.com/production/");
-          // WebSocket on open
-          ws.onopen = () => {
-            console.log("WebSocket connected");
-            const message = {
-              action: "sendmessage",
-              message: "leaderboard"
+          try {
+            console.log("socketing");
+            const ws = new WebSocket("wss://zx441lpsv8.execute-api.us-west-2.amazonaws.com/production/");
+            // WebSocket on open
+            ws.onopen = () => {
+              console.log("WebSocket connected");
+              const message = {
+                action: "sendmessage",
+                message: "leaderboard"
+              };
+              ws.send(JSON.stringify(message));
+              console.log(`sent ${message.message}`);
+              ws.close();
             };
-            ws.send(JSON.stringify(message));
-            console.log(`sent ${message.message}`);
-            ws.close();
-          };
+          } catch (e) {
+            console.log("Error socketing", JSON.stringify(e))
+          }
           return result;
         }
       }
