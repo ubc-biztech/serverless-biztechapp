@@ -287,7 +287,7 @@ export default {
               ws.close();
             };
           } catch (e) {
-            console.log("Error socketing", JSON.stringify(e))
+            console.log("Error socketing", JSON.stringify(e));
           }
           return result;
         }
