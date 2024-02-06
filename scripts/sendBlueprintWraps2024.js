@@ -25,7 +25,6 @@ import fs from "fs";
 import AWS from "aws-sdk";
 import csv from "csv-parser";
 
-// Set up AWS SES
 const {
   accessKeyId,
   secretAccessKey,
@@ -49,8 +48,8 @@ const sourceEmail = "ubcbiztech@gmail.com";
 // csv is formatted as follows: email, partner1url, partner2url, partner3url
 const csvFilePath = "./scripts/data/bp_wrapped_emails.csv";
 
-// SES has rate limiting 14 emails a second
-const delayBetweenBatchesMs = 5000;
+// SES has rate limiting 14 emails a second. 
+const delayBetweenBatchesMs = 1000;
 const batchSize = 3;
 
 
@@ -63,11 +62,9 @@ const readCSV = async (csvFilePath) => {
       fs.createReadStream(filePath)
         .pipe(csv())
         .on("headers", (headers) => {
-          // Trim spaces from headers
           csvHeader = headers.map(header => header.trim());
         })
         .on("data", (row) => {
-          // Trim spaces from key values in the data
           const cleanedRow = Object.fromEntries(
             Object.entries(row).map(([key, value]) => [key.trim(), value.trim()])
           );
@@ -86,7 +83,6 @@ const readCSV = async (csvFilePath) => {
   });
 };
 
-// Function to send email with PNG file in the body
 async function sendEmailWithPNG(confirmSendEmailFlag) {
   const data = await readCSV(csvFilePath);
   const dataBody = data[1];
@@ -171,8 +167,6 @@ async function sendEmailWithPNG(confirmSendEmailFlag) {
     for (let i = 0; i < emails.length; i += batchSize) {
       const batch = emails.slice(i, i + batchSize);
       await Promise.all(batch.map(async (emailData) => {
-        // Adjusted to work within the Promise.all() context
-
         const email = emailData.Destination.ToAddresses[0];
         const body = emailData.Message.Body.Html.Data;
 
@@ -206,5 +200,4 @@ async function sendEmailWithPNG(confirmSendEmailFlag) {
 // Get command line arguments
 const [, , confirmSendEmailFlag] = process.argv;
 
-// Call the function with provided arguments
 sendEmailWithPNG(confirmSendEmailFlag);
