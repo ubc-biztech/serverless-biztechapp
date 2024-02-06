@@ -473,7 +473,7 @@ export default {
   },
   async checkIfAlreadyScannedPartnerQR(userRegistration, eventIDAndYear) {
     if (!userRegistration.scannedQRs) {
-      return true;
+      return false;
     }
 
     const scannedQRIDs = JSON.parse(userRegistration.scannedQRs);
