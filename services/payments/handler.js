@@ -347,7 +347,7 @@ export const payment = async (event, ctx, callback) => {
       mode: "payment",
       success_url: data.success_url,
       cancel_url: data.cancel_url,
-      expires_at: Math.round(new Date().getTime() / 1000) + 1800,
+      expires_at: Math.round(new Date().getTime() / 1000) + (30 * 24 * 60 * 60),
       allow_promotion_codes: true
     });
 
