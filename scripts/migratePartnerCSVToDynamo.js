@@ -186,7 +186,7 @@ const migrate = async (id, year) => {
   // });
   // console.log(existingEvent.partnerRegistrationQuestions);
 
-  const data = await readCSV("./scripts/test.csv");
+  const data = await readCSV("./scripts/data/test.csv");
   const registrations = prepareData(data, id, year);
   let proms = [];
   for (let r of registrations) {
