@@ -2,12 +2,8 @@ import docClient from "../../lib/docClient";
 import registrationHelpers from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
-import {
-  isEmpty, isValidEmail
-} from "../../lib/utils";
-import {
-  EVENTS_TABLE, USER_REGISTRATIONS_TABLE
-} from "../../constants/tables";
+import { isEmpty, isValidEmail } from "../../lib/utils";
+import { EVENTS_TABLE, USER_REGISTRATIONS_TABLE } from "../../constants/tables";
 import SESEmailService from "./EmailService/SESEmailService";
 import awsConfig from "../../lib/config";
 
@@ -22,10 +18,13 @@ import awsConfig from "../../lib/config";
 */
 export async function updateHelper(data, createNew, email, fname) {
   const {
-    eventID, year, dynamicResponses, registrationStatus, applicationStatus
+    eventID,
+    year,
+    dynamicResponses,
+    registrationStatus,
+    applicationStatus
   } = data;
   const eventIDAndYear = eventID + ";" + year;
-
 
   console.log(data);
   console.log("CloudWatch debugging purposes");
@@ -66,11 +65,17 @@ export async function updateHelper(data, createNew, email, fname) {
     fname
   };
   let dynamicRegistrationStatus = registrationStatus;
-  // always check application status first, if not null then we send a application status email, else send regular 
+  // always check application status first, if not null then we send a application status email, else send regular
   if (applicationStatus) {
     try {
       if (!data.isPartner) {
-        await sendEmail(user, existingEvent, applicationStatus, id, "application");
+        await sendEmail(
+          user,
+          existingEvent,
+          applicationStatus,
+          id,
+          "application"
+        );
       }
     } catch (err) {
       // if email sending failed, that user's email probably does not exist
@@ -107,7 +112,7 @@ export async function updateHelper(data, createNew, email, fname) {
       //   }
       // });
     }
-    // try to send the registration and calendar emails 
+    // try to send the registration and calendar emails
     try {
       if (!data.isPartner) {
         await sendEmail(user, existingEvent, dynamicRegistrationStatus);
@@ -227,8 +232,18 @@ async function createRegistration(
   }
 }
 
-export async function sendEmail(user, existingEvent, userStatus, emailType = "") {
-  if (userStatus === "incomplete" || userStatus === "rejected" || userStatus === "accepted") return;
+export async function sendEmail(
+  user,
+  existingEvent,
+  userStatus,
+  emailType = ""
+) {
+  if (
+    userStatus === "incomplete" ||
+    userStatus === "rejected" ||
+    userStatus === "accepted"
+  )
+    return;
   if (userStatus !== "checkedIn") {
     const userEmail = user.id;
 
@@ -247,7 +262,12 @@ export async function sendEmail(user, existingEvent, userStatus, emailType = "")
     }
 
     const EmailService = new SESEmailService(awsConfig);
-    await EmailService.sendDynamicQR(existingEvent, user, userStatus, emailType);
+    await EmailService.sendDynamicQR(
+      existingEvent,
+      user,
+      userStatus,
+      emailType
+    );
     if (emailType !== "application" && userStatus === "registered")
       await EmailService.sendCalendarInvite(existingEvent, user);
   }
@@ -375,6 +395,72 @@ export const put = async (event, ctx, callback) => {
     return null;
   }
 };
+
+// Updates a batch of registration statuses
+export async function massUpdate(event, ctx, callback) {
+  try {
+    const { eventID, eventYear, updates } = JSON.parse(event.body);
+
+    if (!eventID || !eventYear || !Array.isArray(updates)) {
+      return helpers.createResponse(400, {
+        message: "Invalid request format."
+      });
+    }
+
+    console.log("before promises all");
+
+    // Process each update in parallel
+    const results = await Promise.all(
+      updates.map(async (update) => {
+        try {
+          // Use a default first name if not provided
+          const fname = update.fname || "Biztecher";
+          const response = await updateHelper(
+            {
+              eventID,
+              year: eventYear,
+              email: update.email,
+              status: update.status
+            },
+            false,
+            update.email,
+            fname
+          );
+          return {
+            success: true,
+            email: update.email,
+            response
+          };
+        } catch (error) {
+          return {
+            success: false,
+            email: update.email,
+            error: error.message
+          };
+        }
+      })
+    );
+
+    console.log("after promises all");
+
+    callback(
+      null,
+      helpers.createResponse(200, {
+        results
+      })
+    );
+
+    console.log("after callback results");
+  } catch (error) {
+    console.error("Mass update failed", error);
+    callback(
+      null,
+      helpers.createResponse(500, {
+        error: "Internal server error"
+      })
+    );
+  }
+}
 
 // Return list of entries with the matching id
 export const get = async (event, ctx, callback) => {
@@ -507,9 +593,7 @@ export const del = async (event, ctx, callback) => {
 export const leaderboard = async (event, ctx, callback) => {
   try {
     const queryString = event.queryStringParameters;
-    if (
-      !queryString || (!queryString.eventID && !queryString.year)
-    ) {
+    if (!queryString || (!queryString.eventID && !queryString.year)) {
       throw helpers.missingIdQueryResponse("eventID/year");
     }
     // if eventID and year was given
@@ -528,19 +612,24 @@ export const leaderboard = async (event, ctx, callback) => {
         }
       };
 
-      let registrations = await db.scan(USER_REGISTRATIONS_TABLE, filterExpression);
-      registrations = registrations.filter(user => {
-        if (user.points !== undefined) {
-          return user.points > 0;
-        }
-        return false;
-      }).map(user => {
-        return {
-          points: user.points,
-          fname: user.basicInformation.fname,
-          lname: user.basicInformation.lname
-        };
-      });
+      let registrations = await db.scan(
+        USER_REGISTRATIONS_TABLE,
+        filterExpression
+      );
+      registrations = registrations
+        .filter((user) => {
+          if (user.points !== undefined) {
+            return user.points > 0;
+          }
+          return false;
+        })
+        .map((user) => {
+          return {
+            points: user.points,
+            fname: user.basicInformation.fname,
+            lname: user.basicInformation.lname
+          };
+        });
       registrations.sort((a, b) => b.points - a.points);
       return helpers.createResponse(200, registrations);
     }
@@ -550,7 +639,7 @@ export const leaderboard = async (event, ctx, callback) => {
       statusCode: 500,
       body: JSON.stringify({
         error: "Internal Server Error"
-      }),
+      })
     };
   }
 };
