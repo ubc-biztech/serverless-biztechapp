@@ -41,6 +41,8 @@ jobs:
       STRIPE_DEV_ENDPOINT: ${{ secrets.STRIPE_DEV_ENDPOINT }}
       STRIPE_PROD_CANCEL: ${{ secrets.STRIPE_PROD_CANCEL }}
       STRIPE_PROD_ENDPOINT: ${{ secrets.STRIPE_PROD_ENDPOINT }}
+      STRIPE_PROD_KEY: ${{ secrets.STRIPE_PROD_KEY}}
+      STRIPE_DEV_KEY: ${{ secrets.STRIPE_DEV_KEY}}
 
      # TODO: deploy all to production
      run: |
