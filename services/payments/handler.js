@@ -15,18 +15,19 @@ const {
 } = require("../../constants/tables");
 const stripe = require("stripe")(
   process.env.ENVIRONMENT === "PROD"
-    ? "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"
-    : "sk_test_51KOxOlBAxwbCreS7JRQtvZCnCgLmn8tjK7WPHDGjpw0s4vfVHLwbcrZZvQLmd5cY7zKRIsfj3pnEDDHTy3G81Tuf00v9ygIBrC"
+    ? process.env.STRIPE_PROD_KEY
+    : process.env.STRIPE_DEV_KEY
 );
+
 // endpoint secret - different for each webhook
 const endpointSecret =
   process.env.ENVIRONMENT === "PROD"
-    ? "whsec_IOXyPRmf3bsliM3PfWXFhvkmHGeSMekf"
-    : "whsec_TYSFr29HQ4bIPu649lgkxOrlPjrDOe2l";
+    ? process.env.STRIPE_PROD_ENDPOINT
+    : process.env.STRIPE_DEV_ENDPOINT;
 const cancelSecret =
   process.env.ENVIRONMENT === "PROD"
-    ? "whsec_aX8umTlvtlmg0H2KCGDc9Er9Iej6TP8D"
-    : "whsec_N81csvvnTAqicFpuV5o9JQfx6McImtPR";
+    ? process.env.STRIPE_PROD_CANCEL
+    : process.env.STRIPE_DEV_CANCEL;
 
 // Creates the member here
 export const webhook = async (event, ctx, callback) => {

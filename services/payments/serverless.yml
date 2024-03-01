@@ -22,6 +22,8 @@ provider:
     STRIPE_DEV_ENDPOINT: ${opt:STRIPE_DEV_ENDPOINT}
     STRIPE_PROD_CANCEL: ${opt:STRIPE_PROD_CANCEL}
     STRIPE_PROD_ENDPOINT: ${opt:STRIPE_PROD_ENDPOINT}
+    STRIPE_PROD_KEY: ${opt:STRIPE_PROD_KEY}
+    STRIPE_DEV_KEY: ${opt:STRIPE_DEV_KEY}
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
     restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
