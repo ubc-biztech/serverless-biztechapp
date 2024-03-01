@@ -20,7 +20,8 @@ import awsConfig from "../../lib/config";
    sends an email to the user if registration status is included in data, and
      if they are registered, waitlisted, or cancelled, but not if checkedIn
 */
-export async function updateHelper(data, createNew, email, fname) {
+export async function updateHelper(data, createNew, emailProp, fname) {
+  const email = emailProp.toLowerCase();
   const {
     eventID, year, dynamicResponses, registrationStatus, applicationStatus
   } = data;
