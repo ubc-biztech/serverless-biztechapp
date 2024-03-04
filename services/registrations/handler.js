@@ -406,22 +406,22 @@ export async function massUpdate(event, ctx, callback) {
         message: "Invalid request format."
       });
     }
+    console.log("HIHIHIHIH");
+    console.log(updates);
 
-    console.log("before promises all");
-
-    // Process each update in parallel
     const results = await Promise.all(
       updates.map(async (update) => {
         try {
-          // Use a default first name if not provided
-          const fname = update.fname || "Biztecher";
+          const updateData = {
+            eventID,
+            year: eventYear,
+            email: update.email,
+            applicationStatus: update.applicationStatus
+          };
+
+          const fname = update.fname;
           const response = await updateHelper(
-            {
-              eventID,
-              year: eventYear,
-              email: update.email,
-              status: update.status
-            },
+            updateData,
             false,
             update.email,
             fname
@@ -441,23 +441,12 @@ export async function massUpdate(event, ctx, callback) {
       })
     );
 
-    console.log("after promises all");
-
-    callback(
-      null,
-      helpers.createResponse(200, {
-        results
-      })
-    );
-
-    console.log("after callback results");
+    callback(null, helpers.createResponse(200, { results }));
   } catch (error) {
     console.error("Mass update failed", error);
     callback(
       null,
-      helpers.createResponse(500, {
-        error: "Internal server error"
-      })
+      helpers.createResponse(500, { error: "Internal server error" })
     );
   }
 }
