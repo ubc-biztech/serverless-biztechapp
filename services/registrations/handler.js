@@ -2,8 +2,12 @@ import docClient from "../../lib/docClient";
 import registrationHelpers from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
-import { isEmpty, isValidEmail } from "../../lib/utils";
-import { EVENTS_TABLE, USER_REGISTRATIONS_TABLE } from "../../constants/tables";
+import {
+  isEmpty, isValidEmail
+} from "../../lib/utils";
+import {
+  EVENTS_TABLE, USER_REGISTRATIONS_TABLE
+} from "../../constants/tables";
 import SESEmailService from "./EmailService/SESEmailService";
 import awsConfig from "../../lib/config";
 
@@ -115,6 +119,7 @@ export async function updateHelper(data, createNew, email, fname) {
     // try to send the registration and calendar emails
     try {
       if (!data.isPartner) {
+        console.log("sending email");
         await sendEmail(user, existingEvent, dynamicRegistrationStatus);
       }
     } catch (err) {
@@ -399,15 +404,15 @@ export const put = async (event, ctx, callback) => {
 // Updates a batch of registration statuses
 export async function massUpdate(event, ctx, callback) {
   try {
-    const { eventID, eventYear, updates } = JSON.parse(event.body);
+    const {
+      eventID, eventYear, updates
+    } = JSON.parse(event.body);
 
     if (!eventID || !eventYear || !Array.isArray(updates)) {
       return helpers.createResponse(400, {
         message: "Invalid request format."
       });
     }
-    console.log("HIHIHIHIH");
-    console.log(updates);
 
     const results = await Promise.all(
       updates.map(async (update) => {
@@ -441,12 +446,19 @@ export async function massUpdate(event, ctx, callback) {
       })
     );
 
-    callback(null, helpers.createResponse(200, { results }));
+    callback(
+      null,
+      helpers.createResponse(200, {
+        results
+      })
+    );
   } catch (error) {
     console.error("Mass update failed", error);
     callback(
       null,
-      helpers.createResponse(500, { error: "Internal server error" })
+      helpers.createResponse(500, {
+        error: "Internal server error"
+      })
     );
   }
 }

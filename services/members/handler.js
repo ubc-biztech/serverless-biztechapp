@@ -39,7 +39,7 @@ export const create = async (event, ctx, callback) => {
       updatedAt: timestamp
     },
     TableName:
-    MEMBERS2024_TABLE +
+      MEMBERS2024_TABLE +
       (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
     ConditionExpression: "attribute_not_exists(id)"
   };
@@ -89,6 +89,40 @@ export const get = async (event, ctx, callback) => {
     console.log(err);
     callback(null, err);
     return null;
+  }
+};
+
+export const getFnameById = async (event) => {
+  console.log("getting fnameByID");
+  try {
+    const email = event.pathParameters.email;
+    const user = await db.getOne(email, MEMBERS2024_TABLE);
+
+    if (!user) {
+      console.log(`User not found for email: ${email}`);
+      return {
+        statusCode: 404,
+        body: JSON.stringify({
+          message: "User not found"
+        })
+      };
+    }
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        firstName: user.firstName
+      })
+    };
+  } catch (error) {
+    console.log(`Error fetching user by email: ${error}`);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        message: "Internal Server Error",
+        error: error.toString()
+      })
+    };
   }
 };
 
