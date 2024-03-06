@@ -109,5 +109,5 @@ functions:
     events:
       - http:
           path: registrations/massUpdate
-          method: put
+          method: post
           cors: true
