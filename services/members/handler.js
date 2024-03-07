@@ -39,7 +39,7 @@ export const create = async (event, ctx, callback) => {
       updatedAt: timestamp
     },
     TableName:
-    MEMBERS2024_TABLE +
+      MEMBERS2024_TABLE +
       (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
     ConditionExpression: "attribute_not_exists(id)"
   };

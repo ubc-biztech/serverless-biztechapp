@@ -104,3 +104,10 @@ functions:
                 eventID: false
                 year: false
           cors: true
+  massUpdateRegistration:
+    handler: handler.massUpdate
+    events:
+      - http:
+          path: registrations/massUpdate
+          method: put
+          cors: true
