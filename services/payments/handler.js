@@ -1,4 +1,4 @@
-import helpers from "../../lib/handlerHelpers";
+ import helpers from "../../lib/handlerHelpers";
 import {
   isValidEmail
 } from "../../lib/utils";
@@ -318,6 +318,24 @@ export const webhook = async (event, ctx, callback) => {
           message: "Webhook Error: unidentified payment type"
         });
     }
+  } else if (eventData.type === "checkout.session.expired") {
+    const data = eventData.data.object.metadata;
+    try {
+      const body = {
+        eventID: data.eventID,
+        year: Number(data.year),
+        checkoutLink: eventData.data.object.after_expiration.recovery.url
+      };
+      await updateHelper(body, false, data.email, data.fname);
+
+      const response = helpers.createResponse(200, {
+        message: "Checkout link expired - new session link generated"
+      });
+      callback(null, response);
+    } catch (err) {
+      console.log(err);
+      callback(err, null);
+    }
   }
 };
 
@@ -349,7 +367,12 @@ export const payment = async (event, ctx, callback) => {
       success_url: data.success_url,
       cancel_url: data.cancel_url,
       expires_at: Math.round(new Date().getTime() / 1000) + 1800,
-      allow_promotion_codes: true
+      allow_promotion_codes: true,
+      after_expiration: {
+        recovery: {
+          enabled: true
+        }
+      }
     });
 
     if (data.paymentType === "Event") {
