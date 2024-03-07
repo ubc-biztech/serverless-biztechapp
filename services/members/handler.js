@@ -1,8 +1,12 @@
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
-import { isEmpty, isValidEmail } from "../../lib/utils";
+import {
+  isEmpty, isValidEmail
+} from "../../lib/utils";
 import docClient from "../../lib/docClient";
-const { MEMBERS2024_TABLE } = require("../../constants/tables");
+const {
+  MEMBERS2024_TABLE
+} = require("../../constants/tables");
 
 export const create = async (event, ctx, callback) => {
   const timestamp = new Date().getTime();
@@ -94,7 +98,8 @@ export const getAll = async (event, ctx, callback) => {
     const members = await db.scan(MEMBERS2024_TABLE);
 
     // re-organize the response
-    let response = {};
+    let response = {
+    };
     if (members !== null) response = helpers.createResponse(200, members);
 
     // return the response object

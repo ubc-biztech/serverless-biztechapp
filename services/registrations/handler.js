@@ -2,8 +2,12 @@ import docClient from "../../lib/docClient";
 import registrationHelpers from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
-import { isEmpty, isValidEmail } from "../../lib/utils";
-import { EVENTS_TABLE, USER_REGISTRATIONS_TABLE } from "../../constants/tables";
+import {
+  isEmpty, isValidEmail
+} from "../../lib/utils";
+import {
+  EVENTS_TABLE, USER_REGISTRATIONS_TABLE
+} from "../../constants/tables";
 import SESEmailService from "./EmailService/SESEmailService";
 import awsConfig from "../../lib/config";
 
@@ -399,7 +403,9 @@ export const put = async (event, ctx, callback) => {
 // Updates a batch of registration statuses
 export async function massUpdate(event, ctx, callback) {
   try {
-    const { eventID, eventYear, updates } = JSON.parse(event.body);
+    const {
+      eventID, eventYear, updates
+    } = JSON.parse(event.body);
 
     if (!eventID || !eventYear || !Array.isArray(updates)) {
       return helpers.createResponse(400, {
