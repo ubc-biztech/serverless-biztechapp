@@ -88,39 +88,6 @@ export const get = async (event, ctx, callback) => {
   }
 };
 
-export const getFnameById = async (event) => {
-  try {
-    const email = event.pathParameters.email;
-    const user = await db.getOne(email, MEMBERS2024_TABLE);
-
-    if (!user) {
-      console.log(`User not found for email: ${email}`);
-      return {
-        statusCode: 404,
-        body: JSON.stringify({
-          message: "User not found"
-        })
-      };
-    }
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        firstName: user.firstName
-      })
-    };
-  } catch (error) {
-    console.log(`Error fetching user by email: ${error}`);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        message: "Internal Server Error",
-        error: error.toString()
-      })
-    };
-  }
-};
-
 export const getAll = async (event, ctx, callback) => {
   try {
     // scan the table
