@@ -1,4 +1,4 @@
- import helpers from "../../lib/handlerHelpers";
+import helpers from "../../lib/handlerHelpers";
 import {
   isValidEmail
 } from "../../lib/utils";
@@ -301,40 +301,22 @@ export const webhook = async (event, ctx, callback) => {
     }
 
     switch (data.paymentType) {
-      case "UserMember":
-        await userMemberSignup(data);
-        break;
-      case "OAuthMember":
-        await OAuthMemberSignup(data);
-        break;
-      case "Member":
-        await memberSignup(data);
-        break;
-      case "Event":
-        await eventRegistration(data);
-        break;
-      default:
-        return helpers.createResponse(400, {
-          message: "Webhook Error: unidentified payment type"
-        });
-    }
-  } else if (eventData.type === "checkout.session.expired") {
-    const data = eventData.data.object.metadata;
-    try {
-      const body = {
-        eventID: data.eventID,
-        year: Number(data.year),
-        checkoutLink: eventData.data.object.after_expiration.recovery.url
-      };
-      await updateHelper(body, false, data.email, data.fname);
-
-      const response = helpers.createResponse(200, {
-        message: "Checkout link expired - new session link generated"
+    case "UserMember":
+      await userMemberSignup(data);
+      break;
+    case "OAuthMember":
+      await OAuthMemberSignup(data);
+      break;
+    case "Member":
+      await memberSignup(data);
+      break;
+    case "Event":
+      await eventRegistration(data);
+      break;
+    default:
+      return helpers.createResponse(400, {
+        message: "Webhook Error: unidentified payment type"
       });
-      callback(null, response);
-    } catch (err) {
-      console.log(err);
-      callback(err, null);
     }
   }
 };
@@ -416,7 +398,8 @@ export const cancel = async (event, ctx, callback) => {
 
       const response = helpers.createResponse(200, {
         message: "Cancel webhook disabled",
-        response: {}
+        response: {
+        }
       });
 
       callback(null, response);
