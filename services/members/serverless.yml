@@ -87,16 +87,16 @@ functions:
               type: COGNITO_USER_POOLS
               arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   memberDelete:
-      handler: handler.del
-      events:
-        - http:
-            path: members/{email}
-            method: delete
-            request:
-              path:
-                email: true
-            cors: true
-            authorizer:
-              name: ${self:service}-authorizer
-              type: COGNITO_USER_POOLS
-              arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+    handler: handler.del
+    events:
+      - http:
+          path: members/{email}
+          method: delete
+          request:
+            path:
+              email: true
+          cors: true
+          authorizer:
+            name: ${self:service}-authorizer
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
