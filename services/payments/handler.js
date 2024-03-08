@@ -349,12 +349,7 @@ export const payment = async (event, ctx, callback) => {
       success_url: data.success_url,
       cancel_url: data.cancel_url,
       expires_at: Math.round(new Date().getTime() / 1000) + 1800,
-      allow_promotion_codes: true,
-      after_expiration: {
-        recovery: {
-          enabled: true
-        }
-      }
+      allow_promotion_codes: true
     });
 
     if (data.paymentType === "Event") {
