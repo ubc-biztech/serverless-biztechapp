@@ -408,15 +408,15 @@ export const cancel = async (event, ctx, callback) => {
   } = data;
   if (paymentType === "Event") {
     try {
-      const eventIDAndYear = eventID + ";" + year;
+      // const eventIDAndYear = eventID + ";" + year;
 
-      const res = await db.deleteOne(email, USER_REGISTRATIONS_TABLE, {
-        ["eventID;year"]: eventIDAndYear
-      });
+      // const res = await db.deleteOne(email, USER_REGISTRATIONS_TABLE, {
+      //   ["eventID;year"]: eventIDAndYear
+      // });
 
       const response = helpers.createResponse(200, {
-        message: "Registration entry Deleted!",
-        response: res
+        message: "Cancel webhook disabled",
+        response: {}
       });
 
       callback(null, response);
