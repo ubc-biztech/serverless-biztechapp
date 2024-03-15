@@ -65,6 +65,17 @@ functions:
               path:
                 email: true
             cors: true
+  checkUserMembership:
+    handler: handler.checkUserMembership
+    events:
+      - http:
+          path: users/checkMembership/{email}
+          method: get
+          request:
+            parameters:
+              path:
+                email: true
+            cors: true
   userGet:
     handler: handler.get
     events:
