@@ -168,6 +168,23 @@ export const checkUser = async (event, ctx, callback) => {
   }
 };
 
+export const checkUserMembership = async (event, ctx, callback) => {
+  console.log(event);
+  try {
+    const email = event.pathParameters.email;
+    const user = await db.getOne(email, USERS_TABLE);
+    if (isEmpty(user)) {
+      callback(null, helpers.createResponse(200, false));
+    } else {
+      callback(null, helpers.createResponse(200, user.isMember));
+    }
+    return null;
+  } catch (err) {
+    callback(null, helpers.createResponse(400, err));
+    return null;
+  }
+};
+
 export const get = async (event, ctx, callback) => {
   try {
     if (!event.pathParameters || !event.pathParameters.email)

@@ -301,22 +301,22 @@ export const webhook = async (event, ctx, callback) => {
     }
 
     switch (data.paymentType) {
-      case "UserMember":
-        await userMemberSignup(data);
-        break;
-      case "OAuthMember":
-        await OAuthMemberSignup(data);
-        break;
-      case "Member":
-        await memberSignup(data);
-        break;
-      case "Event":
-        await eventRegistration(data);
-        break;
-      default:
-        return helpers.createResponse(400, {
-          message: "Webhook Error: unidentified payment type"
-        });
+    case "UserMember":
+      await userMemberSignup(data);
+      break;
+    case "OAuthMember":
+      await OAuthMemberSignup(data);
+      break;
+    case "Member":
+      await memberSignup(data);
+      break;
+    case "Event":
+      await eventRegistration(data);
+      break;
+    default:
+      return helpers.createResponse(400, {
+        message: "Webhook Error: unidentified payment type"
+      });
     }
   }
 };
@@ -393,7 +393,8 @@ export const cancel = async (event, ctx, callback) => {
 
       const response = helpers.createResponse(200, {
         message: "Cancel webhook disabled",
-        response: {}
+        response: {
+        }
       });
 
       callback(null, response);
