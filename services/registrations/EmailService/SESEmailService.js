@@ -5,10 +5,10 @@ import {
   logoBase64
 } from "./constants";
 import {
-  getDefaultCalendarInviteTemplate, getPartnerCalendarInviteTemplate
+  getDefaultCalendarInviteTemplate, getPartnerCalendarInviteTemplate, getDefaultPaymentProcessedTemplate
 } from "./templates/calendarInviteTemplates";
 import {
-  getDefaultQRTemplate, getRegisteredQRTemplate
+  getDefaultQRTemplate, getRegisteredQRTemplate, getDefaultApplicationTemplate
 } from "./templates/dynamicQRTemplates";
 const ics = require("ics");
 
@@ -62,7 +62,9 @@ export default class SESEmailService {
     };
     const rawHtml = user.isPartner ?
       getPartnerCalendarInviteTemplate(emailParams)
-      : getDefaultCalendarInviteTemplate(emailParams);
+      : event.isApplicationBased ?
+        getDefaultPaymentProcessedTemplate(emailParams)
+        : getDefaultCalendarInviteTemplate(emailParams);
 
     // parse start and end dates into event duration object (hours, minutes, seconds)
     startDate = new Date(startDate);
@@ -157,7 +159,7 @@ export default class SESEmailService {
       id: email, fname
     } = user;
     const {
-      id, ename, year
+      id, ename, year, isApplicationBased
     } = event;
 
     const qr = (await QRCode.toDataURL(`${email};${id};${year};${fname}`)).toString();
@@ -174,7 +176,9 @@ export default class SESEmailService {
     };
     const rawHtml = registrationStatus === "registered" ?
       getRegisteredQRTemplate(emailParams)
-      : getDefaultQRTemplate(emailParams);
+      : isApplicationBased ?
+        getDefaultApplicationTemplate(emailParams)
+        : getDefaultQRTemplate(emailParams);
     const subject = `BizTech ${ename} Event ${emailType === "application"  ? "Application" : "Registration"} Status`;
 
     let mailOptions = {

@@ -272,7 +272,7 @@ export async function sendEmail(
       userStatus,
       emailType
     );
-    if (emailType !== "application" && userStatus === "registered")
+    if (userStatus === "registered")
       await EmailService.sendCalendarInvite(existingEvent, user);
   }
 }
