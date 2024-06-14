@@ -7,6 +7,15 @@ import docClient from "../../lib/docClient";
 const {
   MEMBERS2024_TABLE
 } = require("../../constants/tables");
+const {
+  MEMBERS2023_TABLE
+} = require("../../constants/tables");
+const {
+  MEMBERS2022_TABLE
+} = require("../../constants/tables");
+const {
+  MEMBERSHIPS2021_TABLE
+} = require("../../constants/tables");
 
 export const create = async (event, ctx, callback) => {
   const timestamp = new Date().getTime();
@@ -95,7 +104,35 @@ export const get = async (event, ctx, callback) => {
 export const getAll = async (event, ctx, callback) => {
   try {
     // scan the table
-    const members = await db.scan(MEMBERS2024_TABLE);
+    const year = event.queryStringParameters.year;
+
+    // Get the table name based on the year from query param
+    let tableName;
+    switch (year) {
+    case "2021":
+      tableName =
+          MEMBERSHIPS2021_TABLE +
+          (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : "");
+      break;
+    case "2022":
+      tableName =
+          MEMBERS2022_TABLE +
+          (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : "");
+      break;
+    case "2023":
+      tableName =
+          MEMBERS2023_TABLE +
+          (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : "");
+      break;
+    case "2024":
+      tableName =
+          MEMBERS2024_TABLE +
+          (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : "");
+      break;
+    }
+
+    const members = await db.scan(tableName);
+    // const members = await db.scan(MEMBERS2024_TABLE);
 
     // re-organize the response
     let response = {
