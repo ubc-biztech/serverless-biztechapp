@@ -17,7 +17,6 @@ provider:
   cfLogs: true
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
-    SENDGRID_KEY: ${param:SENDGRID_KEY}
     STRIPE_DEV_CANCEL: ${env:STRIPE_DEV_CANCEL}
     STRIPE_DEV_ENDPOINT: ${env:STRIPE_DEV_ENDPOINT}
     STRIPE_PROD_CANCEL: ${env:STRIPE_PROD_CANCEL}
