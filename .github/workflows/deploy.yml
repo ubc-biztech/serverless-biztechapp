@@ -28,7 +28,7 @@ jobs:
    - name: Install dependencies and Serverless CLI
      run: |
        npm ci
-       npm install serverless@4
+       npm install serverless
 
    - name: 'Deploy Dev'
      if: github.ref == 'refs/heads/dev'
