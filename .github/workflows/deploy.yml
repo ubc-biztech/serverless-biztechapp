@@ -12,19 +12,6 @@ jobs:
         with:
           node-version: '18.x'
       
-      # Remove this cache step as we're going to clean node_modules for Node 18 upgrade #355
-      # - name: Cache node modules
-      #   uses: actions/cache@v2
-      #   env:
-      #     cache-name: cache-node-modules
-      #   with:
-      #     path: ~/.npm
-      #     key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-      #     restore-keys: |
-      #       ${{ runner.os }}-build-${{ env.cache-name }}-
-      #       ${{ runner.os }}-build-
-      #       ${{ runner.os }}-
-
       - name: Clean install dependencies
         run: |
           rm -rf node_modules
@@ -49,7 +36,7 @@ jobs:
         run: |
           cd services
           for DIR in *; do
-            (cd $DIR && sls deploy --conceal \
+            (cd $DIR && npx serverless deploy --conceal \
               --STRIPE_DEV_CANCEL ${{ secrets.STRIPE_DEV_CANCEL }} \
               --STRIPE_DEV_ENDPOINT ${{ secrets.STRIPE_DEV_ENDPOINT }} \
               --STRIPE_PROD_CANCEL ${{ secrets.STRIPE_PROD_CANCEL }} \
@@ -74,7 +61,7 @@ jobs:
         run: |
           cd services
           for DIR in *; do
-            (cd $DIR && sls deploy --stage prod --conceal \
+            (cd $DIR && npx serverless deploy --stage prod --conceal \
               --STRIPE_DEV_CANCEL ${{ secrets.STRIPE_DEV_CANCEL }} \
               --STRIPE_DEV_ENDPOINT ${{ secrets.STRIPE_DEV_ENDPOINT }} \
               --STRIPE_PROD_CANCEL ${{ secrets.STRIPE_PROD_CANCEL }} \
