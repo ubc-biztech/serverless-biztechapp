@@ -2,7 +2,7 @@
   "name": "biztechapi-teams",
   "version": "1.0.0",
   "devDependencies": {
-    "serverless-offline": "^8.8.0"
+    "serverless-offline": "^13.6.0"
   },
   "scripts": {
     "prestart": "node ../../scripts/fix-sls-offline.js"

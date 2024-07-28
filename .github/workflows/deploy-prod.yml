@@ -5,15 +5,15 @@ on:
    types: [published]
 
 jobs:
- deploy-production:
+ deploy-staging:
    runs-on: ubuntu-latest
 
    steps:
-   - uses: actions/checkout@v4
+   - uses: actions/checkout@v2
    - name: Use Node.js ${{ matrix.node-version }}
      uses: actions/setup-node@v4
      with:
-       node-version: '18.x'
+       node-version: '20.x'
 
    # https://help.github.com/en/actions/configuring-and-managing-workflows/caching-dependencies-to-speed-up-workflows
    - name: Cache node modules
@@ -46,6 +46,6 @@ jobs:
      # TODO: deploy all to production
      run: |
        cd services
-       for DIR in *; do (cd $DIR && npx serverless deploy --stage prod --conceal && cd ..) & done; wait
+       for DIR in *; do (cd $DIR && npx sls deploy --stage prod --conceal && cd ..) & done; wait
        echo "Finished deployment in prod"
        

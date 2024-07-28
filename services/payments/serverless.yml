@@ -17,12 +17,12 @@ provider:
   cfLogs: true
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
-    STRIPE_DEV_CANCEL: ${env:STRIPE_DEV_CANCEL}
-    STRIPE_DEV_ENDPOINT: ${env:STRIPE_DEV_ENDPOINT}
-    STRIPE_PROD_CANCEL: ${env:STRIPE_PROD_CANCEL}
-    STRIPE_PROD_ENDPOINT: ${env:STRIPE_PROD_ENDPOINT}
-    STRIPE_PROD_KEY: ${env:STRIPE_PROD_KEY}
-    STRIPE_DEV_KEY: ${env:STRIPE_DEV_KEY}
+    STRIPE_DEV_CANCEL: ${opt:STRIPE_DEV_CANCEL, 'default'}
+    STRIPE_DEV_ENDPOINT: ${opt:STRIPE_DEV_ENDPOINT, 'default'}
+    STRIPE_PROD_CANCEL: ${opt:STRIPE_PROD_CANCEL, 'default'}
+    STRIPE_PROD_ENDPOINT: ${opt:STRIPE_PROD_ENDPOINT, 'default'}
+    STRIPE_PROD_KEY: ${opt:STRIPE_PROD_KEY, 'default'}
+    STRIPE_DEV_KEY: ${opt:STRIPE_DEV_KEY, 'default'}
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
     restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
