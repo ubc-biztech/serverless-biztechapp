@@ -1,13 +1,12 @@
 {
   "name": "biztechapi-hello",
   "version": "1.0.0",
-  "dependencies": {},
   "scripts": {
     "itest": "npm run itest hello --prefix ../../",
     "utest": "npm run utest hello --prefix ../../",
     "test": "npm run utest hello --prefix ../../ && npm run itest hello --prefix ../../"
   },
   "devDependencies": {
-    "serverless-offline": "^8.8.0"
+    "serverless-offline": "^13.6.0"
   }
 }

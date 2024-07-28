@@ -13,7 +13,7 @@
     "http-proxy-middleware": "^2.0.0",
     "ics": "^2.40.0",
     "path": "^0.12.7",
-    "serverless": "^1.83.3",
+    "serverless": "^3.39.0",
     "serverless-dynamodb-local": "^0.2.40",
     "yaml": "^1.10.2"
   },
