@@ -11,9 +11,6 @@ custom:
     number: 3
   serverless-offline:
     port: 4000
-  serverless-mocha-plugin:
-    # use test template to overwrite plugin usage of commonjs
-    testTemplate: ../../lib/testTemplate.ejs
 
   stage: ${opt:stage, self:provider.stage}
   domains:

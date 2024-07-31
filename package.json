@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
-    "aws-sdk": "^2.1664.0",
+    "@aws-sdk/client-cognito-identity-provider": "^3.621.0",
+    "@aws-sdk/client-dynamodb": "^3.621.0",
+    "@aws-sdk/client-lambda": "^3.621.0",
+    "@aws-sdk/client-ses": "^3.621.0",
     "concurrently": "^6.2.0",
     "copy-dynamodb-table": "^2.2.1",
     "csv-parser": "^3.0.0",
@@ -36,15 +39,14 @@
     "aws-sdk-mock": "^5.1.0",
     "babel-plugin-transform-runtime": "^6.23.0",
     "babel-preset-es2015": "^6.24.1",
-    "babel-preset-stage-2": "^6.24.1",
+    "babel-preset-stage-2": "^6.13.0",
     "babel-register": "^6.26.0",
     "eslint": "^7.7.0",
-    "mocha": "^8.1.3",
+    "mocha": "^10.7.0",
     "pre-commit": "^1.2.2",
-    "serverless-bundle": "^4.1.0",
-    "serverless-domain-manager": "^5.1.0",
-    "serverless-mocha-plugin": "^1.12.0",
-    "serverless-prune-plugin": "^1.4.3"
+    "serverless-bundle": "^6.1.0",
+    "serverless-domain-manager": "^7.3.8",
+    "serverless-prune-plugin": "^2.0.2"
   },
   "pre-commit": [
     "pre-commit-msg",

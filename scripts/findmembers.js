@@ -1,5 +1,5 @@
 import * as dotenv from "dotenv";
-import AWS from "aws-sdk";
+import { CognitoIdentityProvider } from "@aws-sdk/client-cognito-identity-provider";
 
 dotenv.config({
   path: "../.env"
@@ -11,7 +11,7 @@ const awsConfig = {
   region: "us-west-2",
 };
 
-const cognitoISP = new AWS.CognitoIdentityServiceProvider(awsConfig);
+const cognitoISP = new CognitoIdentityProvider(awsConfig);
 
 const userPoolId = "us-west-2_w0R176hhp";
 const filter = "username ^= \"Google\"";
@@ -25,7 +25,7 @@ const filterRegUsers = async (emails) => {
       const data = await cognitoISP.listUsers({
         UserPoolId: userPoolId,
         Filter: `email = "${email}"`,
-      }).promise();
+      });
 
       if (data.Users.length === 1) {
         counts.push(email);

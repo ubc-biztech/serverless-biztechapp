@@ -2,7 +2,7 @@ import * as dotenv from "dotenv";
 import {
   copy
 } from "copy-dynamodb-table";
-import AWS from "aws-sdk";
+import { DynamoDB } from "@aws-sdk/client-dynamodb";
 
 dotenv.config({
   path: "../.env"
@@ -14,7 +14,7 @@ const sourceAWSConfig = {
   region: "us-west-2",
 };
 
-const dynamodb = new AWS.DynamoDB(sourceAWSConfig);
+const dynamodb = new DynamoDB(sourceAWSConfig);
 
 const destinationAWSConfig = {
   accessKeyId: "AKID",
