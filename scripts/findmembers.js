@@ -1,5 +1,7 @@
 import * as dotenv from "dotenv";
-import { CognitoIdentityProvider } from "@aws-sdk/client-cognito-identity-provider";
+import {
+  CognitoIdentityProvider
+} from "@aws-sdk/client-cognito-identity-provider";
 
 dotenv.config({
   path: "../.env"

@@ -1,4 +1,6 @@
-import { SES } from "@aws-sdk/client-ses";
+import {
+  SES
+} from "@aws-sdk/client-ses";
 import nodemailer from "nodemailer";
 import QRCode from "qrcode";
 import {

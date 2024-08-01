@@ -2,7 +2,9 @@ import * as dotenv from "dotenv";
 import {
   copy
 } from "copy-dynamodb-table";
-import { DynamoDB } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDB
+} from "@aws-sdk/client-dynamodb";
 
 dotenv.config({
   path: "../.env"

@@ -22,7 +22,9 @@ it to be relevant. Ways to implement BP Wrapped directly into Companion could be
 
 */
 import fs from "fs";
-import { SES } from "@aws-sdk/client-ses";
+import {
+  SES
+} from "@aws-sdk/client-ses";
 import csv from "csv-parser";
 
 const {

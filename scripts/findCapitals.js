@@ -1,5 +1,7 @@
 import * as dotenv from "dotenv";
-import { DynamoDB } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDB
+} from "@aws-sdk/client-dynamodb";
 import * as fs from "fs";
 
 
