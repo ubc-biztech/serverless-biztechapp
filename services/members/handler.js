@@ -44,7 +44,11 @@ export const create = async (event, ctx, callback) => {
     ConditionExpression: "attribute_not_exists(id)"
   };
 
-  await docClient
+  await // The `.promise()` call might be on an JS SDK v2 client API.
+  // If yes, please remove .promise(). If not, remove this comment.
+  // The `.promise()` call might be on an JS SDK v2 client API.
+  // If yes, please remove .promise(). If not, remove this comment.
+  docClient
     .put(memberParams)
     .promise()
     .then(() => {

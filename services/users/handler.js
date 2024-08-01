@@ -125,7 +125,11 @@ export const create = async (event, ctx, callback) => {
 
   // }
 
-  await docClient
+  await // The `.promise()` call might be on an JS SDK v2 client API.
+  // If yes, please remove .promise(). If not, remove this comment.
+  // The `.promise()` call might be on an JS SDK v2 client API.
+  // If yes, please remove .promise(). If not, remove this comment.
+  docClient
     .put(userParams)
     .promise()
     .then(() => {
@@ -350,7 +354,11 @@ export const favouriteEvent = async (event, ctx, callback) => {
       ConditionExpression: conditionExpression
     };
 
-    const res = await docClient.update(params).promise();
+    const res = await // The `.promise()` call might be on an JS SDK v2 client API.
+    // If yes, please remove .promise(). If not, remove this comment.
+    // The `.promise()` call might be on an JS SDK v2 client API.
+    // If yes, please remove .promise(). If not, remove this comment.
+    docClient.update(params).promise();
 
     let successMsg = isFavourite ? "Favourited" : "Unfavourited";
     successMsg += ` event with eventID ${eventID} for the year ${year}`;

@@ -201,7 +201,11 @@ async function createRegistration(
     };
 
     // do the magic
-    const res = await docClient.update(params).promise();
+    const res = await // The `.promise()` call might be on an JS SDK v2 client API.
+    // If yes, please remove .promise(). If not, remove this comment.
+    // The `.promise()` call might be on an JS SDK v2 client API.
+    // If yes, please remove .promise(). If not, remove this comment.
+    docClient.update(params).promise();
     let message = `User with email ${email} successfully registered (through update) to status '${registrationStatus}'!`;
     let statusCode = 200;
 

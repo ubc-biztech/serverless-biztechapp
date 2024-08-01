@@ -265,7 +265,11 @@ export const update = async (event, ctx, callback) => {
         "attribute_exists(id) and attribute_exists(eventID;year)"
     };
 
-    const res = await docClient.update(params).promise();
+    const res = await // The `.promise()` call might be on an JS SDK v2 client API.
+    // If yes, please remove .promise(). If not, remove this comment.
+    // The `.promise()` call might be on an JS SDK v2 client API.
+    // If yes, please remove .promise(). If not, remove this comment.
+    docClient.update(params).promise();
 
     const response = helpers.createResponse(200, {
       message: `Updated QR with id ${id} and event ${eventIDAndYear}!`,

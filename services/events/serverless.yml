@@ -3,6 +3,7 @@ tenant: ianmh
 app: biztechapp
 
 plugins:
+  - serverless-dynamodb
   - serverless-offline
   - serverless-domain-manager
   - serverless-bundle
@@ -17,7 +18,7 @@ provider:
   cfLogs: true
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
-  
+  timeout: 15 # in seconds
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
     restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
