@@ -24,6 +24,7 @@ provider:
     STRIPE_PROD_ENDPOINT: ${env:STRIPE_PROD_ENDPOINT, 'default'}
     STRIPE_PROD_KEY: ${env:STRIPE_PROD_KEY, 'default'}
     STRIPE_DEV_KEY: ${env:STRIPE_DEV_KEY, 'default'}
+    NODE_ENV: ${env:NODE_ENV}
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
     restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId

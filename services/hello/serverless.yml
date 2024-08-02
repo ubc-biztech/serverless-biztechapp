@@ -18,6 +18,8 @@ provider:
   runtime: ${file(../../serverless.common.yml):provider.runtime}
   region: ${file(../../serverless.common.yml):provider.region}
   cfLogs: true
+  environment:
+    NODE_ENV: ${env:NODE_ENV}
 
 custom: ${file(../../serverless.common.yml):custom}
 
