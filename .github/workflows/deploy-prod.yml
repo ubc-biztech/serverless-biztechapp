@@ -42,6 +42,7 @@ jobs:
       STRIPE_PROD_ENDPOINT: ${{ secrets.STRIPE_PROD_ENDPOINT }}
       STRIPE_PROD_KEY: ${{ secrets.STRIPE_PROD_KEY}}
       STRIPE_DEV_KEY: ${{ secrets.STRIPE_DEV_KEY}}
+      NODE_ENV: ${{ secrets.NODE_ENV }}
 
      # TODO: deploy all to production
      run: |
