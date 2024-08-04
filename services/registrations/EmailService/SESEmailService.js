@@ -1,4 +1,6 @@
-import AWS from "aws-sdk";
+import {
+  SES
+} from "@aws-sdk/client-ses";
 import nodemailer from "nodemailer";
 import QRCode from "qrcode";
 import {
@@ -17,13 +19,19 @@ export default class SESEmailService {
     accessKeyId, secretAccessKey, region = "us-west-2"
   }) {
     this.ses = process.env.ENVIRONMENT === "development" ?
-      new AWS.SES({
+      new SES({
+        // The key apiVersion is no longer supported in v3, and can be removed.
+        // @deprecated The client uses the "latest" apiVersion.
         apiVersion: "2010-12-01",
-        accessKeyId: accessKeyId,
-        secretAccessKey: secretAccessKey,
+
+        credentials: {
+          accessKeyId: accessKeyId,
+          secretAccessKey: secretAccessKey
+        },
+
         region: region
       }) :
-      new AWS.SES();
+      new SES();
     this.transporter = nodemailer.createTransport({
       SES: this.ses
     });

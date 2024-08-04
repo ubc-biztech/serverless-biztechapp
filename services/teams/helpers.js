@@ -82,7 +82,11 @@ export default {
       Item: team
     };
 
-    return await docClient
+    return await // The `.promise()` call might be on an JS SDK v2 client API.
+    // If yes, please remove .promise(). If not, remove this comment.
+    // The `.promise()` call might be on an JS SDK v2 client API.
+    // If yes, please remove .promise(). If not, remove this comment.
+    docClient
       .put(params)
       .promise()
       .then(() => {
@@ -138,7 +142,11 @@ export default {
     };
 
     try {
-      return await docClient
+      return await // The `.promise()` call might be on an JS SDK v2 client API.
+      // If yes, please remove .promise(). If not, remove this comment.
+      // The `.promise()` call might be on an JS SDK v2 client API.
+      // If yes, please remove .promise(). If not, remove this comment.
+      docClient
         .put(params)
         .promise()
         .then(() => {
@@ -168,6 +176,10 @@ export default {
                 // update user's registration
                 res.teamID = params.Item.id;
 
+                // The `.promise()` call might be on an JS SDK v2 client API.
+                // If yes, please remove .promise(). If not, remove this comment.
+                // The `.promise()` call might be on an JS SDK v2 client API.
+                // If yes, please remove .promise(). If not, remove this comment.
                 docClient
                   .put({
                     TableName:

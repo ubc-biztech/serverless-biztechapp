@@ -9,6 +9,8 @@ custom:
   prune:
     automatic: true
     number: 3
+  bundle:
+    sourcemaps: false
   serverless-offline:
     port: 4000
   serverless-mocha-plugin:
@@ -30,8 +32,8 @@ custom:
     endpointType: 'edge'
     apiType: rest
     autoDomain: false
-  	
+
 plugins:
-  - serverless-dynamodb-local
+  - serverless-dynamodb
   - serverless-offline
 

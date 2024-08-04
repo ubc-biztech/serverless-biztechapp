@@ -7,7 +7,9 @@ import {
 } from "../registrations/handler";
 import db from "../../lib/db";
 import docClient from "../../lib/docClient";
-const AWS = require("aws-sdk");
+const {
+  CognitoIdentityProvider
+} = require("@aws-sdk/client-cognito-identity-provider");
 const {
   USERS_TABLE,
   MEMBERS2024_TABLE,
@@ -95,7 +97,11 @@ export const webhook = async (event, ctx, callback) => {
       ConditionExpression: "attribute_not_exists(id)"
     };
 
-    await docClient
+    await // The `.promise()` call might be on an JS SDK v2 client API.
+    // If yes, please remove .promise(). If not, remove this comment.
+    // The `.promise()` call might be on an JS SDK v2 client API.
+    // If yes, please remove .promise(). If not, remove this comment.
+    docClient
       .put(userParams)
       .promise()
       .catch((error) => {
@@ -113,7 +119,11 @@ export const webhook = async (event, ctx, callback) => {
         }
         callback(null, response);
       });
-    await docClient
+    await // The `.promise()` call might be on an JS SDK v2 client API.
+    // If yes, please remove .promise(). If not, remove this comment.
+    // The `.promise()` call might be on an JS SDK v2 client API.
+    // If yes, please remove .promise(). If not, remove this comment.
+    docClient
       .put(memberParams)
       .promise()
       .catch((error) => {
@@ -138,7 +148,9 @@ export const webhook = async (event, ctx, callback) => {
     callback(null, response);
   };
   const userMemberSignup = async (data) => {
-    const cognito = new AWS.CognitoIdentityServiceProvider({
+    const cognito = new CognitoIdentityProvider({
+      // The key apiVersion is no longer supported in v3, and can be removed.
+      // @deprecated The client uses the "latest" apiVersion.
       apiVersion: "2016-04-18"
     });
 
@@ -158,7 +170,7 @@ export const webhook = async (event, ctx, callback) => {
       Password: data.password
     };
 
-    await cognito.signUp(cognitoParams).promise();
+    await cognito.signUp(cognitoParams);
 
     await OAuthMemberSignup(data);
   };
@@ -235,7 +247,11 @@ export const webhook = async (event, ctx, callback) => {
 
       callback(null, response);
     });
-    await docClient
+    await // The `.promise()` call might be on an JS SDK v2 client API.
+    // If yes, please remove .promise(). If not, remove this comment.
+    // The `.promise()` call might be on an JS SDK v2 client API.
+    // If yes, please remove .promise(). If not, remove this comment.
+    docClient
       .put(memberParams)
       .promise()
       .catch((error) => {
