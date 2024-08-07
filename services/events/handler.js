@@ -137,13 +137,24 @@ export const del = async (event, ctx, callback) => {
   }
 };
 
-// /events
+// TODO: Implement better way to optimize this query
 export const getAll = async (event, ctx, callback) => {
   try {
+    const fourMonthsAgo = new Date();
+    fourMonthsAgo.setMonth(fourMonthsAgo.getMonth() - 4);
+    const fourMonthsAgoTimestamp = fourMonthsAgo.getTime();
+
     let filterExpression = {
+      FilterExpression: "#createdAt >= :fourMonthsAgo",
+      ExpressionAttributeNames: {
+        "#createdAt": "createdAt"
+      },
+      ExpressionAttributeValues: {
+        ":fourMonthsAgo": fourMonthsAgoTimestamp
+      }
     };
 
-    //Set up query by year if exists
+    // Add year filter if it exists
     if (
       event &&
       event.queryStringParameters &&
@@ -156,20 +167,15 @@ export const getAll = async (event, ctx, callback) => {
           event.queryStringParameters
         );
 
-      filterExpression = {
-        FilterExpression: "#vyear = :query",
-        ExpressionAttributeNames: {
-          "#vyear": "year"
-        },
-        ExpressionAttributeValues: {
-          ":query": year
-        }
-      };
+      filterExpression.FilterExpression += " AND #vyear = :year";
+      filterExpression.ExpressionAttributeNames["#vyear"] = "year";
+      filterExpression.ExpressionAttributeValues[":year"] = year;
     }
 
     // scan
     let events = await db.scan(EVENTS_TABLE, filterExpression);
 
+    // Filter by ID if provided
     if (
       event &&
       event.queryStringParameters &&
@@ -181,11 +187,12 @@ export const getAll = async (event, ctx, callback) => {
     }
 
     // get event counts
-    for (event of events) {
-      event.counts = await eventHelpers.getEventCounts(
-        event.id, event.year
+    for (const eventItem of events) {
+      eventItem.counts = await eventHelpers.getEventCounts(
+        eventItem.id, eventItem.year
       );
     }
+
     // sort the events by startDate
     events.sort(alphabeticalComparer("startDate"));
 
