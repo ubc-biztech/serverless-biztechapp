@@ -87,7 +87,7 @@ export const webhook = async (event, ctx, callback) => {
     };
 
     try {
-      await db.put(userParams, USERS_TABLE)
+      await db.put(userParams, USERS_TABLE);
     } catch (error) {
       let response;
       if (error.type === "ConditionalCheckFailedException") {
@@ -108,18 +108,18 @@ export const webhook = async (event, ctx, callback) => {
       await db.put(memberParams, MEMBERS2024_TABLE);
     } catch (error) {
       let response;
-        if (error.type === "ConditionalCheckFailedException") {
-          response = helpers.createResponse(
-            409,
-            "Member could not be created because email already exists"
-          );
-        } else {
-          response = helpers.createResponse(
-            502,
-            "Internal Server Error occurred"
-          );
-        }
-        callback(null, response);
+      if (error.type === "ConditionalCheckFailedException") {
+        response = helpers.createResponse(
+          409,
+          "Member could not be created because email already exists"
+        );
+      } else {
+        response = helpers.createResponse(
+          502,
+          "Internal Server Error occurred"
+        );
+      }
+      callback(null, response);
     }
 
     const response = helpers.createResponse(201, {
