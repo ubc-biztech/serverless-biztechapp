@@ -205,39 +205,33 @@ export const webhook = async (event, ctx, callback) => {
     };
 
     const memberParams = {
-      Item: {
-        id: data.email,
-        education: data.education,
-        firstName: data.fname,
-        lastName: data.lname,
-        pronouns: data.pronouns,
-        studentNumber: data.student_number,
-        faculty: data.faculty,
-        year: data.year,
-        major: data.major,
-        prevMember: data.prev_member,
-        international: data.international,
-        topics: data.topics.split(","),
-        diet: data.diet,
-        heardFrom: data.heard_from,
-        heardFromSpecify: data.heardFromSpecify,
-        university: data.university,
-        highSchool: data.high_school,
-        admin: isBiztechAdmin,
-        createdAt: timestamp,
-        updatedAt: timestamp
-      },
-      TableName:
-        MEMBERS2024_TABLE +
-        (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
-      ConditionExpression: "attribute_not_exists(id)"
+      id: data.email,
+      education: data.education,
+      firstName: data.fname,
+      lastName: data.lname,
+      pronouns: data.pronouns,
+      studentNumber: data.student_number,
+      faculty: data.faculty,
+      year: data.year,
+      major: data.major,
+      prevMember: data.prev_member,
+      international: data.international,
+      topics: data.topics.split(","),
+      diet: data.diet,
+      heardFrom: data.heard_from,
+      heardFromSpecify: data.heardFromSpecify,
+      university: data.university,
+      highSchool: data.high_school,
+      admin: isBiztechAdmin,
+      createdAt: timestamp,
+      updatedAt: timestamp
     };
 
     // for members, we update the user table here
     // but if we change the bt web payment body for oauth users from usermember to memebr,
     // we will neesd a check here to see if user is first time oauth
     // if yes, we want a db.post instead of db.update
-    await db.updateDB(email, userParams, USERS_TABLE).catch((error) => {
+    await db.updateDB(email, userParams, USERS_TABLE).catch(error => {
       let response;
 
       response = helpers.createResponse(
@@ -247,14 +241,9 @@ export const webhook = async (event, ctx, callback) => {
 
       callback(null, response);
     });
-    await // The `.promise()` call might be on an JS SDK v2 client API.
-    // If yes, please remove .promise(). If not, remove this comment.
-    // The `.promise()` call might be on an JS SDK v2 client API.
-    // If yes, please remove .promise(). If not, remove this comment.
-    docClient
-      .put(memberParams)
-      .promise()
-      .catch((error) => {
+
+    await db.put(memberParams, MEMBERS2024_TABLE)
+      .catch(error => {
         let response;
         if (error.code === "ConditionalCheckFailedException") {
           response = helpers.createResponse(
@@ -268,7 +257,7 @@ export const webhook = async (event, ctx, callback) => {
           );
         }
         callback(null, response);
-      });
+      })
 
     const response = helpers.createResponse(201, {
       message: "Created member and updated user!"

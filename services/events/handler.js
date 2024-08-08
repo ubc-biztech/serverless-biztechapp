@@ -272,11 +272,7 @@ export const update = async (event, ctx, callback) => {
       ConditionExpression: "attribute_exists(id) and attribute_exists(#vyear)"
     };
 
-    const res = await // The `.promise()` call might be on an JS SDK v2 client API.
-    // If yes, please remove .promise(). If not, remove this comment.
-    // The `.promise()` call might be on an JS SDK v2 client API.
-    // If yes, please remove .promise(). If not, remove this comment.
-    docClient.update(params);
+    const res = await db.updateDBCustom(params)
 
     const response = helpers.createResponse(200, {
       message: `Updated event with id ${id} and year ${year}!`,
