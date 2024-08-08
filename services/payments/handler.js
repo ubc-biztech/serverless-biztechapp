@@ -47,88 +47,68 @@ export const webhook = async (event, ctx, callback) => {
     }
 
     const userParams = {
-      Item: {
-        id: data.email,
-        education: data.education,
-        studentId: data.student_number,
-        fname: data.fname,
-        lname: data.lname,
-        faculty: data.faculty,
-        major: data.major,
-        year: data.year,
-        gender: data.pronouns,
-        diet: data.diet,
-        isMember: true,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        admin: isBiztechAdmin
-      },
-      TableName:
-        USERS_TABLE + (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
-      ConditionExpression: "attribute_not_exists(id)"
+      id: data.email,
+      education: data.education,
+      studentId: data.student_number,
+      fname: data.fname,
+      lname: data.lname,
+      faculty: data.faculty,
+      major: data.major,
+      year: data.year,
+      gender: data.pronouns,
+      diet: data.diet,
+      isMember: true,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      admin: isBiztechAdmin
     };
 
     const memberParams = {
-      Item: {
-        id: data.email,
-        education: data.education,
-        firstName: data.fname,
-        lastName: data.lname,
-        pronouns: data.pronouns,
-        studentNumber: data.student_number,
-        faculty: data.faculty,
-        year: data.year,
-        major: data.major,
-        prevMember: data.prev_member,
-        international: data.international,
-        topics: data.topics.split(","),
-        diet: data.diet,
-        heardFrom: data.heard_from,
-        heardFromSpecify: data.heardFromSpecify,
-        university: data.university,
-        highSchool: data.high_school,
-        admin: isBiztechAdmin,
-        createdAt: timestamp,
-        updatedAt: timestamp
-      },
-      TableName:
-        MEMBERS2024_TABLE +
-        (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
-      ConditionExpression: "attribute_not_exists(id)"
+      id: data.email,
+      education: data.education,
+      firstName: data.fname,
+      lastName: data.lname,
+      pronouns: data.pronouns,
+      studentNumber: data.student_number,
+      faculty: data.faculty,
+      year: data.year,
+      major: data.major,
+      prevMember: data.prev_member,
+      international: data.international,
+      topics: data.topics.split(","),
+      diet: data.diet,
+      heardFrom: data.heard_from,
+      heardFromSpecify: data.heardFromSpecify,
+      university: data.university,
+      highSchool: data.high_school,
+      admin: isBiztechAdmin,
+      createdAt: timestamp,
+      updatedAt: timestamp
     };
 
-    await // The `.promise()` call might be on an JS SDK v2 client API.
-    // If yes, please remove .promise(). If not, remove this comment.
-    // The `.promise()` call might be on an JS SDK v2 client API.
-    // If yes, please remove .promise(). If not, remove this comment.
-    docClient
-      .put(userParams)
-      .promise()
-      .catch((error) => {
-        let response;
-        if (error.code === "ConditionalCheckFailedException") {
-          response = helpers.createResponse(
-            409,
-            "User could not be created because email already exists"
-          );
-        } else {
-          response = helpers.createResponse(
-            502,
-            "Internal Server Error occurred"
-          );
-        }
-        callback(null, response);
-      });
-    await // The `.promise()` call might be on an JS SDK v2 client API.
-    // If yes, please remove .promise(). If not, remove this comment.
-    // The `.promise()` call might be on an JS SDK v2 client API.
-    // If yes, please remove .promise(). If not, remove this comment.
-    docClient
-      .put(memberParams)
-      .promise()
-      .catch((error) => {
-        let response;
-        if (error.code === "ConditionalCheckFailedException") {
+    try {
+      await db.put(userParams, USERS_TABLE)
+    } catch (error) {
+      let response;
+      if (error.type === "ConditionalCheckFailedException") {
+        response = helpers.createResponse(
+          409,
+          "User could not be created because email already exists"
+        );
+      } else {
+        response = helpers.createResponse(
+          502,
+          "Internal Server Error occurred"
+        );
+      }
+      callback(null, response);
+    }
+
+    try {
+      await db.put(memberParams, MEMBERS2024_TABLE);
+    } catch (error) {
+      let response;
+        if (error.type === "ConditionalCheckFailedException") {
           response = helpers.createResponse(
             409,
             "Member could not be created because email already exists"
@@ -140,7 +120,7 @@ export const webhook = async (event, ctx, callback) => {
           );
         }
         callback(null, response);
-      });
+    }
 
     const response = helpers.createResponse(201, {
       message: "Created user and member!"
@@ -257,7 +237,7 @@ export const webhook = async (event, ctx, callback) => {
           );
         }
         callback(null, response);
-      })
+      });
 
     const response = helpers.createResponse(201, {
       message: "Created member and updated user!"

@@ -200,7 +200,7 @@ async function createRegistration(
       ConditionExpression: conditionExpression
     };
 
-    const res = await db.updateDBCustom(params)
+    const res = await db.updateDBCustom(params);
     let message = `User with email ${email} successfully registered (through update) to status '${registrationStatus}'!`;
     let statusCode = 200;
 

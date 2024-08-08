@@ -46,19 +46,19 @@ export const create = async (event, ctx, callback) => {
     });
     callback(null, response);
   } catch (error) {
-      let response;
-      if (error.type === "ConditionalCheckFailedException") {
-        response = helpers.createResponse(
-          409,
-          "Member could not be created because email already exists"
-        );
-      } else {
-        response = helpers.createResponse(
-          502,
-          "Internal server error"
-        );
-      }
-      callback(null, response);
+    let response;
+    if (error.type === "ConditionalCheckFailedException") {
+      response = helpers.createResponse(
+        409,
+        "Member could not be created because email already exists"
+      );
+    } else {
+      response = helpers.createResponse(
+        502,
+        "Internal server error"
+      );
+    }
+    callback(null, response);
   }
 };
 
@@ -106,8 +106,8 @@ export const update = async (event, ctx, callback) => {
   try {
     // eslint-disable-next-line
     console.error("----")
-    console.error(event.pathParameters)
-    console.error("----")
+    console.error(event.pathParameters);
+    console.error("----");
     if (!event.pathParameters || !event.pathParameters.id)
       throw helpers.missingIdQueryResponse("id");
 
