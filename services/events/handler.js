@@ -1,5 +1,3 @@
-import docClient from "../../lib/docClient";
-
 import eventHelpers from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";

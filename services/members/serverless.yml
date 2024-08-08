@@ -78,7 +78,7 @@ functions:
     handler: handler.update
     events:
       - http:
-          path: members/{email}
+          path: members/{id}
           method: patch
           request:
             path:
@@ -92,7 +92,7 @@ functions:
     handler: handler.del
     events:
       - http:
-          path: members/{email}
+          path: members/{id}
           method: delete
           request:
             path:
