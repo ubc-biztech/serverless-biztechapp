@@ -44,7 +44,9 @@ export default {
       })
       .then((teamID) => {
         if (teamID) {
-          return db.getOne(teamID, TEAMS_TABLE, {"eventID;year": eventID_year})
+          return db.getOne(teamID, TEAMS_TABLE, {
+            "eventID;year": eventID_year
+          });
         } else {
           return null;
         }
@@ -55,7 +57,7 @@ export default {
         Puts a team in the Teams table according to the Table Schema.
         Partition key is teamID, sort key is eventID;year
    */
-    return await db.put(team, TEAMS_TABLE, createNew)
+    return await db.put(team, TEAMS_TABLE, createNew);
   },
 
   async makeTeam(team_name, eventID, year, memberIDs) {
@@ -105,16 +107,16 @@ export default {
     try {
       // Create the new team=
       await db.put(params, TEAMS_TABLE, true);
-  
+
       // Update all members' teamIDs in the User Registrations table
       for (let i = 0; i < memberIDs.length; i++) {
         const memberID = memberIDs[i];
-  
+
         // Get the user's registration
         const res = await db.getOne(memberID, USER_REGISTRATIONS_TABLE, {
           "eventID;year": eventID_year,
         });
-  
+
         if (res.teamID) {
           // If user is already on a team, remove them from that team on the Teams table
           const team = await this._getTeamFromUserRegistration(
@@ -123,12 +125,12 @@ export default {
             year
           );
           team.memberIDs = team.memberIDs.filter((id) => id !== memberID);
-          console.error(team)
+          console.error(team);
           await this._putTeam(team, false);
         }
 
         res.teamID = params.id;
-  
+
         let conditionExpression = "attribute_exists(id) and attribute_exists(#eventIDYear)";
         const {
           updateExpression,
@@ -139,7 +141,7 @@ export default {
         let updateParams = {
           Key: {
             id: res.id,
-            ["eventID;year"]: eventID + ';' + year
+            ["eventID;year"]: eventID + ";" + year
           },
           TableName:
             USER_REGISTRATIONS_TABLE +
@@ -156,7 +158,7 @@ export default {
 
         await db.updateDBCustom(updateParams);
       }
-  
+
       // Return the newly created team
       return params;
     } catch (error) {
