@@ -6,7 +6,9 @@ import {
 import {
   USERS_TABLE, EVENTS_TABLE, IMMUTABLE_USER_PROPS
 } from "../../constants/tables";
-import { marshall } from "@aws-sdk/util-dynamodb";
+import {
+  marshall
+} from "@aws-sdk/util-dynamodb";
 
 export const create = async (event, ctx, callback) => {
   const timestamp = new Date().getTime();
@@ -72,9 +74,11 @@ export const create = async (event, ctx, callback) => {
       );
     }
     //if all conditions met, add favedEventsArray as a Set to userParams
-    userParams["favedEventsID;year"] = marshall({ 
-      values: favedEventsArray 
-    }, { removeUndefinedValues: true }).values;
+    userParams["favedEventsID;year"] = marshall({
+      values: favedEventsArray
+    }, {
+      removeUndefinedValues: true
+    }).values;
   }
 
   // if (data.hasOwnProperty('inviteCode')) {
@@ -121,7 +125,7 @@ export const create = async (event, ctx, callback) => {
   // }
 
   try {
-    await db.put(userParams, USERS_TABLE, true)
+    await db.put(userParams, USERS_TABLE, true);
     const response = helpers.createResponse(201, {
       message: "Created!",
       params: userParams
@@ -129,20 +133,20 @@ export const create = async (event, ctx, callback) => {
     callback(null, response);
   } catch (error) {
     let response;
-      if (error.type === "ConditionalCheckFailedException") {
-        response = helpers.createResponse(
-          409,
-          "User could not be created because email already exists"
-        );
-      } else {
-        response = helpers.createResponse(
-          502,
-          "Internal Server Error occurred"
-        );
-      }
-      callback(null, response);
+    if (error.type === "ConditionalCheckFailedException") {
+      response = helpers.createResponse(
+        409,
+        "User could not be created because email already exists"
+      );
+    } else {
+      response = helpers.createResponse(
+        502,
+        "Internal Server Error occurred"
+      );
+    }
+    callback(null, response);
   }
-}
+};
 
 export const checkUser = async (event, ctx, callback) => {
   try {
@@ -327,7 +331,9 @@ export const favouriteEvent = async (event, ctx, callback) => {
 
     let expressionAttributeValues;
     expressionAttributeValues = {
-      ":eventsIDAndYear": marshall({ values: [eventIDAndYear] }).values
+      ":eventsIDAndYear": marshall({
+        values: [eventIDAndYear]
+      }).values
     };
     expressionAttributeValues[":eventIDAndYear"] = eventIDAndYear; // string data type, for conditionExpression
 

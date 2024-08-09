@@ -105,9 +105,6 @@ export const getAll = async (event, ctx, callback) => {
 export const update = async (event, ctx, callback) => {
   try {
     // eslint-disable-next-line
-    console.error("----")
-    console.error(event.pathParameters);
-    console.error("----");
     if (!event.pathParameters || !event.pathParameters.id)
       throw helpers.missingIdQueryResponse("id");
 
