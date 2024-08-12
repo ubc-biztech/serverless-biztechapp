@@ -16,63 +16,50 @@ export const create = async (event, ctx, callback) => {
   }
 
   const memberParams = {
-    Item: {
-      id: data.email,
-      education: data.education,
-      firstName: data.first_name,
-      lastName: data.last_name,
-      pronouns: data.pronouns,
-      studentNumber: data.student_number,
-      faculty: data.faculty,
-      year: data.year,
-      major: data.major,
-      prevMember: data.prev_member,
-      international: data.international,
-      topics: data.topics,
-      heardFrom: data.heard_from,
-      heardFromSpecify: data.heardFromSpecify,
-      diet: data.diet,
-      university: data.university,
-      highSchool: data.high_school,
-      admin: data.admin,
-      createdAt: timestamp,
-      updatedAt: timestamp
-    },
-    TableName:
-      MEMBERS2024_TABLE +
-      (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
-    ConditionExpression: "attribute_not_exists(id)"
+    id: data.email,
+    education: data.education,
+    firstName: data.first_name,
+    lastName: data.last_name,
+    pronouns: data.pronouns,
+    studentNumber: data.student_number,
+    faculty: data.faculty,
+    year: data.year,
+    major: data.major,
+    prevMember: data.prev_member,
+    international: data.international,
+    topics: data.topics,
+    heardFrom: data.heard_from,
+    heardFromSpecify: data.heardFromSpecify,
+    diet: data.diet,
+    university: data.university,
+    highSchool: data.high_school,
+    admin: data.admin,
+    createdAt: timestamp,
+    updatedAt: timestamp
   };
 
-  await // The `.promise()` call might be on an JS SDK v2 client API.
-  // If yes, please remove .promise(). If not, remove this comment.
-  // The `.promise()` call might be on an JS SDK v2 client API.
-  // If yes, please remove .promise(). If not, remove this comment.
-  docClient
-    .put(memberParams)
-    .promise()
-    .then(() => {
-      const response = helpers.createResponse(201, {
-        message: "Created!",
-        params: memberParams
-      });
-      callback(null, response);
-    })
-    .catch((error) => {
-      let response;
-      if (error.code === "ConditionalCheckFailedException") {
-        response = helpers.createResponse(
-          409,
-          "Member could not be created because email already exists"
-        );
-      } else {
-        response = helpers.createResponse(
-          502,
-          "Internal Server Error occurred"
-        );
-      }
-      callback(null, response);
+  try {
+    await db.put(memberParams, MEMBERS2024_TABLE);
+    const response = helpers.createResponse(201, {
+      message: "Created!",
+      params: memberParams
     });
+    callback(null, response);
+  } catch (error) {
+    let response;
+    if (error.type === "ConditionalCheckFailedException") {
+      response = helpers.createResponse(
+        409,
+        "Member could not be created because email already exists"
+      );
+    } else {
+      response = helpers.createResponse(
+        502,
+        "Internal server error"
+      );
+    }
+    callback(null, response);
+  }
 };
 
 export const get = async (event, ctx, callback) => {
@@ -119,7 +106,7 @@ export const update = async (event, ctx, callback) => {
   try {
     // eslint-disable-next-line
     if (!event.pathParameters || !event.pathParameters.id)
-      throw helpers.missingIdQueryResponse("email");
+      throw helpers.missingIdQueryResponse("id");
 
     const email = event.pathParameters.id;
     if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
@@ -148,7 +135,7 @@ export const update = async (event, ctx, callback) => {
 export const del = async (event, ctx, callback) => {
   try {
     if (!event.pathParameters || !event.pathParameters.id)
-      throw helpers.missingIdQueryResponse("email");
+      throw helpers.missingIdQueryResponse("id");
 
     const email = event.pathParameters.id;
     if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);

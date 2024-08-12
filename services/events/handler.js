@@ -1,5 +1,3 @@
-import docClient from "../../lib/docClient";
-
 import eventHelpers from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
@@ -272,7 +270,7 @@ export const update = async (event, ctx, callback) => {
       ConditionExpression: "attribute_exists(id) and attribute_exists(#vyear)"
     };
 
-    const res = await db.updateDBCustom(params)
+    const res = await db.updateDBCustom(params);
 
     const response = helpers.createResponse(200, {
       message: `Updated event with id ${id} and year ${year}!`,

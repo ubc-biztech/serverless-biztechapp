@@ -40,7 +40,10 @@ export default class SESEmailService {
       });
 
     this.transporter = nodemailer.createTransport({
-      SES: { ses: this.ses, aws: require('@aws-sdk/client-ses') }
+      SES: {
+        ses: this.ses,
+        aws: require("@aws-sdk/client-ses")
+      }
     });
   }
 
@@ -86,8 +89,8 @@ export default class SESEmailService {
     const rawHtml = user.isPartner ?
       getPartnerCalendarInviteTemplate(emailParams) :
       event.isApplicationBased ?
-      getDefaultPaymentProcessedTemplate(emailParams) :
-      getDefaultCalendarInviteTemplate(emailParams);
+        getDefaultPaymentProcessedTemplate(emailParams) :
+        getDefaultCalendarInviteTemplate(emailParams);
 
     startDate = new Date(startDate);
     endDate = new Date(endDate);
@@ -133,7 +136,7 @@ export default class SESEmailService {
       console.log(error);
       return error;
     }
-// Email details
+    // Email details
     // TODO: refactor to pass in template to make this method more reusuable
     let mailOptions = {
       from: "dev@ubcbiztech.com",
@@ -192,8 +195,8 @@ export default class SESEmailService {
     const rawHtml = registrationStatus === "registered" ?
       getRegisteredQRTemplate(emailParams) :
       isApplicationBased ?
-      getDefaultApplicationTemplate(emailParams) :
-      getDefaultQRTemplate(emailParams);
+        getDefaultApplicationTemplate(emailParams) :
+        getDefaultQRTemplate(emailParams);
     const subject = `BizTech ${ename} Event ${emailType === "application" ? "Application" : "Registration"} Status`;
 
     let mailOptions = {
