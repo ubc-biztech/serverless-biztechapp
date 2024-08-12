@@ -1,3 +1,4 @@
+
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
 import {
@@ -6,9 +7,7 @@ import {
 import {
   USERS_TABLE, EVENTS_TABLE, IMMUTABLE_USER_PROPS
 } from "../../constants/tables";
-import {
-  marshall
-} from "@aws-sdk/util-dynamodb";
+import docClient from "../../lib/docClient";
 
 export const create = async (event, ctx, callback) => {
   const timestamp = new Date().getTime();
@@ -74,11 +73,8 @@ export const create = async (event, ctx, callback) => {
       );
     }
     //if all conditions met, add favedEventsArray as a Set to userParams
-    userParams["favedEventsID;year"] = marshall({
-      values: favedEventsArray
-    }, {
-      removeUndefinedValues: true
-    }).values;
+    userParams.Item["favedEventsID;year"] =
+      docClient.createSet(favedEventsArray);
   }
 
   // if (data.hasOwnProperty('inviteCode')) {
@@ -331,9 +327,7 @@ export const favouriteEvent = async (event, ctx, callback) => {
 
     let expressionAttributeValues;
     expressionAttributeValues = {
-      ":eventsIDAndYear": marshall({
-        values: [eventIDAndYear]
-      }).values
+      ":eventsIDAndYear": docClient.createSet([eventIDAndYear])
     };
     expressionAttributeValues[":eventIDAndYear"] = eventIDAndYear; // string data type, for conditionExpression
 
