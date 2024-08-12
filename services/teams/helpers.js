@@ -125,7 +125,6 @@ export default {
             year
           );
           team.memberIDs = team.memberIDs.filter((id) => id !== memberID);
-          console.error(team);
           await this._putTeam(team, false);
         }
 
