@@ -25,6 +25,7 @@ provider:
     STRIPE_PROD_KEY: ${env:STRIPE_PROD_KEY, 'default'}
     STRIPE_DEV_KEY: ${env:STRIPE_DEV_KEY, 'default'}
     NODE_ENV: ${env:NODE_ENV}
+    SNS_TOPIC_ARN: arn:aws:sns:us-west-2:432714361962:slackbot
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
     restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
@@ -72,29 +73,8 @@ provider:
         - dynamodb:GetItem
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechEvents${self:provider.environment.ENVIRONMENT}"
-
-custom: ${file(../../serverless.common.yml):custom}
-
-functions:
-  payment:
-    handler: handler.payment
-    events:
-      - http:
-          path: payments
-          method: post
-          cors: true
-  paymentWebhook:
-    handler: handler.webhook
-    events:
-      - http:
-          path: payments/webhook
-          method: post
-          cors: true
-  paymentCancelWebhook:
-    handler: handler.cancel
-    events:
-      - http:
-          path: payments/cancel
-          method: post
-          cors: true
-
+    - Effect: Allow
+      Action:
+        - sns:Publish
+      Resource:
+        - ${self:provider.environment.SNS_TOPIC_ARN}

@@ -8,7 +8,7 @@ export const getDefaultQRTemplate = (emailParams) => {
         <p>Hello ${fname},</p>
         <p>Your registration status for UBC BizTech's ${ename} event is: <b>${registrationStatus}</b>.</p>
         <p>Please reach out to our Experiences Team Lead at <a href="mailto:grace@ubcbiztech.com">grace@ubcbiztech.com</a> if this is a mistake.</p>
-        <p>Here's your QR code (if it doesn't display, check the attachments):</p>
+        <p>Here's your QR code (if it doesn't display, please speak to the sign-in desk):</p>
         <img src="cid:qr@biztech.com" alt="Attached QR Code" style="max-width: 200px;" />
     </div>
     <img src="${logoBase64}" width="40" height="40" alt="BizTech Logo">
@@ -40,7 +40,7 @@ export const getDefaultApplicationTemplate = (emailParams) => {
           <p>Your application status for UBC BizTech's ${ename} event is: <b>${registrationStatus}</b>. You can check your application status in your
           personal <a href="https://app.ubcbiztech.com/companion">companion</a>.</p>
           <p>Please reach out to our Experiences Team Lead at <a href="mailto:grace@ubcbiztech.com">grace@ubcbiztech.com</a> if this is a mistake.</p>
-          <p>Here's your QR code (if it doesn't display, check the attachments):</p>
+          <p>Here's your QR code (if it doesn't display, please speak to the sign-in desk):</p>
           <img src="cid:qr@biztech.com" alt="Attached QR Code" style="max-width: 200px;" />
       </div>
       <img src="${logoBase64}" width="40" height="40" alt="BizTech Logo">
@@ -71,7 +71,7 @@ export const getRegisteredQRTemplate = (emailParams) => {
     <div>
         <p>Hello ${fname},</p>
         <p>You have been registered for UBC BizTech's <b>${ename}</b> event.</p>
-        <p>Please scan the QR code below at the sign-in desk at the event. If the QR code doesn't display, check the attachments.</p>
+        <p>Please scan the QR code below at the sign-in desk at the event. If the QR code doesn't display, please speak to the sign-in desk.</p>
         <img src="cid:qr@biztech.com" alt="Attached QR Code" style="max-width: 200px;" />
         <p>We look forward to hosting you!</p>
     </div>

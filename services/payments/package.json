@@ -2,6 +2,7 @@
   "name": "biztechApi-payments",
   "version": "1.0.0",
   "dependencies": {
+    "@aws-sdk/client-sns": "^3.637.0",
     "stripe": "^8.160.0"
   },
   "devDependencies": {
