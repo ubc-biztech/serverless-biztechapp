@@ -17,6 +17,7 @@ provider:
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
+    SNS_TOPIC_ARN: arn:aws:sns:us-west-2:432714361962:slackbot
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
     restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
@@ -46,6 +47,11 @@ provider:
       Resource:
         - "arn:aws:ses:us-west-2:432714361962:identity/dev@ubcbiztech.com"
         - "arn:aws:ses:us-west-2:432714361962:configuration-set/my-first-configuration-set"
+    - Effect: Allow
+      Action:
+        - sns:Publish
+      Resource:
+        - "arn:aws:sns:us-west-2:432714361962:slackbot"
 custom: ${file(../../serverless.common.yml):custom}
 functions:
   registrationPost:
