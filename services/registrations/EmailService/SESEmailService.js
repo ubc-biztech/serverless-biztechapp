@@ -169,8 +169,12 @@ export default class SESEmailService {
   }
 
   async sendDynamicQR(event, user, registrationStatus, emailType) {
-    const { id: email, fname } = user;
-    const { id, ename, year, isApplicationBased } = event;
+    const {
+      id: email, fname
+    } = user;
+    const {
+      id, ename, year, isApplicationBased
+    } = event;
 
     const qr = await QRCode.toDataURL(`${email};${id};${year};${fname}`);
 
