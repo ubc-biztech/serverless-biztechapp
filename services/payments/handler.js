@@ -108,7 +108,7 @@ export const webhook = async (event, ctx, callback) => {
       await db.put(memberParams, MEMBERS2025_TABLE);
     } catch (error) {
       let response;
-      console.log(error)
+      console.log(error);
       if (error.type === "ConditionalCheckFailedException") {
         response = helpers.createResponse(
           409,
