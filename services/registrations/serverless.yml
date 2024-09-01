@@ -45,6 +45,7 @@ provider:
         - ses:SendRawEmail
       Resource:
         - "arn:aws:ses:us-west-2:432714361962:identity/dev@ubcbiztech.com"
+        - "arn:aws:ses:us-west-2:432714361962:configuration-set/my-first-configuration-set"
 custom: ${file(../../serverless.common.yml):custom}
 functions:
   registrationPost:
