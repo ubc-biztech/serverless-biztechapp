@@ -169,34 +169,27 @@ export default class SESEmailService {
   }
 
   async sendDynamicQR(event, user, registrationStatus, emailType) {
-    const {
-      id: email,
-      fname
-    } = user;
-    const {
-      id,
-      ename,
-      year,
-      isApplicationBased
-    } = event;
+    const { id: email, fname } = user;
+    const { id, ename, year, isApplicationBased } = event;
 
-    const qr = (await QRCode.toDataURL(`${email};${id};${year};${fname}`)).toString();
+    const qr = await QRCode.toDataURL(`${email};${id};${year};${fname}`);
 
-    const emailParams = registrationStatus === "registered" ? {
-      fname,
-      ename,
-      logoBase64
-    } : {
+    const currentYear = new Date().getFullYear();
+    const emailParams = {
       fname,
       ename,
       registrationStatus,
-      logoBase64
+      logoBase64,
+      qrCode: qr,
+      currentYear
     };
-    const rawHtml = registrationStatus === "registered" ?
-      getRegisteredQRTemplate(emailParams) :
-      isApplicationBased ?
-        getDefaultApplicationTemplate(emailParams) :
-        getDefaultQRTemplate(emailParams);
+
+    const rawHtml = registrationStatus === "registered"
+      ? getRegisteredQRTemplate(emailParams)
+      : isApplicationBased
+        ? getDefaultApplicationTemplate(emailParams)
+        : getDefaultQRTemplate(emailParams);
+
     const subject = `BizTech ${ename} Event ${emailType === "application" ? "Application" : "Registration"} Status`;
 
     let mailOptions = {
@@ -209,13 +202,10 @@ export default class SESEmailService {
         filename: "qr.png",
         content: qr.split("base64,")[1],
         encoding: "base64",
-        cid: "qr"
+        cid: "qr@biztech.com"
       }]
     };
 
-    if (registrationStatus !== "registered") {
-      delete mailOptions.attachments;
-    }
     try {
       await this.transporter.sendMail(mailOptions);
       console.log("Email sent successfully");
