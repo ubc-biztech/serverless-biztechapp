@@ -1,4 +1,3 @@
-import docClient from "../../lib/docClient";
 import {
   v4 as uuidv4
 } from "uuid";
@@ -45,50 +44,22 @@ export default {
       })
       .then((teamID) => {
         if (teamID) {
-          return new Promise((resolve, reject) => {
-            // Partition key is teamID, sort key is eventID;year
-            const params = {
-              TableName:
-                TEAMS_TABLE +
-                (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
-              Key: {
-                id: teamID,
-                "eventID;year": eventID_year
-              }
-            };
-
-            docClient.get(params, (err, data) => {
-              if (err) {
-                reject(err);
-              } else {
-                resolve(data.Item);
-              }
-            });
+          return db.getOne(teamID, TEAMS_TABLE, {
+            "eventID;year": eventID_year
           });
         } else {
           return null;
         }
       });
   },
-  async _putTeam(team) {
+  async _putTeam(team, createNew) {
     /*
         Puts a team in the Teams table according to the Table Schema.
         Partition key is teamID, sort key is eventID;year
    */
-
-    const params = {
-      TableName:
-        TEAMS_TABLE + (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
-      Item: team
-    };
-
-    return await docClient
-      .put(params)
-      .promise()
-      .then(() => {
-        return team;
-      });
+    return await db.put(team, TEAMS_TABLE, createNew);
   },
+
   async makeTeam(team_name, eventID, year, memberIDs) {
     /*
       Creates a team in the Teams table according to the Table Schema.
@@ -119,85 +90,79 @@ export default {
     }
 
     const params = {
-      TableName:
-        TEAMS_TABLE + (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
-      Item: {
-        id: uuidv4(),
-        teamName: team_name,
-        "eventID;year": eventID + ";" + year,
-        memberIDs: memberIDs,
-        scannedQRs: [],
-        points: 0,
-        pointsSpent: 0,
-        transactions: [],
-        inventory: [],
-        submission: "",
-        metadata: {
-        }
+      id: uuidv4(),
+      teamName: team_name,
+      "eventID;year": eventID + ";" + year,
+      memberIDs: memberIDs,
+      scannedQRs: [],
+      points: 0,
+      pointsSpent: 0,
+      transactions: [],
+      inventory: [],
+      submission: "",
+      metadata: {
       }
     };
 
     try {
-      return await docClient
-        .put(params)
-        .promise()
-        .then(() => {
-          // update all members' teamIDs in the User Registrations table
-          for (let i = 0; i < memberIDs.length; i++) {
-            const memberID = memberIDs[i];
+      // Create the new team=
+      await db.put(params, TEAMS_TABLE, true);
 
-            // get user's registration
-            db.getOne(memberID, USER_REGISTRATIONS_TABLE, {
-              "eventID;year": eventID_year
-            })
-              .then((res) => {
-                if (res.teamID) {
-                  // if user is already on a team, remove them from that team on the Teams table
-                  this._getTeamFromUserRegistration(
-                    memberID,
-                    eventID,
-                    year
-                  ).then((team) => {
-                    team.memberIDs = team.memberIDs.filter(
-                      (id) => id !== memberID
-                    );
-                    this._putTeam(team);
-                  });
-                }
+      // Update all members' teamIDs in the User Registrations table
+      for (let i = 0; i < memberIDs.length; i++) {
+        const memberID = memberIDs[i];
 
-                // update user's registration
-                res.teamID = params.Item.id;
-
-                docClient
-                  .put({
-                    TableName:
-                      USER_REGISTRATIONS_TABLE +
-                      (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
-                    Item: res
-                  })
-                  .promise()
-                  .then(() => {})
-                  .catch((err) => {
-                    console.log(err);
-                    throw new Error(err);
-                  });
-              })
-              .catch((err) => {
-                console.log(err);
-                throw new Error(err);
-              });
-          }
-
-          // return newly created team
-          return params.Item;
-        })
-        .catch((err) => {
-          console.log(err);
-          throw new Error(err);
+        // Get the user's registration
+        const res = await db.getOne(memberID, USER_REGISTRATIONS_TABLE, {
+          "eventID;year": eventID_year,
         });
-    } catch (err) {
-      console.log(err);
-      throw new Error(err);
+
+        if (res.teamID) {
+          // If user is already on a team, remove them from that team on the Teams table
+          const team = await this._getTeamFromUserRegistration(
+            memberID,
+            eventID,
+            year
+          );
+          team.memberIDs = team.memberIDs.filter((id) => id !== memberID);
+          await this._putTeam(team, false);
+        }
+
+        res.teamID = params.id;
+
+        let conditionExpression = "attribute_exists(id) and attribute_exists(#eventIDYear)";
+        const {
+          updateExpression,
+          expressionAttributeValues,
+          expressionAttributeNames
+        } = db.createUpdateExpression(res);
+
+        let updateParams = {
+          Key: {
+            id: res.id,
+            ["eventID;year"]: eventID + ";" + year
+          },
+          TableName:
+            USER_REGISTRATIONS_TABLE +
+            (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
+          ExpressionAttributeValues: expressionAttributeValues,
+          ExpressionAttributeNames: {
+            ...expressionAttributeNames,
+            "#eventIDYear": "eventID;year"
+          },
+          UpdateExpression: updateExpression,
+          ReturnValues: "UPDATED_NEW",
+          ConditionExpression: conditionExpression
+        };
+
+        await db.updateDBCustom(updateParams);
+      }
+
+      // Return the newly created team
+      return params;
+    } catch (error) {
+      console.log(error);
+      throw new Error(error);
     }
   },
   async checkQRScanned(user_id, qr_code_id, eventID, year) {
@@ -241,7 +206,7 @@ export default {
 
         // put team in Teams table
         return new Promise((resolve, reject) => {
-          this._putTeam(team)
+          this._putTeam(team, false)
             .then((res) => {
               resolve(res);
             })
@@ -262,7 +227,7 @@ export default {
         team.teamName = team_name;
 
         return new Promise((resolve, reject) => {
-          this._putTeam(team)
+          this._putTeam(team, false)
             .then((res) => {
               resolve(res);
             })

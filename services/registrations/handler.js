@@ -200,8 +200,7 @@ async function createRegistration(
       ConditionExpression: conditionExpression
     };
 
-    // do the magic
-    const res = await docClient.update(params).promise();
+    const res = await db.updateDBCustom(params);
     let message = `User with email ${email} successfully registered (through update) to status '${registrationStatus}'!`;
     let statusCode = 200;
 

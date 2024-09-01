@@ -7,10 +7,12 @@ import {
 } from "../registrations/handler";
 import db from "../../lib/db";
 import docClient from "../../lib/docClient";
-const AWS = require("aws-sdk");
+const {
+  CognitoIdentityProvider
+} = require("@aws-sdk/client-cognito-identity-provider");
 const {
   USERS_TABLE,
-  MEMBERS2024_TABLE,
+  MEMBERS2025_TABLE,
   USER_REGISTRATIONS_TABLE
 } = require("../../constants/tables");
 const stripe = require("stripe")(
@@ -45,92 +47,81 @@ export const webhook = async (event, ctx, callback) => {
     }
 
     const userParams = {
-      Item: {
-        id: data.email,
-        education: data.education,
-        studentId: data.student_number,
-        fname: data.fname,
-        lname: data.lname,
-        faculty: data.faculty,
-        major: data.major,
-        year: data.year,
-        gender: data.pronouns,
-        diet: data.diet,
-        isMember: true,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        admin: isBiztechAdmin
-      },
-      TableName:
-        USERS_TABLE + (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
-      ConditionExpression: "attribute_not_exists(id)"
+      id: data.email,
+      education: data.education,
+      studentId: data.student_number,
+      fname: data.fname,
+      lname: data.lname,
+      faculty: data.faculty,
+      major: data.major,
+      year: data.year,
+      gender: data.pronouns,
+      diet: data.diet,
+      isMember: true,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      admin: isBiztechAdmin
     };
 
     const memberParams = {
-      Item: {
-        id: data.email,
-        education: data.education,
-        firstName: data.fname,
-        lastName: data.lname,
-        pronouns: data.pronouns,
-        studentNumber: data.student_number,
-        faculty: data.faculty,
-        year: data.year,
-        major: data.major,
-        prevMember: data.prev_member,
-        international: data.international,
-        topics: data.topics.split(","),
-        diet: data.diet,
-        heardFrom: data.heard_from,
-        heardFromSpecify: data.heardFromSpecify,
-        university: data.university,
-        highSchool: data.high_school,
-        admin: isBiztechAdmin,
-        createdAt: timestamp,
-        updatedAt: timestamp
-      },
-      TableName:
-        MEMBERS2024_TABLE +
-        (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
-      ConditionExpression: "attribute_not_exists(id)"
+      id: data.email,
+      education: data.education,
+      firstName: data.fname,
+      lastName: data.lname,
+      pronouns: data.pronouns,
+      studentNumber: data.student_number,
+      faculty: data.faculty,
+      year: data.year,
+      major: data.major,
+      prevMember: data.prev_member,
+      international: data.international,
+      topics: data.topics.split(","),
+      diet: data.diet,
+      heardFrom: data.heard_from,
+      heardFromSpecify: data.heardFromSpecify,
+      university: data.university,
+      highSchool: data.high_school,
+      admin: isBiztechAdmin,
+      createdAt: timestamp,
+      updatedAt: timestamp
     };
 
-    await docClient
-      .put(userParams)
-      .promise()
-      .catch((error) => {
-        let response;
-        if (error.code === "ConditionalCheckFailedException") {
-          response = helpers.createResponse(
-            409,
-            "User could not be created because email already exists"
-          );
-        } else {
-          response = helpers.createResponse(
-            502,
-            "Internal Server Error occurred"
-          );
-        }
-        callback(null, response);
-      });
-    await docClient
-      .put(memberParams)
-      .promise()
-      .catch((error) => {
-        let response;
-        if (error.code === "ConditionalCheckFailedException") {
-          response = helpers.createResponse(
-            409,
-            "Member could not be created because email already exists"
-          );
-        } else {
-          response = helpers.createResponse(
-            502,
-            "Internal Server Error occurred"
-          );
-        }
-        callback(null, response);
-      });
+    try {
+      await db.put(userParams, USERS_TABLE, true);
+    } catch (error) {
+      let response;
+      if (error.type === "ConditionalCheckFailedException") {
+        response = helpers.createResponse(
+          409,
+          "User could not be created because email already exists"
+        );
+      } else {
+        response = helpers.createResponse(
+          502,
+          "Internal Server Error occurred"
+        );
+      }
+      callback(null, response);
+    }
+
+    try {
+      await db.put(memberParams, MEMBERS2025_TABLE, true);
+    } catch (error) {
+      let response;
+      console.log(error);
+      if (error.type === "ConditionalCheckFailedException") {
+        response = helpers.createResponse(
+          409,
+          "Member could not be created because email already exists"
+        );
+      } else {
+        response = helpers.createResponse(
+          502,
+          "Internal Server Error occurred"
+        );
+      }
+      callback(null, response);
+    }
 
     const response = helpers.createResponse(201, {
       message: "Created user and member!"
@@ -138,7 +129,9 @@ export const webhook = async (event, ctx, callback) => {
     callback(null, response);
   };
   const userMemberSignup = async (data) => {
-    const cognito = new AWS.CognitoIdentityServiceProvider({
+    const cognito = new CognitoIdentityProvider({
+      // The key apiVersion is no longer supported in v3, and can be removed.
+      // @deprecated The client uses the "latest" apiVersion.
       apiVersion: "2016-04-18"
     });
 
@@ -158,7 +151,7 @@ export const webhook = async (event, ctx, callback) => {
       Password: data.password
     };
 
-    await cognito.signUp(cognitoParams).promise();
+    await cognito.signUp(cognitoParams);
 
     await OAuthMemberSignup(data);
   };
@@ -193,39 +186,33 @@ export const webhook = async (event, ctx, callback) => {
     };
 
     const memberParams = {
-      Item: {
-        id: data.email,
-        education: data.education,
-        firstName: data.fname,
-        lastName: data.lname,
-        pronouns: data.pronouns,
-        studentNumber: data.student_number,
-        faculty: data.faculty,
-        year: data.year,
-        major: data.major,
-        prevMember: data.prev_member,
-        international: data.international,
-        topics: data.topics.split(","),
-        diet: data.diet,
-        heardFrom: data.heard_from,
-        heardFromSpecify: data.heardFromSpecify,
-        university: data.university,
-        highSchool: data.high_school,
-        admin: isBiztechAdmin,
-        createdAt: timestamp,
-        updatedAt: timestamp
-      },
-      TableName:
-        MEMBERS2024_TABLE +
-        (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
-      ConditionExpression: "attribute_not_exists(id)"
+      id: data.email,
+      education: data.education,
+      firstName: data.fname,
+      lastName: data.lname,
+      pronouns: data.pronouns,
+      studentNumber: data.student_number,
+      faculty: data.faculty,
+      year: data.year,
+      major: data.major,
+      prevMember: data.prev_member,
+      international: data.international,
+      topics: data.topics.split(","),
+      diet: data.diet,
+      heardFrom: data.heard_from,
+      heardFromSpecify: data.heardFromSpecify,
+      university: data.university,
+      highSchool: data.high_school,
+      admin: isBiztechAdmin,
+      createdAt: timestamp,
+      updatedAt: timestamp
     };
 
     // for members, we update the user table here
     // but if we change the bt web payment body for oauth users from usermember to memebr,
     // we will neesd a check here to see if user is first time oauth
     // if yes, we want a db.post instead of db.update
-    await db.updateDB(email, userParams, USERS_TABLE).catch((error) => {
+    await db.updateDB(email, userParams, USERS_TABLE).catch(error => {
       let response;
 
       response = helpers.createResponse(
@@ -235,10 +222,9 @@ export const webhook = async (event, ctx, callback) => {
 
       callback(null, response);
     });
-    await docClient
-      .put(memberParams)
-      .promise()
-      .catch((error) => {
+
+    await db.put(memberParams, MEMBERS2025_TABLE, true)
+      .catch(error => {
         let response;
         if (error.code === "ConditionalCheckFailedException") {
           response = helpers.createResponse(

@@ -189,5 +189,5 @@ Contributions are accepted from members of the biztech team. General instruction
 ### Built With
 
 * [Serverless](https://www.serverless.com) - Cloud Application Framework
-* [SendGrid](https://sendgrid.com) - Email Delivery Service
+* [SendGrid](https://sendgrid.com) - Email Delivery Service - DEPRECATED
 * [AWS SDK Mock](https://www.npmjs.com/package/aws-sdk-mock) - Mock functions for AWS-SDK services

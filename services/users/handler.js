@@ -1,4 +1,3 @@
-import docClient from "../../lib/docClient";
 
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
@@ -8,6 +7,7 @@ import {
 import {
   USERS_TABLE, EVENTS_TABLE, IMMUTABLE_USER_PROPS
 } from "../../constants/tables";
+import docClient from "../../lib/docClient";
 
 export const create = async (event, ctx, callback) => {
   const timestamp = new Date().getTime();
@@ -26,25 +26,20 @@ export const create = async (event, ctx, callback) => {
   }
 
   const userParams = {
-    Item: {
-      id: data.email,
-      education: data.education,
-      studentId: data.studentId || 0,
-      fname: data.fname,
-      lname: data.lname,
-      faculty: data.faculty,
-      major: data.major,
-      year: data.year,
-      gender: data.gender,
-      diet: data.diet,
-      isMember: data.isMember,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      admin: isBiztechAdmin
-    },
-    TableName:
-      USERS_TABLE + (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
-    ConditionExpression: "attribute_not_exists(id)"
+    id: data.email,
+    education: data.education,
+    studentId: data.studentId || 0,
+    fname: data.fname,
+    lname: data.lname,
+    faculty: data.faculty,
+    major: data.major,
+    year: data.year,
+    gender: data.gender,
+    diet: data.diet,
+    isMember: data.isMember,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    admin: isBiztechAdmin
   };
   //check whether the favedEventsArray body param meets the requirements
   if (
@@ -125,31 +120,28 @@ export const create = async (event, ctx, callback) => {
 
   // }
 
-  await docClient
-    .put(userParams)
-    .promise()
-    .then(() => {
-      const response = helpers.createResponse(201, {
-        message: "Created!",
-        params: userParams
-      });
-      callback(null, response);
-    })
-    .catch((error) => {
-      let response;
-      if (error.code === "ConditionalCheckFailedException") {
-        response = helpers.createResponse(
-          409,
-          "User could not be created because email already exists"
-        );
-      } else {
-        response = helpers.createResponse(
-          502,
-          "Internal Server Error occurred"
-        );
-      }
-      callback(null, response);
+  try {
+    await db.put(userParams, USERS_TABLE, true);
+    const response = helpers.createResponse(201, {
+      message: "Created!",
+      params: userParams
     });
+    callback(null, response);
+  } catch (error) {
+    let response;
+    if (error.type === "ConditionalCheckFailedException") {
+      response = helpers.createResponse(
+        409,
+        "User could not be created because email already exists"
+      );
+    } else {
+      response = helpers.createResponse(
+        502,
+        "Internal Server Error occurred"
+      );
+    }
+    callback(null, response);
+  }
 };
 
 export const checkUser = async (event, ctx, callback) => {
@@ -251,6 +243,7 @@ export const getAll = async (event, ctx, callback) => {
   }
 };
 
+// TODO: Fix favouriteEvents 08/08/24
 export const favouriteEvent = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
@@ -334,7 +327,7 @@ export const favouriteEvent = async (event, ctx, callback) => {
 
     let expressionAttributeValues;
     expressionAttributeValues = {
-      ":eventsIDAndYear": docClient.createSet([eventIDAndYear]) // set data type, for updateExpression
+      ":eventsIDAndYear": docClient.createSet([eventIDAndYear])
     };
     expressionAttributeValues[":eventIDAndYear"] = eventIDAndYear; // string data type, for conditionExpression
 
@@ -350,7 +343,7 @@ export const favouriteEvent = async (event, ctx, callback) => {
       ConditionExpression: conditionExpression
     };
 
-    const res = await docClient.update(params).promise();
+    const res = await db.updateDBCustom(params);
 
     let successMsg = isFavourite ? "Favourited" : "Unfavourited";
     successMsg += ` event with eventID ${eventID} for the year ${year}`;
