@@ -105,7 +105,7 @@ export const webhook = async (event, ctx, callback) => {
     }
 
     try {
-      await db.put(memberParams, MEMBERS2025_TABLE);
+      await db.put(memberParams, MEMBERS2025_TABLE, true);
     } catch (error) {
       let response;
       console.log(error);
@@ -223,7 +223,7 @@ export const webhook = async (event, ctx, callback) => {
       callback(null, response);
     });
 
-    await db.put(memberParams, MEMBERS2025_TABLE)
+    await db.put(memberParams, MEMBERS2025_TABLE, true)
       .catch(error => {
         let response;
         if (error.code === "ConditionalCheckFailedException") {
