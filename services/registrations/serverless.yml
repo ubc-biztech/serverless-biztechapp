@@ -1,7 +1,6 @@
 service: biztechApi-registrations
 tenant: ianmh
 app: biztechapp
-
 plugins:
   - serverless-dynamodb
   - serverless-offline
@@ -9,7 +8,6 @@ plugins:
   - serverless-bundle
   - serverless-prune-plugin
   - serverless-mocha-plugin
-
 provider:
   name: aws
   stage: ${file(../../serverless.common.yml):provider.stage}
@@ -22,7 +20,6 @@ provider:
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
     restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
-
   iamRoleStatements:
     - Effect: Allow
       Action:
@@ -43,9 +40,12 @@ provider:
         - dynamodb:GetItem
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechEvents${self:provider.environment.ENVIRONMENT}"
-
+    - Effect: Allow
+      Action:
+        - ses:SendRawEmail
+      Resource:
+        - "arn:aws:ses:us-west-2:432714361962:identity/dev@ubcbiztech.com"
 custom: ${file(../../serverless.common.yml):custom}
-
 functions:
   registrationPost:
     handler: handler.post
