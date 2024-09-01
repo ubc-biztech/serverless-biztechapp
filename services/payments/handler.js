@@ -12,7 +12,7 @@ const {
 } = require("@aws-sdk/client-cognito-identity-provider");
 const {
   USERS_TABLE,
-  MEMBERS2024_TABLE,
+  MEMBERS2025_TABLE,
   USER_REGISTRATIONS_TABLE
 } = require("../../constants/tables");
 const stripe = require("stripe")(
@@ -87,7 +87,7 @@ export const webhook = async (event, ctx, callback) => {
     };
 
     try {
-      await db.put(userParams, USERS_TABLE);
+      await db.put(userParams, USERS_TABLE, true);
     } catch (error) {
       let response;
       if (error.type === "ConditionalCheckFailedException") {
@@ -105,9 +105,10 @@ export const webhook = async (event, ctx, callback) => {
     }
 
     try {
-      await db.put(memberParams, MEMBERS2024_TABLE);
+      await db.put(memberParams, MEMBERS2025_TABLE);
     } catch (error) {
       let response;
+      console.log(error)
       if (error.type === "ConditionalCheckFailedException") {
         response = helpers.createResponse(
           409,
@@ -222,7 +223,7 @@ export const webhook = async (event, ctx, callback) => {
       callback(null, response);
     });
 
-    await db.put(memberParams, MEMBERS2024_TABLE)
+    await db.put(memberParams, MEMBERS2025_TABLE)
       .catch(error => {
         let response;
         if (error.code === "ConditionalCheckFailedException") {
