@@ -1,8 +1,7 @@
 import db from "../lib/db.js";
 import docClient from "../lib/docClient.js";
-import {
-  USERS_TABLE
-} from "../constants/tables.js";
+import { USERS_TABLE } from "../constants/tables.js";
+import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
 
 const reset = async () => {
   const members = await db.scan(USERS_TABLE, {
@@ -12,7 +11,7 @@ const reset = async () => {
     }
   });
   members.forEach((member) => {
-    const paramsUpdate = {
+    const paramsUpdate = new UpdateCommand({
       TableName: USERS_TABLE,
       Key: {
         id: member.id
@@ -21,8 +20,8 @@ const reset = async () => {
       ExpressionAttributeValues: {
         ":isMember": false
       }
-    };
-    docClient.update(paramsUpdate, (errUpdate) => {
+    });
+    docClient.send(paramsUpdate, (errUpdate) => {
       if (errUpdate) console.error(errUpdate);
     });
   });
