@@ -5,9 +5,6 @@ import {
 import {
   updateHelper
 } from "../registrations/handler";
-import {
-  sendSNSNotification
-} from "../../lib/snsHelper";
 import db from "../../lib/db";
 import docClient from "../../lib/docClient";
 const {
@@ -289,19 +286,6 @@ export const webhook = async (event, ctx, callback) => {
       return helpers.inputError("Invalid email", data.email);
     }
 
-    try {
-      await sendSNSNotification({
-        type: "payment_completed",
-        paymentType: data.paymentType,
-        email: data.email,
-        eventID: data.eventID,
-        year: data.year,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error("Failed to send SNS notification for payment completion:", error);
-    }
-
     switch (data.paymentType) {
     case "UserMember":
       await userMemberSignup(data);
@@ -361,19 +345,6 @@ export const payment = async (event, ctx, callback) => {
         checkoutLink: session.url
       };
       await updateHelper(body, false, data.email, data.fname);
-
-      try {
-        await sendSNSNotification({
-          type: "payment_initiated",
-          paymentType: "Event",
-          email: data.email,
-          eventID: data.eventID,
-          year: data.year,
-          timestamp: new Date().toISOString()
-        });
-      } catch (error) {
-        console.error("Failed to send SNS notification for payment initiation:", error);
-      }
     }
 
     let response = helpers.createResponse(200, session.url);
@@ -405,19 +376,6 @@ export const cancel = async (event, ctx, callback) => {
       // const res = await db.deleteOne(email, USER_REGISTRATIONS_TABLE, {
       //   ["eventID;year"]: eventIDAndYear
       // });
-
-      try {
-        await sendSNSNotification({
-          type: "payment_cancelled",
-          paymentType: "Event",
-          email,
-          eventID,
-          year,
-          timestamp: new Date().toISOString()
-        });
-      } catch (error) {
-        console.error("Failed to send SNS notification for payment cancellation:", error);
-      }
 
       const response = helpers.createResponse(200, {
         message: "Cancel webhook disabled",
