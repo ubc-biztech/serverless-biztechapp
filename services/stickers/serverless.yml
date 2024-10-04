@@ -1,5 +1,4 @@
 service: biztechApi-stickers
-tenant: ianmh
 app: biztechapp
 
 plugins:
@@ -15,7 +14,6 @@ provider:
   stage: ${file(../../serverless.common.yml):provider.stage}
   runtime: ${file(../../serverless.common.yml):provider.runtime}
   region: ${file(../../serverless.common.yml):provider.region}
-  cfLogs: true
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
@@ -30,32 +28,50 @@ provider:
         - dynamodb:Scan
         - dynamodb:GetItem
         - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
       Resource:
-        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechStickers${self:provider.environment.ENVIRONMENT}"
-
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/bizSockets${self:provider.environment.ENVIRONMENT}"
+    - Effect: Allow
+      Action:
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/bizStickers${self:provider.environment.ENVIRONMENT}"
+    - Effect: Allow
+      Action:
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/bizScores${self:provider.environment.ENVIRONMENT}"
 
 custom: ${file(../../serverless.common.yml):custom}
 
 functions:
-  stickerGetAll:
-    handler: handler.getAll
+  connectionHandler:
+    handler: handler.connectionHandler
     events:
-      - http:
-          path: stickers/
-          method: get
-          cors: true
-          authorizer:
-            name: ${self:service}-authorizer
-            type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
-  stickerCreate:
-   handler: handler.create
-   events:
-     - http:
-         path: stickers/
-         method: post
-         cors: true
-         authorizer:
-            name: ${self:service}-authorizer
-            type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+      - websocket:
+          route: $connect
+      - websocket:
+          route: $disconnect
+  defaultHandler:
+    handler: handler.defaultHandler
+    events:
+      - websocket: $default
+  customStickerHandler:
+    handler: handler.stickerHandler
+    events:
+      - websocket:
+          route: sticker
+  customScoreHandler:
+    handler: handler.scoreHandler
+    events:
+      - websocket:
+          route: score

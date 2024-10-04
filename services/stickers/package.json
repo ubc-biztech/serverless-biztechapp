@@ -7,6 +7,9 @@
     "test": "npm run utest stickers --prefix ../../ && npm run itest stickers --prefix ../../"
   },
   "devDependencies": {
-    "serverless-offline": "^13.6.0"
+    "serverless-offline": "^14.3.2"
+  },
+  "dependencies": {
+    "@aws-sdk/client-apigatewaymanagementapi": "^3.664.0"
   }
 }
