@@ -5,6 +5,7 @@ plugins:
   - serverless-dynamodb
   - serverless-offline
   - serverless-domain-manager
+  - serverless-apigateway-plugin
   - serverless-bundle
   - serverless-prune-plugin
   - serverless-mocha-plugin
@@ -14,10 +15,12 @@ provider:
   stage: ${file(../../serverless.common.yml):provider.stage}
   runtime: ${file(../../serverless.common.yml):provider.runtime}
   region: ${file(../../serverless.common.yml):provider.region}
+  websocketsApiName: ${self:service}
+  websocketsApiRouteSelectionExpression: $request.body.action
+  websocketsDescription: user voting and stickers
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
-
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
     restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
@@ -39,6 +42,7 @@ provider:
         - dynamodb:PutItem
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
+        - dynamodb:QueryItem
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/bizStickers${self:provider.environment.ENVIRONMENT}"
     - Effect: Allow
@@ -54,11 +58,14 @@ provider:
 custom: ${file(../../serverless.common.yml):custom}
 
 functions:
-  connectionHandler:
-    handler: handler.connectionHandler
+  connectHandler:
+    handler: handler.connectHandler
     events:
       - websocket:
           route: $connect
+  disconnectHandler:
+    handler: handler.disconnectHandler
+    events:
       - websocket:
           route: $disconnect
   defaultHandler:
@@ -75,3 +82,8 @@ functions:
     events:
       - websocket:
           route: score
+  syncHandler:
+    handler: handler.syncHandler
+    events:
+      - websocket:
+          route: sync
