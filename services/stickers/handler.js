@@ -1,6 +1,11 @@
 import helpers from "./helpers";
 import db from "../../lib/db";
-import { STICKERS_TABLE, SCORE_TABLE, SOCKETS_TABLE, USERS_TABLE } from "../../constants/tables";
+import {
+  STICKERS_TABLE,
+  SCORE_TABLE,
+  SOCKETS_TABLE,
+  USERS_TABLE
+} from "../../constants/tables";
 import { DeleteCommand, GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import docClient from "../../lib/docClient";
 
@@ -116,8 +121,8 @@ export const syncHandler = async (event, ctx, callback) => {
  *     event: "start" | "end" | "changeTeam" | "listen"
  * }
  *
- *
- *
+ *    if changeTeam is used as the action, then a team property must
+ *    be provided as part of the message body
  */
 export const adminHandler = async (event, ctx, callback) => {
   const body = JSON.parse(event.body);
@@ -134,47 +139,92 @@ export const adminHandler = async (event, ctx, callback) => {
 
   const action = body.event;
 
+  if (action === "changeTeam" && !body.hasOwnProperty("team")) {
+    const errMessage = helpers.checkPayloadProps(body, {
+      team: {
+        required: true,
+        type: "string"
+      }
+    });
+
+    await helpers.sendMessage(event, errMessage);
+    return errMessage;
+  }
+
   try {
     let payload;
     switch (action) {
-      case "admin": {
-        break;
-      }
       case "start": {
-        payload = helpers.updateState(
+        payload = helpers.updateSocket(
           {
             isVoting: true
           },
-          event
+          "STATE"
         );
         helpers.sendMessage(event, {
           status: 200,
           message: payload
         });
-        helpers.notifyVoters(payload, event.requestContext.domainName, event.requestContext.stage);
+        helpers.notifyVoters(
+          payload,
+          event.requestContext.domainName,
+          event.requestContext.stage
+        );
         break;
       }
+
       case "end": {
-        payload = helpers.updateState(
+        payload = helpers.updateSocket(
           {
             isVoting: false
           },
-          event
+          "STATE"
         );
         helpers.sendMessage(event, {
           status: 200,
           message: payload
         });
-        helpers.notifyVoters(payload, event.requestContext.domainName, event.requestContext.stage);
+        helpers.notifyVoters(
+          payload,
+          event.requestContext.domainName,
+          event.requestContext.stage
+        );
         break;
       }
 
       case "changeTeam": {
+        payload = helpers.updateSocket(
+          {
+            teamName: body.team
+          },
+          "STATE"
+        );
+        helpers.sendMessage(event, {
+          status: 200,
+          message: payload
+        });
+        helpers.notifyVoters(
+          payload,
+          event.requestContext.domainName,
+          event.requestContext.stage
+        );
         break;
       }
+
       case "listen": {
+        payload = helpers.updateSocket(
+          {
+            role: "admin"
+          },
+          event.requestContext.connectionId
+        );
+        helpers.sendMessage(event, {
+          status: 200,
+          message: payload
+        });
         break;
       }
+
       default: {
         await helpers.sendMessage(event, {
           status: "400",
@@ -189,6 +239,9 @@ export const adminHandler = async (event, ctx, callback) => {
       status: "500",
       message: "Internal Server Error"
     });
+    return {
+      statusCode: 500
+    };
   }
   return {
     statusCode: 200

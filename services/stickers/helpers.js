@@ -55,8 +55,12 @@ export default {
     return state;
   },
 
-  updateState: function (state) {
-    let res;
+  updateSocket: function (state, connectionID) {
+    let res = {
+      status: 200,
+      message: "Successfully updated state",
+      state: state
+    };
     try {
       let {
         updateExpression,
@@ -66,7 +70,7 @@ export default {
 
       let updateCommand = {
         Key: {
-          connectionID: "STATE"
+          connectionID
         },
         TableName:
           SOCKETS_TABLE +
@@ -87,11 +91,6 @@ export default {
         message: "Internal Server Error"
       };
     }
-    res = {
-      status: 200,
-      message: "Successfully updated state",
-      state: state
-    };
     return res;
   },
 
@@ -125,7 +124,10 @@ export default {
             connectionId: voters[i].connectionID
           }
         },
-        { status: 200, state }
+        {
+          status: 200,
+          state
+        }
       );
     }
   },
