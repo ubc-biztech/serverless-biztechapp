@@ -8,17 +8,18 @@ import {
   SOCKETS_TABLE,
   USERS_TABLE
 } from "../../constants/tables";
-import { GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { DeleteCommand, GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import docClient from "../../lib/docClient";
 
 export const connectHandler = async (event, ctx, callback) => {
-  callback(null, {
-    statusCode: 200,
-    body: "Connected.",
-    headers: {
-      "Sec-WebSocket-Protocol": "websocket"
-    }
-  });
+  const connectionID = event.requestContext.connectionId;
+  const obj = {
+    connectionID,
+    role: "voter",
+    userID: ""
+  };
+
+  db.put(obj, SOCKETS_TABLE, true);
 
   return {
     statusCode: 200,
@@ -27,47 +28,37 @@ export const connectHandler = async (event, ctx, callback) => {
 };
 
 export const disconnectHandler = async (event, ctx, callback) => {
-  callback(null, {
-    statusCode: 200,
-    body: "Disconnected."
-  });
+  const connectionID = event.requestContext.connectionId;
 
-  return {
-    statusCode: 200,
-    body: "Disconnected."
-  };
-};
-
-export const defaultHandler = async (event, ctx, callback) => {
   try {
-    await helpers.sendMessage(event, event);
-  } catch (error) {
-    console.error(error);
-    callback(null, error);
-    return null;
+    const params = {
+      Key: {
+        connectionID
+      },
+      TableName: SOCKETS_TABLE + (process.env.ENVIRONMENT || "")
+    };
+
+    const command = new DeleteCommand(params);
+    const res = await docClient.send(command);
+    return {
+      statusCode: 200,
+      body: res,
+      message: "Disconnected"
+    };
+  } catch (err) {
+    const errorResponse = this.dynamoErrorResponse(err);
+    throw errorResponse;
   }
-  return {
-    statusCode: 200
-  };
-};
-
-export const stickerHandler = async (event, ctx, callback) => {};
-
-export const scoreHandler = async (event, ctx, callback) => {
-  callback(null, {
-    statusCode: 200,
-    body: "Connected.",
-    headers: {
-      "Sec-WebSocket-Protocol": "websocket"
-    }
-  });
 };
 
 export const syncHandler = async (event, ctx, callback) => {
   const body = JSON.parse(event.body);
   if (!body.hasOwnProperty("id")) {
     const errMessage = helpers.checkPayloadProps(body, {
-      id: { required: true, type: "string" }
+      id: {
+        required: true,
+        type: "string"
+      }
     });
     await helpers.sendMessage(event, errMessage);
     return errMessage;
@@ -77,7 +68,10 @@ export const syncHandler = async (event, ctx, callback) => {
   const isVoting = state.Item.isVoting;
 
   if (!isVoting) {
-    await helpers.sendMessage(event, { isVoting, stickers: [] });
+    await helpers.sendMessage(event, {
+      isVoting,
+      stickers: []
+    });
     return {
       statusCode: 200
     };
@@ -100,7 +94,10 @@ export const syncHandler = async (event, ctx, callback) => {
       TableName: STICKERS_TABLE
     });
     const response = await docClient.send(command);
-    stickers = { stickers: response.Items, count: response.Count };
+    stickers = {
+      stickers: response.Items,
+      count: response.Count
+    };
   } catch (error) {
     db.dynamoErrorResponse(error);
     await helpers.sendMessage(event, {
@@ -109,7 +106,104 @@ export const syncHandler = async (event, ctx, callback) => {
     });
   }
 
-  await helpers.sendMessage(event, { status: 200, isVoting, stickers });
+  await helpers.sendMessage(event, {
+    status: 200,
+    isVoting,
+    stickers
+  });
+  return {
+    statusCode: 200
+  };
+};
+
+/**
+ * Admin action handler
+ * The event.body must have the following properties:
+ * {
+ *     event: "start" | "end" | "changeTeam" | "listen"
+ * }
+ *
+ *
+ *
+ */
+export const adminHandler = async (event, ctx, callback) => {
+  const body = JSON.parse(event.body);
+  if (!body.hasOwnProperty("event")) {
+    const errMessage = helpers.checkPayloadProps(body, {
+      event: {
+        required: true,
+        type: "string"
+      }
+    });
+    await helpers.sendMessage(event, errMessage);
+    return errMessage;
+  }
+
+  const action = body.event;
+  console.log(action);
+
+  try {
+    let payload;
+    switch (action) {
+      case "start": {
+        payload = helpers.updateState({ isVoting: true });
+        helpers.sendMessage(event, { status: 200, message: payload });
+        break;
+      }
+      case "end": {
+        payload = helpers.updateState({ isVoting: false });
+        helpers.sendMessage(event, { status: 200, message: payload });
+        break;
+      }
+
+      case "changeTeam":
+        break;
+
+      case "listen":
+        break;
+
+      default:
+        await helpers.sendMessage(event, {
+          status: "400",
+          message: "unrecognized event type"
+        });
+        break;
+    }
+  } catch (error) {
+    console.error(error);
+    await helpers.sendMessage(event, {
+      status: "500",
+      message: "Internal Server Error"
+    });
+  }
+  return {
+    statusCode: 200
+  };
+};
+
+export const stickerHandler = async (event, ctx, callback) => {};
+
+export const scoreHandler = async (event, ctx, callback) => {
+  callback(null, {
+    statusCode: 200,
+    body: "Connected.",
+    headers: {
+      "Sec-WebSocket-Protocol": "websocket"
+    }
+  });
+};
+
+export const defaultHandler = async (event, ctx, callback) => {
+  try {
+    await helpers.sendMessage(event, {
+      status: "400",
+      message: "unknown action"
+    });
+  } catch (error) {
+    console.error(error);
+    callback(null, error);
+    return null;
+  }
   return {
     statusCode: 200
   };

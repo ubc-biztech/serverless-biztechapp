@@ -72,12 +72,17 @@ functions:
     handler: handler.defaultHandler
     events:
       - websocket: $default
-  customStickerHandler:
+  adminHandler:
+    handler: handler.adminHandler
+    events:
+      - websocket:
+          route: admin
+  stickerHandler:
     handler: handler.stickerHandler
     events:
       - websocket:
           route: sticker
-  customScoreHandler:
+  scoreHandler:
     handler: handler.scoreHandler
     events:
       - websocket:

@@ -1,13 +1,9 @@
 import { ApiGatewayManagementApi } from "@aws-sdk/client-apigatewaymanagementapi";
 import db from "../../lib/db";
-import {
-  STICKERS_TABLE,
-  SCORE_TABLE,
-  SOCKETS_TABLE,
-  USERS_TABLE
-} from "../../constants/tables";
-import { GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { SOCKETS_TABLE } from "../../constants/tables";
+import { GetCommand } from "@aws-sdk/lib-dynamodb";
 import docClient from "../../lib/docClient";
+import { RESERVED_WORDS } from "../../constants/dynamodb";
 
 export default {
   sendMessage: async (event, data) => {
@@ -18,8 +14,7 @@ export default {
     let promise = new Promise((resolve, reject) => {
       const apigatewaymanagementapi = new ApiGatewayManagementApi({
         apiVersion: "2018-11-29",
-        endpoint:
-          process.env.NODE_ENV === "local" ? "http://localhost:3001" : url
+        endpoint: process.env.ENVIRONMENT ? url : "http://localhost:3001"
       });
       apigatewaymanagementapi.postToConnection(
         {
@@ -29,14 +24,15 @@ export default {
         (err, data) => {
           if (err) {
             console.error(err);
-            reject(err);
+          } else {
+            resolve(data);
           }
-          resolve(data);
         }
       );
     });
     return promise;
   },
+
   checkPayloadProps: function (payload, check = {}) {
     try {
       const criteria = Object.entries(check);
@@ -64,14 +60,14 @@ export default {
       return response;
     }
   },
+
   fetchState: async () => {
     let state;
     try {
       const command = new GetCommand({
         TableName: SOCKETS_TABLE,
         Key: {
-          role: "STATE",
-          connectionID: "null"
+          connectionID: "STATE"
         }
       });
 
@@ -81,5 +77,73 @@ export default {
       throw errorResponse;
     }
     return state;
+  },
+
+  updateState: function (state) {
+    try {
+      let {
+        updateExpression,
+        expressionAttributeValues,
+        expressionAttributeNames
+      } = this.createUpdateExpression(state);
+
+      state = {
+        Key: {
+          connectionID: "STATE"
+        },
+        TableName:
+          SOCKETS_TABLE +
+          (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
+        ExpressionAttributeValues: expressionAttributeValues,
+        UpdateExpression: updateExpression,
+        ReturnValues: "UPDATED_NEW",
+        ...(expressionAttributeNames && {
+          ExpressionAttributeNames: expressionAttributeNames
+        })
+      };
+
+      db.updateDBCustom(state);
+    } catch (error) {
+      console.error(error);
+      let res = {
+        status: 500,
+        message: "Internal Server Error"
+      };
+      return res;
+    }
+    let res = {
+      status: 200,
+      message: "Successfully updated state to \n" + JSON.stringify(state)
+    };
+    return res;
+  },
+
+  createUpdateExpression: function (obj) {
+    let val = 0;
+    let updateExpression = "SET ";
+    let expressionAttributeValues = {};
+    let expressionAttributeNames = null;
+
+    for (const key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        if (RESERVED_WORDS.includes(key.toUpperCase())) {
+          updateExpression += `#v${val} = :val${val},`;
+          expressionAttributeValues[`:val${val}`] = obj[key];
+          if (!expressionAttributeNames) expressionAttributeNames = {};
+          expressionAttributeNames[`#v${val}`] = key;
+          val++;
+        } else {
+          updateExpression += `${key} = :${key},`;
+          expressionAttributeValues[`:${key}`] = obj[key];
+        }
+      }
+    }
+    updateExpression = updateExpression.slice(0, -1);
+
+    return {
+      updateExpression,
+      expressionAttributeValues,
+      expressionAttributeNames
+    };
   }
 };
