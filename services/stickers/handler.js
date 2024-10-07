@@ -1,13 +1,6 @@
-import handlerHelpers from "../../lib/handlerHelpers";
 import helpers from "./helpers";
 import db from "../../lib/db";
-import { isEmpty } from "../../lib/utils";
-import {
-  STICKERS_TABLE,
-  SCORE_TABLE,
-  SOCKETS_TABLE,
-  USERS_TABLE
-} from "../../constants/tables";
+import { STICKERS_TABLE, SCORE_TABLE, SOCKETS_TABLE, USERS_TABLE } from "../../constants/tables";
 import { DeleteCommand, GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import docClient from "../../lib/docClient";
 
@@ -46,7 +39,7 @@ export const disconnectHandler = async (event, ctx, callback) => {
       message: "Disconnected"
     };
   } catch (err) {
-    const errorResponse = this.dynamoErrorResponse(err);
+    const errorResponse = db.dynamoErrorResponse(err);
     throw errorResponse;
   }
 };
@@ -140,34 +133,55 @@ export const adminHandler = async (event, ctx, callback) => {
   }
 
   const action = body.event;
-  console.log(action);
 
   try {
     let payload;
     switch (action) {
+      case "admin": {
+        break;
+      }
       case "start": {
-        payload = helpers.updateState({ isVoting: true });
-        helpers.sendMessage(event, { status: 200, message: payload });
+        payload = helpers.updateState(
+          {
+            isVoting: true
+          },
+          event
+        );
+        helpers.sendMessage(event, {
+          status: 200,
+          message: payload
+        });
+        helpers.notifyVoters(payload, event.requestContext.domainName, event.requestContext.stage);
         break;
       }
       case "end": {
-        payload = helpers.updateState({ isVoting: false });
-        helpers.sendMessage(event, { status: 200, message: payload });
+        payload = helpers.updateState(
+          {
+            isVoting: false
+          },
+          event
+        );
+        helpers.sendMessage(event, {
+          status: 200,
+          message: payload
+        });
+        helpers.notifyVoters(payload, event.requestContext.domainName, event.requestContext.stage);
         break;
       }
 
-      case "changeTeam":
+      case "changeTeam": {
         break;
-
-      case "listen":
+      }
+      case "listen": {
         break;
-
-      default:
+      }
+      default: {
         await helpers.sendMessage(event, {
           status: "400",
           message: "unrecognized event type"
         });
         break;
+      }
     }
   } catch (error) {
     console.error(error);
@@ -183,15 +197,7 @@ export const adminHandler = async (event, ctx, callback) => {
 
 export const stickerHandler = async (event, ctx, callback) => {};
 
-export const scoreHandler = async (event, ctx, callback) => {
-  callback(null, {
-    statusCode: 200,
-    body: "Connected.",
-    headers: {
-      "Sec-WebSocket-Protocol": "websocket"
-    }
-  });
-};
+export const scoreHandler = async (event, ctx, callback) => {};
 
 export const defaultHandler = async (event, ctx, callback) => {
   try {

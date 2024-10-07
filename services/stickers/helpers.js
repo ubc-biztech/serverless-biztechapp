@@ -1,7 +1,7 @@
 import { ApiGatewayManagementApi } from "@aws-sdk/client-apigatewaymanagementapi";
 import db from "../../lib/db";
 import { SOCKETS_TABLE } from "../../constants/tables";
-import { GetCommand } from "@aws-sdk/lib-dynamodb";
+import { DeleteCommand, GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import docClient from "../../lib/docClient";
 import { RESERVED_WORDS } from "../../constants/dynamodb";
 
@@ -11,53 +11,29 @@ export default {
     const stage = event.requestContext.stage;
     const connectionId = event.requestContext.connectionId;
     const url = `https://${domain}/${stage}`;
-    let promise = new Promise((resolve, reject) => {
-      const apigatewaymanagementapi = new ApiGatewayManagementApi({
+
+    try {
+      let apigatewaymanagementapi = new ApiGatewayManagementApi({
         apiVersion: "2018-11-29",
         endpoint: process.env.ENVIRONMENT ? url : "http://localhost:3001"
       });
-      apigatewaymanagementapi.postToConnection(
-        {
-          ConnectionId: connectionId,
-          Data: JSON.stringify(data)
-        },
-        (err, data) => {
-          if (err) {
-            console.error(err);
-          } else {
-            resolve(data);
+      await new Promise((resolve, reject) => {
+        apigatewaymanagementapi.postToConnection(
+          {
+            ConnectionId: connectionId,
+            Data: JSON.stringify(data)
+          },
+          (err, data) => {
+            if (err) {
+              reject(err);
+            } else {
+              resolve(data);
+            }
           }
-        }
-      );
-    });
-    return promise;
-  },
-
-  checkPayloadProps: function (payload, check = {}) {
-    try {
-      const criteria = Object.entries(check);
-      criteria.forEach(([key, crit]) => {
-        // check if property exists
-        if (crit.required && !payload[key] && payload[key] !== false) {
-          throw `'${key}' is missing from the request body`;
-        }
-        // check for the property's type
-        if (crit.type && payload[key] && typeof payload[key] !== crit.type) {
-          throw `'${key}' in the request body is invalid, expected type '${
-            crit.type
-          }' but got '${typeof payload[key]}'`;
-        }
+        );
       });
-    } catch (errMsg) {
-      const response = {
-        status: 406,
-        message: errMsg,
-        body:
-          payload && payload.stack && payload.message
-            ? JSON.stringify(payload, Object.getOwnPropertyNames(payload))
-            : JSON.stringify(payload)
-      };
-      return response;
+    } catch (error) {
+      deleteConnection(connectionId);
     }
   },
 
@@ -80,6 +56,7 @@ export default {
   },
 
   updateState: function (state) {
+    let res;
     try {
       let {
         updateExpression,
@@ -87,7 +64,7 @@ export default {
         expressionAttributeNames
       } = this.createUpdateExpression(state);
 
-      state = {
+      let updateCommand = {
         Key: {
           connectionID: "STATE"
         },
@@ -102,20 +79,55 @@ export default {
         })
       };
 
-      db.updateDBCustom(state);
+      db.updateDBCustom(updateCommand);
     } catch (error) {
       console.error(error);
-      let res = {
+      res = {
         status: 500,
         message: "Internal Server Error"
       };
-      return res;
     }
-    let res = {
+    res = {
       status: 200,
-      message: "Successfully updated state to \n" + JSON.stringify(state)
+      message: "Successfully updated state",
+      state: state
     };
     return res;
+  },
+
+  notifyVoters: async function (state, domainName, stage) {
+    let voters;
+    try {
+      const command = new QueryCommand({
+        IndexName: "role",
+        ExpressionAttributeNames: {
+          "#role": "role"
+        },
+        ExpressionAttributeValues: {
+          ":role": "voter"
+        },
+        KeyConditionExpression: "#role = :role",
+        ProjectionExpression: "connectionID",
+        TableName: SOCKETS_TABLE
+      });
+      const response = await docClient.send(command);
+      voters = response.Items;
+    } catch (error) {
+      db.dynamoErrorResponse(error);
+    }
+
+    for (let i = 0; i < voters.length; i++) {
+      this.sendMessage(
+        {
+          requestContext: {
+            domainName,
+            stage,
+            connectionId: voters[i].connectionID
+          }
+        },
+        { status: 200, state }
+      );
+    }
   },
 
   createUpdateExpression: function (obj) {
@@ -145,5 +157,55 @@ export default {
       expressionAttributeValues,
       expressionAttributeNames
     };
+  },
+
+  checkPayloadProps: function (payload, check = {}) {
+    try {
+      const criteria = Object.entries(check);
+      criteria.forEach(([key, crit]) => {
+        // check if property exists
+        if (crit.required && !payload[key] && payload[key] !== false) {
+          throw `'${key}' is missing from the request body`;
+        }
+        // check for the property's type
+        if (crit.type && payload[key] && typeof payload[key] !== crit.type) {
+          throw `'${key}' in the request body is invalid, expected type '${
+            crit.type
+          }' but got '${typeof payload[key]}'`;
+        }
+      });
+    } catch (errMsg) {
+      const response = {
+        status: 406,
+        message: errMsg,
+        body:
+          payload && payload.stack && payload.message
+            ? JSON.stringify(payload, Object.getOwnPropertyNames(payload))
+            : JSON.stringify(payload)
+      };
+      return response;
+    }
   }
 };
+
+export async function deleteConnection(connectionID) {
+  try {
+    const params = {
+      Key: {
+        connectionID
+      },
+      TableName: SOCKETS_TABLE + (process.env.ENVIRONMENT || "")
+    };
+
+    const command = new DeleteCommand(params);
+    const res = await docClient.send(command);
+    return {
+      statusCode: 200,
+      body: res,
+      message: "Disconnected"
+    };
+  } catch (err) {
+    const errorResponse = db.dynamoErrorResponse(err);
+    throw errorResponse;
+  }
+}
