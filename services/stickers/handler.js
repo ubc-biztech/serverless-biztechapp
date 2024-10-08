@@ -504,13 +504,27 @@ export const scoreHandler = async (event, ctx, callback) => {
   const { id, score } = body;
 
   try {
-    await db.put({ teamName, userID: id, score }, SCORE_TABLE, true);
+    await db.put(
+      {
+        teamName,
+        userID: id,
+        score
+      },
+      SCORE_TABLE,
+      true
+    );
   } catch (error) {
     console.error(error.message);
-    sendMessage({ status: 500, message: "Failed to store score" }, event);
+    sendMessage(event, {
+      status: 500,
+      message: "Failed to store score"
+    });
   }
 
-  sendMessage({ status: 200, message: "Stored score" }, event);
+  sendMessage(event, {
+    status: 200,
+    message: "Stored score"
+  });
   return {
     status: 200,
     action: "score",
@@ -549,11 +563,16 @@ export const getScores = async (event, ctx, callback) => {
   try {
     res = await db.scan(SCORE_TABLE);
   } catch (error) {
-    res = createResponse(500, { message: "failed to fetch scores" });
+    res = createResponse(500, {
+      message: "failed to fetch scores"
+    });
     callback(null, res);
     return res;
   }
-  res = createResponse(200, { message: "Scores", response: res });
+  res = createResponse(200, {
+    message: "Scores",
+    response: res
+  });
   callback(null, res);
   return res;
 };
