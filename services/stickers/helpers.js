@@ -294,7 +294,7 @@ export async function getSticker(teamName, stickerName, id) {
     const params = {
       Key: {
         teamName,
-        [`userID#stickerName`]: id + "#" + stickerName
+        ["userID#stickerName"]: id + "#" + stickerName
       },
       TableName:
         STICKERS_TABLE +
@@ -335,7 +335,7 @@ export async function updateSticker(state, teamName, userID, stickerName) {
     let updateCommand = {
       Key: {
         teamName,
-        [`userID#stickerName`]: userID + "#" + stickerName
+        ["userID#stickerName"]: userID + "#" + stickerName
       },
       TableName:
         STICKERS_TABLE +
@@ -357,4 +357,20 @@ export async function updateSticker(state, teamName, userID, stickerName) {
     };
   }
   return res;
+}
+
+export function createResponse(statusCode, body) {
+  const response = {
+    statusCode,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Credentials": true
+    },
+    // helps stringify Error objects as well
+    body:
+      body && body.stack && body.message
+        ? JSON.stringify(body, Object.getOwnPropertyNames(body))
+        : JSON.stringify(body)
+  };
+  return response;
 }

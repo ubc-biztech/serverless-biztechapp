@@ -92,3 +92,10 @@ functions:
     events:
       - websocket:
           route: sync
+  scoresGetAll:
+    handler: handler.getScores
+    events:
+      - http:
+          path: scores/
+          method: get
+          cors: true
