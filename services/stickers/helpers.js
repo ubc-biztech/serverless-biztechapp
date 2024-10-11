@@ -1,17 +1,9 @@
-import {
-  ApiGatewayManagementApi
-} from "@aws-sdk/client-apigatewaymanagementapi";
+import { ApiGatewayManagementApi } from "@aws-sdk/client-apigatewaymanagementapi";
 import db from "../../lib/db";
-import {
-  SOCKETS_TABLE, STICKERS_TABLE
-} from "../../constants/tables";
-import {
-  DeleteCommand, GetCommand, QueryCommand
-} from "@aws-sdk/lib-dynamodb";
+import { SOCKETS_TABLE, STICKERS_TABLE } from "../../constants/tables";
+import { DeleteCommand, GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import docClient from "../../lib/docClient";
-import {
-  RESERVED_WORDS
-} from "../../constants/dynamodb";
+import { RESERVED_WORDS } from "../../constants/dynamodb";
 
 /**
  * @param event socket action event
@@ -52,9 +44,7 @@ export const fetchState = async () => {
   let state;
   try {
     const command = new GetCommand({
-      TableName:
-        SOCKETS_TABLE +
-        (process.env.NODE_ENV !== "local" ? process.env.NODE_ENV : ""),
+      TableName: SOCKETS_TABLE + (process.env.ENVIRONMENT || ""),
       Key: {
         connectionID: "STATE"
       }
@@ -75,8 +65,9 @@ export const fetchState = async () => {
 export async function updateSocket(state, connectionID) {
   let res = {
     status: 200,
+    action: "update",
     message: "Successfully updated state",
-    state: state
+    data: state
   };
   try {
     let {
@@ -89,9 +80,7 @@ export async function updateSocket(state, connectionID) {
       Key: {
         connectionID
       },
-      TableName:
-        SOCKETS_TABLE +
-        (process.env.NODE_ENV !== "local" ? process.env.NODE_ENV : ""),
+      TableName: SOCKETS_TABLE + (process.env.ENVIRONMENT || ""),
       ExpressionAttributeValues: expressionAttributeValues,
       UpdateExpression: updateExpression,
       ReturnValues: "UPDATED_NEW",
@@ -117,7 +106,7 @@ export async function updateSocket(state, connectionID) {
  *
  * sends message to all voters
  */
-export async function notifyVoters(state, event) {
+export async function notifyVoters(data, action, event) {
   let voters;
   try {
     const command = new QueryCommand({
@@ -149,7 +138,8 @@ export async function notifyVoters(state, event) {
       },
       {
         status: 200,
-        state
+        action,
+        data
       }
     );
   }
@@ -161,7 +151,7 @@ export async function notifyVoters(state, event) {
  *
  * sends message to all admins
  */
-export async function notifyAdmins(state, event) {
+export async function notifyAdmins(data, action, event) {
   let voters;
   try {
     const command = new QueryCommand({
@@ -174,9 +164,7 @@ export async function notifyAdmins(state, event) {
       },
       KeyConditionExpression: "#role = :role",
       ProjectionExpression: "connectionID",
-      TableName:
-        SOCKETS_TABLE +
-        (process.env.NODE_ENV !== "local" ? process.env.NODE_ENV : "")
+      TableName: SOCKETS_TABLE + (process.env.ENVIRONMENT || "")
     });
     const response = await docClient.send(command);
     voters = response.Items;
@@ -193,7 +181,11 @@ export async function notifyAdmins(state, event) {
           connectionId: voters[i].connectionID
         }
       },
-      state
+      {
+        status: 200,
+        action,
+        data
+      }
     );
   }
 }
@@ -207,8 +199,7 @@ export async function notifyAdmins(state, event) {
 export function createUpdateExpression(obj) {
   let val = 0;
   let updateExpression = "SET ";
-  let expressionAttributeValues = {
-  };
+  let expressionAttributeValues = {};
   let expressionAttributeNames = null;
 
   for (const key in obj) {
@@ -216,8 +207,7 @@ export function createUpdateExpression(obj) {
       if (RESERVED_WORDS.includes(key.toUpperCase())) {
         updateExpression += `#v${val} = :val${val},`;
         expressionAttributeValues[`:val${val}`] = obj[key];
-        if (!expressionAttributeNames) expressionAttributeNames = {
-        };
+        if (!expressionAttributeNames) expressionAttributeNames = {};
         expressionAttributeNames[`#v${val}`] = key;
         val++;
       } else {
@@ -242,8 +232,7 @@ export function createUpdateExpression(obj) {
  *
  * return custom error message
  */
-export function checkPayloadProps(payload, check = {
-}) {
+export function checkPayloadProps(payload, check = {}) {
   try {
     const criteria = Object.entries(check);
     criteria.forEach(([key, crit]) => {
@@ -261,8 +250,9 @@ export function checkPayloadProps(payload, check = {
   } catch (errMsg) {
     const response = {
       status: 406,
+      action: "error",
       message: errMsg,
-      body:
+      data:
         payload && payload.stack && payload.message
           ? JSON.stringify(payload, Object.getOwnPropertyNames(payload))
           : JSON.stringify(payload)
@@ -283,9 +273,7 @@ export async function deleteConnection(connectionID) {
       Key: {
         connectionID
       },
-      TableName:
-        SOCKETS_TABLE +
-        (process.env.NODE_ENV !== "local" ? process.env.NODE_ENV : "")
+      TableName: SOCKETS_TABLE + (process.env.ENVIRONMENT || "")
     };
 
     const command = new DeleteCommand(params);
@@ -307,9 +295,7 @@ export async function getSticker(teamName, stickerName, id) {
         teamName,
         ["userID#stickerName"]: id + "#" + stickerName
       },
-      TableName:
-        STICKERS_TABLE +
-        (process.env.NODE_ENV !== "local" ? process.env.NODE_ENV : "")
+      TableName: STICKERS_TABLE + (process.env.ENVIRONMENT || "")
     };
 
     const command = new GetCommand(params);
@@ -348,9 +334,7 @@ export async function updateSticker(state, teamName, userID, stickerName) {
         teamName,
         ["userID#stickerName"]: userID + "#" + stickerName
       },
-      TableName:
-        STICKERS_TABLE +
-        (process.env.NODE_ENV !== "local" ? process.env.NODE_ENV : ""),
+      TableName: STICKERS_TABLE + (process.env.ENVIRONMENT || ""),
       ExpressionAttributeValues: expressionAttributeValues,
       UpdateExpression: updateExpression,
       ReturnValues: "UPDATED_NEW",
@@ -384,4 +368,85 @@ export function createResponse(statusCode, body) {
         : JSON.stringify(body)
   };
   return response;
+}
+
+export async function syncAdmin(event, teamName, isVoting) {
+  updateSocket(
+    {
+      role: "admin"
+    },
+    event.requestContext.connectionId
+  );
+
+  let stickers = [];
+  try {
+    const command = new QueryCommand({
+      ExpressionAttributeValues: {
+        ":v_team": teamName
+      },
+      ExpressionAttributeNames: {
+        "#cnt": "count",
+        "#lmt": "limit"
+      },
+      KeyConditionExpression: "teamName = :v_team",
+      ProjectionExpression: "stickerName, #cnt, #lmt",
+      TableName: STICKERS_TABLE + (process.env.ENVIRONMENT || "")
+    });
+    const response = await docClient.send(command);
+    stickers = response.Items;
+  } catch (error) {
+    db.dynamoErrorResponse(error);
+    await sendMessage(event, {
+      status: "502",
+      action: "error",
+      message: "Internal server error"
+    });
+  }
+
+  await sendMessage(event, {
+    status: 200,
+    action: "sync",
+    data: {
+      isVoting,
+      teamName,
+      stickers
+    }
+  });
+  return {
+    statusCode: 200
+  };
+}
+
+export async function syncUser(body, event) {
+  let stickers;
+  try {
+    const command = new QueryCommand({
+      IndexName: "userID",
+
+      ExpressionAttributeValues: {
+        ":v_id": body.id
+      },
+      ExpressionAttributeNames: {
+        "#cnt": "count",
+        "#lmt": "limit"
+      },
+      KeyConditionExpression: "userID = :v_id",
+      ProjectionExpression: "stickerName, #cnt, #lmt",
+      TableName: STICKERS_TABLE + (process.env.ENVIRONMENT || "")
+    });
+    const response = await docClient.send(command);
+    stickers = {
+      stickers: response.Items,
+      count: response.Count
+    };
+  } catch (error) {
+    db.dynamoErrorResponse(error);
+    await sendMessage(event, {
+      status: "502",
+      action: "error",
+      message: "Internal server error"
+    });
+  }
+
+  return stickers;
 }

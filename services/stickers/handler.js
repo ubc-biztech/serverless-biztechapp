@@ -7,6 +7,8 @@ import {
   notifyAdmins,
   notifyVoters,
   sendMessage,
+  syncAdmin,
+  syncUser,
   updateSocket,
   updateSticker
 } from "./helpers";
@@ -16,7 +18,7 @@ import {
   SCORE_TABLE,
   SOCKETS_TABLE
 } from "../../constants/tables";
-import { ScanCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { QueryCommand } from "@aws-sdk/lib-dynamodb";
 import docClient from "../../lib/docClient";
 
 /**
@@ -82,86 +84,25 @@ export const syncHandler = async (event, ctx, callback) => {
   const { isVoting, teamName } = state.Item;
 
   if (body.id === "admin") {
-    updateSocket(
-      {
-        role: "admin"
-      },
-      event.requestContext.connectionId
-    );
-
-    let stickers = [];
-    try {
-      const command = new QueryCommand({
-        ExpressionAttributeValues: {
-          ":v_team": teamName
-        },
-        ExpressionAttributeNames: {
-          "#cnt": "count",
-          "#lmt": "limit"
-        },
-        KeyConditionExpression: "teamName = :v_team",
-        ProjectionExpression: "stickerName, #cnt, #lmt",
-        TableName: STICKERS_TABLE
-      });
-      const response = await docClient.send(command);
-      stickers = response.Items;
-    } catch (error) {
-      db.dynamoErrorResponse(error);
-      await sendMessage(event, {
-        status: "502",
-        message: "Internal server error"
-      });
-    }
-
-    await sendMessage(event, {
-      isVoting,
-      teamName,
-      stickers
-    });
-    return {
-      statusCode: 200
-    };
+    return await syncAdmin(event, teamName, isVoting);
   }
 
   if (!isVoting) {
     await sendMessage(event, {
-      isVoting,
-      teamName,
-      stickers: []
+      status: 200,
+      action: "sync",
+      data: {
+        isVoting,
+        teamName,
+        stickers: []
+      }
     });
     return {
       statusCode: 200
     };
   }
 
-  let stickers;
-  try {
-    const command = new QueryCommand({
-      IndexName: "userID",
-
-      ExpressionAttributeValues: {
-        ":v_id": body.id
-      },
-      ExpressionAttributeNames: {
-        "#cnt": "count",
-        "#lmt": "limit"
-      },
-      KeyConditionExpression: "userID = :v_id",
-      ProjectionExpression: "stickerName, #cnt, #lmt",
-      TableName: STICKERS_TABLE
-    });
-    const response = await docClient.send(command);
-    stickers = {
-      stickers: response.Items,
-      count: response.Count
-    };
-  } catch (error) {
-    db.dynamoErrorResponse(error);
-    await sendMessage(event, {
-      status: "502",
-      message: "Internal server error"
-    });
-  }
+  let stickers = await syncUser(body, event);
 
   await sendMessage(event, {
     status: 200,
@@ -213,42 +154,36 @@ export const adminHandler = async (event, ctx, callback) => {
     let payload;
     switch (action) {
       case "start": {
-        payload = updateSocket(
-          {
-            isVoting: true
-          },
-          "STATE"
-        );
-        await notifyAdmins(payload, event);
-        await notifyVoters(payload, event);
+        let state = {
+          isVoting: true
+        };
+        payload = updateSocket(state, "STATE");
+        await notifyAdmins(state, "state", event);
+        await notifyVoters(state, "state", event);
         return {
           statusCode: 200
         };
       }
 
       case "end": {
-        payload = updateSocket(
-          {
-            isVoting: false
-          },
-          "STATE"
-        );
-        await notifyAdmins(payload, event);
-        await notifyVoters(payload, event);
+        let state = {
+          isVoting: false
+        };
+        payload = updateSocket(state, "STATE");
+        await notifyAdmins(state, "state", event);
+        await notifyVoters(state, "state", event);
         return {
           statusCode: 200
         };
       }
 
       case "changeTeam": {
-        payload = updateSocket(
-          {
-            teamName: body.team
-          },
-          "STATE"
-        );
-        await notifyAdmins(payload, event);
-        await notifyVoters(payload, event);
+        let state = {
+          teamName: body.team
+        };
+        payload = updateSocket(state, "STATE");
+        await notifyAdmins(state, "state", event);
+        await notifyVoters(state, "state", event);
         return {
           statusCode: 200
         };
@@ -257,7 +192,7 @@ export const adminHandler = async (event, ctx, callback) => {
       default: {
         await sendMessage(event, {
           status: "400",
-          action: "fail",
+          action: "error",
           message: "unrecognized event type"
         });
         return {
@@ -269,6 +204,7 @@ export const adminHandler = async (event, ctx, callback) => {
     console.error(error);
     await sendMessage(event, {
       status: "500",
+      action: "error",
       message: "Internal Server Error"
     });
     return {
@@ -299,7 +235,7 @@ export const stickerHandler = async (event, ctx, callback) => {
   if (!isVoting) {
     sendMessage(event, {
       status: 400,
-      action: "fail",
+      action: "error",
       message: "voting is not open"
     });
     return {
@@ -336,9 +272,7 @@ export const stickerHandler = async (event, ctx, callback) => {
         KeyConditionExpression: "stickerName = :sname",
         FilterExpression: "userID = :uid",
         ProjectionExpression: "stickerName, userID",
-        TableName:
-          STICKERS_TABLE +
-          (process.env.NODE_ENV !== "local" ? process.env.NODE_ENV : "")
+        TableName: STICKERS_TABLE + (process.env.ENVIRONMENT || "")
       });
       const response = await docClient.send(command);
       isGoldenInDB = response.Items.length > 0;
@@ -349,7 +283,7 @@ export const stickerHandler = async (event, ctx, callback) => {
     if (isGoldenInDB) {
       sendMessage(event, {
         status: 400,
-        action: "fail",
+        action: "error",
         message: "Already submitted golden sticker."
       });
       return {
@@ -366,6 +300,7 @@ export const stickerHandler = async (event, ctx, callback) => {
     if (body.hasOwnProperty("limit")) {
       limit = body.limit;
     }
+
     try {
       db.put(
         {
@@ -383,7 +318,7 @@ export const stickerHandler = async (event, ctx, callback) => {
       console.error(error);
       sendMessage(event, {
         status: 500,
-        action: "fail",
+        action: "error",
         message: "Failed to create sticker"
       });
       return {
@@ -394,6 +329,7 @@ export const stickerHandler = async (event, ctx, callback) => {
 
     sendMessage(event, {
       status: 200,
+      action: "sticker",
       message: stickerName + " was created for user " + id,
       data: {
         teamName,
@@ -407,7 +343,6 @@ export const stickerHandler = async (event, ctx, callback) => {
     notifyAdmins(
       {
         status: 200,
-        action: "sticker",
         data: {
           teamName,
           count: 1,
@@ -416,6 +351,7 @@ export const stickerHandler = async (event, ctx, callback) => {
           userID: id
         }
       },
+      "sticker",
       event
     );
     return {
@@ -437,7 +373,7 @@ export const stickerHandler = async (event, ctx, callback) => {
   } else {
     sendMessage(event, {
       status: 400,
-      action: "fail",
+      action: "error",
       message: "Used up all " + sticker.limit + " stickers"
     });
     return {
@@ -453,11 +389,13 @@ export const stickerHandler = async (event, ctx, callback) => {
       stickerName,
       userID: id
     },
+    "sticker",
     event
   );
 
   sendMessage(event, {
     status: 200,
+    action: "sticker",
     data: sticker
   });
   return {
@@ -523,6 +461,7 @@ export const scoreHandler = async (event, ctx, callback) => {
 
   sendMessage(event, {
     status: 200,
+    action: "score",
     message: "Stored score"
   });
   return {
