@@ -1,17 +1,9 @@
-import {
-  ApiGatewayManagementApi
-} from "@aws-sdk/client-apigatewaymanagementapi";
+import { ApiGatewayManagementApi } from "@aws-sdk/client-apigatewaymanagementapi";
 import db from "../../lib/db";
-import {
-  SOCKETS_TABLE, STICKERS_TABLE
-} from "../../constants/tables";
-import {
-  DeleteCommand, GetCommand, QueryCommand
-} from "@aws-sdk/lib-dynamodb";
+import { SOCKETS_TABLE, STICKERS_TABLE } from "../../constants/tables";
+import { DeleteCommand, GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import docClient from "../../lib/docClient";
-import {
-  RESERVED_WORDS
-} from "../../constants/dynamodb";
+import { RESERVED_WORDS } from "../../constants/dynamodb";
 
 /**
  * @param event socket action event
@@ -99,7 +91,7 @@ export async function updateSocket(state, connectionID) {
 
     await db.updateDBCustom(updateCommand);
   } catch (error) {
-    console.error(error);
+    console.log(error);
     res = {
       status: 500,
       message: "Internal Server Error"
@@ -207,8 +199,7 @@ export async function notifyAdmins(data, action, event) {
 export function createUpdateExpression(obj) {
   let val = 0;
   let updateExpression = "SET ";
-  let expressionAttributeValues = {
-  };
+  let expressionAttributeValues = {};
   let expressionAttributeNames = null;
 
   for (const key in obj) {
@@ -216,8 +207,7 @@ export function createUpdateExpression(obj) {
       if (RESERVED_WORDS.includes(key.toUpperCase())) {
         updateExpression += `#v${val} = :val${val},`;
         expressionAttributeValues[`:val${val}`] = obj[key];
-        if (!expressionAttributeNames) expressionAttributeNames = {
-        };
+        if (!expressionAttributeNames) expressionAttributeNames = {};
         expressionAttributeNames[`#v${val}`] = key;
         val++;
       } else {
@@ -242,8 +232,7 @@ export function createUpdateExpression(obj) {
  *
  * return custom error message
  */
-export function checkPayloadProps(payload, check = {
-}) {
+export function checkPayloadProps(payload, check = {}) {
   try {
     const criteria = Object.entries(check);
     criteria.forEach(([key, crit]) => {
@@ -356,7 +345,7 @@ export async function updateSticker(state, teamName, userID, stickerName) {
 
     await db.updateDBCustom(updateCommand);
   } catch (error) {
-    console.error(error);
+    console.log(error);
     res = {
       status: 500,
       message: "Internal Server Error"

@@ -18,9 +18,7 @@ import {
   SCORE_TABLE,
   SOCKETS_TABLE
 } from "../../constants/tables";
-import {
-  QueryCommand
-} from "@aws-sdk/lib-dynamodb";
+import { QueryCommand } from "@aws-sdk/lib-dynamodb";
 import docClient from "../../lib/docClient";
 
 /**
@@ -83,9 +81,7 @@ export const syncHandler = async (event, ctx, callback) => {
   }
 
   let state = await fetchState();
-  const {
-    isVoting, teamName
-  } = state.Item;
+  const { isVoting, teamName } = state.Item;
 
   if (body.id === "admin") {
     return await syncAdmin(event, teamName, isVoting);
@@ -157,55 +153,55 @@ export const adminHandler = async (event, ctx, callback) => {
   try {
     let payload;
     switch (action) {
-    case "start": {
-      let state = {
-        isVoting: true
-      };
-      payload = updateSocket(state, "STATE");
-      await notifyAdmins(state, "state", event);
-      await notifyVoters(state, "state", event);
-      return {
-        statusCode: 200
-      };
-    }
+      case "start": {
+        let state = {
+          isVoting: true
+        };
+        payload = updateSocket(state, "STATE");
+        await notifyAdmins(state, "state", event);
+        await notifyVoters(state, "state", event);
+        return {
+          statusCode: 200
+        };
+      }
 
-    case "end": {
-      let state = {
-        isVoting: false
-      };
-      payload = updateSocket(state, "STATE");
-      await notifyAdmins(state, "state", event);
-      await notifyVoters(state, "state", event);
-      return {
-        statusCode: 200
-      };
-    }
+      case "end": {
+        let state = {
+          isVoting: false
+        };
+        payload = updateSocket(state, "STATE");
+        await notifyAdmins(state, "state", event);
+        await notifyVoters(state, "state", event);
+        return {
+          statusCode: 200
+        };
+      }
 
-    case "changeTeam": {
-      let state = {
-        teamName: body.team
-      };
-      payload = updateSocket(state, "STATE");
-      await notifyAdmins(state, "state", event);
-      await notifyVoters(state, "state", event);
-      return {
-        statusCode: 200
-      };
-    }
+      case "changeTeam": {
+        let state = {
+          teamName: body.team
+        };
+        payload = updateSocket(state, "STATE");
+        await notifyAdmins(state, "state", event);
+        await notifyVoters(state, "state", event);
+        return {
+          statusCode: 200
+        };
+      }
 
-    default: {
-      await sendMessage(event, {
-        status: "400",
-        action: "error",
-        message: "unrecognized event type"
-      });
-      return {
-        statusCode: 400
-      };
-    }
+      default: {
+        await sendMessage(event, {
+          status: "400",
+          action: "error",
+          message: "unrecognized event type"
+        });
+        return {
+          statusCode: 400
+        };
+      }
     }
   } catch (error) {
-    console.error(error);
+    console.log(error);
     await sendMessage(event, {
       status: "500",
       action: "error",
@@ -234,9 +230,7 @@ export const adminHandler = async (event, ctx, callback) => {
  */
 export const stickerHandler = async (event, ctx, callback) => {
   let state = await fetchState();
-  const {
-    teamName, isVoting
-  } = state.Item;
+  const { teamName, isVoting } = state.Item;
 
   if (!isVoting) {
     sendMessage(event, {
@@ -264,9 +258,7 @@ export const stickerHandler = async (event, ctx, callback) => {
     await sendMessage(event, errMessage);
     return errMessage;
   }
-  const {
-    id, stickerName
-  } = body;
+  const { id, stickerName } = body;
 
   let isGoldenInDB;
   if (stickerName === "golden") {
@@ -323,7 +315,7 @@ export const stickerHandler = async (event, ctx, callback) => {
         true
       );
     } catch (error) {
-      console.error(error);
+      console.log(error);
       sendMessage(event, {
         status: 500,
         action: "error",
@@ -429,9 +421,7 @@ export const stickerHandler = async (event, ctx, callback) => {
  */
 export const scoreHandler = async (event, ctx, callback) => {
   let state = await fetchState();
-  const {
-    teamName
-  } = state.Item;
+  const { teamName } = state.Item;
 
   const body = JSON.parse(event.body);
   if (!body.hasOwnProperty("id") || !body.hasOwnProperty("score")) {
@@ -449,9 +439,7 @@ export const scoreHandler = async (event, ctx, callback) => {
     return errMessage;
   }
 
-  const {
-    id, score
-  } = body;
+  const { id, score } = body;
 
   try {
     await db.put(
@@ -464,7 +452,7 @@ export const scoreHandler = async (event, ctx, callback) => {
       true
     );
   } catch (error) {
-    console.error(error.message);
+    console.log(error.message);
     sendMessage(event, {
       status: 500,
       message: "Failed to store score"
@@ -496,7 +484,7 @@ export const defaultHandler = async (event, ctx, callback) => {
       message: "unknown action"
     });
   } catch (error) {
-    console.error(error);
+    console.log(error);
     callback(null, error);
     return null;
   }

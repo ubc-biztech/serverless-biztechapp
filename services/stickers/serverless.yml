@@ -33,7 +33,7 @@ provider:
         - dynamodb:PutItem
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
-        - dynamodb:QueryItem
+        - dynamodb:Query
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/bizSockets${self:provider.environment.ENVIRONMENT}"
     - Effect: Allow
@@ -43,7 +43,7 @@ provider:
         - dynamodb:PutItem
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
-        - dynamodb:QueryItem
+        - dynamodb:Query
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/bizStickers${self:provider.environment.ENVIRONMENT}"
     - Effect: Allow
@@ -53,7 +53,7 @@ provider:
         - dynamodb:PutItem
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
-        - dynamodb:QueryItem
+        - dynamodb:Query
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/bizScores${self:provider.environment.ENVIRONMENT}"
 
