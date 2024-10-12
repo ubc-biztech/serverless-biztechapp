@@ -385,7 +385,7 @@ export const stickerHandler = async (event, ctx, callback) => {
   await notifyAdmins(
     {
       teamName,
-      count: 1,
+      count: sticker.count,
       limit: sticker.limit,
       stickerName,
       userID: id
