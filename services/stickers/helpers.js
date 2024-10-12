@@ -4,6 +4,7 @@ import { SOCKETS_TABLE, STICKERS_TABLE } from "../../constants/tables";
 import { DeleteCommand, GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import docClient from "../../lib/docClient";
 import { RESERVED_WORDS } from "../../constants/dynamodb";
+import error from "copy-dynamodb-table/error";
 
 /**
  * @param event socket action event
@@ -13,12 +14,14 @@ export const sendMessage = async (event, data) => {
   const domain = event.requestContext.domainName;
   const stage = event.requestContext.stage;
   const connectionId = event.requestContext.connectionId;
-  const url = `https://${domain}/${stage}`;
+  let url = `https://ei737zemd6.execute-api.us-west-2.amazonaws.com/${stage}`;
+
+  if (domain === "localhost") url = "http://localhost:3001";
 
   try {
     let apigatewaymanagementapi = new ApiGatewayManagementApi({
       apiVersion: "2018-11-29",
-      endpoint: process.env.ENVIRONMENT ? url : "http://localhost:3001"
+      endpoint: url
     });
     await new Promise((resolve, reject) => {
       apigatewaymanagementapi.postToConnection(
@@ -36,7 +39,7 @@ export const sendMessage = async (event, data) => {
       );
     });
   } catch (error) {
-    deleteConnection(connectionId);
+    await deleteConnection(connectionId);
   }
 };
 
@@ -53,7 +56,7 @@ export const fetchState = async () => {
     state = await docClient.send(command);
   } catch (err) {
     const errorResponse = db.dynamoErrorResponse(err);
-    throw errorResponse;
+    console.log(errorResponse);
   }
   return state;
 };
@@ -94,6 +97,7 @@ export async function updateSocket(state, connectionID) {
     console.log(error);
     res = {
       status: 500,
+      action: "error",
       message: "Internal Server Error"
     };
   }
@@ -124,11 +128,12 @@ export async function notifyVoters(data, action, event) {
     const response = await docClient.send(command);
     voters = response.Items;
   } catch (error) {
-    db.dynamoErrorResponse(error);
+    let errResponse = db.dynamoErrorResponse(error);
+    console.log(errResponse);
   }
 
   for (let i = 0; i < voters.length; i++) {
-    sendMessage(
+    await sendMessage(
       {
         requestContext: {
           domainName: event.requestContext.domainName,
@@ -169,11 +174,12 @@ export async function notifyAdmins(data, action, event) {
     const response = await docClient.send(command);
     voters = response.Items;
   } catch (error) {
-    db.dynamoErrorResponse(error);
+    let errResponse = db.dynamoErrorResponse(error);
+    console.log(errResponse);
   }
 
   for (let i = 0; i < voters.length; i++) {
-    sendMessage(
+    await sendMessage(
       {
         requestContext: {
           domainName: event.requestContext.domainName,
@@ -283,8 +289,8 @@ export async function deleteConnection(connectionID) {
       message: "Disconnected"
     };
   } catch (err) {
-    const errorResponse = db.dynamoErrorResponse(err);
-    throw errorResponse;
+    let errResponse = db.dynamoErrorResponse(error);
+    console.log(errResponse);
   }
 }
 
@@ -302,8 +308,8 @@ export async function getSticker(teamName, stickerName, id) {
     const result = await docClient.send(command);
     return result.Item || null;
   } catch (err) {
-    const errorResponse = this.dynamoErrorResponse(err);
-    throw errorResponse;
+    const errorResponse = db.dynamoErrorResponse(err);
+    console.log(errorResponse);
   }
 }
 
@@ -371,7 +377,7 @@ export function createResponse(statusCode, body) {
 }
 
 export async function syncAdmin(event, teamName, isVoting) {
-  updateSocket(
+  await updateSocket(
     {
       role: "admin"
     },
@@ -395,7 +401,8 @@ export async function syncAdmin(event, teamName, isVoting) {
     const response = await docClient.send(command);
     stickers = response.Items;
   } catch (error) {
-    db.dynamoErrorResponse(error);
+    let errResponse = db.dynamoErrorResponse(error);
+    console.log(errResponse);
     await sendMessage(event, {
       status: "502",
       action: "error",
@@ -440,7 +447,8 @@ export async function syncUser(body, event) {
       count: response.Count
     };
   } catch (error) {
-    db.dynamoErrorResponse(error);
+    let errResponse = db.dynamoErrorResponse(error);
+    console.log(errResponse);
     await sendMessage(event, {
       status: "502",
       action: "error",

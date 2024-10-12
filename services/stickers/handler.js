@@ -36,7 +36,7 @@ export const connectHandler = async (event, ctx, callback) => {
     userID: ""
   };
 
-  db.put(obj, SOCKETS_TABLE, true);
+  await db.put(obj, SOCKETS_TABLE, true);
 
   return {
     statusCode: 200,
@@ -157,7 +157,7 @@ export const adminHandler = async (event, ctx, callback) => {
         let state = {
           isVoting: true
         };
-        payload = updateSocket(state, "STATE");
+        payload = await updateSocket(state, "STATE");
         await notifyAdmins(state, "state", event);
         await notifyVoters(state, "state", event);
         return {
@@ -169,7 +169,7 @@ export const adminHandler = async (event, ctx, callback) => {
         let state = {
           isVoting: false
         };
-        payload = updateSocket(state, "STATE");
+        payload = await updateSocket(state, "STATE");
         await notifyAdmins(state, "state", event);
         await notifyVoters(state, "state", event);
         return {
@@ -233,7 +233,7 @@ export const stickerHandler = async (event, ctx, callback) => {
   const { teamName, isVoting } = state.Item;
 
   if (!isVoting) {
-    sendMessage(event, {
+    await sendMessage(event, {
       status: 400,
       action: "error",
       message: "voting is not open"
@@ -277,11 +277,12 @@ export const stickerHandler = async (event, ctx, callback) => {
       const response = await docClient.send(command);
       isGoldenInDB = response.Items.length > 0;
     } catch (error) {
-      db.dynamoErrorResponse(error);
+      let errResponse = db.dynamoErrorResponse(error);
+      console.log(errResponse);
     }
 
     if (isGoldenInDB) {
-      sendMessage(event, {
+      await sendMessage(event, {
         status: 400,
         action: "error",
         message: "Already submitted golden sticker."
@@ -302,7 +303,7 @@ export const stickerHandler = async (event, ctx, callback) => {
     }
 
     try {
-      db.put(
+      await db.put(
         {
           teamName,
           ["userID#stickerName"]: id + "#" + stickerName,
@@ -316,7 +317,7 @@ export const stickerHandler = async (event, ctx, callback) => {
       );
     } catch (error) {
       console.log(error);
-      sendMessage(event, {
+      await sendMessage(event, {
         status: 500,
         action: "error",
         message: "Failed to create sticker"
@@ -327,7 +328,7 @@ export const stickerHandler = async (event, ctx, callback) => {
       };
     }
 
-    sendMessage(event, {
+    await sendMessage(event, {
       status: 200,
       action: "sticker",
       message: stickerName + " was created for user " + id,
@@ -340,7 +341,7 @@ export const stickerHandler = async (event, ctx, callback) => {
       }
     });
 
-    notifyAdmins(
+    await notifyAdmins(
       {
         status: 200,
         data: {
@@ -371,7 +372,7 @@ export const stickerHandler = async (event, ctx, callback) => {
       stickerName
     );
   } else {
-    sendMessage(event, {
+    await sendMessage(event, {
       status: 400,
       action: "error",
       message: "Used up all " + sticker.limit + " stickers"
@@ -381,7 +382,7 @@ export const stickerHandler = async (event, ctx, callback) => {
     };
   }
 
-  notifyAdmins(
+  await notifyAdmins(
     {
       teamName,
       count: 1,
@@ -393,7 +394,7 @@ export const stickerHandler = async (event, ctx, callback) => {
     event
   );
 
-  sendMessage(event, {
+  await sendMessage(event, {
     status: 200,
     action: "sticker",
     data: sticker
@@ -453,13 +454,13 @@ export const scoreHandler = async (event, ctx, callback) => {
     );
   } catch (error) {
     console.log(error.message);
-    sendMessage(event, {
+    await sendMessage(event, {
       status: 500,
       message: "Failed to store score"
     });
   }
 
-  sendMessage(event, {
+  await sendMessage(event, {
     status: 200,
     action: "score",
     message: "Stored score"
@@ -480,7 +481,7 @@ export const defaultHandler = async (event, ctx, callback) => {
   try {
     await sendMessage(event, {
       status: 400,
-      action: "fail",
+      action: "error",
       message: "unknown action"
     });
   } catch (error) {
@@ -502,6 +503,7 @@ export const getScores = async (event, ctx, callback) => {
   try {
     res = await db.scan(SCORE_TABLE);
   } catch (error) {
+    console.log(error);
     res = createResponse(500, {
       message: "failed to fetch scores"
     });

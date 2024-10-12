@@ -36,6 +36,7 @@ provider:
         - dynamodb:Query
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/bizSockets${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/bizSockets${self:provider.environment.ENVIRONMENT}/index/*"
     - Effect: Allow
       Action:
         - dynamodb:Scan
@@ -46,6 +47,7 @@ provider:
         - dynamodb:Query
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/bizStickers${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/bizStickers${self:provider.environment.ENVIRONMENT}/index/*"
     - Effect: Allow
       Action:
         - dynamodb:Scan
@@ -56,6 +58,7 @@ provider:
         - dynamodb:Query
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/bizScores${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/bizScores${self:provider.environment.ENVIRONMENT}/index/*"
 
 custom: ${file(../../serverless.common.yml):custom}
 
