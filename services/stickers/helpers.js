@@ -1,30 +1,18 @@
-import {
-  ApiGatewayManagementApi
-} from "@aws-sdk/client-apigatewaymanagementapi";
+import { ApiGatewayManagementApi } from "@aws-sdk/client-apigatewaymanagementapi";
 import db from "../../lib/db";
-import {
-  SOCKETS_TABLE, STICKERS_TABLE
-} from "../../constants/tables";
-import {
-  DeleteCommand, GetCommand, QueryCommand
-} from "@aws-sdk/lib-dynamodb";
+import { SOCKETS_TABLE, STICKERS_TABLE } from "../../constants/tables";
+import { DeleteCommand, GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import docClient from "../../lib/docClient";
-import {
-  RESERVED_WORDS
-} from "../../constants/dynamodb";
+import { RESERVED_WORDS } from "../../constants/dynamodb";
 import error from "copy-dynamodb-table/error";
+import { ACTION_TYPES } from "./constants";
 
 /**
  * @param event socket action event
  * @param {Object} data message object being sent
  */
 export const sendMessage = async (event, data) => {
-  const domain = event.requestContext.domainName;
-  const stage = event.requestContext.stage;
-  const connectionId = event.requestContext.connectionId;
-  let url = `https://ei737zemd6.execute-api.us-west-2.amazonaws.com/${stage}`;
-
-  if (domain === "localhost") url = "http://localhost:3001";
+  const { url, connectionId } = getEndpoint(event);
 
   try {
     let apigatewaymanagementapi = new ApiGatewayManagementApi({
@@ -64,10 +52,25 @@ export const fetchState = async () => {
     state = await docClient.send(command);
   } catch (err) {
     const errorResponse = db.dynamoErrorResponse(err);
-    console.log(errorResponse);
+    console.error(errorResponse);
   }
   return state;
 };
+
+/**
+ *
+ * @param {*} event
+ * @returns {obj} {url, connectionId}
+ */
+function getEndpoint(event) {
+  const domain = event.requestContext.domainName;
+  const stage = event.requestContext.stage;
+  const connectionId = event.requestContext.connectionId;
+  let url = `https://${domain}/${stage}`;
+
+  if (domain === "localhost") url = "http://localhost:3001";
+  return { url, connectionId };
+}
 
 /**
  * @param state socket state object, update role, teamName, isVoting
@@ -102,10 +105,10 @@ export async function updateSocket(state, connectionID) {
 
     await db.updateDBCustom(updateCommand);
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res = {
-      status: 500,
-      action: "error",
+      status: 502,
+      action: ACTION_TYPES.error,
       message: "Internal Server Error"
     };
   }
@@ -137,7 +140,7 @@ export async function notifyVoters(data, action, event) {
     voters = response.Items;
   } catch (error) {
     let errResponse = db.dynamoErrorResponse(error);
-    console.log(errResponse);
+    console.error(errResponse);
   }
 
   for (let i = 0; i < voters.length; i++) {
@@ -183,7 +186,7 @@ export async function notifyAdmins(data, action, event) {
     voters = response.Items;
   } catch (error) {
     let errResponse = db.dynamoErrorResponse(error);
-    console.log(errResponse);
+    console.error(errResponse);
   }
 
   for (let i = 0; i < voters.length; i++) {
@@ -213,8 +216,7 @@ export async function notifyAdmins(data, action, event) {
 export function createUpdateExpression(obj) {
   let val = 0;
   let updateExpression = "SET ";
-  let expressionAttributeValues = {
-  };
+  let expressionAttributeValues = {};
   let expressionAttributeNames = null;
 
   for (const key in obj) {
@@ -222,8 +224,7 @@ export function createUpdateExpression(obj) {
       if (RESERVED_WORDS.includes(key.toUpperCase())) {
         updateExpression += `#v${val} = :val${val},`;
         expressionAttributeValues[`:val${val}`] = obj[key];
-        if (!expressionAttributeNames) expressionAttributeNames = {
-        };
+        if (!expressionAttributeNames) expressionAttributeNames = {};
         expressionAttributeNames[`#v${val}`] = key;
         val++;
       } else {
@@ -248,8 +249,7 @@ export function createUpdateExpression(obj) {
  *
  * return custom error message
  */
-export function checkPayloadProps(payload, check = {
-}) {
+export function checkPayloadProps(payload, check = {}) {
   try {
     const criteria = Object.entries(check);
     criteria.forEach(([key, crit]) => {
@@ -267,7 +267,7 @@ export function checkPayloadProps(payload, check = {
   } catch (errMsg) {
     const response = {
       status: 406,
-      action: "error",
+      action: ACTION_TYPES.error,
       message: errMsg,
       data:
         payload && payload.stack && payload.message
@@ -301,7 +301,7 @@ export async function deleteConnection(connectionID) {
     };
   } catch (err) {
     let errResponse = db.dynamoErrorResponse(error);
-    console.log(errResponse);
+    console.error(errResponse);
   }
 }
 
@@ -320,7 +320,7 @@ export async function getSticker(teamName, stickerName, id) {
     return result.Item || null;
   } catch (err) {
     const errorResponse = db.dynamoErrorResponse(err);
-    console.log(errorResponse);
+    console.error(errorResponse);
   }
 }
 
@@ -362,9 +362,9 @@ export async function updateSticker(state, teamName, userID, stickerName) {
 
     await db.updateDBCustom(updateCommand);
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res = {
-      status: 500,
+      status: 502,
       message: "Internal Server Error"
     };
   }
@@ -413,17 +413,17 @@ export async function syncAdmin(event, teamName, isVoting) {
     stickers = response.Items;
   } catch (error) {
     let errResponse = db.dynamoErrorResponse(error);
-    console.log(errResponse);
+    console.error(errResponse);
     await sendMessage(event, {
       status: "502",
-      action: "error",
+      action: ACTION_TYPES.error,
       message: "Internal server error"
     });
   }
 
   await sendMessage(event, {
     status: 200,
-    action: "sync",
+    action: ACTION_TYPES.sync,
     data: {
       isVoting,
       teamName,
@@ -459,10 +459,10 @@ export async function syncUser(body, event) {
     };
   } catch (error) {
     let errResponse = db.dynamoErrorResponse(error);
-    console.log(errResponse);
+    console.error(errResponse);
     await sendMessage(event, {
       status: "502",
-      action: "error",
+      action: ACTION_TYPES.error,
       message: "Internal server error"
     });
   }
