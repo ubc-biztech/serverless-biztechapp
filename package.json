@@ -34,6 +34,7 @@
     "pretty": "prettier --write \"./**/*.{js,jsx,ts,tsx,json}\"",
     "fix-sls-offline": "find services/* -maxdepth 0 -type d -exec sh -c 'cd \"{}\" && node ../../scripts/fix-sls-offline.js' \\;",
     "install": "find services/* -maxdepth 0 -type d -exec sh -c 'cd \"{}\" && npm i --save-dev' \\;",
+    "sls-offline-i": "find services/* -maxdepth 0 -type d -exec sh -c 'cd \"{}\" && serverless plugin install -n serverless-offline' \\;",
     "dev": "node ./index.js",
     "init:db": "cd scripts && node ./initlocal.js"
   },
@@ -49,6 +50,7 @@
     "serverless-bundle": "^6.1.0",
     "serverless-domain-manager": "^5.1.0",
     "serverless-mocha-plugin": "^1.12.0",
+    "serverless-offline": "3.20.2",
     "serverless-prune-plugin": "^2.0.2"
   },
   "pre-commit": [

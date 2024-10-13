@@ -6,6 +6,6 @@
     "stripe": "^8.160.0"
   },
   "devDependencies": {
-    "serverless-offline": "^13.6.0"
+    "serverless-offline": "^14.3.2"
   }
 }
