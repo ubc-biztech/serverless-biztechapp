@@ -51,13 +51,17 @@ export const sendMessage = async (event, data) => {
   }
 };
 
-export const fetchState = async () => {
+/**
+ * This method fetches state for the current room, "STATE" if only one room
+ * @param roomID roomID to fetch state
+ */
+export const fetchState = async (roomID = "STATE") => {
   let state;
   try {
     const command = new GetCommand({
       TableName: SOCKETS_TABLE + (process.env.ENVIRONMENT || ""),
       Key: {
-        connectionID: "STATE"
+        connectionID: roomID || "STATE"
       }
     });
 
@@ -468,4 +472,37 @@ export async function syncUser(body, event) {
   }
 
   return stickers;
+}
+
+export async function fetchSocketRoomIDForConnection(id) {
+  let roomID;
+  try {
+    const command = new QueryCommand({
+      ExpressionAttributeValues: {
+        ":v_id": id
+      },
+      KeyConditionExpression: "connectionID = :v_id",
+      ProjectionExpression: "roomID",
+      TableName: SOCKETS_TABLE + (process.env.ENVIRONMENT || "")
+    });
+    const response = await docClient.send(command);
+    if (response.Items && response.Items.length > 0) {
+      roomID = response.Items[0].roomID;
+    }
+  } catch (error) {
+    const errResponse = db.dynamoErrorResponse(error);
+    console.error(errResponse);
+  }
+  return roomID;
+}
+
+export async function fetchSocket(id) {
+  const command = new GetCommand({
+    TableName: SOCKETS_TABLE + (process.env.ENVIRONMENT || ""),
+    Key: {
+      connectionID: id
+    }
+  });
+  const response = await docClient.send(command);
+  return response.Item || null;
 }
