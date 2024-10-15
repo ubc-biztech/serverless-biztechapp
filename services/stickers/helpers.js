@@ -5,7 +5,7 @@ import { DeleteCommand, GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import docClient from "../../lib/docClient";
 import { RESERVED_WORDS } from "../../constants/dynamodb";
 import error from "copy-dynamodb-table/error";
-import { ACTION_TYPES } from "./constants";
+import { ACTION_TYPES, STATE_KEY } from "./constants";
 
 /**
  * @param event socket action event
@@ -45,7 +45,7 @@ export const fetchState = async () => {
     const command = new GetCommand({
       TableName: SOCKETS_TABLE + (process.env.ENVIRONMENT || ""),
       Key: {
-        connectionID: "STATE"
+        connectionID: STATE_KEY
       }
     });
 
@@ -69,7 +69,10 @@ function getEndpoint(event) {
   let url = `https://${domain}/${stage}`;
 
   if (domain === "localhost") url = "http://localhost:3001";
-  return { url, connectionId };
+  return {
+    url,
+    connectionId
+  };
 }
 
 /**
