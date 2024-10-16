@@ -26,7 +26,7 @@ export const create = async (event, ctx, callback) => {
   }
 
   const userParams = {
-    id: data.email,
+    id: email,
     education: data.education,
     studentId: data.studentId || 0,
     fname: data.fname,
