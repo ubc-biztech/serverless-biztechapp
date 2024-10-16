@@ -24,6 +24,14 @@ import {
   QueryCommand
 } from "@aws-sdk/lib-dynamodb";
 import docClient from "../../lib/docClient";
+import {
+  ACTION_TYPES,
+  ADMIN_EVENTS,
+  ADMIN_ROLE,
+  STATE_KEY,
+  STICKER_TYPE_GOLDEN,
+  VOTER_ROLE
+} from "./constants";
 
 /**
  * Connection handler
@@ -49,7 +57,7 @@ export const connectHandler = async (event, ctx, callback) => {
 
   const obj = {
     connectionID,
-    role: "voter",
+    role: VOTER_ROLE,
     userID: "",
     roomID
   };
@@ -84,7 +92,7 @@ export const disconnectHandler = async (event, ctx, callback) => {
  *     id: string
  * }`
  *
- *    to sync connection to admin role and state, set id = "admin"
+ *    to sync connection to admin role and state, set id = ADMIN_ROLE
  */
 export const syncHandler = async (event, ctx, callback) => {
   const body = JSON.parse(event.body);
@@ -112,14 +120,14 @@ export const syncHandler = async (event, ctx, callback) => {
   } = state.Item;
 
   // sync admin that is specific to that room
-  if (body.id === "admin") {
+  if (body.id === ADMIN_ROLE) {
     return await syncAdmin(event, teamName, isVoting);
   }
 
   if (!isVoting) {
     await sendMessage(event, {
       status: 200,
-      action: "sync",
+      action: ACTION_TYPES.sync,
       data: {
         isVoting,
         teamName,
@@ -167,7 +175,7 @@ export const adminHandler = async (event, ctx, callback) => {
   }
   const action = body.event;
 
-  if (action === "changeTeam" && !body.hasOwnProperty("team")) {
+  if (action === ACTION_TYPES.changeTeam && !body.hasOwnProperty("team")) {
     const errMessage = checkPayloadProps(body, {
       team: {
         required: true,
@@ -182,58 +190,58 @@ export const adminHandler = async (event, ctx, callback) => {
   try {
     let payload;
     switch (action) {
-    case "start": {
-      let state = {
-        isVoting: true
-      };
-      payload = await updateSocket(state, "STATE");
-      await notifyAdmins(state, "state", event);
-      await notifyVoters(state, "state", event);
-      return {
-        statusCode: 200
-      };
-    }
+      case ADMIN_EVENTS.start: {
+        let state = {
+          isVoting: true
+        };
+        payload = await updateSocket(state, STATE_KEY);
+        await notifyAdmins(state, ACTION_TYPES.state, event);
+        await notifyVoters(state, ACTION_TYPES.state, event);
+        return {
+          statusCode: 200
+        };
+      }
 
-    case "end": {
-      let state = {
-        isVoting: false
-      };
-      payload = await updateSocket(state, "STATE");
-      await notifyAdmins(state, "state", event);
-      await notifyVoters(state, "state", event);
-      return {
-        statusCode: 200
-      };
-    }
+      case ADMIN_EVENTS.end: {
+        let state = {
+          isVoting: false
+        };
+        payload = await updateSocket(state, STATE_KEY);
+        await notifyAdmins(state, ACTION_TYPES.state, event);
+        await notifyVoters(state, ACTION_TYPES.state, event);
+        return {
+          statusCode: 200
+        };
+      }
 
-    case "changeTeam": {
-      let state = {
-        teamName: body.team
-      };
-      payload = updateSocket(state, "STATE");
-      await notifyAdmins(state, "state", event);
-      await notifyVoters(state, "state", event);
-      return {
-        statusCode: 200
-      };
-    }
+      case ADMIN_EVENTS.changeTeam: {
+        let state = {
+          teamName: body.team
+        };
+        payload = await updateSocket(state, STATE_KEY);
+        await notifyAdmins(state, ACTION_TYPES.state, event);
+        await notifyVoters(state, ACTION_TYPES.state, event);
+        return {
+          statusCode: 200
+        };
+      }
 
-    default: {
-      await sendMessage(event, {
-        status: "400",
-        action: "error",
-        message: "unrecognized event type"
-      });
-      return {
-        statusCode: 400
-      };
-    }
+      default: {
+        await sendMessage(event, {
+          status: "400",
+          action: ACTION_TYPES.error,
+          message: "unrecognized event type"
+        });
+        return {
+          statusCode: 400
+        };
+      }
     }
   } catch (error) {
-    console.log(error);
+    console.error(error);
     await sendMessage(event, {
       status: "500",
-      action: "error",
+      action: ACTION_TYPES.error,
       message: "Internal Server Error"
     });
     return {
@@ -266,7 +274,7 @@ export const stickerHandler = async (event, ctx, callback) => {
   if (!isVoting) {
     await sendMessage(event, {
       status: 400,
-      action: "error",
+      action: ACTION_TYPES.error,
       message: "voting is not open"
     });
     return {
@@ -294,12 +302,12 @@ export const stickerHandler = async (event, ctx, callback) => {
   } = body;
 
   let isGoldenInDB;
-  if (stickerName === "golden") {
+  if (stickerName === STICKER_TYPE_GOLDEN) {
     try {
       const command = new QueryCommand({
         IndexName: "stickerName",
         ExpressionAttributeValues: {
-          ":sname": "golden",
+          ":sname": STICKER_TYPE_GOLDEN,
           ":uid": id
         },
         KeyConditionExpression: "stickerName = :sname",
@@ -311,13 +319,13 @@ export const stickerHandler = async (event, ctx, callback) => {
       isGoldenInDB = response.Items.length > 0;
     } catch (error) {
       let errResponse = db.dynamoErrorResponse(error);
-      console.log(errResponse);
+      console.error(errResponse);
     }
 
     if (isGoldenInDB) {
       await sendMessage(event, {
         status: 400,
-        action: "error",
+        action: ACTION_TYPES.error,
         message: "Already submitted golden sticker."
       });
       return {
@@ -349,10 +357,10 @@ export const stickerHandler = async (event, ctx, callback) => {
         true
       );
     } catch (error) {
-      console.log(error);
+      console.error(error);
       await sendMessage(event, {
         status: 500,
-        action: "error",
+        action: ACTION_TYPES.error,
         message: "Failed to create sticker"
       });
       return {
@@ -363,7 +371,7 @@ export const stickerHandler = async (event, ctx, callback) => {
 
     await sendMessage(event, {
       status: 200,
-      action: "sticker",
+      action: ACTION_TYPES.sticker,
       message: stickerName + " was created for user " + id,
       data: {
         teamName,
@@ -385,7 +393,7 @@ export const stickerHandler = async (event, ctx, callback) => {
           userID: id
         }
       },
-      "sticker",
+      ACTION_TYPES.sticker,
       event
     );
     return {
@@ -407,7 +415,7 @@ export const stickerHandler = async (event, ctx, callback) => {
   } else {
     await sendMessage(event, {
       status: 400,
-      action: "error",
+      action: ACTION_TYPES.error,
       message: "Used up all " + sticker.limit + " stickers"
     });
     return {
@@ -423,13 +431,13 @@ export const stickerHandler = async (event, ctx, callback) => {
       stickerName,
       userID: id
     },
-    "sticker",
+    ACTION_TYPES.sticker,
     event
   );
 
   await sendMessage(event, {
     status: 200,
-    action: "sticker",
+    action: ACTION_TYPES.sticker,
     data: sticker
   });
   return {
@@ -490,7 +498,7 @@ export const scoreHandler = async (event, ctx, callback) => {
       true
     );
   } catch (error) {
-    console.log(error.message);
+    console.error(error.message);
     await sendMessage(event, {
       status: 500,
       message: "Failed to store score"
@@ -499,13 +507,13 @@ export const scoreHandler = async (event, ctx, callback) => {
 
   await sendMessage(event, {
     status: 200,
-    action: "score",
+    action: ACTION_TYPES.score,
     message: "Stored score"
   });
   return {
     status: 200,
-    action: "score",
-    message: "Stored score successfully"
+    action: ACTION_TYPES.score,
+    message: "Stored score"
   };
 };
 
@@ -518,11 +526,11 @@ export const defaultHandler = async (event, ctx, callback) => {
   try {
     await sendMessage(event, {
       status: 400,
-      action: "error",
+      action: ACTION_TYPES.error,
       message: "unknown action"
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     callback(null, error);
     return null;
   }
@@ -540,7 +548,7 @@ export const getScores = async (event, ctx, callback) => {
   try {
     res = await db.scan(SCORE_TABLE);
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res = createResponse(500, {
       message: "failed to fetch scores"
     });
