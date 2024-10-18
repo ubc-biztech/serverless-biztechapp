@@ -64,3 +64,4 @@ const massCreateLinkedinQRs = async (names, urls, eventID, year, points) => {
     }, "biztechQRs" + (process.env.ENVIRONMENT || ""));
   }
 };
+massCreateLinkedinQRs(partnerNames, partnerLinkedinUrls, "innovent", 2023, 0);
