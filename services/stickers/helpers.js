@@ -1,18 +1,30 @@
-import { ApiGatewayManagementApi } from "@aws-sdk/client-apigatewaymanagementapi";
+import {
+  ApiGatewayManagementApi
+} from "@aws-sdk/client-apigatewaymanagementapi";
 import db from "../../lib/db";
-import { SOCKETS_TABLE, STICKERS_TABLE } from "../../constants/tables";
-import { DeleteCommand, GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  SOCKETS_TABLE, STICKERS_TABLE
+} from "../../constants/tables";
+import {
+  DeleteCommand, GetCommand, QueryCommand
+} from "@aws-sdk/lib-dynamodb";
 import docClient from "../../lib/docClient";
-import { RESERVED_WORDS } from "../../constants/dynamodb";
+import {
+  RESERVED_WORDS
+} from "../../constants/dynamodb";
 import error from "copy-dynamodb-table/error";
-import { ACTION_TYPES, STATE_KEY } from "./constants";
+import {
+  ACTION_TYPES, STATE_KEY
+} from "./constants";
 
 /**
  * @param event socket action event
  * @param {Object} data message object being sent
  */
 export const sendMessage = async (event, data) => {
-  const { url, connectionId } = getEndpoint(event);
+  const {
+    url, connectionId
+  } = getEndpoint(event);
 
   try {
     let apigatewaymanagementapi = new ApiGatewayManagementApi({
@@ -128,18 +140,21 @@ export async function updateSocket(state, connectionID) {
  *
  * sends message to all voters
  */
-export async function notifyVoters(data, action, event) {
+export async function notifyVoters(data, action, event, roomID) {
   let voters;
   try {
     const command = new QueryCommand({
       IndexName: "role",
       ExpressionAttributeNames: {
-        "#role": "role"
+        "#role": "role",
+        "#roomID": "roomID"
       },
       ExpressionAttributeValues: {
-        ":role": "voter"
+        ":role": "voter",
+        ":roomID": roomID
       },
       KeyConditionExpression: "#role = :role",
+      FilterExpression: "#roomID = :roomID",
       ProjectionExpression: "connectionID",
       TableName: SOCKETS_TABLE + (process.env.ENVIRONMENT || "")
     });
@@ -150,6 +165,7 @@ export async function notifyVoters(data, action, event) {
     console.error(errResponse);
   }
 
+  // send message to all voters in the specific room
   for (let i = 0; i < voters.length; i++) {
     await sendMessage(
       {
@@ -174,35 +190,39 @@ export async function notifyVoters(data, action, event) {
  *
  * sends message to all admins
  */
-export async function notifyAdmins(data, action, event) {
-  let voters;
+export async function notifyAdmins(data, action, event, roomID) {
+  let admins;
   try {
     const command = new QueryCommand({
       IndexName: "role",
       ExpressionAttributeNames: {
-        "#role": "role"
+        "#role": "role",
+        "#roomID": "roomID"
       },
       ExpressionAttributeValues: {
-        ":role": "admin"
+        ":role": "admin",
+        ":roomID": roomID
       },
       KeyConditionExpression: "#role = :role",
+      FilterExpression: "#roomID = :roomID",
       ProjectionExpression: "connectionID",
       TableName: SOCKETS_TABLE + (process.env.ENVIRONMENT || "")
     });
     const response = await docClient.send(command);
-    voters = response.Items;
+    admins = response.Items;
   } catch (error) {
     let errResponse = db.dynamoErrorResponse(error);
     console.error(errResponse);
   }
 
-  for (let i = 0; i < voters.length; i++) {
+  // should only ever be length one because we have one presenter per room
+  for (let i = 0; i < admins.length; i++) {
     await sendMessage(
       {
         requestContext: {
           domainName: event.requestContext.domainName,
           stage: event.requestContext.stage,
-          connectionId: voters[i].connectionID
+          connectionId: admins[i].connectionID
         }
       },
       {
@@ -223,7 +243,8 @@ export async function notifyAdmins(data, action, event) {
 export function createUpdateExpression(obj) {
   let val = 0;
   let updateExpression = "SET ";
-  let expressionAttributeValues = {};
+  let expressionAttributeValues = {
+  };
   let expressionAttributeNames = null;
 
   for (const key in obj) {
@@ -231,7 +252,8 @@ export function createUpdateExpression(obj) {
       if (RESERVED_WORDS.includes(key.toUpperCase())) {
         updateExpression += `#v${val} = :val${val},`;
         expressionAttributeValues[`:val${val}`] = obj[key];
-        if (!expressionAttributeNames) expressionAttributeNames = {};
+        if (!expressionAttributeNames) expressionAttributeNames = {
+        };
         expressionAttributeNames[`#v${val}`] = key;
         val++;
       } else {
@@ -256,7 +278,8 @@ export function createUpdateExpression(obj) {
  *
  * return custom error message
  */
-export function checkPayloadProps(payload, check = {}) {
+export function checkPayloadProps(payload, check = {
+}) {
   try {
     const criteria = Object.entries(check);
     criteria.forEach(([key, crit]) => {
@@ -394,6 +417,9 @@ export function createResponse(statusCode, body) {
   return response;
 }
 
+/*
+  Assuming syncAdmin is called on the correct teamName, there is no need for roomID 
+*/
 export async function syncAdmin(event, teamName, isVoting) {
   await updateSocket(
     {

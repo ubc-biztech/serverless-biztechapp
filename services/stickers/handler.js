@@ -87,6 +87,8 @@ export const disconnectHandler = async (event, ctx, callback) => {
 
 /**
  * Sync action handler
+ * The event proudcer must provide the roomID to sync to the correct roomState
+ * 
  * The event.body REQUIRES the following properties:
  * `{
  *     id: string
@@ -110,8 +112,6 @@ export const syncHandler = async (event, ctx, callback) => {
     await sendMessage(event, errMessage);
     return errMessage;
   }
-
-  // let roomID = await fetchSocketRoomIDForConnection(event.requestContext.connectionId);
 
   const roomID = body.roomID;
   let state = await fetchState(roomID);
@@ -155,7 +155,8 @@ export const syncHandler = async (event, ctx, callback) => {
  * Admin action handler
  * The event.body REQUIRES following properties:
  * `{
- *     event: "start" | "end" | "changeTeam"
+ *     event: "start" | "end" | "changeTeam",
+ *     roomID: string
  * }`
  *
  *    if changeTeam is used as the action, then a team property must
@@ -163,9 +164,13 @@ export const syncHandler = async (event, ctx, callback) => {
  */
 export const adminHandler = async (event, ctx, callback) => {
   const body = JSON.parse(event.body);
-  if (!body.hasOwnProperty("event")) {
+  if (!body.hasOwnProperty("event") || !body.hasOwnProperty("roomID")) {
     const errMessage = checkPayloadProps(body, {
       event: {
+        required: true,
+        type: "string"
+      },
+      roomID: {
         required: true,
         type: "string"
       }
@@ -174,6 +179,7 @@ export const adminHandler = async (event, ctx, callback) => {
     return errMessage;
   }
   const action = body.event;
+  const roomID = body.roomID;
 
   if (action === ACTION_TYPES.changeTeam && !body.hasOwnProperty("team")) {
     const errMessage = checkPayloadProps(body, {
@@ -190,52 +196,52 @@ export const adminHandler = async (event, ctx, callback) => {
   try {
     let payload;
     switch (action) {
-      case ADMIN_EVENTS.start: {
-        let state = {
-          isVoting: true
-        };
-        payload = await updateSocket(state, STATE_KEY);
-        await notifyAdmins(state, ACTION_TYPES.state, event);
-        await notifyVoters(state, ACTION_TYPES.state, event);
-        return {
-          statusCode: 200
-        };
-      }
+    case ADMIN_EVENTS.start: {
+      let state = {
+        isVoting: true
+      };
+      payload = await updateSocket(state, roomID);
+      await notifyAdmins(state, ACTION_TYPES.state, event, roomID);
+      await notifyVoters(state, ACTION_TYPES.state, event, roomID);
+      return {
+        statusCode: 200
+      };
+    }
 
-      case ADMIN_EVENTS.end: {
-        let state = {
-          isVoting: false
-        };
-        payload = await updateSocket(state, STATE_KEY);
-        await notifyAdmins(state, ACTION_TYPES.state, event);
-        await notifyVoters(state, ACTION_TYPES.state, event);
-        return {
-          statusCode: 200
-        };
-      }
+    case ADMIN_EVENTS.end: {
+      let state = {
+        isVoting: false
+      };
+      payload = await updateSocket(state, roomID);
+      await notifyAdmins(state, ACTION_TYPES.state, event, roomID);
+      await notifyVoters(state, ACTION_TYPES.state, event, roomID);
+      return {
+        statusCode: 200
+      };
+    }
 
-      case ADMIN_EVENTS.changeTeam: {
-        let state = {
-          teamName: body.team
-        };
-        payload = await updateSocket(state, STATE_KEY);
-        await notifyAdmins(state, ACTION_TYPES.state, event);
-        await notifyVoters(state, ACTION_TYPES.state, event);
-        return {
-          statusCode: 200
-        };
-      }
+    case ADMIN_EVENTS.changeTeam: {
+      let state = {
+        teamName: body.team
+      };
+      payload = await updateSocket(state, roomID);
+      await notifyAdmins(state, ACTION_TYPES.state, event, roomID);
+      await notifyVoters(state, ACTION_TYPES.state, event, roomID);
+      return {
+        statusCode: 200
+      };
+    }
 
-      default: {
-        await sendMessage(event, {
-          status: "400",
-          action: ACTION_TYPES.error,
-          message: "unrecognized event type"
-        });
-        return {
-          statusCode: 400
-        };
-      }
+    default: {
+      await sendMessage(event, {
+        status: "400",
+        action: ACTION_TYPES.error,
+        message: "unrecognized event type"
+      });
+      return {
+        statusCode: 400
+      };
+    }
     }
   } catch (error) {
     console.error(error);
@@ -266,7 +272,31 @@ export const adminHandler = async (event, ctx, callback) => {
  *
  */
 export const stickerHandler = async (event, ctx, callback) => {
-  let state = await fetchState();
+  
+  const body = JSON.parse(event.body);
+  if (!body.hasOwnProperty("id") || !body.hasOwnProperty("stickerName") || !body.hasOwnProperty("roomID")) {
+    const errMessage = checkPayloadProps(body, {
+      id: {
+        required: true,
+        type: "string"
+      },
+      stickerName: {
+        required: true,
+        type: "string"
+      },
+      roomID: {
+        required: true,
+        type: "string"
+      }
+    });
+    await sendMessage(event, errMessage);
+    return errMessage;
+  }
+  
+  const {
+    id, stickerName, roomID
+  } = body;
+  let state = await fetchState(roomID);
   const {
     teamName, isVoting
   } = state.Item;
@@ -282,24 +312,6 @@ export const stickerHandler = async (event, ctx, callback) => {
     };
   }
 
-  const body = JSON.parse(event.body);
-  if (!body.hasOwnProperty("id") || !body.hasOwnProperty("stickerName")) {
-    const errMessage = checkPayloadProps(body, {
-      id: {
-        required: true,
-        type: "string"
-      },
-      stickerName: {
-        required: true,
-        type: "string"
-      }
-    });
-    await sendMessage(event, errMessage);
-    return errMessage;
-  }
-  const {
-    id, stickerName
-  } = body;
 
   let isGoldenInDB;
   if (stickerName === STICKER_TYPE_GOLDEN) {
@@ -394,7 +406,8 @@ export const stickerHandler = async (event, ctx, callback) => {
         }
       },
       ACTION_TYPES.sticker,
-      event
+      event,
+      roomID
     );
     return {
       status: 200,
@@ -432,7 +445,8 @@ export const stickerHandler = async (event, ctx, callback) => {
       userID: id
     },
     ACTION_TYPES.sticker,
-    event
+    event,
+    roomID
   );
 
   await sendMessage(event, {
@@ -462,13 +476,8 @@ export const stickerHandler = async (event, ctx, callback) => {
  *
  */
 export const scoreHandler = async (event, ctx, callback) => {
-  let state = await fetchState();
-  const {
-    teamName
-  } = state.Item;
-
   const body = JSON.parse(event.body);
-  if (!body.hasOwnProperty("id") || !body.hasOwnProperty("score")) {
+  if (!body.hasOwnProperty("id") || !body.hasOwnProperty("score") || !body.hasOwnProperty("roomID")) {
     const errMessage = checkPayloadProps(body, {
       id: {
         required: true,
@@ -477,6 +486,10 @@ export const scoreHandler = async (event, ctx, callback) => {
       score: {
         required: true,
         type: "object"
+      },
+      roomID: {
+        required: true,
+        type: "string"
       }
     });
     await sendMessage(event, errMessage);
@@ -484,8 +497,13 @@ export const scoreHandler = async (event, ctx, callback) => {
   }
 
   const {
-    id, score
+    id, score, roomID
   } = body;
+
+  let state = await fetchState(roomID);
+  const {
+    teamName
+  } = state.Item;
 
   try {
     await db.put(
