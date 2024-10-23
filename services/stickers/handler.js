@@ -20,9 +20,7 @@ import {
   SCORE_TABLE,
   SOCKETS_TABLE
 } from "../../constants/tables";
-import {
-  QueryCommand
-} from "@aws-sdk/lib-dynamodb";
+import { QueryCommand } from "@aws-sdk/lib-dynamodb";
 import docClient from "../../lib/docClient";
 import {
   ACTION_TYPES,
@@ -58,7 +56,6 @@ export const connectHandler = async (event, ctx, callback) => {
   const obj = {
     connectionID,
     role: VOTER_ROLE,
-    userID: "",
     roomID
   };
 
@@ -69,7 +66,6 @@ export const connectHandler = async (event, ctx, callback) => {
     body: "Connected."
   };
 };
-
 
 /**
  * Disconnect handler
@@ -88,7 +84,7 @@ export const disconnectHandler = async (event, ctx, callback) => {
 /**
  * Sync action handler
  * The event proudcer must provide the roomID to sync to the correct roomState
- * 
+ *
  * The event.body REQUIRES the following properties:
  * `{
  *     id: string
@@ -110,14 +106,16 @@ export const syncHandler = async (event, ctx, callback) => {
       }
     });
     await sendMessage(event, errMessage);
-    return errMessage;
+    delete errMessage.status;
+    return {
+      statusCode: 406,
+      ...errMessage
+    };
   }
 
   const roomID = body.roomID;
   let state = await fetchState(roomID);
-  const {
-    isVoting, teamName
-  } = state.Item;
+  const { isVoting, teamName } = state.Item;
 
   // sync admin that is specific to that room
   if (body.id === ADMIN_ROLE) {
@@ -176,7 +174,11 @@ export const adminHandler = async (event, ctx, callback) => {
       }
     });
     await sendMessage(event, errMessage);
-    return errMessage;
+    delete errMessage.status;
+    return {
+      statusCode: 406,
+      ...errMessage
+    };
   }
   const action = body.event;
   const roomID = body.roomID;
@@ -190,58 +192,62 @@ export const adminHandler = async (event, ctx, callback) => {
     });
 
     await sendMessage(event, errMessage);
-    return errMessage;
+    delete errMessage.status;
+    return {
+      statusCode: 406,
+      ...errMessage
+    };
   }
 
   try {
     let payload;
     switch (action) {
-    case ADMIN_EVENTS.start: {
-      let state = {
-        isVoting: true
-      };
-      payload = await updateSocket(state, roomID);
-      await notifyAdmins(state, ACTION_TYPES.state, event, roomID);
-      await notifyVoters(state, ACTION_TYPES.state, event, roomID);
-      return {
-        statusCode: 200
-      };
-    }
+      case ADMIN_EVENTS.start: {
+        let state = {
+          isVoting: true
+        };
+        payload = await updateSocket(state, roomID);
+        await notifyAdmins(state, ACTION_TYPES.state, event, roomID);
+        await notifyVoters(state, ACTION_TYPES.state, event, roomID);
+        return {
+          statusCode: 200
+        };
+      }
 
-    case ADMIN_EVENTS.end: {
-      let state = {
-        isVoting: false
-      };
-      payload = await updateSocket(state, roomID);
-      await notifyAdmins(state, ACTION_TYPES.state, event, roomID);
-      await notifyVoters(state, ACTION_TYPES.state, event, roomID);
-      return {
-        statusCode: 200
-      };
-    }
+      case ADMIN_EVENTS.end: {
+        let state = {
+          isVoting: false
+        };
+        payload = await updateSocket(state, roomID);
+        await notifyAdmins(state, ACTION_TYPES.state, event, roomID);
+        await notifyVoters(state, ACTION_TYPES.state, event, roomID);
+        return {
+          statusCode: 200
+        };
+      }
 
-    case ADMIN_EVENTS.changeTeam: {
-      let state = {
-        teamName: body.team
-      };
-      payload = await updateSocket(state, roomID);
-      await notifyAdmins(state, ACTION_TYPES.state, event, roomID);
-      await notifyVoters(state, ACTION_TYPES.state, event, roomID);
-      return {
-        statusCode: 200
-      };
-    }
+      case ADMIN_EVENTS.changeTeam: {
+        let state = {
+          teamName: body.team
+        };
+        payload = await updateSocket(state, roomID);
+        await notifyAdmins(state, ACTION_TYPES.state, event, roomID);
+        await notifyVoters(state, ACTION_TYPES.state, event, roomID);
+        return {
+          statusCode: 200
+        };
+      }
 
-    default: {
-      await sendMessage(event, {
-        status: "400",
-        action: ACTION_TYPES.error,
-        message: "unrecognized event type"
-      });
-      return {
-        statusCode: 400
-      };
-    }
+      default: {
+        await sendMessage(event, {
+          status: "400",
+          action: ACTION_TYPES.error,
+          message: "unrecognized event type"
+        });
+        return {
+          statusCode: 400
+        };
+      }
     }
   } catch (error) {
     console.error(error);
@@ -272,9 +278,12 @@ export const adminHandler = async (event, ctx, callback) => {
  *
  */
 export const stickerHandler = async (event, ctx, callback) => {
-  
   const body = JSON.parse(event.body);
-  if (!body.hasOwnProperty("id") || !body.hasOwnProperty("stickerName") || !body.hasOwnProperty("roomID")) {
+  if (
+    !body.hasOwnProperty("id") ||
+    !body.hasOwnProperty("stickerName") ||
+    !body.hasOwnProperty("roomID")
+  ) {
     const errMessage = checkPayloadProps(body, {
       id: {
         required: true,
@@ -290,16 +299,16 @@ export const stickerHandler = async (event, ctx, callback) => {
       }
     });
     await sendMessage(event, errMessage);
-    return errMessage;
+    delete errMessage.status;
+    return {
+      statusCode: 406,
+      ...errMessage
+    };
   }
-  
-  const {
-    id, stickerName, roomID
-  } = body;
+
+  const { id, stickerName, roomID } = body;
   let state = await fetchState(roomID);
-  const {
-    teamName, isVoting
-  } = state.Item;
+  const { teamName, isVoting } = state.Item;
 
   if (!isVoting) {
     await sendMessage(event, {
@@ -308,10 +317,9 @@ export const stickerHandler = async (event, ctx, callback) => {
       message: "voting is not open"
     });
     return {
-      status: 400
+      statusCode: 400
     };
   }
-
 
   let isGoldenInDB;
   if (stickerName === STICKER_TYPE_GOLDEN) {
@@ -341,7 +349,7 @@ export const stickerHandler = async (event, ctx, callback) => {
         message: "Already submitted golden sticker."
       });
       return {
-        status: 400,
+        statusCode: 400,
         message: "Golden sticker already exists"
       };
     }
@@ -376,7 +384,7 @@ export const stickerHandler = async (event, ctx, callback) => {
         message: "Failed to create sticker"
       });
       return {
-        status: 500,
+        statusCode: 500,
         message: "Failed to create sticker"
       };
     }
@@ -396,21 +404,18 @@ export const stickerHandler = async (event, ctx, callback) => {
 
     await notifyAdmins(
       {
-        status: 200,
-        data: {
-          teamName,
-          count: 1,
-          limit,
-          stickerName,
-          userID: id
-        }
+        teamName,
+        count: 1,
+        limit,
+        stickerName,
+        userID: id
       },
       ACTION_TYPES.sticker,
       event,
       roomID
     );
     return {
-      status: 200,
+      statusCode: 200,
       message: stickerName + " sticker created successfully"
     };
   }
@@ -432,7 +437,7 @@ export const stickerHandler = async (event, ctx, callback) => {
       message: "Used up all " + sticker.limit + " stickers"
     });
     return {
-      status: 400
+      statusCode: 400
     };
   }
 
@@ -455,7 +460,7 @@ export const stickerHandler = async (event, ctx, callback) => {
     data: sticker
   });
   return {
-    status: 200
+    statusCode: 200
   };
 };
 
@@ -477,7 +482,11 @@ export const stickerHandler = async (event, ctx, callback) => {
  */
 export const scoreHandler = async (event, ctx, callback) => {
   const body = JSON.parse(event.body);
-  if (!body.hasOwnProperty("id") || !body.hasOwnProperty("score") || !body.hasOwnProperty("roomID")) {
+  if (
+    !body.hasOwnProperty("id") ||
+    !body.hasOwnProperty("score") ||
+    !body.hasOwnProperty("roomID")
+  ) {
     const errMessage = checkPayloadProps(body, {
       id: {
         required: true,
@@ -493,17 +502,17 @@ export const scoreHandler = async (event, ctx, callback) => {
       }
     });
     await sendMessage(event, errMessage);
-    return errMessage;
+    delete errMessage.status;
+    return {
+      statusCode: 406,
+      ...errMessage
+    };
   }
 
-  const {
-    id, score, roomID
-  } = body;
+  const { id, score, roomID } = body;
 
   let state = await fetchState(roomID);
-  const {
-    teamName
-  } = state.Item;
+  const { teamName } = state.Item;
 
   try {
     await db.put(
@@ -529,7 +538,7 @@ export const scoreHandler = async (event, ctx, callback) => {
     message: "Stored score"
   });
   return {
-    status: 200,
+    statusCode: 200,
     action: ACTION_TYPES.score,
     message: "Stored score"
   };

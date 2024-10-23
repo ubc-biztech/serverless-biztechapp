@@ -25,7 +25,6 @@ export const sendMessage = async (event, data) => {
   const {
     url, connectionId
   } = getEndpoint(event);
-
   try {
     let apigatewaymanagementapi = new ApiGatewayManagementApi({
       apiVersion: "2018-11-29",
