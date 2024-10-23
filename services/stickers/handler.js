@@ -93,11 +93,6 @@ export const disconnectHandler = async (event, ctx, callback) => {
  *    to sync connection to admin role and state, set id = ADMIN_ROLE
  */
 export const syncHandler = async (event, ctx, callback) => {
-  let test = "nothing changed";
-  if (event.queryStringParameters && event.queryStringParameters.roomID) {
-    test = event.queryStringParameters.roomID;
-  }
-  console.log(test);
   const body = JSON.parse(event.body);
   if (!body.hasOwnProperty("id") || !body.hasOwnProperty("roomID")) {
     const errMessage = checkPayloadProps(body, {

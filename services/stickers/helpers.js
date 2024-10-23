@@ -1,18 +1,30 @@
-import { ApiGatewayManagementApi } from "@aws-sdk/client-apigatewaymanagementapi";
+import {
+  ApiGatewayManagementApi
+} from "@aws-sdk/client-apigatewaymanagementapi";
 import db from "../../lib/db";
-import { SOCKETS_TABLE, STICKERS_TABLE } from "../../constants/tables";
-import { DeleteCommand, GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  SOCKETS_TABLE, STICKERS_TABLE
+} from "../../constants/tables";
+import {
+  DeleteCommand, GetCommand, QueryCommand
+} from "@aws-sdk/lib-dynamodb";
 import docClient from "../../lib/docClient";
-import { RESERVED_WORDS } from "../../constants/dynamodb";
+import {
+  RESERVED_WORDS
+} from "../../constants/dynamodb";
 import error from "copy-dynamodb-table/error";
-import { ACTION_TYPES, STATE_KEY } from "./constants";
+import {
+  ACTION_TYPES, STATE_KEY
+} from "./constants";
 
 /**
  * @param event socket action event
  * @param {Object} data message object being sent
  */
 export const sendMessage = async (event, data) => {
-  const { url, connectionId } = getEndpoint(event);
+  const {
+    url, connectionId
+  } = getEndpoint(event);
   try {
     let apigatewaymanagementapi = new ApiGatewayManagementApi({
       apiVersion: "2018-11-29",
@@ -230,7 +242,8 @@ export async function notifyAdmins(data, action, event, roomID) {
 export function createUpdateExpression(obj) {
   let val = 0;
   let updateExpression = "SET ";
-  let expressionAttributeValues = {};
+  let expressionAttributeValues = {
+  };
   let expressionAttributeNames = null;
 
   for (const key in obj) {
@@ -238,7 +251,8 @@ export function createUpdateExpression(obj) {
       if (RESERVED_WORDS.includes(key.toUpperCase())) {
         updateExpression += `#v${val} = :val${val},`;
         expressionAttributeValues[`:val${val}`] = obj[key];
-        if (!expressionAttributeNames) expressionAttributeNames = {};
+        if (!expressionAttributeNames) expressionAttributeNames = {
+        };
         expressionAttributeNames[`#v${val}`] = key;
         val++;
       } else {
@@ -263,7 +277,8 @@ export function createUpdateExpression(obj) {
  *
  * return custom error message
  */
-export function checkPayloadProps(payload, check = {}) {
+export function checkPayloadProps(payload, check = {
+}) {
   try {
     const criteria = Object.entries(check);
     criteria.forEach(([key, crit]) => {
