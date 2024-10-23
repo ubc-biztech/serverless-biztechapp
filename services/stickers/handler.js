@@ -111,7 +111,11 @@ export const syncHandler = async (event, ctx, callback) => {
       }
     });
     await sendMessage(event, errMessage);
-    return errMessage;
+    delete errMessage.status;
+    return {
+      statusCode: 406,
+      ...errMessage
+    };
   }
 
   const roomID = body.roomID;
@@ -175,7 +179,11 @@ export const adminHandler = async (event, ctx, callback) => {
       }
     });
     await sendMessage(event, errMessage);
-    return errMessage;
+    delete errMessage.status;
+    return {
+      statusCode: 406,
+      ...errMessage
+    };
   }
   const action = body.event;
   const roomID = body.roomID;
@@ -189,7 +197,11 @@ export const adminHandler = async (event, ctx, callback) => {
     });
 
     await sendMessage(event, errMessage);
-    return errMessage;
+    delete errMessage.status;
+    return {
+      statusCode: 406,
+      ...errMessage
+    };
   }
 
   try {
@@ -292,7 +304,11 @@ export const stickerHandler = async (event, ctx, callback) => {
       }
     });
     await sendMessage(event, errMessage);
-    return errMessage;
+    delete errMessage.status;
+    return {
+      statusCode: 406,
+      ...errMessage
+    };
   }
 
   const { id, stickerName, roomID } = body;
@@ -306,7 +322,7 @@ export const stickerHandler = async (event, ctx, callback) => {
       message: "voting is not open"
     });
     return {
-      status: 400
+      statusCode: 400
     };
   }
 
@@ -338,7 +354,7 @@ export const stickerHandler = async (event, ctx, callback) => {
         message: "Already submitted golden sticker."
       });
       return {
-        status: 400,
+        statusCode: 400,
         message: "Golden sticker already exists"
       };
     }
@@ -373,7 +389,7 @@ export const stickerHandler = async (event, ctx, callback) => {
         message: "Failed to create sticker"
       });
       return {
-        status: 500,
+        statusCode: 500,
         message: "Failed to create sticker"
       };
     }
@@ -404,7 +420,7 @@ export const stickerHandler = async (event, ctx, callback) => {
       roomID
     );
     return {
-      status: 200,
+      statusCode: 200,
       message: stickerName + " sticker created successfully"
     };
   }
@@ -426,7 +442,7 @@ export const stickerHandler = async (event, ctx, callback) => {
       message: "Used up all " + sticker.limit + " stickers"
     });
     return {
-      status: 400
+      statusCode: 400
     };
   }
 
@@ -449,7 +465,7 @@ export const stickerHandler = async (event, ctx, callback) => {
     data: sticker
   });
   return {
-    status: 200
+    statusCode: 200
   };
 };
 
@@ -491,7 +507,11 @@ export const scoreHandler = async (event, ctx, callback) => {
       }
     });
     await sendMessage(event, errMessage);
-    return errMessage;
+    delete errMessage.status;
+    return {
+      statusCode: 406,
+      ...errMessage
+    };
   }
 
   const { id, score, roomID } = body;
@@ -523,7 +543,7 @@ export const scoreHandler = async (event, ctx, callback) => {
     message: "Stored score"
   });
   return {
-    status: 200,
+    statusCode: 200,
     action: ACTION_TYPES.score,
     message: "Stored score"
   };
