@@ -104,3 +104,50 @@ functions:
           path: scores/
           method: get
           cors: true
+  scoresGetRoom:
+    handler: handler.getScoresRoom
+    events:
+      - http:
+          path: scores/{roomID}
+          request:
+            path:
+              roomID: true
+          method: get
+          cors: true
+  scoresGetTeam:
+    handler: handler.getScoresTeam
+    events:
+      - http:
+          path: scores/team/{teamName}
+          request:
+            path:
+              teamName: true
+          method: get
+          cors: true
+  stickersGetAll:
+    handler: handler.getStickers
+    events:
+      - http:
+          path: stickers/
+          method: get
+          cors: true
+  stickersGetRoom:
+    handler: handler.getStickersRoom
+    events:
+      - http:
+          path: stickers/{roomID}
+          request:
+            path:
+              roomID: true
+          method: get
+          cors: true
+  stickersGetTeam:
+    handler: handler.getStickersTeam
+    events:
+      - http:
+          path: stickers/team/{teamName}
+          request:
+            path:
+              teamName: true
+          method: get
+          cors: true

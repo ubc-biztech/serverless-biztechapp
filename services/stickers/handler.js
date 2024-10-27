@@ -12,7 +12,8 @@ import {
   syncUser,
   updateSocket,
   updateSticker,
-  fetchSocket
+  fetchSocket,
+  missingPathParamResponse
 } from "./helpers";
 import db from "../../lib/db";
 import {
@@ -371,7 +372,8 @@ export const stickerHandler = async (event, ctx, callback) => {
           count: 1,
           limit,
           stickerName,
-          userID: id
+          userID: id,
+          roomID
         },
         STICKERS_TABLE,
         true
@@ -398,7 +400,8 @@ export const stickerHandler = async (event, ctx, callback) => {
         count: 1,
         limit,
         stickerName,
-        userID: id
+        userID: id,
+        roomID
       }
     });
 
@@ -408,7 +411,8 @@ export const stickerHandler = async (event, ctx, callback) => {
         count: 1,
         limit,
         stickerName,
-        userID: id
+        userID: id,
+        roomID
       },
       ACTION_TYPES.sticker,
       event,
@@ -513,23 +517,24 @@ export const scoreHandler = async (event, ctx, callback) => {
 
   let state = await fetchState(roomID);
   const { teamName } = state.Item;
+  let payload = {
+    teamName,
+    userID: id,
+    score,
+    roomID
+  };
 
   try {
-    await db.put(
-      {
-        teamName,
-        userID: id,
-        score
-      },
-      SCORE_TABLE,
-      true
-    );
+    await db.put(payload, SCORE_TABLE, true);
   } catch (error) {
     console.error(error.message);
     await sendMessage(event, {
       status: 500,
       message: "Failed to store score"
     });
+    return {
+      statusCode: 500
+    };
   }
 
   await sendMessage(event, {
@@ -537,6 +542,7 @@ export const scoreHandler = async (event, ctx, callback) => {
     action: ACTION_TYPES.score,
     message: "Stored score"
   });
+  await notifyAdmins(payload, ACTION_TYPES.score, event, roomID);
   return {
     statusCode: 200,
     action: ACTION_TYPES.score,
@@ -582,9 +588,234 @@ export const getScores = async (event, ctx, callback) => {
     callback(null, res);
     return res;
   }
+
+  let scoresMap = new Map();
+  for (let i = 0; i < res.length; i++) {
+    let val = scoresMap.get(res[i].teamName);
+    if (!val) {
+      scoresMap.set(res[i].teamName, [res[i]]);
+    } else {
+      scoresMap.set(res[i].teamName, [...val, res[i]]);
+    }
+  }
+
+  const result = Array.from(scoresMap).map(([teamName, data]) => ({
+    teamName,
+    data
+  }));
   res = createResponse(200, {
-    message: "Scores",
-    response: res
+    message: "All scores",
+    data: result
+  });
+  callback(null, res);
+  return res;
+};
+
+/** Endpoint to return all scores in room */
+export const getScoresRoom = async (event, ctx, callback) => {
+  if (!event.pathParameters || !event.pathParameters.roomID)
+    throw missingPathParamResponse("roomID");
+
+  const roomID = event.pathParameters.roomID;
+  let res;
+  try {
+    res = await db.scan(SCORE_TABLE, {
+      FilterExpression: "roomID = :roomID",
+      ExpressionAttributeValues: {
+        ":roomID": roomID
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res = createResponse(500, {
+      message: "failed to fetch scores"
+    });
+    callback(null, res);
+    return res;
+  }
+
+  let scoresMap = new Map();
+  for (let i = 0; i < res.length; i++) {
+    let val = scoresMap.get(res[i].teamName);
+    if (!val) {
+      scoresMap.set(res[i].teamName, [res[i]]);
+    } else {
+      scoresMap.set(res[i].teamName, [...val, res[i]]);
+    }
+  }
+
+  const result = Array.from(scoresMap).map(([teamName, data]) => ({
+    teamName,
+    data
+  }));
+  res = createResponse(200, {
+    message: `Scores for ${roomID}`,
+    data: result
+  });
+  callback(null, res);
+  return res;
+};
+
+/**
+ * Endpoint to return all scores
+ *
+ */
+export const getScoresTeam = async (event, ctx, callback) => {
+  if (!event.pathParameters || !event.pathParameters.teamName)
+    throw missingPathParamResponse("teamName");
+
+  const teamName = event.pathParameters.teamName;
+  let res;
+  try {
+    const command = new QueryCommand({
+      ExpressionAttributeValues: {
+        ":v_team": teamName
+      },
+      // ExpressionAttributeNames: {
+      // },
+      KeyConditionExpression: "teamName = :v_team",
+      ProjectionExpression: "teamName, userID, score",
+      TableName: SCORE_TABLE + (process.env.ENVIRONMENT || "")
+    });
+    const response = await docClient.send(command);
+    res = response.Items;
+  } catch (error) {
+    let errResponse = db.dynamoErrorResponse(error);
+    console.error(errResponse);
+    await sendMessage(event, {
+      status: "502",
+      action: ACTION_TYPES.error,
+      message: "Internal server error"
+    });
+  }
+
+  res = createResponse(200, {
+    message: `Scores for ${teamName}`,
+    data: res
+  });
+  callback(null, res);
+  return res;
+};
+
+/**
+ * Endpoint to return all stickers
+ */
+export const getStickers = async (event, ctx, callback) => {
+  let res;
+  try {
+    res = await db.scan(STICKERS_TABLE + (process.env.ENVIRONMENT || ""));
+  } catch (error) {
+    console.error(error);
+    res = createResponse(500, {
+      message: "failed to fetch scores"
+    });
+    callback(null, res);
+    return res;
+  }
+
+  let stickersMap = new Map();
+  for (let i = 0; i < res.length; i++) {
+    let val = stickersMap.get(res[i].teamName);
+    if (!val) {
+      stickersMap.set(res[i].teamName, [res[i]]);
+    } else {
+      stickersMap.set(res[i].teamName, [...val, res[i]]);
+    }
+  }
+
+  const result = Array.from(stickersMap).map(([teamName, data]) => ({
+    teamName,
+    data
+  }));
+  res = createResponse(200, {
+    message: "All Stickers",
+    data: result
+  });
+  callback(null, res);
+  return res;
+};
+
+export const getStickersRoom = async (event, ctx, callback) => {
+  if (!event.pathParameters || !event.pathParameters.roomID)
+    throw missingPathParamResponse("roomID");
+
+  let roomID = event.pathParameters.roomID;
+  let res;
+  try {
+    res = res = await db.scan(STICKERS_TABLE, {
+      FilterExpression: "roomID = :roomID",
+      ExpressionAttributeValues: {
+        ":roomID": roomID
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res = createResponse(500, {
+      message: "failed to fetch scores"
+    });
+    callback(null, res);
+    return res;
+  }
+
+  let stickersMap = new Map();
+  for (let i = 0; i < res.length; i++) {
+    let val = stickersMap.get(res[i].teamName);
+    if (!val) {
+      stickersMap.set(res[i].teamName, [res[i]]);
+    } else {
+      stickersMap.set(res[i].teamName, [...val, res[i]]);
+    }
+  }
+
+  const result = Array.from(stickersMap).map(([teamName, data]) => ({
+    teamName,
+    data
+  }));
+  res = createResponse(200, {
+    message: `Stickers for ${roomID}`,
+    data: result
+  });
+  callback(null, res);
+  return res;
+};
+
+/**
+ * Endpoint to return all stickers
+ */
+export const getStickersTeam = async (event, ctx, callback) => {
+  if (!event.pathParameters || !event.pathParameters.teamName)
+    throw missingPathParamResponse("teamName");
+
+  const teamName = event.pathParameters.teamName;
+  let stickers = [];
+  try {
+    const command = new QueryCommand({
+      ExpressionAttributeValues: {
+        ":v_team": teamName
+      },
+      ExpressionAttributeNames: {
+        "#cnt": "count",
+        "#lmt": "limit"
+      },
+      KeyConditionExpression: "teamName = :v_team",
+      ProjectionExpression: "stickerName, #cnt, #lmt",
+      TableName: STICKERS_TABLE + (process.env.ENVIRONMENT || "")
+    });
+    const response = await docClient.send(command);
+    stickers = response.Items;
+  } catch (error) {
+    let errResponse = db.dynamoErrorResponse(error);
+    console.error(errResponse);
+    await sendMessage(event, {
+      status: "502",
+      action: ACTION_TYPES.error,
+      message: "Internal server error"
+    });
+  }
+
+  let res = createResponse(200, {
+    message: `Stickers for ${teamName}`,
+    data: stickers
   });
   callback(null, res);
   return res;

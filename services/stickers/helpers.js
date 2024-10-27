@@ -1,30 +1,18 @@
-import {
-  ApiGatewayManagementApi
-} from "@aws-sdk/client-apigatewaymanagementapi";
+import { ApiGatewayManagementApi } from "@aws-sdk/client-apigatewaymanagementapi";
 import db from "../../lib/db";
-import {
-  SOCKETS_TABLE, STICKERS_TABLE
-} from "../../constants/tables";
-import {
-  DeleteCommand, GetCommand, QueryCommand
-} from "@aws-sdk/lib-dynamodb";
+import { SOCKETS_TABLE, STICKERS_TABLE } from "../../constants/tables";
+import { DeleteCommand, GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import docClient from "../../lib/docClient";
-import {
-  RESERVED_WORDS
-} from "../../constants/dynamodb";
+import { RESERVED_WORDS } from "../../constants/dynamodb";
 import error from "copy-dynamodb-table/error";
-import {
-  ACTION_TYPES, STATE_KEY
-} from "./constants";
+import { ACTION_TYPES, STATE_KEY } from "./constants";
 
 /**
  * @param event socket action event
  * @param {Object} data message object being sent
  */
 export const sendMessage = async (event, data) => {
-  const {
-    url, connectionId
-  } = getEndpoint(event);
+  const { url, connectionId } = getEndpoint(event);
   try {
     let apigatewaymanagementapi = new ApiGatewayManagementApi({
       apiVersion: "2018-11-29",
@@ -46,6 +34,42 @@ export const sendMessage = async (event, data) => {
       );
     });
   } catch (error) {
+    switch (error.code) {
+      case "GoneException" || "UnknownException": // Connection no longer exists
+        console.error(`Stale Connection`, error.message || error);
+        break;
+
+      case "LimitExceededException": // Rate limit exceeded
+        console.error(`Rate limit exceeded.`, error.message || error);
+        break;
+
+      case "PayloadTooLargeException": // Payload size exceeds the allowed limit
+        console.error("Payload is too large", error.message || error);
+        break;
+
+      case "ForbiddenException": // Insufficient permissions
+        console.error(
+          "Forbidden: You do not have permission to post to this connection.",
+          error.message || error
+        );
+        break;
+
+      case "InternalServerErrorException": // Internal server error
+        console.error("Internal server error", error.message || error);
+
+        break;
+
+      case "BadRequestException": // Invalid request format
+        console.error(
+          "Bad request: Please check your data format.",
+          error.message || error
+        );
+        break;
+
+      default:
+        console.error("An unexpected error occurred:", error.message || error);
+        break;
+    }
     await deleteConnection(connectionId);
   }
 };
@@ -242,8 +266,7 @@ export async function notifyAdmins(data, action, event, roomID) {
 export function createUpdateExpression(obj) {
   let val = 0;
   let updateExpression = "SET ";
-  let expressionAttributeValues = {
-  };
+  let expressionAttributeValues = {};
   let expressionAttributeNames = null;
 
   for (const key in obj) {
@@ -251,8 +274,7 @@ export function createUpdateExpression(obj) {
       if (RESERVED_WORDS.includes(key.toUpperCase())) {
         updateExpression += `#v${val} = :val${val},`;
         expressionAttributeValues[`:val${val}`] = obj[key];
-        if (!expressionAttributeNames) expressionAttributeNames = {
-        };
+        if (!expressionAttributeNames) expressionAttributeNames = {};
         expressionAttributeNames[`#v${val}`] = key;
         val++;
       } else {
@@ -277,8 +299,7 @@ export function createUpdateExpression(obj) {
  *
  * return custom error message
  */
-export function checkPayloadProps(payload, check = {
-}) {
+export function checkPayloadProps(payload, check = {}) {
   try {
     const criteria = Object.entries(check);
     criteria.forEach(([key, crit]) => {
@@ -400,24 +421,8 @@ export async function updateSticker(state, teamName, userID, stickerName) {
   return res;
 }
 
-export function createResponse(statusCode, body) {
-  const response = {
-    statusCode,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Credentials": true
-    },
-    // helps stringify Error objects as well
-    body:
-      body && body.stack && body.message
-        ? JSON.stringify(body, Object.getOwnPropertyNames(body))
-        : JSON.stringify(body)
-  };
-  return response;
-}
-
 /*
-  Assuming syncAdmin is called on the correct teamName, there is no need for roomID 
+Assuming syncAdmin is called on the correct teamName, there is no need for roomID 
 */
 export async function syncAdmin(event, teamName, isVoting) {
   await updateSocket(
@@ -427,39 +432,12 @@ export async function syncAdmin(event, teamName, isVoting) {
     event.requestContext.connectionId
   );
 
-  let stickers = [];
-  try {
-    const command = new QueryCommand({
-      ExpressionAttributeValues: {
-        ":v_team": teamName
-      },
-      ExpressionAttributeNames: {
-        "#cnt": "count",
-        "#lmt": "limit"
-      },
-      KeyConditionExpression: "teamName = :v_team",
-      ProjectionExpression: "stickerName, #cnt, #lmt",
-      TableName: STICKERS_TABLE + (process.env.ENVIRONMENT || "")
-    });
-    const response = await docClient.send(command);
-    stickers = response.Items;
-  } catch (error) {
-    let errResponse = db.dynamoErrorResponse(error);
-    console.error(errResponse);
-    await sendMessage(event, {
-      status: "502",
-      action: ACTION_TYPES.error,
-      message: "Internal server error"
-    });
-  }
-
   await sendMessage(event, {
     status: 200,
     action: ACTION_TYPES.sync,
     data: {
       isVoting,
-      teamName,
-      stickers
+      teamName
     }
   });
   return {
@@ -533,4 +511,26 @@ export async function fetchSocket(id) {
   });
   const response = await docClient.send(command);
   return response.Item || null;
+}
+
+export function createResponse(statusCode, body) {
+  const response = {
+    statusCode,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Credentials": true
+    },
+    // helps stringify Error objects as well
+    body:
+      body && body.stack && body.message
+        ? JSON.stringify(body, Object.getOwnPropertyNames(body))
+        : JSON.stringify(body)
+  };
+  return response;
+}
+
+export function missingPathParamResponse(type, paramName) {
+  return createResponse(400, {
+    message: `A(n) ${paramName} path parameter was not provided for this ${type}. Check path params`
+  });
 }
