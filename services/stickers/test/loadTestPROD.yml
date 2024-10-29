@@ -1,0 +1,36 @@
+config:
+  target: "wss://hkjbov6bla.execute-api.us-west-2.amazonaws.com/prod/"
+  phases:
+    - duration: 5 # Test duration in seconds
+      arrivalCount: 15 # Number of connections
+  engines:
+    ws: {}
+  variables:
+    ids:
+      - "testUser1"
+      - "testUser2"
+      - "testUser3"
+      - "testUser4"
+      - "testUser5"
+    stickerNames:
+      - "wow"
+      - "cooking"
+      - "aww"
+      - "cracked"
+      - "thinking"
+
+scenarios:
+  - engine: "ws"
+    flow:
+      - connect: "wss://hkjbov6bla.execute-api.us-west-2.amazonaws.com/prod/?roomID=ROOM_1"
+      - send:
+          action: "sync"
+          id: "bruh"
+          roomID: "ROOM_1"
+      - loop:
+          - think: 1
+          - send:
+              action: "sticker"
+              id: "bruhidkhowloopinartillery"
+              stickerName: "cooking"
+              roomID: "ROOM_1"

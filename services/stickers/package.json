@@ -2,15 +2,14 @@
   "name": "biztechapi-stickers",
   "version": "1.0.0",
   "scripts": {
-    "itest": "npm run itest stickers --prefix ../../",
-    "utest": "npm run utest stickers --prefix ../../",
-    "test": "npm run utest stickers --prefix ../../ && npm run itest stickers --prefix ../../"
+    "ltest": "cd test/ && artillery run loadTestPROD.yml"
   },
   "devDependencies": {
     "serverless-offline": "^14.3.2"
   },
   "dependencies": {
     "@aws-sdk/client-apigatewaymanagementapi": "^3.664.0",
+    "artillery": "^2.0.21",
     "serverless-apigateway-plugin": "^0.0.6"
   }
 }
