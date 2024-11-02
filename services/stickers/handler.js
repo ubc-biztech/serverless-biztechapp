@@ -145,6 +145,7 @@ export const syncHandler = async (event, ctx, callback) => {
   await sendMessage(event, {
     status: 200,
     isVoting,
+    action: ACTION_TYPES.sync,
     teamName,
     stickers
   });
