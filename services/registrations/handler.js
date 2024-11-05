@@ -1,6 +1,9 @@
 import docClient from "../../lib/docClient";
 import registrationHelpers from "./helpers";
 import helpers from "../../lib/handlerHelpers";
+import {
+  sendSNSNotification
+} from "../../lib/snsHelper";
 import db from "../../lib/db";
 import {
   isEmpty, isValidEmail
@@ -139,6 +142,22 @@ export async function updateHelper(data, createNew, email, fname) {
     eventIDAndYear,
     createNew
   );
+
+  // Slack SNS notification
+  try {
+    await sendSNSNotification({
+      type: "registration_update",
+      email,
+      eventID,
+      year,
+      registrationStatus: dynamicRegistrationStatus,
+      applicationStatus,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("Failed to send SNS notification for registration update:", error);
+  }
+
   return response;
 }
 
@@ -204,8 +223,7 @@ async function createRegistration(
       ConditionExpression: conditionExpression
     };
 
-    // do the magic
-    const res = await docClient.update(params).promise();
+    const res = await db.updateDBCustom(params);
     let message = `User with email ${email} successfully registered (through update) to status '${registrationStatus}'!`;
     let statusCode = 200;
 

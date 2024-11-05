@@ -1,5 +1,7 @@
 import * as dotenv from "dotenv";
-import AWS from "aws-sdk";
+import {
+  DynamoDB
+} from "@aws-sdk/client-dynamodb";
 import * as fs from "fs";
 
 
@@ -18,7 +20,7 @@ const awsConfig = {
 };
 
 
-const dynamodb = new AWS.DynamoDB(awsConfig);
+const dynamodb = new DynamoDB(awsConfig);
 
 // Define the parameters for the scan operation
 const params = {

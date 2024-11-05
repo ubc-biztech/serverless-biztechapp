@@ -133,7 +133,7 @@ export default {
         // if qr is type partner, check if user has already scanned a qr of type partner
         // as users can only redeem points for one partner scan.
 
-        if (qr.type === "Partner" && await this.checkIfAlreadyScannedPartnerQR(userRegistration, eventIDAndYear)) {
+        if (qr.type === "Partner" && (await this.checkIfAlreadyScannedPartnerQR(userRegistration, eventIDAndYear))) {
           return {
             current_points: userRegistration.points,
             redeemed_points: 0,
@@ -232,6 +232,10 @@ export default {
               return this._addTeamQRScan(team, qrCodeID, qr.points).then(
                 (teamPoints) => {
                   // update the individual user's registration with the new points (for stats-keeping)
+                  // The `.promise()` call might be on an JS SDK v2 client API.
+                  // If yes, please remove .promise(). If not, remove this comment.
+                  // The `.promise()` call might be on an JS SDK v2 client API.
+                  // If yes, please remove .promise(). If not, remove this comment.
                   docClient
                     .update(updateParams)
                     .promise()
@@ -250,7 +254,11 @@ export default {
           });
         } else {
           // if event teams are not enabled, just update the user's points
-          const result = docClient
+          const result = // The `.promise()` call might be on an JS SDK v2 client API.
+          // If yes, please remove .promise(). If not, remove this comment.
+          // The `.promise()` call might be on an JS SDK v2 client API.
+          // If yes, please remove .promise(). If not, remove this comment.
+          docClient
             .update(updateParams)
             .promise()
             .then(() => {
@@ -456,7 +464,11 @@ export default {
       Item: team
     };
 
-    return await docClient
+    return await // The `.promise()` call might be on an JS SDK v2 client API.
+    // If yes, please remove .promise(). If not, remove this comment.
+    // The `.promise()` call might be on an JS SDK v2 client API.
+    // If yes, please remove .promise(). If not, remove this comment.
+    docClient
       .put(params)
       .promise()
       .then((team) => {
@@ -490,7 +502,11 @@ export default {
         ":query": eventIDAndYear
       }
     };
-    const allQRs = (await docClient.scan(params).promise()).Items;
+    const allQRs = (await // The `.promise()` call might be on an JS SDK v2 client API.
+    // If yes, please remove .promise(). If not, remove this comment.
+    // The `.promise()` call might be on an JS SDK v2 client API.
+    // If yes, please remove .promise(). If not, remove this comment.
+    docClient.scan(params).promise()).Items;
     if (!allQRs) {
       return false;
     }

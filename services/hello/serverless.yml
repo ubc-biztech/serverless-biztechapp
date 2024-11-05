@@ -4,6 +4,7 @@ tenant: ianmh
 app: biztechapp
 
 plugins:
+  - serverless-dynamodb
   - serverless-offline
   - serverless-domain-manager
   - serverless-bundle
@@ -17,6 +18,8 @@ provider:
   runtime: ${file(../../serverless.common.yml):provider.runtime}
   region: ${file(../../serverless.common.yml):provider.region}
   cfLogs: true
+  environment:
+    NODE_ENV: ${env:NODE_ENV}
 
 custom: ${file(../../serverless.common.yml):custom}
 
@@ -43,6 +46,6 @@ resources:
       Value:
           Fn::GetAtt:
           - ApiGatewayRestApi
-          - RootResourceId 
+          - RootResourceId
       Export:
         Name: ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId

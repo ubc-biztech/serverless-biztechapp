@@ -2,13 +2,15 @@ provider:
   stage: ${opt:stage, 'dev'}
   apiKeys:
     - ${opt:stage, 'dev'}-api-key
-  runtime: nodejs16.x
+  runtime: nodejs20.x
   region: us-west-2
 
 custom:
   prune:
     automatic: true
     number: 3
+  bundle:
+    sourcemaps: false
   serverless-offline:
     port: 4000
   serverless-mocha-plugin:
@@ -30,8 +32,8 @@ custom:
     endpointType: 'edge'
     apiType: rest
     autoDomain: false
-  	
+
 plugins:
-  - serverless-dynamodb-local
+  - serverless-dynamodb
   - serverless-offline
 

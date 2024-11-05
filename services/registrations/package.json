@@ -2,6 +2,7 @@
   "name": "biztechapi-registrations",
   "version": "1.0.0",
   "dependencies": {
+    "@aws-sdk/client-sns": "^3.637.0",
     "@sendgrid/mail": "^7.4.0",
     "ics": "^2.40.0",
     "nodemailer": "^6.9.7",
@@ -13,6 +14,6 @@
     "test": "npm run utest registrations --prefix ../../ && npm run itest registrations --prefix ../../"
   },
   "devDependencies": {
-    "serverless-offline": "^8.8.0"
+    "serverless-offline": "^14.3.2"
   }
 }

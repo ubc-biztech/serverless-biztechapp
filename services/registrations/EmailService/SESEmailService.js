@@ -1,57 +1,83 @@
-import AWS from "aws-sdk";
+import {
+  SESClient,
+  CreateTemplateCommand,
+  SendEmailCommand
+} from "@aws-sdk/client-ses";
 import nodemailer from "nodemailer";
 import QRCode from "qrcode";
 import {
   logoBase64
 } from "./constants";
 import {
-  getDefaultCalendarInviteTemplate, getPartnerCalendarInviteTemplate, getDefaultPaymentProcessedTemplate
+  getDefaultCalendarInviteTemplate,
+  getPartnerCalendarInviteTemplate,
+  getDefaultPaymentProcessedTemplate
 } from "./templates/calendarInviteTemplates";
 import {
-  getDefaultQRTemplate, getRegisteredQRTemplate, getDefaultApplicationTemplate
+  getDefaultQRTemplate,
+  getRegisteredQRTemplate,
+  getDefaultApplicationTemplate
 } from "./templates/dynamicQRTemplates";
 const ics = require("ics");
 
 export default class SESEmailService {
   constructor({
-    accessKeyId, secretAccessKey, region = "us-west-2"
+    accessKeyId,
+    secretAccessKey,
+    region = "us-west-2"
   }) {
+    const credentials = {
+      accessKeyId: accessKeyId,
+      secretAccessKey: secretAccessKey
+    };
     this.ses = process.env.ENVIRONMENT === "development" ?
-      new AWS.SES({
-        apiVersion: "2010-12-01",
-        accessKeyId: accessKeyId,
-        secretAccessKey: secretAccessKey,
-        region: region
+      new SESClient({
+        region: region,
+        credentials: credentials
       }) :
-      new AWS.SES();
+      new SESClient({
+        region: region
+      });
+
     this.transporter = nodemailer.createTransport({
-      SES: this.ses
+      SES: {
+        ses: this.ses,
+        aws: require("@aws-sdk/client-ses")
+      }
     });
   }
 
-  // TODO: Enable clients to build their own email template and send it (html formatter FE feature)
-  createEmailTemplate(templateName, subject, htmlBody) {
-    this.ses.createTemplate({
-      Template: {
-        TemplateName: templateName,
-        SubjectPart: subject,
-        HtmlPart: htmlBody
-      }
-    }, (err, data) => {
-      if (err) {
-        console.log(err, err.stack);
-      } else {
-        console.log(data);
-      }
-    });
+  async createEmailTemplate(templateName, subject, htmlBody) {
+    try {
+      const command = new CreateTemplateCommand({
+        Template: {
+          TemplateName: templateName,
+          SubjectPart: subject,
+          HtmlPart: htmlBody
+        }
+      });
+      const data = await this.ses.send(command);
+      console.log(data);
+    } catch (err) {
+      console.error(err, err.stack);
+    }
   }
 
   async sendCalendarInvite(event, user) {
     let {
-      ename, eventID, year, description, elocation, startDate, endDate, imageUrl
+      ename,
+      eventID,
+      year,
+      description,
+      elocation,
+      startDate,
+      endDate,
+      imageUrl
     } = event;
     let {
-      fname, id, isPartner
+      fname,
+      id,
+      isPartner
     } = user;
 
     const emailParams = {
@@ -61,12 +87,11 @@ export default class SESEmailService {
       logoBase64
     };
     const rawHtml = user.isPartner ?
-      getPartnerCalendarInviteTemplate(emailParams)
-      : event.isApplicationBased ?
-        getDefaultPaymentProcessedTemplate(emailParams)
-        : getDefaultCalendarInviteTemplate(emailParams);
+      getPartnerCalendarInviteTemplate(emailParams) :
+      event.isApplicationBased ?
+        getDefaultPaymentProcessedTemplate(emailParams) :
+        getDefaultCalendarInviteTemplate(emailParams);
 
-    // parse start and end dates into event duration object (hours, minutes, seconds)
     startDate = new Date(startDate);
     endDate = new Date(endDate);
 
@@ -76,14 +101,6 @@ export default class SESEmailService {
       seconds: endDate.getSeconds() - startDate.getSeconds()
     };
 
-    // convert startDate from PST/PDT to UTC (to avoid AWS-dependent local time conversion)
-    // check if PST or PDT — below implementation not complete
-
-    // const isPDT = startDate.getTimezoneOffset() === 420;
-    // const offset = isPDT ? 420 : 480;
-    // startDate.setMinutes(startDate.getMinutes() + offset);
-
-    // startDateArray follows format [year, month, day, hour, minute]
     const startDateArray = [
       startDate.getFullYear(),
       startDate.getMonth() + 1,
@@ -98,7 +115,6 @@ export default class SESEmailService {
       location: elocation,
       startInputType: "local",
       start: startDateArray,
-      // end: [2021, 2, 3],
       duration,
       status: "CONFIRMED",
       busyStatus: "BUSY",
@@ -112,7 +128,8 @@ export default class SESEmailService {
     };
 
     const {
-      error, value
+      error,
+      value
     } = ics.createEvent(eventDetails);
 
     if (error) {
@@ -136,18 +153,15 @@ export default class SESEmailService {
 
     if (isPartner) {
       const qr = (await QRCode.toDataURL(`${id};${eventID};${year};${fname}`)).toString();
-      mailOptions.attachments = [
-        {
-          filename: "qr.png",
-          content: qr.split("base64,")[1], //to remove base64 prefix (data:image/png;base64,
-          encoding: "base64",
-          cid: "qr"
-        }
-      ];
+      mailOptions.attachments = [{
+        filename: "qr.png",
+        content: qr.split("base64,")[1],
+        encoding: "base64",
+        cid: "qr"
+      }];
     }
 
     try {
-      // Send email with calendar invite attachment
       await this.transporter.sendMail(mailOptions);
     } catch (error) {
       console.log(error);
@@ -162,24 +176,25 @@ export default class SESEmailService {
       id, ename, year, isApplicationBased
     } = event;
 
-    const qr = (await QRCode.toDataURL(`${email};${id};${year};${fname}`)).toString();
+    const qr = await QRCode.toDataURL(`${email};${id};${year};${fname}`);
 
-    const emailParams = registrationStatus === "registered" ? {
-      fname,
-      ename,
-      logoBase64
-    } : {
+    const currentYear = new Date().getFullYear();
+    const emailParams = {
       fname,
       ename,
       registrationStatus,
-      logoBase64
+      logoBase64,
+      qrCode: qr,
+      currentYear
     };
-    const rawHtml = registrationStatus === "registered" ?
-      getRegisteredQRTemplate(emailParams)
-      : isApplicationBased ?
-        getDefaultApplicationTemplate(emailParams)
+
+    const rawHtml = registrationStatus === "registered"
+      ? getRegisteredQRTemplate(emailParams)
+      : isApplicationBased
+        ? getDefaultApplicationTemplate(emailParams)
         : getDefaultQRTemplate(emailParams);
-    const subject = `BizTech ${ename} Event ${emailType === "application"  ? "Application" : "Registration"} Status`;
+
+    const subject = `BizTech ${ename} Event ${emailType === "application" ? "Application" : "Registration"} Status`;
 
     let mailOptions = {
       from: "dev@ubcbiztech.com",
@@ -187,25 +202,19 @@ export default class SESEmailService {
       subject: subject,
       html: rawHtml,
       attachDataUrls: true,
-      attachments: [
-        {
-          filename: "qr.png",
-          content: qr.split("base64,")[1],
-          encoding: "base64",
-          cid: "qr"
-        }
-      ]
+      attachments: [{
+        filename: "qr.png",
+        content: qr.split("base64,")[1],
+        encoding: "base64",
+        cid: "qr@biztech.com"
+      }]
     };
 
-    if (registrationStatus !== "registered") {
-      delete mailOptions.attachments;
+    try {
+      await this.transporter.sendMail(mailOptions);
+      console.log("Email sent successfully");
+    } catch (err) {
+      console.error(err);
     }
-    this.transporter.sendMail(mailOptions, (err, info) => {
-      if (err) {
-        console.log(err);
-      } else {
-        console.log("Email sent: " + info.response);
-      }
-    });
   }
 }

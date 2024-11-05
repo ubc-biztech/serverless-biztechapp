@@ -22,7 +22,9 @@ it to be relevant. Ways to implement BP Wrapped directly into Companion could be
 
 */
 import fs from "fs";
-import AWS from "aws-sdk";
+import {
+  SES
+} from "@aws-sdk/client-ses";
 import csv from "csv-parser";
 
 const {
@@ -36,11 +38,17 @@ const {
 };
 
 const ses =
-    new AWS.SES({
+    new SES({
+      // The key apiVersion is no longer supported in v3, and can be removed.
+      // @deprecated The client uses the "latest" apiVersion.
       apiVersion: "2010-12-01",
-      accessKeyId: accessKeyId,
-      secretAccessKey: secretAccessKey,
-      region: region
+
+      credentials: {
+        accessKeyId: accessKeyId,
+        secretAccessKey: secretAccessKey,
+      },
+
+      region: region,
     });
 
 const subject = "Your Blueprint Wrapped 2024";
@@ -173,7 +181,7 @@ async function sendEmailWithPNG(confirmSendEmailFlag) {
         console.log(`Preparing to send email to ${email} with data \n ${body}`);
 
         if (confirmSendEmailFlag === "-confirm") {
-          await ses.sendEmail(emailData).promise()
+          await ses.sendEmail(emailData)
             .then(() => {
               console.log(`Email sent successfully to ${email}`);
             })

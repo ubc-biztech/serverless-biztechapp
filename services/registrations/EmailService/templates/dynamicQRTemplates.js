@@ -1,13 +1,15 @@
 export const getDefaultQRTemplate = (emailParams) => {
   const {
-    fname, ename, registrationStatus, logoBase64
+    fname, ename, registrationStatus, logoBase64, qrCode, currentYear
   } = emailParams;
 
   return `<div style="font-size: 15px; text-align: left;">
     <div>
         <p>Hello ${fname},</p>
         <p>Your registration status for UBC BizTech's ${ename} event is: <b>${registrationStatus}</b>.</p>
-        <p>Please reach out to our Experiences Team Lead at <a href="mailto:karen@ubcbiztech.com">karen@ubcbiztech.com</a> if this is a mistake.</p>
+        <p>Please reach out to our Experiences Team Lead at <a href="mailto:grace@ubcbiztech.com">grace@ubcbiztech.com</a> if this is a mistake.</p>
+        <p>Here's your QR code (if it doesn't display, please speak to the sign-in desk):</p>
+        <img src="cid:qr@biztech.com" alt="Attached QR Code" style="max-width: 200px;" />
     </div>
     <img src="${logoBase64}" width="40" height="40" alt="BizTech Logo">
     <br>
@@ -16,7 +18,7 @@ export const getDefaultQRTemplate = (emailParams) => {
             <p>UBC BizTech • 445-2053 Main Mall • Vancouver, BC V6T 1Z2</p>
         </div>
         <div>
-            <p>Copyright © 2022 UBC BizTech</p>
+            <p>Copyright © ${currentYear} UBC BizTech</p>
         </div>
     </div>
     <div>
@@ -29,7 +31,7 @@ export const getDefaultQRTemplate = (emailParams) => {
 
 export const getDefaultApplicationTemplate = (emailParams) => {
   const {
-    fname, ename, registrationStatus, logoBase64
+    fname, ename, registrationStatus, logoBase64, qrCode, currentYear
   } = emailParams;
 
   return `<div style="font-size: 15px; text-align: left;">
@@ -37,7 +39,9 @@ export const getDefaultApplicationTemplate = (emailParams) => {
           <p>Hello ${fname},</p>
           <p>Your application status for UBC BizTech's ${ename} event is: <b>${registrationStatus}</b>. You can check your application status in your
           personal <a href="https://app.ubcbiztech.com/companion">companion</a>.</p>
-          <p>Please reach out to our Experiences Team Lead at <a href="mailto:karen@ubcbiztech.com">karen@ubcbiztech.com</a> if this is a mistake.</p>
+          <p>Please reach out to our Experiences Team Lead at <a href="mailto:grace@ubcbiztech.com">grace@ubcbiztech.com</a> if this is a mistake.</p>
+          <p>Here's your QR code (if it doesn't display, please speak to the sign-in desk):</p>
+          <img src="cid:qr@biztech.com" alt="Attached QR Code" style="max-width: 200px;" />
       </div>
       <img src="${logoBase64}" width="40" height="40" alt="BizTech Logo">
       <br>
@@ -46,7 +50,7 @@ export const getDefaultApplicationTemplate = (emailParams) => {
               <p>UBC BizTech • 445-2053 Main Mall • Vancouver, BC V6T 1Z2</p>
           </div>
           <div>
-              <p>Copyright © 2022 UBC BizTech</p>
+              <p>Copyright © ${currentYear} UBC BizTech</p>
           </div>
       </div>
       <div>
@@ -59,7 +63,7 @@ export const getDefaultApplicationTemplate = (emailParams) => {
 
 export const getRegisteredQRTemplate = (emailParams) => {
   const {
-    fname, ename, logoBase64
+    fname, ename, logoBase64, qrCode, currentYear
   } = emailParams;
 
   return `
@@ -67,7 +71,8 @@ export const getRegisteredQRTemplate = (emailParams) => {
     <div>
         <p>Hello ${fname},</p>
         <p>You have been registered for UBC BizTech's <b>${ename}</b> event.</p>
-        <p>Please scan the attached QR code at the sign-in desk at the event.</p>
+        <p>Please scan the QR code below at the sign-in desk at the event. If the QR code doesn't display, please speak to the sign-in desk.</p>
+        <img src="cid:qr@biztech.com" alt="Attached QR Code" style="max-width: 200px;" />
         <p>We look forward to hosting you!</p>
     </div>
     <img src="${logoBase64}" width="40" height="40" alt="BizTech Logo">
@@ -77,7 +82,7 @@ export const getRegisteredQRTemplate = (emailParams) => {
             <p>UBC BizTech • 445-2053 Main Mall • Vancouver, BC V6T 1Z2</p>
         </div>
         <div>
-            <p>Copyright © 2022 UBC BizTech</p>
+            <p>Copyright © ${currentYear} UBC BizTech</p>
         </div>
     </div>
     <div>
@@ -88,3 +93,4 @@ export const getRegisteredQRTemplate = (emailParams) => {
   </div>
   `;
 };
+

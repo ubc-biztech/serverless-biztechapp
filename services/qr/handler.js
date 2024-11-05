@@ -265,7 +265,7 @@ export const update = async (event, ctx, callback) => {
         "attribute_exists(id) and attribute_exists(eventID;year)"
     };
 
-    const res = await docClient.update(params).promise();
+    const res = await db.updateDBCustom(params);
 
     const response = helpers.createResponse(200, {
       message: `Updated QR with id ${id} and event ${eventIDAndYear}!`,
