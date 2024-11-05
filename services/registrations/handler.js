@@ -167,6 +167,10 @@ async function createRegistration(
       ...formResponse
     };
 
+    if(createNew) {
+      updateObject["createdAt"] = new Date().getTime();
+    }
+
     let conditionExpression =
       "attribute_exists(id) and attribute_exists(#eventIDYear)";
     // if we are creating a new object, the condition expression needs to be different
