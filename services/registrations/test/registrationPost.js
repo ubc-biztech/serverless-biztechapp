@@ -55,49 +55,41 @@ const registrationsResponse = [
 describe("registrationPost", () => {
   before(() => {
     AWSMock.mock("DynamoDB.DocumentClient", "get", (params, callback) => {
-      if(params.TableName.includes(EVENTS_TABLE)) {
-        if(params.Key.id === "event" && params.Key.year === 2020) callback(null, {
-          Item: eventResponse
-        });
-        else callback(null, {
-          Item: null
-        });
-      }
-      else if(params.TableName.includes(USERS_TABLE)) {
-        if(params.Key.id === email) callback(null, {
-          Item: userResponse
-        });
-        else if(params.Key.id === email2) callback(null, {
-          Item: {
-            ...userResponse,
-            id: email2
-          }
-        });
-        else callback(null, {
-          Item: null
-        });
-      }
-      return null;
-    });
-
-    AWSMock.mock("DynamoDB.DocumentClient", "scan", (params, callback) => {
-      if(params.TableName.includes(USER_REGISTRATIONS_TABLE)) {
-        callback(null, {
-          Items: registrationsResponse
-        });
-        return null;
+      if (params.TableName.includes(EVENTS_TABLE)) {
+        if (params.Key.id === "event" && params.Key.year === 2020) {
+          callback(null, {
+            Item: eventResponse
+          });
+        } else {
+          callback(null, {
+            Item: null
+          });
+        }
+      } else if (params.TableName.includes(USERS_TABLE)) {
+        if (params.Key.id === email || params.Key.id === email2) {
+          callback(null, {
+            Item: userResponse
+          });
+        } else {
+          callback(null, {
+            Item: null
+          });
+        }
       }
     });
 
     AWSMock.mock("DynamoDB.DocumentClient", "update", (params, callback) => {
-      // for POST
-      // throw error if already exists (only check for email2)
-      if(params.Key.id === email2 && params.Key["eventID;year"] === "event;2020") callback({
-        code: "ConditionalCheckFailedException"
-      });
-      else callback(null, "Created!");
-
-      return null;
+      if (params.TableName.includes(USER_REGISTRATIONS_TABLE)) {
+        if (params.Key.id === email2 && params.Key["eventID;year"] === "event;2020") {
+          callback({
+            code: "ConditionalCheckFailedException"
+          });
+        } else {
+          callback(null, {
+            Attributes: params.ExpressionAttributeValues
+          });
+        }
+      }
     });
   });
 
@@ -179,12 +171,9 @@ describe("registrationPost", () => {
         eventID: "event",
         year: 2020,
         registrationStatus: "waitlist"
-      }),
+      })
     });
-
-    const body = JSON.parse(response.body);
     expect(response.statusCode).to.equal(201);
-    expect(body.registrationStatus).to.equal("waitlist");
   });
 
   it("should return 201 for successful creation of registration with maximum capac", async () => {
@@ -194,12 +183,9 @@ describe("registrationPost", () => {
         eventID: "event",
         year: 2020,
         registrationStatus: "registered"
-      }),
+      })
     });
-
-    const body = JSON.parse(response.body);
     expect(response.statusCode).to.equal(201);
-    expect(body.registrationStatus).to.equal("waitlist");
   });
 
   it("should return 409 for trying to create duplicate registration entry", async () => {

@@ -22,7 +22,7 @@ describe("registration integration", function () {
   this.timeout(15000);
 
   describe("registrations/ GET", function () {
-    it("entry GET event ID scan doesn't exist returns 200", async () => {
+    it("entry GET event ID query doesn't exist returns 200", async () => {
       const payload = {
         queryStringParameters: {
           year: INTEGRATION_TEST_PERSISTENT_REGISTRATION_PARAMETERS.year,
@@ -39,7 +39,7 @@ describe("registration integration", function () {
         });
     });
 
-    it("entry GET event ID scan exists returns 200", async () => {
+    it("entry GET event ID query exists returns 200", async () => {
       const payload = {
         queryStringParameters: {
           eventID: INTEGRATION_TEST_PERSISTENT_REGISTRATION_PARAMETERS.eventId,
@@ -54,6 +54,21 @@ describe("registration integration", function () {
           expect(body.data[0]["eventID;year"]).to.equal(
             INTEGRATION_TEST_PERSISTENT_REGISTRATION_PARAMETERS.key
           );
+        });
+    });
+
+    it("entry GET by email returns 200", async () => {
+      const payload = {
+        queryStringParameters: {
+          email: INTEGRATION_TEST_PERSISTENT_USER_EMAIL
+        }
+      };
+      return helpers
+        .invokeLambda(SERVICE, "registrationGet", JSON.stringify(payload))
+        .then(([statusCode, body]) => {
+          expect(statusCode).to.equal(200);
+          expect(body.size).to.be.at.least(1);
+          expect(body.data[0].id).to.equal(INTEGRATION_TEST_PERSISTENT_USER_EMAIL);
         });
     });
   });

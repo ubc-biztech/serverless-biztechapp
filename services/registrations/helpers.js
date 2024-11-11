@@ -39,17 +39,20 @@ export default {
         cappedQuestions.push(cappedQuestionObject);
       }
     });
-    const params = {
-      FilterExpression: "#eventIDYear = :query",
-      ExpressionAttributeNames: {
+
+    const eventIDYear = eventID + ";" + year;
+    const keyCondition = {
+      expression: "#eventIDYear = :query",
+      expressionNames: {
         "#eventIDYear": "eventID;year"
       },
-      ExpressionAttributeValues: {
-        ":query": eventID + ";" + year
+      expressionValues: {
+        ":query": eventIDYear
       }
     };
+
     try {
-      const result = await db.scan(USER_REGISTRATIONS_TABLE, params);
+      const result = await db.query(USER_REGISTRATIONS_TABLE, "event-query", keyCondition);
       let counts = {
         registeredCount: 0,
         checkedInCount: 0,
