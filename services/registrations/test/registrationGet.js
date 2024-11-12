@@ -68,7 +68,7 @@ const eventResponse = {
   registrationQuestions: []
 };
 
-describe("registrationUpdateHelper", () => {
+describe("registrationGet", () => {
   const ddbMock = mockClient(DynamoDBDocumentClient);
 
   beforeEach(() => {

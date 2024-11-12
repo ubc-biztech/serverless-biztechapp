@@ -241,7 +241,7 @@ async function createRegistration(
     const errBody = JSON.parse(errorResponse.body);
 
     // customize the error messsage if it is caused by the 'ConditionExpression' check
-    if (errBody.code === "ConditionalCheckFailedException") {
+    if (errBody.statusCode === 502 || errBody.code === "ConditionalCheckFailedException") {
       errorResponse.statusCode = 409;
       errBody.statusCode = 409;
       if (createNew)
