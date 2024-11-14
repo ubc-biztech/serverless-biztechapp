@@ -2,6 +2,7 @@ import {
   checkPayloadProps,
   createResponse,
   deleteConnection,
+  fetchSocketRoomIDForConnection,
   fetchState,
   getSticker,
   notifyAdmins,
@@ -10,7 +11,9 @@ import {
   syncAdmin,
   syncUser,
   updateSocket,
-  updateSticker
+  updateSticker,
+  fetchSocket,
+  missingPathParamResponse
 } from "./helpers";
 import db from "../../lib/db";
 import {
@@ -18,8 +21,18 @@ import {
   SCORE_TABLE,
   SOCKETS_TABLE
 } from "../../constants/tables";
-import { QueryCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  QueryCommand
+} from "@aws-sdk/lib-dynamodb";
 import docClient from "../../lib/docClient";
+import {
+  ACTION_TYPES,
+  ADMIN_EVENTS,
+  ADMIN_ROLE,
+  STATE_KEY,
+  STICKER_TYPE_GOLDEN,
+  VOTER_ROLE
+} from "./constants";
 
 /**
  * Connection handler
@@ -30,10 +43,23 @@ import docClient from "../../lib/docClient";
  */
 export const connectHandler = async (event, ctx, callback) => {
   const connectionID = event.requestContext.connectionId;
+
+  let roomID = "";
+  if (event.queryStringParameters && event.queryStringParameters.roomID) {
+    roomID = event.queryStringParameters.roomID;
+  }
+
+  if (!(await fetchSocket(roomID))) {
+    return {
+      statusCode: 404,
+      body: "roomID not found."
+    };
+  }
+
   const obj = {
     connectionID,
-    role: "voter",
-    userID: ""
+    role: VOTER_ROLE,
+    roomID
   };
 
   await db.put(obj, SOCKETS_TABLE, true);
@@ -54,43 +80,59 @@ export const disconnectHandler = async (event, ctx, callback) => {
   await deleteConnection(connectionID);
   return {
     statusCode: 200,
-    message: "Disconnected"
+    body: "Disconnected"
   };
 };
 
 /**
  * Sync action handler
+ * The event proudcer must provide the roomID to sync to the correct roomState
+ *
  * The event.body REQUIRES the following properties:
  * `{
  *     id: string
  * }`
  *
- *    to sync connection to admin role and state, set id = "admin"
+ *    to sync connection to admin role and state, set id = ADMIN_ROLE
  */
 export const syncHandler = async (event, ctx, callback) => {
   const body = JSON.parse(event.body);
-  if (!body.hasOwnProperty("id")) {
+  if (!body.hasOwnProperty("id") || !body.hasOwnProperty("roomID")) {
     const errMessage = checkPayloadProps(body, {
       id: {
+        required: true,
+        type: "string"
+      },
+      roomID: {
         required: true,
         type: "string"
       }
     });
     await sendMessage(event, errMessage);
-    return errMessage;
+    delete errMessage.status;
+    return {
+      statusCode: 406,
+      body: {
+        ...errMessage
+      }
+    };
   }
 
-  let state = await fetchState();
-  const { isVoting, teamName } = state.Item;
+  const roomID = body.roomID;
+  let state = await fetchState(roomID);
+  const {
+    isVoting, teamName
+  } = state.Item;
 
-  if (body.id === "admin") {
+  // sync admin that is specific to that room
+  if (body.id === ADMIN_ROLE) {
     return await syncAdmin(event, teamName, isVoting);
   }
 
   if (!isVoting) {
     await sendMessage(event, {
       status: 200,
-      action: "sync",
+      action: ACTION_TYPES.sync,
       data: {
         isVoting,
         teamName,
@@ -118,7 +160,8 @@ export const syncHandler = async (event, ctx, callback) => {
  * Admin action handler
  * The event.body REQUIRES following properties:
  * `{
- *     event: "start" | "end" | "changeTeam"
+ *     event: "start" | "end" | "changeTeam",
+ *     roomID: string
  * }`
  *
  *    if changeTeam is used as the action, then a team property must
@@ -126,19 +169,30 @@ export const syncHandler = async (event, ctx, callback) => {
  */
 export const adminHandler = async (event, ctx, callback) => {
   const body = JSON.parse(event.body);
-  if (!body.hasOwnProperty("event")) {
+  if (!body.hasOwnProperty("event") || !body.hasOwnProperty("roomID")) {
     const errMessage = checkPayloadProps(body, {
       event: {
+        required: true,
+        type: "string"
+      },
+      roomID: {
         required: true,
         type: "string"
       }
     });
     await sendMessage(event, errMessage);
-    return errMessage;
+    delete errMessage.status;
+    return {
+      statusCode: 406,
+      body: {
+        ...errMessage
+      }
+    };
   }
   const action = body.event;
+  const roomID = body.roomID;
 
-  if (action === "changeTeam" && !body.hasOwnProperty("team")) {
+  if (action === ACTION_TYPES.changeTeam && !body.hasOwnProperty("team")) {
     const errMessage = checkPayloadProps(body, {
       team: {
         required: true,
@@ -147,64 +201,70 @@ export const adminHandler = async (event, ctx, callback) => {
     });
 
     await sendMessage(event, errMessage);
-    return errMessage;
+    delete errMessage.status;
+    return {
+      statusCode: 406,
+      body: {
+        ...errMessage
+      }
+    };
   }
 
   try {
     let payload;
     switch (action) {
-      case "start": {
-        let state = {
-          isVoting: true
-        };
-        payload = await updateSocket(state, "STATE");
-        await notifyAdmins(state, "state", event);
-        await notifyVoters(state, "state", event);
-        return {
-          statusCode: 200
-        };
-      }
+    case ADMIN_EVENTS.start: {
+      let state = {
+        isVoting: true
+      };
+      payload = await updateSocket(state, roomID);
+      await notifyAdmins(state, ACTION_TYPES.state, event, roomID);
+      await notifyVoters(state, ACTION_TYPES.state, event, roomID);
+      return {
+        statusCode: 200
+      };
+    }
 
-      case "end": {
-        let state = {
-          isVoting: false
-        };
-        payload = await updateSocket(state, "STATE");
-        await notifyAdmins(state, "state", event);
-        await notifyVoters(state, "state", event);
-        return {
-          statusCode: 200
-        };
-      }
+    case ADMIN_EVENTS.end: {
+      let state = {
+        isVoting: false
+      };
+      payload = await updateSocket(state, roomID);
+      await notifyAdmins(state, ACTION_TYPES.state, event, roomID);
+      await notifyVoters(state, ACTION_TYPES.state, event, roomID);
+      return {
+        statusCode: 200
+      };
+    }
 
-      case "changeTeam": {
-        let state = {
-          teamName: body.team
-        };
-        payload = updateSocket(state, "STATE");
-        await notifyAdmins(state, "state", event);
-        await notifyVoters(state, "state", event);
-        return {
-          statusCode: 200
-        };
-      }
+    case ADMIN_EVENTS.changeTeam: {
+      let state = {
+        teamName: body.team
+      };
+      payload = await updateSocket(state, roomID);
+      await notifyAdmins(state, ACTION_TYPES.state, event, roomID);
+      await notifyVoters(state, ACTION_TYPES.state, event, roomID);
+      return {
+        statusCode: 200
+      };
+    }
 
-      default: {
-        await sendMessage(event, {
-          status: "400",
-          action: "error",
-          message: "unrecognized event type"
-        });
-        return {
-          statusCode: 400
-        };
-      }
+    default: {
+      await sendMessage(event, {
+        status: "400",
+        action: ACTION_TYPES.error,
+        message: "unrecognized event type"
+      });
+      return {
+        statusCode: 400
+      };
+    }
     }
   } catch (error) {
-    console.log(error);
+    console.error(error);
     await sendMessage(event, {
       status: "500",
-      action: "error",
+      action: ACTION_TYPES.error,
       message: "Internal Server Error"
     });
     return {
@@ -229,22 +289,12 @@ export const adminHandler = async (event, ctx, callback) => {
  *
  */
 export const stickerHandler = async (event, ctx, callback) => {
-  let state = await fetchState();
-  const { teamName, isVoting } = state.Item;
-
-  if (!isVoting) {
-    await sendMessage(event, {
-      status: 400,
-      action: "error",
-      message: "voting is not open"
-    });
-    return {
-      status: 400
-    };
-  }
-
   const body = JSON.parse(event.body);
-  if (!body.hasOwnProperty("id") || !body.hasOwnProperty("stickerName")) {
+  if (
+    !body.hasOwnProperty("id") ||
+    !body.hasOwnProperty("stickerName") ||
+    !body.hasOwnProperty("roomID")
+  ) {
     const errMessage = checkPayloadProps(body, {
       id: {
         required: true,
@@ -253,20 +303,48 @@ export const stickerHandler = async (event, ctx, callback) => {
       stickerName: {
         required: true,
         type: "string"
+      },
+      roomID: {
+        required: true,
+        type: "string"
       }
     });
     await sendMessage(event, errMessage);
-    return errMessage;
+    delete errMessage.status;
+    return {
+      statusCode: 406,
+      body: {
+        ...errMessage
+      }
+    };
   }
-  const { id, stickerName } = body;
+
+  const {
+    id, stickerName, roomID
+  } = body;
+  let state = await fetchState(roomID);
+  const {
+    teamName, isVoting
+  } = state.Item;
+
+  if (!isVoting) {
+    await sendMessage(event, {
+      status: 400,
+      action: ACTION_TYPES.error,
+      message: "voting is not open"
+    });
+    return {
+      statusCode: 400
+    };
+  }
 
   let isGoldenInDB;
-  if (stickerName === "golden") {
+  if (stickerName === STICKER_TYPE_GOLDEN) {
     try {
       const command = new QueryCommand({
         IndexName: "stickerName",
         ExpressionAttributeValues: {
-          ":sname": "golden",
+          ":sname": STICKER_TYPE_GOLDEN,
           ":uid": id
         },
         KeyConditionExpression: "stickerName = :sname",
@@ -278,18 +356,18 @@ export const stickerHandler = async (event, ctx, callback) => {
       isGoldenInDB = response.Items.length > 0;
     } catch (error) {
       let errResponse = db.dynamoErrorResponse(error);
-      console.log(errResponse);
+      console.error(errResponse);
     }
 
     if (isGoldenInDB) {
       await sendMessage(event, {
         status: 400,
-        action: "error",
+        action: ACTION_TYPES.error,
         message: "Already submitted golden sticker."
       });
       return {
-        status: 400,
-        message: "Golden sticker already exists"
+        statusCode: 400,
+        body: "Golden sticker already exists"
       };
     }
   }
@@ -310,54 +388,53 @@ export const stickerHandler = async (event, ctx, callback) => {
           count: 1,
           limit,
           stickerName,
-          userID: id
+          userID: id,
+          roomID
         },
         STICKERS_TABLE,
         true
       );
     } catch (error) {
-      console.log(error);
+      console.error(error);
       await sendMessage(event, {
         status: 500,
-        action: "error",
+        action: ACTION_TYPES.error,
         message: "Failed to create sticker"
       });
       return {
-        status: 500,
-        message: "Failed to create sticker"
+        statusCode: 500,
+        body: "Failed to create sticker"
       };
     }
 
     await sendMessage(event, {
       status: 200,
-      action: "sticker",
+      action: ACTION_TYPES.sticker,
       message: stickerName + " was created for user " + id,
       data: {
         teamName,
         count: 1,
         limit,
         stickerName,
-        userID: id
+        userID: id,
+        roomID
       }
     });
-
     await notifyAdmins(
       {
-        status: 200,
-        data: {
-          teamName,
-          count: 1,
-          limit,
-          stickerName,
-          userID: id
-        }
+        teamName,
+        count: 1,
+        limit,
+        stickerName,
+        userID: id,
+        roomID
       },
-      "sticker",
-      event
+      ACTION_TYPES.sticker,
+      event,
+      roomID
     );
     return {
-      status: 200,
-      message: stickerName + " sticker created successfully"
+      statusCode: 200
     };
   }
 
@@ -374,11 +451,11 @@ export const stickerHandler = async (event, ctx, callback) => {
   } else {
     await sendMessage(event, {
       status: 400,
-      action: "error",
+      action: ACTION_TYPES.error,
       message: "Used up all " + sticker.limit + " stickers"
     });
     return {
-      status: 400
+      statusCode: 400
     };
   }
 
@@ -390,17 +467,18 @@ export const stickerHandler = async (event, ctx, callback) => {
       stickerName,
       userID: id
     },
-    "sticker",
-    event
+    ACTION_TYPES.sticker,
+    event,
+    roomID
   );
 
   await sendMessage(event, {
     status: 200,
-    action: "sticker",
+    action: ACTION_TYPES.sticker,
     data: sticker
   });
   return {
-    status: 200
+    statusCode: 200
   };
 };
 
@@ -421,11 +499,12 @@ export const stickerHandler = async (event, ctx, callback) => {
  *
  */
 export const scoreHandler = async (event, ctx, callback) => {
-  let state = await fetchState();
-  const { teamName } = state.Item;
-
   const body = JSON.parse(event.body);
-  if (!body.hasOwnProperty("id") || !body.hasOwnProperty("score")) {
+  if (
+    !body.hasOwnProperty("id") ||
+    !body.hasOwnProperty("score") ||
+    !body.hasOwnProperty("roomID")
+  ) {
     const errMessage = checkPayloadProps(body, {
       id: {
         required: true,
@@ -434,41 +513,58 @@ export const scoreHandler = async (event, ctx, callback) => {
       score: {
         required: true,
         type: "object"
+      },
+      roomID: {
+        required: true,
+        type: "string"
       }
     });
     await sendMessage(event, errMessage);
-    return errMessage;
+    delete errMessage.status;
+    return {
+      statusCode: 406,
+      body: {
+        ...errMessage
+      }
+    };
   }
 
-  const { id, score } = body;
+  const {
+    id, score, roomID
+  } = body;
+
+  let state = await fetchState(roomID);
+  const {
+    teamName
+  } = state.Item;
+  let payload = {
+    teamName,
+    userID: id,
+    score,
+    roomID
+  };
 
   try {
-    await db.put(
-      {
-        teamName,
-        userID: id,
-        score
-      },
-      SCORE_TABLE,
-      true
-    );
+    await db.put(payload, SCORE_TABLE, true);
   } catch (error) {
-    console.log(error.message);
+    console.error(error.message);
     await sendMessage(event, {
       status: 500,
       message: "Failed to store score"
     });
+    return {
+      statusCode: 500
+    };
   }
 
   await sendMessage(event, {
     status: 200,
-    action: "score",
+    action: ACTION_TYPES.score,
     message: "Stored score"
   });
+  await notifyAdmins(payload, ACTION_TYPES.score, event, roomID);
   return {
-    status: 200,
-    action: "score",
-    message: "Stored score successfully"
+    statusCode: 200
   };
 };
 
@@ -481,11 +577,11 @@ export const defaultHandler = async (event, ctx, callback) => {
   try {
     await sendMessage(event, {
       status: 400,
-      action: "error",
+      action: ACTION_TYPES.error,
       message: "unknown action"
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     callback(null, error);
     return null;
   }
@@ -503,16 +599,241 @@ export const getScores = async (event, ctx, callback) => {
   try {
     res = await db.scan(SCORE_TABLE);
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res = createResponse(500, {
       message: "failed to fetch scores"
     });
     callback(null, res);
     return res;
   }
+
+  let scoresMap = new Map();
+  for (let i = 0; i < res.length; i++) {
+    let val = scoresMap.get(res[i].teamName);
+    if (!val) {
+      scoresMap.set(res[i].teamName, [res[i]]);
+    } else {
+      scoresMap.set(res[i].teamName, [...val, res[i]]);
+    }
+  }
+
+  const result = Array.from(scoresMap).map(([teamName, data]) => ({
+    teamName,
+    data
+  }));
   res = createResponse(200, {
-    message: "Scores",
-    response: res
+    message: "All scores",
+    data: result
+  });
+  callback(null, res);
+  return res;
+};
+
+/** Endpoint to return all scores in room */
+export const getScoresRoom = async (event, ctx, callback) => {
+  if (!event.pathParameters || !event.pathParameters.roomID)
+    throw missingPathParamResponse("roomID");
+
+  const roomID = event.pathParameters.roomID;
+  let res;
+  try {
+    res = await db.scan(SCORE_TABLE, {
+      FilterExpression: "roomID = :roomID",
+      ExpressionAttributeValues: {
+        ":roomID": roomID
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res = createResponse(500, {
+      message: "failed to fetch scores"
+    });
+    callback(null, res);
+    return res;
+  }
+
+  let scoresMap = new Map();
+  for (let i = 0; i < res.length; i++) {
+    let val = scoresMap.get(res[i].teamName);
+    if (!val) {
+      scoresMap.set(res[i].teamName, [res[i]]);
+    } else {
+      scoresMap.set(res[i].teamName, [...val, res[i]]);
+    }
+  }
+
+  const result = Array.from(scoresMap).map(([teamName, data]) => ({
+    teamName,
+    data
+  }));
+  res = createResponse(200, {
+    message: `Scores for ${roomID}`,
+    data: result
+  });
+  callback(null, res);
+  return res;
+};
+
+/**
+ * Endpoint to return all scores
+ *
+ */
+export const getScoresTeam = async (event, ctx, callback) => {
+  if (!event.pathParameters || !event.pathParameters.teamName)
+    throw missingPathParamResponse("teamName");
+
+  const teamName = event.pathParameters.teamName;
+  let res;
+  try {
+    const command = new QueryCommand({
+      ExpressionAttributeValues: {
+        ":v_team": teamName
+      },
+      // ExpressionAttributeNames: {
+      // },
+      KeyConditionExpression: "teamName = :v_team",
+      ProjectionExpression: "teamName, userID, score",
+      TableName: SCORE_TABLE + (process.env.ENVIRONMENT || "")
+    });
+    const response = await docClient.send(command);
+    res = response.Items;
+  } catch (error) {
+    let errResponse = db.dynamoErrorResponse(error);
+    console.error(errResponse);
+    res = createResponse(502, {
+      message: "Failed to fetch scores"
+    });
+    callback(null, res);
+    return res;
+  }
+
+  res = createResponse(200, {
+    message: `Scores for ${teamName}`,
+    data: res
+  });
+  callback(null, res);
+  return res;
+};
+
+/**
+ * Endpoint to return all stickers
+ */
+export const getStickers = async (event, ctx, callback) => {
+  let res;
+  try {
+    res = await db.scan(STICKERS_TABLE + (process.env.ENVIRONMENT || ""));
+  } catch (error) {
+    console.error(error);
+    res = createResponse(500, {
+      message: "failed to fetch scores"
+    });
+    callback(null, res);
+    return res;
+  }
+
+  let stickersMap = new Map();
+  for (let i = 0; i < res.length; i++) {
+    let val = stickersMap.get(res[i].teamName);
+    if (!val) {
+      stickersMap.set(res[i].teamName, [res[i]]);
+    } else {
+      stickersMap.set(res[i].teamName, [...val, res[i]]);
+    }
+  }
+
+  const result = Array.from(stickersMap).map(([teamName, data]) => ({
+    teamName,
+    data
+  }));
+  res = createResponse(200, {
+    message: "All Stickers",
+    data: result
+  });
+  callback(null, res);
+  return res;
+};
+
+export const getStickersRoom = async (event, ctx, callback) => {
+  if (!event.pathParameters || !event.pathParameters.roomID)
+    throw missingPathParamResponse("roomID");
+
+  let roomID = event.pathParameters.roomID;
+  let res;
+  try {
+    res = res = await db.scan(STICKERS_TABLE, {
+      FilterExpression: "roomID = :roomID",
+      ExpressionAttributeValues: {
+        ":roomID": roomID
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res = createResponse(500, {
+      message: "failed to fetch scores"
+    });
+    callback(null, res);
+    return res;
+  }
+
+  let stickersMap = new Map();
+  for (let i = 0; i < res.length; i++) {
+    let val = stickersMap.get(res[i].teamName);
+    if (!val) {
+      stickersMap.set(res[i].teamName, [res[i]]);
+    } else {
+      stickersMap.set(res[i].teamName, [...val, res[i]]);
+    }
+  }
+
+  const result = Array.from(stickersMap).map(([teamName, data]) => ({
+    teamName,
+    data
+  }));
+  res = createResponse(200, {
+    message: `Stickers for ${roomID}`,
+    data: result
+  });
+  callback(null, res);
+  return res;
+};
+
+/**
+ * Endpoint to return all stickers
+ */
+export const getStickersTeam = async (event, ctx, callback) => {
+  if (!event.pathParameters || !event.pathParameters.teamName)
+    throw missingPathParamResponse("teamName");
+
+  const teamName = event.pathParameters.teamName;
+  let stickers = [];
+  try {
+    const command = new QueryCommand({
+      ExpressionAttributeValues: {
+        ":v_team": teamName
+      },
+      ExpressionAttributeNames: {
+        "#cnt": "count",
+        "#lmt": "limit"
+      },
+      KeyConditionExpression: "teamName = :v_team",
+      ProjectionExpression: "stickerName, #cnt, #lmt",
+      TableName: STICKERS_TABLE + (process.env.ENVIRONMENT || "")
+    });
+    const response = await docClient.send(command);
+    stickers = response.Items;
+  } catch (error) {
+    let errResponse = db.dynamoErrorResponse(error);
+    console.error(errResponse);
+    res = createResponse(502, {
+      message: "Failed to fetch stickers"
+    });
+    callback(null, res);
+    return res;
+  }
+
+  let res = createResponse(200, {
+    message: `Stickers for ${teamName}`,
+    data: stickers
   });
   callback(null, res);
   return res;

@@ -13,19 +13,18 @@ import {
   RESERVED_WORDS
 } from "../../constants/dynamodb";
 import error from "copy-dynamodb-table/error";
+import {
+  ACTION_TYPES, STATE_KEY
+} from "./constants";
 
 /**
  * @param event socket action event
  * @param {Object} data message object being sent
  */
 export const sendMessage = async (event, data) => {
-  const domain = event.requestContext.domainName;
-  const stage = event.requestContext.stage;
-  const connectionId = event.requestContext.connectionId;
-  let url = `https://ei737zemd6.execute-api.us-west-2.amazonaws.com/${stage}`;
-
-  if (domain === "localhost") url = "http://localhost:3001";
-
+  const {
+    url, connectionId
+  } = getEndpoint(event);
   try {
     let apigatewaymanagementapi = new ApiGatewayManagementApi({
       apiVersion: "2018-11-29",
@@ -47,27 +46,85 @@ export const sendMessage = async (event, data) => {
       );
     });
   } catch (error) {
+    switch (error.code) {
+    case "GoneException" || "UnknownException": // Connection no longer exists
+      console.error("Stale Connection", error.message || error);
+      break;
+
+    case "LimitExceededException": // Rate limit exceeded
+      console.error("Rate limit exceeded.", error.message || error);
+      break;
+
+    case "PayloadTooLargeException": // Payload size exceeds the allowed limit
+      console.error("Payload is too large", error.message || error);
+      break;
+
+    case "ForbiddenException": // Insufficient permissions
+      console.error(
+        "Forbidden: You do not have permission to post to this connection.",
+        error.message || error
+      );
+      break;
+
+    case "InternalServerErrorException": // Internal server error
+      console.error("Internal server error", error.message || error);
+
+      break;
+
+    case "BadRequestException": // Invalid request format
+      console.error(
+        "Bad request: Please check your data format.",
+        error.message || error
+      );
+      break;
+
+    default:
+      console.error("An unexpected error occurred:", error.message || error);
+      break;
+    }
     await deleteConnection(connectionId);
   }
 };
 
-export const fetchState = async () => {
+/**
+ * This method fetches state for the current room, "STATE" if only one room
+ * @param roomID roomID to fetch state
+ */
+export const fetchState = async (roomID = STATE_KEY) => {
   let state;
   try {
     const command = new GetCommand({
       TableName: SOCKETS_TABLE + (process.env.ENVIRONMENT || ""),
       Key: {
-        connectionID: "STATE"
+        connectionID: roomID || STATE_KEY
       }
     });
 
     state = await docClient.send(command);
   } catch (err) {
     const errorResponse = db.dynamoErrorResponse(err);
-    console.log(errorResponse);
+    console.error(errorResponse);
   }
   return state;
 };
+
+/**
+ *
+ * @param {*} event
+ * @returns {obj} {url, connectionId}
+ */
+function getEndpoint(event) {
+  const domain = event.requestContext.domainName;
+  const stage = event.requestContext.stage;
+  const connectionId = event.requestContext.connectionId;
+  let url = `https://${domain}/${stage}`;
+
+  if (domain === "localhost") url = "http://localhost:3001";
+  return {
+    url,
+    connectionId
+  };
+}
 
 /**
  * @param state socket state object, update role, teamName, isVoting
@@ -102,10 +159,10 @@ export async function updateSocket(state, connectionID) {
 
     await db.updateDBCustom(updateCommand);
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res = {
-      status: 500,
-      action: "error",
+      status: 502,
+      action: ACTION_TYPES.error,
       message: "Internal Server Error"
     };
   }
@@ -118,18 +175,21 @@ export async function updateSocket(state, connectionID) {
  *
  * sends message to all voters
  */
-export async function notifyVoters(data, action, event) {
+export async function notifyVoters(data, action, event, roomID) {
   let voters;
   try {
     const command = new QueryCommand({
       IndexName: "role",
       ExpressionAttributeNames: {
-        "#role": "role"
+        "#role": "role",
+        "#roomID": "roomID"
       },
       ExpressionAttributeValues: {
-        ":role": "voter"
+        ":role": "voter",
+        ":roomID": roomID
       },
       KeyConditionExpression: "#role = :role",
+      FilterExpression: "#roomID = :roomID",
       ProjectionExpression: "connectionID",
       TableName: SOCKETS_TABLE + (process.env.ENVIRONMENT || "")
     });
@@ -137,9 +197,10 @@ export async function notifyVoters(data, action, event) {
     voters = response.Items;
   } catch (error) {
     let errResponse = db.dynamoErrorResponse(error);
-    console.log(errResponse);
+    console.error(errResponse);
   }
 
+  // send message to all voters in the specific room
   for (let i = 0; i < voters.length; i++) {
     await sendMessage(
       {
@@ -164,35 +225,39 @@ export async function notifyVoters(data, action, event) {
  *
  * sends message to all admins
  */
-export async function notifyAdmins(data, action, event) {
-  let voters;
+export async function notifyAdmins(data, action, event, roomID) {
+  let admins;
   try {
     const command = new QueryCommand({
       IndexName: "role",
       ExpressionAttributeNames: {
-        "#role": "role"
+        "#role": "role",
+        "#roomID": "roomID"
       },
       ExpressionAttributeValues: {
-        ":role": "admin"
+        ":role": "admin",
+        ":roomID": roomID
       },
       KeyConditionExpression: "#role = :role",
+      FilterExpression: "#roomID = :roomID",
       ProjectionExpression: "connectionID",
       TableName: SOCKETS_TABLE + (process.env.ENVIRONMENT || "")
     });
     const response = await docClient.send(command);
-    voters = response.Items;
+    admins = response.Items;
   } catch (error) {
     let errResponse = db.dynamoErrorResponse(error);
-    console.log(errResponse);
+    console.error(errResponse);
   }
 
-  for (let i = 0; i < voters.length; i++) {
+  // should only ever be length one because we have one presenter per room
+  for (let i = 0; i < admins.length; i++) {
     await sendMessage(
       {
         requestContext: {
           domainName: event.requestContext.domainName,
           stage: event.requestContext.stage,
-          connectionId: voters[i].connectionID
+          connectionId: admins[i].connectionID
         }
       },
       {
@@ -267,7 +332,7 @@ export function checkPayloadProps(payload, check = {
   } catch (errMsg) {
     const response = {
       status: 406,
-      action: "error",
+      action: ACTION_TYPES.error,
       message: errMsg,
       data:
         payload && payload.stack && payload.message
@@ -301,7 +366,7 @@ export async function deleteConnection(connectionID) {
     };
   } catch (err) {
     let errResponse = db.dynamoErrorResponse(error);
-    console.log(errResponse);
+    console.error(errResponse);
   }
 }
 
@@ -320,7 +385,7 @@ export async function getSticker(teamName, stickerName, id) {
     return result.Item || null;
   } catch (err) {
     const errorResponse = db.dynamoErrorResponse(err);
-    console.log(errorResponse);
+    console.error(errorResponse);
   }
 }
 
@@ -362,31 +427,18 @@ export async function updateSticker(state, teamName, userID, stickerName) {
 
     await db.updateDBCustom(updateCommand);
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res = {
-      status: 500,
+      status: 502,
       message: "Internal Server Error"
     };
   }
   return res;
 }
 
-export function createResponse(statusCode, body) {
-  const response = {
-    statusCode,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Credentials": true
-    },
-    // helps stringify Error objects as well
-    body:
-      body && body.stack && body.message
-        ? JSON.stringify(body, Object.getOwnPropertyNames(body))
-        : JSON.stringify(body)
-  };
-  return response;
-}
-
+/*
+Assuming syncAdmin is called on the correct teamName, there is no need for roomID 
+*/
 export async function syncAdmin(event, teamName, isVoting) {
   await updateSocket(
     {
@@ -395,39 +447,12 @@ export async function syncAdmin(event, teamName, isVoting) {
     event.requestContext.connectionId
   );
 
-  let stickers = [];
-  try {
-    const command = new QueryCommand({
-      ExpressionAttributeValues: {
-        ":v_team": teamName
-      },
-      ExpressionAttributeNames: {
-        "#cnt": "count",
-        "#lmt": "limit"
-      },
-      KeyConditionExpression: "teamName = :v_team",
-      ProjectionExpression: "stickerName, #cnt, #lmt",
-      TableName: STICKERS_TABLE + (process.env.ENVIRONMENT || "")
-    });
-    const response = await docClient.send(command);
-    stickers = response.Items;
-  } catch (error) {
-    let errResponse = db.dynamoErrorResponse(error);
-    console.log(errResponse);
-    await sendMessage(event, {
-      status: "502",
-      action: "error",
-      message: "Internal server error"
-    });
-  }
-
   await sendMessage(event, {
     status: 200,
-    action: "sync",
+    action: ACTION_TYPES.sync,
     data: {
       isVoting,
-      teamName,
-      stickers
+      teamName
     }
   });
   return {
@@ -459,13 +484,68 @@ export async function syncUser(body, event) {
     };
   } catch (error) {
     let errResponse = db.dynamoErrorResponse(error);
-    console.log(errResponse);
+    console.error(errResponse);
     await sendMessage(event, {
       status: "502",
-      action: "error",
+      action: ACTION_TYPES.error,
       message: "Internal server error"
     });
   }
 
   return stickers;
+}
+
+export async function fetchSocketRoomIDForConnection(id) {
+  let roomID;
+  try {
+    const command = new QueryCommand({
+      ExpressionAttributeValues: {
+        ":v_id": id
+      },
+      KeyConditionExpression: "connectionID = :v_id",
+      ProjectionExpression: "roomID",
+      TableName: SOCKETS_TABLE + (process.env.ENVIRONMENT || "")
+    });
+    const response = await docClient.send(command);
+    if (response.Items && response.Items.length > 0) {
+      roomID = response.Items[0].roomID;
+    }
+  } catch (error) {
+    const errResponse = db.dynamoErrorResponse(error);
+    console.error(errResponse);
+  }
+  return roomID;
+}
+
+export async function fetchSocket(id) {
+  const command = new GetCommand({
+    TableName: SOCKETS_TABLE + (process.env.ENVIRONMENT || ""),
+    Key: {
+      connectionID: id
+    }
+  });
+  const response = await docClient.send(command);
+  return response.Item || null;
+}
+
+export function createResponse(statusCode, body) {
+  const response = {
+    statusCode,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Credentials": true
+    },
+    // helps stringify Error objects as well
+    body:
+      body && body.stack && body.message
+        ? JSON.stringify(body, Object.getOwnPropertyNames(body))
+        : JSON.stringify(body)
+  };
+  return response;
+}
+
+export function missingPathParamResponse(type, paramName) {
+  return createResponse(400, {
+    message: `A(n) ${paramName} path parameter was not provided for this ${type}. Check path params`
+  });
 }
