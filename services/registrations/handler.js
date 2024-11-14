@@ -241,7 +241,7 @@ async function createRegistration(
     const errBody = JSON.parse(errorResponse.body);
 
     // customize the error messsage if it is caused by the 'ConditionExpression' check
-    if (errBody.code === "ConditionalCheckFailedException") {
+    if (errBody.statusCode === 502 || errBody.code === "ConditionalCheckFailedException") {
       errorResponse.statusCode = 409;
       errBody.statusCode = 409;
       if (createNew)
@@ -319,6 +319,18 @@ export const post = async (event, ctx, callback) => {
         type: "string"
       }
     });
+
+    // Check if event exists first
+    const eventExists = await db.getOne(data.eventID, EVENTS_TABLE, {
+      year: data.year
+    });
+
+    if (!eventExists) {
+      return helpers.createResponse(404, {
+        message: `Event with id '${data.eventID}' and year '${data.year}' could not be found.`
+      });
+    }
+
     const existingReg = await db.getOne(data.email, USER_REGISTRATIONS_TABLE, {
       "eventID;year": `${data.eventID};${data.year}`
     });
@@ -402,6 +414,17 @@ export const put = async (event, ctx, callback) => {
       }
     });
 
+    // Check if event exists first
+    const eventExists = await db.getOne(data.eventID, EVENTS_TABLE, {
+      year: data.year
+    });
+
+    if (!eventExists) {
+      return helpers.createResponse(404, {
+        message: `Event with id '${data.eventID}' and year '${data.year}' could not be found.`
+      });
+    }
+
     const response = await updateHelper(
       data,
       false,
@@ -484,75 +507,51 @@ export async function massUpdate(event, ctx, callback) {
 export const get = async (event, ctx, callback) => {
   try {
     const queryString = event.queryStringParameters;
-    if (
-      !queryString ||
-      (!queryString.eventID && !queryString.year && !queryString.email)
-    )
+    if (!queryString ||
+      ((!queryString.eventID && !queryString.year && !queryString.email)
+      && (!queryString.eventID && !queryString.year)))
       throw helpers.missingIdQueryResponse("eventID/year/user ");
-
-    const email = queryString.email;
-    if (
-      (queryString.eventID && !queryString.year) ||
-      (!queryString.eventID && queryString.year)
-    ) {
-      throw helpers.missingIdQueryResponse(
-        "eventID or year (must have both or neither)"
-      );
-    }
-    let timeStampFilter;
-    if (queryString.hasOwnProperty("afterTimestamp")) {
-      timeStampFilter = Number(queryString.afterTimestamp);
-      const d = new Date(timeStampFilter);
-      console.log("Getting registration on and after ", d.toLocaleString());
-    }
 
     let registrations = [];
 
-    // if eventID and year was given
-    if (
-      queryString.hasOwnProperty("eventID") &&
-      queryString.hasOwnProperty("year")
-    ) {
-      const eventIDAndYear = queryString.eventID + ";" + queryString.year;
-      const filterExpression = {
-        FilterExpression: "#eventIDyear = :query",
-        ExpressionAttributeNames: {
-          "#eventIDyear": "eventID;year"
-        },
-        ExpressionAttributeValues: {
-          ":query": eventIDAndYear
+    if (queryString.email) {
+      // Query by email (primary key)
+      const keyCondition = {
+        expression: "id = :id",
+        expressionValues: {
+          ":id": queryString.email
         }
       };
-      registrations = await db.scan(USER_REGISTRATIONS_TABLE, filterExpression);
+      registrations = await db.query(USER_REGISTRATIONS_TABLE, null, keyCondition);
 
-      // filter by id query, if given
-      if (queryString.hasOwnProperty("email")) {
-        registrations = registrations.filter((entry) => entry.id === email);
+      // If eventID and year are provided, filter results
+      if (queryString.eventID && queryString.year) {
+        const eventIDYear = `${queryString.eventID};${queryString.year}`;
+        registrations = registrations.filter(reg =>
+          reg["eventID;year"] === eventIDYear
+        );
       }
-    } else {
-      // if eventID and year was not given (only id)
-
-      const filterExpression = {
-        FilterExpression: "id = :query",
-        ExpressionAttributeValues: {
-          ":query": email
+    } else if (queryString.eventID && queryString.year) {
+      // Query by eventID;year using GSI
+      const eventIDYear = `${queryString.eventID};${queryString.year}`;
+      const keyCondition = {
+        expression: "#eventIDYear = :eventIDYear",
+        expressionNames: {
+          "#eventIDYear": "eventID;year"
+        },
+        expressionValues: {
+          ":eventIDYear": eventIDYear
         }
       };
-      registrations = await db.scan(USER_REGISTRATIONS_TABLE, filterExpression);
+
+      registrations = await db.query(USER_REGISTRATIONS_TABLE, "event-query", keyCondition);
     }
 
     // filter by timestamp, if given
-    if (timeStampFilter) {
+    if (queryString.hasOwnProperty("afterTimestamp")) {
+      const timeStampFilter = Number(queryString.afterTimestamp);
       registrations = registrations.filter(
         (entry) => entry.updatedAt > timeStampFilter
-      );
-    }
-
-    // filter by partner, if given
-    if (queryString.hasOwnProperty("isPartner")) {
-      const isPartner = queryString.isPartner === "true";
-      registrations = registrations.filter(
-        (entry) => entry.isPartner === isPartner
       );
     }
 
@@ -560,9 +559,11 @@ export const get = async (event, ctx, callback) => {
       size: registrations.length,
       data: registrations
     });
+
     callback(null, response);
     return null;
   } catch (err) {
+    console.error("Error in get handler:", err);
     callback(null, err);
     return null;
   }
@@ -614,26 +615,20 @@ export const leaderboard = async (event, ctx, callback) => {
     if (!queryString || (!queryString.eventID && !queryString.year)) {
       throw helpers.missingIdQueryResponse("eventID/year");
     }
-    // if eventID and year was given
-    if (
-      queryString.hasOwnProperty("eventID") &&
-      queryString.hasOwnProperty("year")
-    ) {
+
+    if (queryString.hasOwnProperty("eventID") && queryString.hasOwnProperty("year")) {
       const eventIDAndYear = queryString.eventID + ";" + queryString.year;
-      const filterExpression = {
-        FilterExpression: "#eventIDyear = :query",
-        ExpressionAttributeNames: {
-          "#eventIDyear": "eventID;year"
+      const keyCondition = {
+        expression: "#eventIDYear = :query",
+        expressionNames: {
+          "#eventIDYear": "eventID;year"
         },
-        ExpressionAttributeValues: {
+        expressionValues: {
           ":query": eventIDAndYear
         }
       };
 
-      let registrations = await db.scan(
-        USER_REGISTRATIONS_TABLE,
-        filterExpression
-      );
+      let registrations = await db.query(USER_REGISTRATIONS_TABLE, "event-query", keyCondition);
       registrations = registrations
         .filter((user) => {
           if (user.points !== undefined) {
