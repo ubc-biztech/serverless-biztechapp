@@ -33,12 +33,5 @@
         "object-property-newline": ["warn", {}],
         "object-curly-newline": ["warn", "always"],
         "eqeqeq": ["warn", "always"]
-    },
-    "overrides": [{
-        "files": ["scripts/initlocal.js"],
-        "parserOptions": {
-            "ecmaVersion": 2020,
-            "sourceType": "module"
-        }
-    }]
+    }
 }
