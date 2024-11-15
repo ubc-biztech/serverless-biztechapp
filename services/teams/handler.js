@@ -21,6 +21,49 @@ import db from "../../lib/db.js";
     "metadata": object
  */
 
+export const updateTeamPoints = async (event, ctx, callback) => {
+  try { 
+    const data = JSON.parse(event.body);
+
+    helpers.checkPayloadProps(data, {
+      user_id: { required: true, type: "string" }, // User ID
+      eventID: { required: true, type: "string" }, // Event identifier
+      year: { required: true, type: "number" }, // Event year
+      change_points: { required: true, type: "number" }, // Points to add/subtract
+    });
+
+    const eventIDYear = `${data.eventID};${data.year}`;
+
+    const team = await teamHelpers._getTeamFromUserRegistration(
+      data.user_id,
+      data.eventID,
+      data.year
+    );
+
+    if (!team) {
+      throw helpers.inputError("Team not found", 404);
+    }
+
+    team.points += data.change_points;
+
+    await teamHelpers._putTeam(team, false);
+
+    const response = helpers.createResponse(200, {
+      message: "Team points updated successfully",
+      updatedPoints: team.points,
+    });
+    callback(null, response);
+  } catch (error) {
+    console.error("Error updating team points:", error);
+
+    const errorResponse = helpers.createResponse(500, {
+      message: "Failed to update team points",
+      error: error.message,
+    });
+    callback(null, errorResponse);
+  }
+};
+
 export const makeTeam = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
