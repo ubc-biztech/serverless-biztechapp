@@ -217,6 +217,50 @@ export default {
       }
     );
   },
+
+  async addQRScans(user_id, qr_code_ids, eventID, year, pointsPerCode) {
+    if (!Array.isArray(qr_code_ids)) {
+      throw new Error("'qr_code_ids' must be an array.");
+    }
+    /*
+        Adds multiple QR codes to the scannedQRs array of a user's team.
+    */
+
+    return await this._getTeamFromUserRegistration(user_id, eventID, year).then(
+      (team) => {
+        const uniqueQRs = qr_code_ids.filter(
+          (qr_code_id) => !team.scannedQRs.includes(qr_code_id)
+        ); // Only add new QR codes
+
+        if (uniqueQRs.length === 0) {
+          throw new Error("All provided QR codes are already scanned.");
+        }
+
+        team.scannedQRs.push(...uniqueQRs);
+
+        const totalPoints = pointsPerCode * uniqueQRs.length;
+
+        if (totalPoints !== 0) {
+          team.points += totalPoints;
+        }
+
+        if (totalPoints < 0) {
+          team.pointsSpent += Math.abs(totalPoints);
+        }
+
+        return new Promise((resolve, reject) => {
+          this._putTeam(team, false)
+            .then((res) => {
+              resolve(res);
+            })
+            .catch((err) => {
+              reject(err);
+            });
+        });
+      }
+    );
+  },
+
   async changeTeamName(user_id, eventID, year, team_name) {
     /*
         Changes a team's name in the Teams table

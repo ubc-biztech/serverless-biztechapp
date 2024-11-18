@@ -22,14 +22,26 @@ import db from "../../lib/db.js";
  */
 
 export const updateTeamPoints = async (event, ctx, callback) => {
-  try { 
+  try {
     const data = JSON.parse(event.body);
 
     helpers.checkPayloadProps(data, {
-      user_id: { required: true, type: "string" }, // User ID
-      eventID: { required: true, type: "string" }, // Event identifier
-      year: { required: true, type: "number" }, // Event year
-      change_points: { required: true, type: "number" }, // Points to add/subtract
+      user_id: {
+        required: true,
+        type: "string"
+      }, // User ID
+      eventID: {
+        required: true,
+        type: "string"
+      }, // Event identifier
+      year: {
+        required: true,
+        type: "number"
+      }, // Event year
+      change_points: {
+        required: true,
+        type: "number"
+      }, // Points to add/subtract
     });
 
     const eventIDYear = `${data.eventID};${data.year}`;
@@ -319,6 +331,73 @@ export const addQRScan = async (event, ctx, callback) => {
       return response_fail;
     });
   } catch(err) {
+    console.error(err);
+    callback(null, err);
+    return null;
+  }
+};
+
+export const addMultipleQRScans = async (event, ctx, callback) => {
+  /*
+    !!!! DEPRECATED: use the QR microservice for client facing calls.
+
+    Adds multiple QR codes to the scannedQRs array of the team.
+    If points are passed in, it will also add the points to the team's points.
+
+    Requires: user_id, qr_code_ids (array), eventID, year
+  */
+
+  try {
+    const data = JSON.parse(event.body);
+
+    helpers.checkPayloadProps(data, {
+      user_id: {
+        required: true,
+        type: "string"
+      },
+      qr_code_ids: {
+        required: true,
+        type: "object"
+      },
+      eventID: {
+        required: true,
+        type: "string"
+      },
+      year: {
+        required: true,
+        type: "number"
+      },
+      points: {
+        required: false,
+        type: "number"
+      },
+    });
+
+    const points = data.points ? data.points : 0;
+
+    await teamHelpers
+      .addQRScans(data.user_id, data.qr_code_ids, data.eventID, data.year, points)
+      .then((res) => {
+        if (res) {
+          const response_success = helpers.createResponse(200, {
+            message: "Successfully added QR codes to scannedQRs array of team.",
+            response: res,
+          });
+
+          callback(null, response_success);
+          return response_success;
+        }
+      })
+      .catch((err) => {
+        const response_fail = helpers.createResponse(403, {
+          message: "Could not add QR codes to scannedQRs array of team.",
+          response: err,
+        });
+
+        callback(null, response_fail);
+        return response_fail;
+      });
+  } catch (err) {
     console.error(err);
     callback(null, err);
     return null;
