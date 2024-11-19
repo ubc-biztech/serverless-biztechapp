@@ -62,18 +62,11 @@ functions:
           path: team/points
           method: put
           cors: true
-  addQRScan:
-    handler: handler.addQRScan
-    events:
-      - http:
-          path: team/addQR
-          method: put
-          cors: true
   addMultipleQRScans:
-    handler: handler.addMultipleQRScans
+    handler: handler.addMultipleQuestions
     events:
       - http:
-          path: team/addQRs
+          path: team/addQuestions
           method: put
           cors: true
   makeTeam:

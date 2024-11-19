@@ -218,27 +218,31 @@ export default {
     );
   },
 
-  async addQRScans(user_id, qr_code_ids, eventID, year, pointsPerCode) {
-    if (!Array.isArray(qr_code_ids)) {
-      throw new Error("'qr_code_ids' must be an array.");
+  async addQuestions(user_id, questions, eventID, year, pointsPerQuestion) {
+    /*
+    Helper for addMultipleQuestions, a dataverse specific endpoint utilizes the
+    scannedQRs field to store questions
+    */
+    if (!Array.isArray(questions)) {
+      throw new Error("'questions' must be an array.");
     }
     /*
-        Adds multiple QR codes to the scannedQRs array of a user's team.
+        Adds multiple questions to the scannedQRs array of a user's team.
     */
 
     return await this._getTeamFromUserRegistration(user_id, eventID, year).then(
       (team) => {
-        const uniqueQRs = qr_code_ids.filter(
-          (qr_code_id) => !team.scannedQRs.includes(qr_code_id)
-        ); // Only add new QR codes
+        const uniqueQuestions = questions.filter(
+          (question) => !team.scannedQRs.includes(question)
+        ); // Only add new questions
 
-        if (uniqueQRs.length === 0) {
+        if (uniqueQuestions.length === 0) {
           throw new Error("All provided QR codes are already scanned.");
         }
 
-        team.scannedQRs.push(...uniqueQRs);
+        team.scannedQRs.push(...uniqueQuestions);
 
-        const totalPoints = pointsPerCode * uniqueQRs.length;
+        const totalPoints = pointsPerQuestion * uniqueQuestions.length;
 
         if (totalPoints !== 0) {
           team.points += totalPoints;

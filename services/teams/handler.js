@@ -337,14 +337,12 @@ export const addQRScan = async (event, ctx, callback) => {
   }
 };
 
-export const addMultipleQRScans = async (event, ctx, callback) => {
+export const addMultipleQuestions = async (event, ctx, callback) => {
   /*
-    !!!! DEPRECATED: use the QR microservice for client facing calls.
+    !!!! NOTE: This is specifically for Dataverse, where we are using the 
+    scannedQRs field to store correctly answered questions.
 
-    Adds multiple QR codes to the scannedQRs array of the team.
-    If points are passed in, it will also add the points to the team's points.
-
-    Requires: user_id, qr_code_ids (array), eventID, year
+    Requires: user_id, answered_questions (array), eventID, year
   */
 
   try {
@@ -355,7 +353,7 @@ export const addMultipleQRScans = async (event, ctx, callback) => {
         required: true,
         type: "string"
       },
-      qr_code_ids: {
+      answered_questions: {
         required: true,
         type: "object"
       },
@@ -376,11 +374,11 @@ export const addMultipleQRScans = async (event, ctx, callback) => {
     const points = data.points ? data.points : 0;
 
     await teamHelpers
-      .addQRScans(data.user_id, data.qr_code_ids, data.eventID, data.year, points)
+      .addQuestions(data.user_id, data.answered_questions, data.eventID, data.year, points)
       .then((res) => {
         if (res) {
           const response_success = helpers.createResponse(200, {
-            message: "Successfully added QR codes to scannedQRs array of team.",
+            message: "Successfully added questions to scannedQRs array of team.",
             response: res,
           });
 
@@ -390,7 +388,7 @@ export const addMultipleQRScans = async (event, ctx, callback) => {
       })
       .catch((err) => {
         const response_fail = helpers.createResponse(403, {
-          message: "Could not add QR codes to scannedQRs array of team.",
+          message: "Could not add questions to scannedQRs array of team.",
           response: err,
         });
 
