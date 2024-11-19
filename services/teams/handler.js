@@ -21,6 +21,61 @@ import db from "../../lib/db.js";
     "metadata": object
  */
 
+export const updateTeamPoints = async (event, ctx, callback) => {
+  try {
+    const data = JSON.parse(event.body);
+
+    helpers.checkPayloadProps(data, {
+      user_id: {
+        required: true,
+        type: "string"
+      }, // User ID
+      eventID: {
+        required: true,
+        type: "string"
+      }, // Event identifier
+      year: {
+        required: true,
+        type: "number"
+      }, // Event year
+      change_points: {
+        required: true,
+        type: "number"
+      }, // Points to add/subtract
+    });
+
+    const eventIDYear = `${data.eventID};${data.year}`;
+
+    const team = await teamHelpers._getTeamFromUserRegistration(
+      data.user_id,
+      data.eventID,
+      data.year
+    );
+
+    if (!team) {
+      throw helpers.inputError("Team not found", 404);
+    }
+
+    team.points += data.change_points;
+
+    await teamHelpers._putTeam(team, false);
+
+    const response = helpers.createResponse(200, {
+      message: "Team points updated successfully",
+      updatedPoints: team.points,
+    });
+    callback(null, response);
+  } catch (error) {
+    console.error("Error updating team points:", error);
+
+    const errorResponse = helpers.createResponse(500, {
+      message: "Failed to update team points",
+      error: error.message,
+    });
+    callback(null, errorResponse);
+  }
+};
+
 export const makeTeam = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
@@ -276,6 +331,71 @@ export const addQRScan = async (event, ctx, callback) => {
       return response_fail;
     });
   } catch(err) {
+    console.error(err);
+    callback(null, err);
+    return null;
+  }
+};
+
+export const addMultipleQuestions = async (event, ctx, callback) => {
+  /*
+    !!!! NOTE: This is specifically for Dataverse, where we are using the 
+    scannedQRs field to store correctly answered questions.
+
+    Requires: user_id, answered_questions (array), eventID, year
+  */
+
+  try {
+    const data = JSON.parse(event.body);
+
+    helpers.checkPayloadProps(data, {
+      user_id: {
+        required: true,
+        type: "string"
+      },
+      answered_questions: {
+        required: true,
+        type: "object"
+      },
+      eventID: {
+        required: true,
+        type: "string"
+      },
+      year: {
+        required: true,
+        type: "number"
+      },
+      points: {
+        required: false,
+        type: "number"
+      },
+    });
+
+    const points = data.points ? data.points : 0;
+
+    await teamHelpers
+      .addQuestions(data.user_id, data.answered_questions, data.eventID, data.year, points)
+      .then((res) => {
+        if (res) {
+          const response_success = helpers.createResponse(200, {
+            message: "Successfully added questions to scannedQRs array of team.",
+            response: res,
+          });
+
+          callback(null, response_success);
+          return response_success;
+        }
+      })
+      .catch((err) => {
+        const response_fail = helpers.createResponse(403, {
+          message: "Could not add questions to scannedQRs array of team.",
+          response: err,
+        });
+
+        callback(null, response_fail);
+        return response_fail;
+      });
+  } catch (err) {
     console.error(err);
     callback(null, err);
     return null;

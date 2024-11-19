@@ -217,6 +217,54 @@ export default {
       }
     );
   },
+
+  async addQuestions(user_id, questions, eventID, year, pointsPerQuestion) {
+    /*
+    Helper for addMultipleQuestions, a dataverse specific endpoint utilizes the
+    scannedQRs field to store questions
+    */
+    if (!Array.isArray(questions)) {
+      throw new Error("'questions' must be an array.");
+    }
+    /*
+        Adds multiple questions to the scannedQRs array of a user's team.
+    */
+
+    return await this._getTeamFromUserRegistration(user_id, eventID, year).then(
+      (team) => {
+        const uniqueQuestions = questions.filter(
+          (question) => !team.scannedQRs.includes(question)
+        ); // Only add new questions
+
+        if (uniqueQuestions.length === 0) {
+          throw new Error("All provided QR codes are already scanned.");
+        }
+
+        team.scannedQRs.push(...uniqueQuestions);
+
+        const totalPoints = pointsPerQuestion * uniqueQuestions.length;
+
+        if (totalPoints !== 0) {
+          team.points += totalPoints;
+        }
+
+        if (totalPoints < 0) {
+          team.pointsSpent += Math.abs(totalPoints);
+        }
+
+        return new Promise((resolve, reject) => {
+          this._putTeam(team, false)
+            .then((res) => {
+              resolve(res);
+            })
+            .catch((err) => {
+              reject(err);
+            });
+        });
+      }
+    );
+  },
+
   async changeTeamName(user_id, eventID, year, team_name) {
     /*
         Changes a team's name in the Teams table
