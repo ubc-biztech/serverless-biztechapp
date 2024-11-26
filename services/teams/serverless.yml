@@ -55,6 +55,20 @@ provider:
 custom: ${file(../../serverless.common.yml):custom}
 
 functions:
+  updateTeamPoints:
+    handler: handler.updateTeamPoints
+    events:
+      - http:
+          path: team/points
+          method: put
+          cors: true
+  addMultipleQRScans:
+    handler: handler.addMultipleQuestions
+    events:
+      - http:
+          path: team/addQuestions
+          method: put
+          cors: true
   makeTeam:
     handler: handler.makeTeam
     events:
