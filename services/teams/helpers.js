@@ -236,10 +236,6 @@ export default {
           (question) => !team.scannedQRs.includes(question)
         ); // Only add new questions
 
-        if (uniqueQuestions.length === 0) {
-          throw new Error("All provided QR codes are already scanned.");
-        }
-
         team.scannedQRs.push(...uniqueQuestions);
 
         const totalPoints = pointsPerQuestion * uniqueQuestions.length;
