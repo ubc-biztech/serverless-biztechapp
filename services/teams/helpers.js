@@ -238,6 +238,11 @@ export default {
 
         team.scannedQRs.push(...uniqueQuestions);
 
+        if (uniqueQuestions.includes("Final Question")) {
+          const timestamp = new Date().toISOString();
+          team.submission = timestamp;
+        }
+
         const totalPoints = pointsPerQuestion * uniqueQuestions.length;
 
         if (totalPoints !== 0) {
