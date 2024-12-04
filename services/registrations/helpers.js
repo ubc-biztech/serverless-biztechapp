@@ -24,7 +24,12 @@ export default {
 
       if (!event) {
         console.error("Event not found:", eventID, year);
-        return null;
+        return {
+          registeredCount: 0,
+          checkedInCount: 0,
+          waitlistCount: 0,
+          dynamicCounts: []
+        };
       }
 
       const cappedQuestions = [];
@@ -61,13 +66,10 @@ export default {
         }
       };
 
-      const result = await db.query(USER_REGISTRATIONS_TABLE, "event-query", keyCondition);
+      console.log("Querying with params:", keyCondition);
 
-      // Handle case where query returns null
-      if (result === null) {
-        console.error("Query failed for event counts");
-        return null;
-      }
+      const result = await db.query(USER_REGISTRATIONS_TABLE, "event-query", keyCondition);
+      console.log("Query result:", result);
 
       let counts = {
         registeredCount: 0,
@@ -87,41 +89,48 @@ export default {
         })
       };
 
-      result.forEach((item) => {
-        if (item.isPartner === undefined || (item.isPartner !== undefined && !item.isPartner)) {
-          switch (item.registrationStatus) {
-          case "registered":
-            counts.registeredCount++;
-            break;
-          case "checkedIn":
-            counts.checkedInCount++;
-            break;
-          case "waitlist":
-            counts.waitlistCount++;
-            break;
+      if (Array.isArray(result)) {
+        result.forEach((item) => {
+          if (item.isPartner === undefined || !item.isPartner) {
+            switch (item.registrationStatus) {
+            case "registered":
+              counts.registeredCount++;
+              break;
+            case "checkedIn":
+              counts.checkedInCount++;
+              break;
+            case "waitlist":
+              counts.waitlistCount++;
+              break;
+            }
           }
-        }
 
-        if (cappedQuestions.length > 0 && item.dynamicResponses) {
-          cappedQuestions.forEach(question => {
-            const response = item.dynamicResponses[`${question.questionId}`];
-            if (response) { // Add null check for response
-              const dynamicCount = counts.dynamicCounts.find(count => count.questionId === question.questionId);
-              if (dynamicCount) { // Add null check for dynamicCount
-                const workshopCount = dynamicCount.counts.find(q => q.label === response);
-                if (workshopCount) { // Add null check for workshopCount
-                  workshopCount.count += 1;
+          if (cappedQuestions.length > 0 && item.dynamicResponses) {
+            cappedQuestions.forEach(question => {
+              const response = item.dynamicResponses[`${question.questionId}`];
+              if (response) {
+                const dynamicCount = counts.dynamicCounts.find(count => count.questionId === question.questionId);
+                if (dynamicCount) {
+                  const workshopCount = dynamicCount.counts.find(q => q.label === response);
+                  if (workshopCount) {
+                    workshopCount.count += 1;
+                  }
                 }
               }
-            }
-          });
-        }
-      });
+            });
+          }
+        });
+      }
 
       return counts;
     } catch (error) {
       console.error("Error in getEventCounts:", error);
-      return null;
+      return {
+        registeredCount: 0,
+        checkedInCount: 0,
+        waitlistCount: 0,
+        dynamicCounts: []
+      };
     }
   },
   sendDynamicQR: (msg) => {
