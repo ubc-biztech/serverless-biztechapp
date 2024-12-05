@@ -17,39 +17,60 @@ export default {
    * @return {registeredCount checkedInCount waitlistCount}
    */
   getEventCounts: async function (eventID, year) {
-    const event = await db.getOne(eventID, EVENTS_TABLE, {
-      year: year
-    });
-    const cappedQuestions = [];
-    console.log(event);
-    event.registrationQuestions.forEach(question => {
-      console.log(question);
-      if (question.participantCap) {
-        const choices = question.choices.split(",");
-        const caps = question.participantCap.split(",");
-        const cappedQuestionObject = {
-          questionId: question.questionId,
-          caps: choices.map((choice, i) => {
-            return {
-              label: choice,
-              cap: parseInt(caps[i])
-            };
-          })
-        };
-        cappedQuestions.push(cappedQuestionObject);
-      }
-    });
-    const params = {
-      FilterExpression: "#eventIDYear = :query",
-      ExpressionAttributeNames: {
-        "#eventIDYear": "eventID;year"
-      },
-      ExpressionAttributeValues: {
-        ":query": eventID + ";" + year
-      }
-    };
     try {
-      const result = await db.scan(USER_REGISTRATIONS_TABLE, params);
+      const event = await db.getOne(eventID, EVENTS_TABLE, {
+        year: year
+      });
+
+      if (!event) {
+        console.error("Event not found:", eventID, year);
+        return {
+          registeredCount: 0,
+          checkedInCount: 0,
+          waitlistCount: 0,
+          dynamicCounts: []
+        };
+      }
+
+      const cappedQuestions = [];
+      console.log("Event:", event);
+
+      if (event.registrationQuestions && Array.isArray(event.registrationQuestions)) {
+        event.registrationQuestions.forEach(question => {
+          console.log("Question:", question);
+          if (question.participantCap) {
+            const choices = question.choices.split(",");
+            const caps = question.participantCap.split(",");
+            const cappedQuestionObject = {
+              questionId: question.questionId,
+              caps: choices.map((choice, i) => {
+                return {
+                  label: choice,
+                  cap: parseInt(caps[i])
+                };
+              })
+            };
+            cappedQuestions.push(cappedQuestionObject);
+          }
+        });
+      }
+
+      const eventIDYear = eventID + ";" + year;
+      const keyCondition = {
+        expression: "#eventIDYear = :query",
+        expressionNames: {
+          "#eventIDYear": "eventID;year"
+        },
+        expressionValues: {
+          ":query": eventIDYear
+        }
+      };
+
+      console.log("Querying with params:", keyCondition);
+
+      const result = await db.query(USER_REGISTRATIONS_TABLE, "event-query", keyCondition);
+      console.log("Query result:", result);
+
       let counts = {
         registeredCount: 0,
         checkedInCount: 0,
@@ -67,32 +88,49 @@ export default {
           };
         })
       };
-      result.forEach((item) => {
-        if (item.isPartner === undefined || (item.isPartner !== undefined && !item.isPartner)) {
-          switch (item.registrationStatus) {
-          case "registered":
-            counts.registeredCount++;
-            break;
-          case "checkedIn":
-            counts.checkedInCount++;
-            break;
-          case "waitlist":
-            counts.waitlistCount++;
-            break;
+
+      if (Array.isArray(result)) {
+        result.forEach((item) => {
+          if (item.isPartner === undefined || !item.isPartner) {
+            switch (item.registrationStatus) {
+            case "registered":
+              counts.registeredCount++;
+              break;
+            case "checkedIn":
+              counts.checkedInCount++;
+              break;
+            case "waitlist":
+              counts.waitlistCount++;
+              break;
+            }
           }
-        }
-        cappedQuestions.forEach(question => {
-          const response = item.dynamicResponses[`${question.questionId}`];
-          const dynamicCount = counts.dynamicCounts.find(count => count.questionId === question.questionId);
-          const workshopCount = dynamicCount.counts.find(question => question.label === response);
-          workshopCount.count += 1;
+
+          if (cappedQuestions.length > 0 && item.dynamicResponses) {
+            cappedQuestions.forEach(question => {
+              const response = item.dynamicResponses[`${question.questionId}`];
+              if (response) {
+                const dynamicCount = counts.dynamicCounts.find(count => count.questionId === question.questionId);
+                if (dynamicCount) {
+                  const workshopCount = dynamicCount.counts.find(q => q.label === response);
+                  if (workshopCount) {
+                    workshopCount.count += 1;
+                  }
+                }
+              }
+            });
+          }
         });
-      });
+      }
+
       return counts;
-    }
-    catch (error) {
-      console.error(error);
-      return null;
+    } catch (error) {
+      console.error("Error in getEventCounts:", error);
+      return {
+        registeredCount: 0,
+        checkedInCount: 0,
+        waitlistCount: 0,
+        dynamicCounts: []
+      };
     }
   },
   sendDynamicQR: (msg) => {
