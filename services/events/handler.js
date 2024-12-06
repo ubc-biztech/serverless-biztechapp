@@ -135,43 +135,14 @@ export const del = async (event, ctx, callback) => {
   }
 };
 
-// TODO: Implement better way to optimize this query
 export const getAll = async (event, ctx, callback) => {
   try {
-    const fourMonthsAgo = new Date();
-    fourMonthsAgo.setMonth(fourMonthsAgo.getMonth() - 4);
-    const fourMonthsAgoTimestamp = fourMonthsAgo.getTime();
+    // Set context callbackWaitsForEmptyEventLoop to false to prevent Lambda from waiting
+    ctx.callbackWaitsForEmptyEventLoop = false;
 
-    let filterExpression = {
-      FilterExpression: "#createdAt >= :fourMonthsAgo",
-      ExpressionAttributeNames: {
-        "#createdAt": "createdAt"
-      },
-      ExpressionAttributeValues: {
-        ":fourMonthsAgo": fourMonthsAgoTimestamp
-      }
-    };
-
-    // Add year filter if it exists
-    if (
-      event &&
-      event.queryStringParameters &&
-      event.queryStringParameters.hasOwnProperty("year")
-    ) {
-      const year = parseInt(event.queryStringParameters.year, 10);
-      if (isNaN(year))
-        throw helpers.inputError(
-          "Year query parameter must be a number",
-          event.queryStringParameters
-        );
-
-      filterExpression.FilterExpression += " AND #vyear = :year";
-      filterExpression.ExpressionAttributeNames["#vyear"] = "year";
-      filterExpression.ExpressionAttributeValues[":year"] = year;
-    }
-
-    // scan
-    let events = await db.scan(EVENTS_TABLE, filterExpression);
+    // scan using the GSI
+    let events = await db.scan(EVENTS_TABLE, {
+    }, "event-overview");
 
     // Filter by ID if provided
     if (
@@ -184,18 +155,12 @@ export const getAll = async (event, ctx, callback) => {
       );
     }
 
-    // get event counts
-    for (const eventItem of events) {
-      eventItem.counts = await eventHelpers.getEventCounts(
-        eventItem.id, eventItem.year
-      );
-    }
-
-    // sort the events by startDate
+    // sort by startDate
     events.sort(alphabeticalComparer("startDate"));
 
     const response = helpers.createResponse(200, events);
     callback(null, response);
+    return null;
   } catch (err) {
     console.error(err);
     callback(null, err);
