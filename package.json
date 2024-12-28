@@ -17,6 +17,7 @@
     "express-http-proxy": "^1.6.2",
     "fs": "0.0.1-security",
     "http-proxy-middleware": "^2.0.0",
+    "human-id": "^4.1.1",
     "ics": "^2.40.0",
     "path": "^0.12.7",
     "serverless": "^3.39.0",
