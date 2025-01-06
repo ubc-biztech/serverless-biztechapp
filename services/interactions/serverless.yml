@@ -50,11 +50,15 @@ custom: ${file(../../serverless.common.yml):custom}
 
 functions:
   interactionCreate:
-    handler: handler.create
+    handler: handler.postInteraction
     events:
       - http:
-          path: interactions/
+          path: interactions/{id}
           method: post
+          request:
+            parameters:
+              querystrings:
+                id: true
           cors: true
           authorizer:
             name: ${self:service}-authorizer
@@ -75,7 +79,7 @@ functions:
     handler: handler.getAllQuests
     events:
       - http:
-        path: quests/{id}
+        path: interactions/quests/{id}
         method: get
         request:
           parameters:
