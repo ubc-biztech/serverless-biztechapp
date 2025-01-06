@@ -10,13 +10,11 @@ export const handleConnection = async (userID, connID, timestamp) => {
   let result;
   try {
     const command = new QueryCommand({
-      IndexName: "connID",
       ExpressionAttributeValues: {
         ":conn": connID,
         ":uid": userID
       },
-      KeyConditionExpression: "connID = :conn",
-      FilterExpression: "userID = :uid",
+      KeyConditionExpression: "connID = :conn AND userID = :uid",
       ProjectionExpression: "userID, connID",
       TableName: CONNECTIONS_TABLE + (process.env.ENVIRONMENT || "")
     });
@@ -30,18 +28,26 @@ export const handleConnection = async (userID, connID, timestamp) => {
   }
 
   if (result.Items.length > 0) {
-    throw handlerHelpers.createResponse(409, {
+    return handlerHelpers.createResponse(409, {
       message: `Connection with ${connID} already made`
     });
   }
 
-  const { data: userData } = await db.getOne(userID, QRS_TABLE, {
+  let profileData = await db.getOne(userID, QRS_TABLE, {
+    "eventID;year": event
+  });
+  let connProfileData = await db.getOne(connID, QRS_TABLE, {
     "eventID;year": event
   });
 
-  const { data: connData, type } = await db.getOne(connID, QRS_TABLE, {
-    "eventID;year": event
-  });
+  if (!profileData || !connProfileData) {
+    return handlerHelpers.createResponse(400, {
+      message: "User profile or new connection does not exist"
+    });
+  }
+
+  const { data: userData } = profileData;
+  const { data: connData, type } = connProfileData;
 
   const userPut = {
     userID,
@@ -74,17 +80,26 @@ export const handleConnection = async (userID, connID, timestamp) => {
   let res;
   switch (type) {
     case "NFC_ATTENDEE":
-      await db.put(connPut, CONNECTIONS_TABLE, true);
-      res = await db.put(userPut, CONNECTIONS_TABLE, true);
+      try {
+        // potential race condition -> use transactions to fix, but will take time to implement
+        await db.put(connPut, CONNECTIONS_TABLE, true);
+        await db.put(userPut, CONNECTIONS_TABLE, true);
+      } catch (error) {
+        console.error(error);
+        return handlerHelpers.createResponse(500, {
+          message: "Internal server error"
+        });
+      }
       break;
+
+    // todo other cases + quest table writing
 
     default:
       break;
   }
 
   return handlerHelpers.createResponse(200, {
-    message: `Connection created with ${connID}`,
-    res
+    message: `Connection created with ${connID}`
   });
 };
 

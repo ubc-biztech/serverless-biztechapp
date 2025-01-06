@@ -65,7 +65,7 @@ functions:
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   interactionGetAll:
-    handler: handler.getAllInteractions
+    handler: handler.getAllConnections
     events:
       - http:
           path: interactions/{id}
@@ -79,7 +79,7 @@ functions:
     handler: handler.getAllQuests
     events:
       - http:
-        path: interactions/quests/{id}
+        path: quests/{id}
         method: get
         request:
           parameters:
