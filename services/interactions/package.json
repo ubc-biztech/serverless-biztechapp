@@ -1,5 +1,5 @@
 {
-  "name": "biztechApi-interactions",
+  "name": "biztechapi-interactions",
   "version": "1.0.0",
   "devDependencies": {
     "serverless-offline": "^14.3.2"
