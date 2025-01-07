@@ -11,13 +11,12 @@ const BOOTH = "BOOTH";
 
 export const postInteraction = async (event, ctx, callback) => {
   try {
-    if (!event.pathParameters || !event.pathParameters.id)
-      throw helpers.missingIdQueryResponse("id");
-
-    const userID = event.pathParameters.id;
     const data = JSON.parse(event.body);
 
     helpers.checkPayloadProps(data, {
+      userID: {
+        required: true
+      },
       interactionType: {
         required: true
       },
@@ -27,7 +26,7 @@ export const postInteraction = async (event, ctx, callback) => {
     });
 
     const timestamp = new Date().getTime();
-    const { interactionType, eventParam } = data;
+    const { userID, interactionType, eventParam } = data;
 
     let response;
 
