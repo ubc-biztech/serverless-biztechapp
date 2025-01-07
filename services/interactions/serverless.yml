@@ -62,13 +62,21 @@ functions:
     handler: handler.getAllConnections
     events:
       - http:
-          path: interactions/
+          path: interactions/{id}
           method: get
+          request:
+            parameters:
+              querystrings:
+                id: true
           cors: true
   questsGetAll:
     handler: handler.getAllQuests
     events:
       - http:
-        path: quests/
+        path: quests/{id}
         method: get
+        request:
+          parameters:
+            querystrings:
+              id: true
         cors: true
