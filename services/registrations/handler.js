@@ -33,18 +33,21 @@ export async function updateHelper(data, createNew, email, fname) {
   } = data;
   const eventIDAndYear = eventID + ";" + year;
 
+  // Normalize email to lowercase
+  const normalizedEmail = email.toLowerCase();
+
   console.log(data);
   console.log("CloudWatch debugging purposes");
 
   // for the QR code, we pass this to SendGrid
-  const id = `${email};${eventIDAndYear};${fname}`;
+  const id = `${normalizedEmail};${eventIDAndYear};${fname}`;
 
   //Check if eventID exists and is string. Check if year exists and is number.
   if (
     typeof eventID !== "string" ||
     typeof year !== "number" ||
     isNaN(year) ||
-    !isValidEmail(email)
+    !isValidEmail(normalizedEmail)
   ) {
     throw helpers.inputError(
       "Incorrect types for eventID and year in registration.updateHelper",
@@ -68,7 +71,7 @@ export async function updateHelper(data, createNew, email, fname) {
     throw helpers.notFoundResponse("Event", eventID, year);
 
   const user = {
-    id: email,
+    id: normalizedEmail,
     fname
   };
   let dynamicRegistrationStatus = registrationStatus;
@@ -138,7 +141,7 @@ export async function updateHelper(data, createNew, email, fname) {
     dynamicRegistrationStatus,
     applicationStatus,
     data,
-    email,
+    normalizedEmail,
     eventIDAndYear,
     createNew
   );
@@ -147,7 +150,7 @@ export async function updateHelper(data, createNew, email, fname) {
   try {
     await sendSNSNotification({
       type: "registration_update",
-      email,
+      email: normalizedEmail,
       eventID,
       year,
       registrationStatus: dynamicRegistrationStatus,
@@ -302,6 +305,8 @@ export async function sendEmail(
 export const post = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
+    // Normalize email to lowercase
+    data.email = data.email.toLowerCase();
 
     if (!isValidEmail(data.email))
       throw helpers.inputError("Invalid email", data.email);
@@ -390,7 +395,8 @@ export const put = async (event, ctx, callback) => {
     if (!event.pathParameters || !event.pathParameters.email)
       throw helpers.missingIdQueryResponse("user");
 
-    const email = event.pathParameters.email;
+    // Normalize email to lowercase
+    const email = event.pathParameters.email.toLowerCase();
 
     const data = JSON.parse(event.body);
     if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
@@ -517,11 +523,13 @@ export const get = async (event, ctx, callback) => {
     let registrations = [];
 
     if (queryString.email) {
+      // Normalize email to lowercase
+      const normalizedEmail = queryString.email.toLowerCase();
       // Query by email (primary key)
       const keyCondition = {
         expression: "id = :id",
         expressionValues: {
-          ":id": queryString.email
+          ":id": normalizedEmail
         }
       };
       registrations = await db.query(USER_REGISTRATIONS_TABLE, null, keyCondition);
@@ -579,7 +587,8 @@ export const del = async (event, ctx, callback) => {
     if (!event.pathParameters || !event.pathParameters.email)
       throw helpers.missingIdQueryResponse("registration");
 
-    const email = event.pathParameters.email;
+    // Normalize email to lowercase
+    const email = event.pathParameters.email.toLowerCase();
     if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
     helpers.checkPayloadProps(data, {
       eventID: {

@@ -35,7 +35,7 @@ const cancelSecret =
 export const webhook = async (event, ctx, callback) => {
   const OAuthMemberSignup = async (data) => {
     const timestamp = new Date().getTime();
-    const email = data.email;
+    const email = data.email.toLowerCase();
 
     let isBiztechAdmin = false;
 
@@ -47,7 +47,7 @@ export const webhook = async (event, ctx, callback) => {
     }
 
     const userParams = {
-      id: data.email,
+      id: email,
       education: data.education,
       studentId: data.student_number,
       fname: data.fname,
@@ -64,7 +64,7 @@ export const webhook = async (event, ctx, callback) => {
     };
 
     const memberParams = {
-      id: data.email,
+      id: email,
       education: data.education,
       firstName: data.fname,
       lastName: data.lname,
@@ -135,9 +135,11 @@ export const webhook = async (event, ctx, callback) => {
       apiVersion: "2016-04-18"
     });
 
+    const normalizedEmail = data.email.toLowerCase();
+
     const cognitoParams = {
       ClientId: "5tc2jshu03i3bmtl1clsov96dt",
-      Username: data.email,
+      Username: normalizedEmail,
       UserAttributes: [
         {
           Name: "name",
@@ -153,13 +155,16 @@ export const webhook = async (event, ctx, callback) => {
 
     await cognito.signUp(cognitoParams);
 
-    await OAuthMemberSignup(data);
+    await OAuthMemberSignup({
+      ...data,
+      email: normalizedEmail
+    });
   };
 
   const memberSignup = async (data) => {
     const timestamp = new Date().getTime();
 
-    const email = data.email;
+    const email = data.email.toLowerCase();
 
     let isBiztechAdmin = false;
 
@@ -171,7 +176,7 @@ export const webhook = async (event, ctx, callback) => {
     }
 
     const userParams = {
-      email: data.email,
+      email: email,
       education: data.education,
       studentId: data.student_number,
       fname: data.fname,
@@ -186,7 +191,7 @@ export const webhook = async (event, ctx, callback) => {
     };
 
     const memberParams = {
-      id: data.email,
+      id: email,
       education: data.education,
       firstName: data.fname,
       lastName: data.lname,
@@ -280,6 +285,7 @@ export const webhook = async (event, ctx, callback) => {
 
   if (eventData.type === "checkout.session.completed") {
     const data = eventData.data.object.metadata;
+    data.email = data.email.toLowerCase();
 
     if (!isValidEmail(data.email)) {
       return helpers.inputError("Invalid email", data.email);
@@ -309,6 +315,9 @@ export const webhook = async (event, ctx, callback) => {
 export const payment = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
+    if (data.email) {
+      data.email = data.email.toLowerCase();
+    }
     const {
       paymentImages
     } = data;
@@ -365,8 +374,9 @@ export const cancel = async (event, ctx, callback) => {
     cancelSecret
   );
   const data = eventData.data.object.metadata;
+  const email = data.email ? data.email.toLowerCase() : data.email;
   const {
-    email, eventID, year, paymentType
+    eventID, year, paymentType
   } = data;
   if (paymentType === "Event") {
     try {
