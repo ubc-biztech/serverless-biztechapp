@@ -1,7 +1,9 @@
-import { CONNECTIONS_TABLE } from "../../constants/tables";
+import { CONNECTIONS_TABLE, QRS_TABLE } from "../../constants/tables";
+import db from "../../lib/db";
 import docClient from "../../lib/docClient";
 import handlerHelpers from "../../lib/handlerHelpers";
 import helpers from "../../lib/handlerHelpers";
+import { CURRENT_EVENT } from "./constants";
 import { handleBooth, handleConnection, handleWorkshop } from "./helpers";
 import { QueryCommand } from "@aws-sdk/lib-dynamodb";
 
@@ -66,9 +68,16 @@ export const getAllConnections = async (event, ctx, callback) => {
       throw helpers.missingIdQueryResponse("id");
 
     const userID = event.pathParameters.id;
+
+    const { data: profileData } = await db.getOne(userID, QRS_TABLE, {
+      "eventID;year": CURRENT_EVENT
+    });
+
+    console.log(profileData);
+
     const command = new QueryCommand({
       ExpressionAttributeValues: {
-        ":uid": userID
+        ":uid": profileData.registrationID
       },
       KeyConditionExpression: "userID = :uid",
       TableName: CONNECTIONS_TABLE + (process.env.ENVIRONMENT || "")
@@ -79,7 +88,7 @@ export const getAllConnections = async (event, ctx, callback) => {
     });
 
     const response = handlerHelpers.createResponse(200, {
-      message: `all connections for ${userID}`,
+      message: `all connections for ${profileData.registrationID}`,
       data
     });
 
