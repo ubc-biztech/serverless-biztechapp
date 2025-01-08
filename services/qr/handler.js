@@ -136,7 +136,7 @@ export const getOne = async (event, ctx, callback) => {
       id, eventID, year
     } = event.pathParameters;
     const eventIDAndYear = eventID + ";" + year;
-    const qr = await db.scan(id, QRS_TABLE, {
+    const qr = await db.getOne(id, QRS_TABLE, {
       "eventID;year": eventIDAndYear
     });
     const response = helpers.createResponse(200, qr);
