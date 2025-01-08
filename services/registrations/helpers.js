@@ -151,19 +151,6 @@ export default {
     startDate = new Date(startDate);
     endDate = new Date(endDate);
 
-    const duration = {
-      hours: endDate.getHours() - startDate.getHours(),
-      minutes: endDate.getMinutes() - startDate.getMinutes(),
-      seconds: endDate.getSeconds() - startDate.getSeconds()
-    };
-
-    // convert startDate from PST/PDT to UTC (to avoid AWS-dependent local time conversion)
-    // check if PST or PDT — below implementation not complete
-
-    // const isPDT = startDate.getTimezoneOffset() === 420;
-    // const offset = isPDT ? 420 : 480;
-    // startDate.setMinutes(startDate.getMinutes() + offset);
-
     // startDateArray follows format [year, month, day, hour, minute]
     const startDateArray = [
       startDate.getFullYear(),
@@ -173,14 +160,21 @@ export default {
       startDate.getMinutes()
     ];
 
+    const endDateArray = [
+      endDate.getFullYear(),
+      endDate.getMonth() + 1,
+      endDate.getDate(),
+      endDate.getHours(),
+      endDate.getMinutes()
+    ];
+
     const eventDetails = {
       title: ename,
       description,
       location: elocation,
       startInputType: "local",
       start: startDateArray,
-      // end: [2021, 2, 3],
-      duration,
+      end: endDateArray,
       status: "CONFIRMED",
       busyStatus: "BUSY",
       productId: "BizTech",
