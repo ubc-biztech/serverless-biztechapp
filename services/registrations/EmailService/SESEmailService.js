@@ -95,12 +95,6 @@ export default class SESEmailService {
     startDate = new Date(startDate);
     endDate = new Date(endDate);
 
-    const duration = {
-      hours: endDate.getHours() - startDate.getHours(),
-      minutes: endDate.getMinutes() - startDate.getMinutes(),
-      seconds: endDate.getSeconds() - startDate.getSeconds()
-    };
-
     const startDateArray = [
       startDate.getFullYear(),
       startDate.getMonth() + 1,
@@ -109,13 +103,21 @@ export default class SESEmailService {
       startDate.getMinutes()
     ];
 
+    const endDateArray = [
+      endDate.getFullYear(),
+      endDate.getMonth() + 1,
+      endDate.getDate(),
+      endDate.getHours(),
+      endDate.getMinutes()
+    ];
+
     const eventDetails = {
       title: ename,
       description,
       location: elocation,
       startInputType: "local",
       start: startDateArray,
-      duration,
+      end: endDateArray,
       status: "CONFIRMED",
       busyStatus: "BUSY",
       productId: "BizTech",
