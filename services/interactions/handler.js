@@ -74,7 +74,7 @@ export const getAllConnections = async (event, ctx, callback) => {
       TableName: CONNECTIONS_TABLE + (process.env.ENVIRONMENT || "")
     });
     const result = await docClient.send(command);
-    const data = result?.Items.sort((a, b) => {
+    const data = result.Items.sort((a, b) => {
       return b.createdAt - a.createdAt;
     });
 
