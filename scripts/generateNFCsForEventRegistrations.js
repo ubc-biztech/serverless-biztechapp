@@ -92,11 +92,30 @@ const generateNFCsForEventRegistrations = async (eventID, year) => {
         data: {
           registrationID: registration.id
         }
-      }, "biztechQRs" + (process.env.ENVIRONMENT || ""));
+      }, "biztechQRs");
       count++;
     }
   }
 
   console.log(`created ${count} NFCs`);
 };
+
+/*
+This function is used to create backup NFCs in our DB so that we have extra QRs/NFCs day of.
+*/
+const createExtraNFCs = async (eventID, year, count) => {
+  for (let i = 0; i < count; i++) {
+    const nfc = await create({
+      id: humanId(),
+      "eventID;year": `${eventID};${year}`,
+      type: "NFC_ATTENDEE",
+      isUnlimitedScans: true,
+      data: {
+        registrationID: "DEFAULT"
+      }
+    }, "biztechQRs");
+  }
+};
+
 generateNFCsForEventRegistrations("blueprint", 2025);
+// createExtraNFCs("blueprint", 2025, 15);
