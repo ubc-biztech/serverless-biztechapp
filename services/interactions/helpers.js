@@ -3,7 +3,7 @@ import { QRS_TABLE, CONNECTIONS_TABLE } from "../../constants/tables";
 import db from "../../lib/db";
 import handlerHelpers from "../../lib/handlerHelpers";
 import docClient from "../../lib/docClient";
-import { CURRENT_EVENT } from "./constants";
+import { ATTENDEE, CURRENT_EVENT, EXEC, PARTNER } from "./constants";
 
 export const handleConnection = async (userID, connID, timestamp) => {
   let profileData = await db.getOne(userID, QRS_TABLE, {
@@ -118,9 +118,8 @@ export const handleConnection = async (userID, connID, timestamp) => {
       : {})
   };
 
-  let res;
   switch (type) {
-    case "NFC_ATTENDEE":
+    case ATTENDEE:
       try {
         // potential race condition -> use transactions to fix, but will take time to implement
         await db.put(connPut, CONNECTIONS_TABLE, true);
@@ -135,7 +134,11 @@ export const handleConnection = async (userID, connID, timestamp) => {
       }
       break;
 
-    // todo other cases + quest table writing
+    case EXEC:
+      break;
+
+    case PARTNER:
+      break;
 
     default:
       break;

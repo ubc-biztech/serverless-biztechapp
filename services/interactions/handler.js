@@ -73,8 +73,6 @@ export const getAllConnections = async (event, ctx, callback) => {
       "eventID;year": CURRENT_EVENT
     });
 
-    console.log(profileData);
-
     const command = new QueryCommand({
       ExpressionAttributeValues: {
         ":uid": profileData.registrationID
