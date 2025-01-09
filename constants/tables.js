@@ -1,3 +1,4 @@
+export const CONNECTIONS_TABLE = "bizConnections";
 export const EVENTS_TABLE = "biztechEvents";
 export const MEMBERSHIPS2021_TABLE = "biztechMemberships2021";
 export const MEMBERS2022_TABLE = "biztechMembers2022";
