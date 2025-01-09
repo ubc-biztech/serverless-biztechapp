@@ -66,7 +66,7 @@ functions:
           method: get
           request:
             parameters:
-              querystrings:
+              path:
                 id: true
           cors: true
   questsGetAll:
@@ -77,6 +77,6 @@ functions:
         method: get
         request:
           parameters:
-            querystrings:
+            path:
               id: true
         cors: true
