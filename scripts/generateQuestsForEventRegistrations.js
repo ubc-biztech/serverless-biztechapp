@@ -59,7 +59,7 @@ const userQuestsArray = (id, eventString) => {
     "eventID;year": eventString,
     progress: 0,
     threshold: q[1],
-    questId: q[0],
+    questID: q[0],
     badgeName: q[2],
     description: q[3]
   }));
@@ -88,8 +88,6 @@ const questsForEventRegistrations = async (eventID, year) => {
     throw err;
   }
 
-  const registrationIDs = new Set();
-
   let count = 0;
   let users = 0;
   for (let i = 0; i < registrations.Items.length; i++) {
@@ -103,12 +101,13 @@ const questsForEventRegistrations = async (eventID, year) => {
 
       for (let j = 0; j < userQuests.length; j++) {
         await create(userQuests[j], QUESTS_TABLE);
-        console.log(`Quest created for user: ${userQuests[j].userID}`);
         count++;
       }
+
+      console.log(`Quests created for user: ${registrations.Items[i].id}`);
     } catch (err) {
-      console.log(`Created ${count} Quest Entries for ${users} Users`);
-      console.log(`Error writing quests: \n ${JSON.stringify(err, null, 2)}`);
+      console.error(`Created ${count} Quest Entries for ${users} Users`);
+      console.error(`Error writing quests: \n ${JSON.stringify(err, null, 2)}`);
       throw err;
     }
   }
