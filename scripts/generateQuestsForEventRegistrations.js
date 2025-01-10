@@ -28,7 +28,7 @@ const QUESTS = [
     QUEST_CONNECT_EXEC_H,
     1,
     "Director’s Circle",
-    "Connect with a Biztech Exec.."
+    "Connect with a Biztech Exec."
   ],
   [QUEST_BT_BOOTH_H, 1, "Loyalist Legacy", "Visit the BizTech Booth."],
   [QUEST_SNACK, 1, "Snack Seeker", "Grab some food."],
@@ -59,8 +59,8 @@ const userQuestsArray = (id, eventString) => {
     "eventID;year": eventString,
     progress: 0,
     threshold: q[1],
-    name: q[0],
-    badge: q[2],
+    questId: q[0],
+    badgeName: q[2],
     description: q[3]
   }));
 };
@@ -93,23 +93,23 @@ const questsForEventRegistrations = async (eventID, year) => {
   let count = 0;
   let users = 0;
   for (let i = 0; i < registrations.Items.length; i++) {
-    if (!registrationIDs.has(registrations.Items[i].id)) {
-      try {
-        const userQuests = userQuestsArray(
-          registrations.Items[i].id,
-          `${eventID};${year}`
-        );
+    try {
+      const userQuests = userQuestsArray(
+        registrations.Items[i].id,
+        `${eventID};${year}`
+      );
 
-        users++;
+      users++;
 
-        for (let j = 0; j < userQuests.length; j++) {
-          await create(userQuests[j], QUESTS_TABLE);
-          count++;
-        }
-      } catch (err) {
-        `Error writing quests: \n ${JSON.stringify(err, null, 2)}`;
-        throw err;
+      for (let j = 0; j < userQuests.length; j++) {
+        await create(userQuests[j], QUESTS_TABLE);
+        console.log(`Quest created for user: ${userQuests[j].userID}`);
+        count++;
       }
+    } catch (err) {
+      console.log(`Created ${count} Quest Entries for ${users} Users`);
+      console.log(`Error writing quests: \n ${JSON.stringify(err, null, 2)}`);
+      throw err;
     }
   }
 
