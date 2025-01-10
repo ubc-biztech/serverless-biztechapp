@@ -46,12 +46,12 @@ const generateNFCsForEventRegistrations = async (eventID, year) => {
     IndexName: "event-query",
     KeyConditionExpression: "#eventIDYear = :eventIDYear",
     ExpressionAttributeNames: {
-        "#eventIDYear": "eventID;year"
+      "#eventIDYear": "eventID;year"
     },
     ExpressionAttributeValues: {
-        ":eventIDYear": `${eventID};${year}`
+      ":eventIDYear": `${eventID};${year}`
     }
-}));
+  }));
 
   // fetch all QRs for this event with type NFC
 

@@ -1,9 +1,15 @@
-import { QueryCommand } from "@aws-sdk/lib-dynamodb";
-import { QRS_TABLE, CONNECTIONS_TABLE } from "../../constants/tables";
+import {
+  QueryCommand
+} from "@aws-sdk/lib-dynamodb";
+import {
+  QRS_TABLE, CONNECTIONS_TABLE
+} from "../../constants/tables";
 import db from "../../lib/db";
 import handlerHelpers from "../../lib/handlerHelpers";
 import docClient from "../../lib/docClient";
-import { ATTENDEE, CURRENT_EVENT, EXEC, PARTNER } from "./constants";
+import {
+  ATTENDEE, CURRENT_EVENT, EXEC, PARTNER
+} from "./constants";
 
 export const handleConnection = async (userID, connID, timestamp) => {
   let profileData = await db.getOne(userID, QRS_TABLE, {
@@ -21,8 +27,12 @@ export const handleConnection = async (userID, connID, timestamp) => {
     });
   }
 
-  const { data: userData } = profileData;
-  const { data: connData, type } = connProfileData;
+  const {
+    data: userData
+  } = profileData;
+  const {
+    data: connData, type
+  } = connProfileData;
 
   if (
     await isDuplicateRequest(userData.registrationID, connData.registrationID)
@@ -40,39 +50,46 @@ export const handleConnection = async (userID, connID, timestamp) => {
     createdAt: timestamp,
     ...(connData.linkedinURL
       ? {
-          linkedinURL: connData.linkedinURL
-        }
-      : {}),
+        linkedinURL: connData.linkedinURL
+      }
+      : {
+      }),
     ...(connData.fname
       ? {
-          fname: connData.fname
-        }
-      : {}),
+        fname: connData.fname
+      }
+      : {
+      }),
     ...(connData.lname
       ? {
-          lname: connData.lname
-        }
-      : {}),
+        lname: connData.lname
+      }
+      : {
+      }),
     ...(connData.major
       ? {
-          major: connData.major
-        }
-      : {}),
+        major: connData.major
+      }
+      : {
+      }),
     ...(connData.year
       ? {
-          year: connData.year
-        }
-      : {}),
+        year: connData.year
+      }
+      : {
+      }),
     ...(connData.company
       ? {
-          company: connData.company
-        }
-      : {}),
+        company: connData.company
+      }
+      : {
+      }),
     ...(connData.title
       ? {
-          title: connData.title
-        }
-      : {})
+        title: connData.title
+      }
+      : {
+      })
   };
 
   const connPut = {
@@ -83,65 +100,72 @@ export const handleConnection = async (userID, connID, timestamp) => {
     createdAt: timestamp,
     ...(userData.linkedinURL
       ? {
-          linkedinURL: userData.linkedinURL
-        }
-      : {}),
+        linkedinURL: userData.linkedinURL
+      }
+      : {
+      }),
     ...(userData.fname
       ? {
-          fname: userData.fname
-        }
-      : {}),
+        fname: userData.fname
+      }
+      : {
+      }),
     ...(userData.lname
       ? {
-          lname: userData.lname
-        }
-      : {}),
+        lname: userData.lname
+      }
+      : {
+      }),
     ...(userData.major
       ? {
-          major: userData.major
-        }
-      : {}),
+        major: userData.major
+      }
+      : {
+      }),
     ...(userData.year
       ? {
-          year: userData.year
-        }
-      : {}),
+        year: userData.year
+      }
+      : {
+      }),
     ...(userData.company
       ? {
-          company: userData.company
-        }
-      : {}),
+        company: userData.company
+      }
+      : {
+      }),
     ...(userData.title
       ? {
-          title: userData.title
-        }
-      : {})
+        title: userData.title
+      }
+      : {
+      })
   };
 
   switch (type) {
-    case ATTENDEE:
-      try {
-        // potential race condition -> use transactions to fix, but will take time to implement
-        await db.put(connPut, CONNECTIONS_TABLE, true);
-        await db.put(userPut, CONNECTIONS_TABLE, true);
-        // logic to check if quests entry has been made for connection
-        // put command to update the quest entry
-      } catch (error) {
-        console.error(error);
-        return handlerHelpers.createResponse(500, {
-          message: "Internal server error"
-        });
-      }
-      break;
+  case ATTENDEE:
+    try {
+      // potential race condition -> use transactions to fix, but will take time to implement
+      await db.put(connPut, CONNECTIONS_TABLE, true);
+      await db.put(userPut, CONNECTIONS_TABLE, true);
+      // logic to check if quests entry has been made for connection
+      // put command to update the quest entry
+    } catch (error) {
+      console.error(error);
+      return handlerHelpers.createResponse(500, {
+        message: "Internal server error"
+      });
+    }
+    break;
 
-    case EXEC:
-      break;
+  case EXEC:
+    break;
 
-    case PARTNER:
-      break;
+  case PARTNER:
+    break;
 
-    default:
-      break;
+  default:
+    break;
   }
 
   return handlerHelpers.createResponse(200, {

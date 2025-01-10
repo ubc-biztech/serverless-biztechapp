@@ -1,11 +1,19 @@
-import { CONNECTIONS_TABLE, QRS_TABLE } from "../../constants/tables";
+import {
+  CONNECTIONS_TABLE, QRS_TABLE
+} from "../../constants/tables";
 import db from "../../lib/db";
 import docClient from "../../lib/docClient";
 import handlerHelpers from "../../lib/handlerHelpers";
 import helpers from "../../lib/handlerHelpers";
-import { CURRENT_EVENT } from "./constants";
-import { handleBooth, handleConnection, handleWorkshop } from "./helpers";
-import { QueryCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  CURRENT_EVENT
+} from "./constants";
+import {
+  handleBooth, handleConnection, handleWorkshop
+} from "./helpers";
+import {
+  QueryCommand
+} from "@aws-sdk/lib-dynamodb";
 
 const CONNECTION = "CONNECTION";
 const WORK = "WORKSHOP";
@@ -28,27 +36,29 @@ export const postInteraction = async (event, ctx, callback) => {
     });
 
     const timestamp = new Date().getTime();
-    const { userID, interactionType, eventParam } = data;
+    const {
+      userID, interactionType, eventParam
+    } = data;
 
     let response;
 
     switch (interactionType) {
-      case CONNECTION:
-        response = await handleConnection(userID, eventParam, timestamp);
-        break;
+    case CONNECTION:
+      response = await handleConnection(userID, eventParam, timestamp);
+      break;
 
-      case WORK:
-        response = await handleWorkshop(userID, eventParam, timestamp);
-        break;
+    case WORK:
+      response = await handleWorkshop(userID, eventParam, timestamp);
+      break;
 
-      case BOOTH:
-        response = await handleBooth(userID, eventParam, timestamp);
-        break;
+    case BOOTH:
+      response = await handleBooth(userID, eventParam, timestamp);
+      break;
 
-      default:
-        throw handlerHelpers.createResponse(400, {
-          message: "interactionType argument does not match known case"
-        });
+    default:
+      throw handlerHelpers.createResponse(400, {
+        message: "interactionType argument does not match known case"
+      });
     }
 
     callback(null, response);
@@ -69,7 +79,9 @@ export const getAllConnections = async (event, ctx, callback) => {
 
     const userID = event.pathParameters.id;
 
-    const { data: profileData } = await db.getOne(userID, QRS_TABLE, {
+    const {
+      data: profileData
+    } = await db.getOne(userID, QRS_TABLE, {
       "eventID;year": CURRENT_EVENT
     });
 
