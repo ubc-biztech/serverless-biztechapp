@@ -9,7 +9,9 @@ import {
   isEmpty, isValidEmail
 } from "../../lib/utils";
 import {
-  EVENTS_TABLE, USER_REGISTRATIONS_TABLE
+  EVENTS_TABLE,
+  USER_REGISTRATIONS_TABLE,
+  BIZ_PROFILES_TABLE
 } from "../../constants/tables";
 import SESEmailService from "./EmailService/SESEmailService";
 import awsConfig from "../../lib/config";
