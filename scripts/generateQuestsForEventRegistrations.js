@@ -15,6 +15,7 @@ const QUEST_SNACK = "QUEST_SNACK";
 const QUEST_BOOTH_STARTUP = "QUEST_STARTUP";
 const QUEST_BIGTECH = "QUEST_BIGTECH";
 const QUEST_PHOTOBOOTH = "QUEST_PHOTOBOOTH";
+const QUEST_WORKSHOP = "QUEST_WORKSHOP";
 const QUEST_CONNECT_FOUR = "QUEST_CONNECT_FOUR";
 const QUEST_CONNECT_TEN_H = "QUEST_CONNECT_TEN_H";
 const QUEST_BT_BOOTH_H = "QUEST_BT_BOOTH_H";
@@ -34,6 +35,7 @@ const QUESTS = [
   [QUEST_SNACK, 1, "Snack Seeker", "Grab some food."],
   [QUEST_BOOTH_STARTUP, 1, "Startup Explorer", "Visit a startup booth."],
   [QUEST_BIGTECH, 1, "Big League Scout", "Visit a big company booth."],
+  [QUEST_WORKSHOP, 1, "Workshop Wonder", "Attend Workshop 2."],
   [QUEST_PHOTOBOOTH, 1, "Memory Maker", "Take a photo to reminisce."]
 ];
 
@@ -90,6 +92,7 @@ const questsForEventRegistrations = async (eventID, year) => {
 
   let count = 0;
   let users = 0;
+  const promises = [];
   for (let i = 0; i < registrations.Items.length; i++) {
     try {
       const userQuests = userQuestsArray(
@@ -98,11 +101,12 @@ const questsForEventRegistrations = async (eventID, year) => {
       );
 
       users++;
-
       for (let j = 0; j < userQuests.length; j++) {
-        await create(userQuests[j], QUESTS_TABLE);
-        count++;
+        promises.push(create(userQuests[j], QUESTS_TABLE));
       }
+
+      await Promise.all(promises);
+      count += userQuests.length;
 
       console.log(`Quests created for user: ${registrations.Items[i].id}`);
     } catch (err) {
