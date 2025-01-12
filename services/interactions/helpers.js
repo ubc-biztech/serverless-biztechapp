@@ -1,6 +1,4 @@
-import {
-  QueryCommand, UpdateCommand
-} from "@aws-sdk/lib-dynamodb";
+import { QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import {
   QRS_TABLE,
   CONNECTIONS_TABLE,
@@ -50,16 +48,10 @@ export const handleConnection = async (userID, connID, timestamp) => {
     });
   }
 
-  let {
-    data: userData, type: userType
-  } = profileData;
-  let {
-    data: connData, type: connType
-  } = connProfileData;
+  let { data: userData, type: userType } = profileData;
+  let { data: connData, type: connType } = connProfileData;
 
-  if (
-    await isDuplicateRequest(userData.registrationID, connData.registrationID)
-  ) {
+  if (await isDuplicateRequest(userData.registrationID, connID)) {
     return handlerHelpers.createResponse(400, {
       message: "Connection has already been made"
     });
@@ -83,46 +75,39 @@ export const handleConnection = async (userID, connID, timestamp) => {
     createdAt: timestamp,
     ...(connData.linkedinURL
       ? {
-        linkedinURL: connData.linkedinURL
-      }
-      : {
-      }),
+          linkedinURL: connData.linkedinURL
+        }
+      : {}),
     ...(connData.fname
       ? {
-        fname: connData.fname
-      }
-      : {
-      }),
+          fname: connData.fname
+        }
+      : {}),
     ...(connData.lname
       ? {
-        lname: connData.lname
-      }
-      : {
-      }),
+          lname: connData.lname
+        }
+      : {}),
     ...(connData.major
       ? {
-        major: connData.major
-      }
-      : {
-      }),
+          major: connData.major
+        }
+      : {}),
     ...(connData.year
       ? {
-        year: connData.year
-      }
-      : {
-      }),
+          year: connData.year
+        }
+      : {}),
     ...(connData.company
       ? {
-        company: connData.company
-      }
-      : {
-      }),
+          company: connData.company
+        }
+      : {}),
     ...(connData.title
       ? {
-        title: connData.title
-      }
-      : {
-      })
+          title: connData.title
+        }
+      : {})
   };
 
   const connPut = {
@@ -132,119 +117,75 @@ export const handleConnection = async (userID, connID, timestamp) => {
     createdAt: timestamp,
     ...(userData.linkedinURL
       ? {
-        linkedinURL: userData.linkedinURL
-      }
-      : {
-      }),
+          linkedinURL: userData.linkedinURL
+        }
+      : {}),
     ...(userData.fname
       ? {
-        fname: userData.fname
-      }
-      : {
-      }),
+          fname: userData.fname
+        }
+      : {}),
     ...(userData.lname
       ? {
-        lname: userData.lname
-      }
-      : {
-      }),
+          lname: userData.lname
+        }
+      : {}),
     ...(userData.major
       ? {
-        major: userData.major
-      }
-      : {
-      }),
+          major: userData.major
+        }
+      : {}),
     ...(userData.year
       ? {
-        year: userData.year
-      }
-      : {
-      }),
+          year: userData.year
+        }
+      : {}),
     ...(userData.company
       ? {
-        company: userData.company
-      }
-      : {
-      }),
+          company: userData.company
+        }
+      : {}),
     ...(userData.title
       ? {
-        title: userData.title
-      }
-      : {
-      })
+          title: userData.title
+        }
+      : {})
   };
 
+  const promises = [];
   switch (connType) {
-  case EXEC + EXEC:
-    try {
-      await incrementQuestProgress(
-        connData.registrationID,
-        QUEST_CONNECT_EXEC_H
+    case EXEC + EXEC:
+      promises.push(
+        incrementQuestProgress(connData.registrationID, QUEST_CONNECT_EXEC_H)
       );
-    } catch (error) {
-      console.error(error);
-      return handlerHelpers.createResponse(500, {
-        message: "Internal server error"
-      });
-    }
 
-  case EXEC:
-    try {
-      await incrementQuestProgress(
-        userData.registrationID,
-        QUEST_CONNECT_EXEC_H
+    case EXEC:
+      promises.push(
+        incrementQuestProgress(userData.registrationID, QUEST_CONNECT_EXEC_H)
       );
-    } catch (error) {
-      console.error(error);
-      return handlerHelpers.createResponse(500, {
-        message:
-            "Internal server error, data inconsistency :( not all quests progressed"
-      });
-    }
 
     // case ATTENDEE:
-  default:
-    try {
-      // potential race condition -> use transactions to fix, but will take time to implement
-      await db.put(connPut, CONNECTIONS_TABLE, true);
-      await db.put(userPut, CONNECTIONS_TABLE, true);
-      await incrementQuestProgress(
-        userData.registrationID,
-        QUEST_CONNECT_ONE
+    default:
+      promises.push(
+        db.put(connPut, CONNECTIONS_TABLE, true),
+        db.put(userPut, CONNECTIONS_TABLE, true),
+        incrementQuestProgress(userData.registrationID, QUEST_CONNECT_ONE),
+        incrementQuestProgress(userData.registrationID, QUEST_CONNECT_FOUR),
+        incrementQuestProgress(userData.registrationID, QUEST_CONNECT_TEN_H),
+        incrementQuestProgress(connData.registrationID, QUEST_CONNECT_ONE),
+        incrementQuestProgress(connData.registrationID, QUEST_CONNECT_FOUR),
+        incrementQuestProgress(connData.registrationID, QUEST_CONNECT_TEN_H)
       );
-      await incrementQuestProgress(
-        userData.registrationID,
-        QUEST_CONNECT_FOUR
-      );
-      await incrementQuestProgress(
-        userData.registrationID,
-        QUEST_CONNECT_TEN_H
-      );
-      await incrementQuestProgress(
-        connData.registrationID,
-        QUEST_CONNECT_ONE
-      );
-      await incrementQuestProgress(
-        connData.registrationID,
-        QUEST_CONNECT_FOUR
-      );
-      await incrementQuestProgress(
-        connData.registrationID,
-        QUEST_CONNECT_TEN_H
-      );
-    } catch (error) {
-      console.error(error);
-      return handlerHelpers.createResponse(500, {
-        message: "Internal server error"
-      });
-    }
-    break;
+      break;
+  }
 
-    // case PARTNER:
-    //   break;
-
-    // default:
-    //   break;
+  try {
+    await Promise.all(promises);
+  } catch (error) {
+    console.error(error);
+    return handlerHelpers.createResponse(500, {
+      message: "Internal server error"
+    });
   }
 
   return handlerHelpers.createResponse(200, {
@@ -257,10 +198,10 @@ const isDuplicateRequest = async (userID, connID) => {
   try {
     const command = new QueryCommand({
       ExpressionAttributeValues: {
-        ":conn": connID,
-        ":uid": userID
+        ":uid": userID,
+        ":conn": connID
       },
-      KeyConditionExpression: "obfuscatedID = :conn AND userID = :uid",
+      KeyConditionExpression: "userID = :uid AND obfuscatedID = :conn",
       ProjectionExpression: "userID, obfuscatedID",
       TableName: CONNECTIONS_TABLE + (process.env.ENVIRONMENT || "")
     });
@@ -275,9 +216,7 @@ const isDuplicateRequest = async (userID, connID) => {
 };
 
 export const handleWorkshop = async (profileID, workshopID, timestamp) => {
-  const {
-    data
-  } = await db.getOne(profileID, QRS_TABLE, {
+  const { data } = await db.getOne(profileID, QRS_TABLE, {
     "eventID;year": CURRENT_EVENT
   });
 
@@ -301,9 +240,7 @@ export const handleWorkshop = async (profileID, workshopID, timestamp) => {
 };
 
 export const handleBooth = async (profileID, boothID, timestamp) => {
-  const {
-    data
-  } = await db.getOne(profileID, QRS_TABLE, {
+  const { data } = await db.getOne(profileID, QRS_TABLE, {
     "eventID;year": CURRENT_EVENT
   });
 
