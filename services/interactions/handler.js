@@ -131,7 +131,7 @@ export const getAllQuests = async (event, ctx, callback) => {
     const result = await docClient.send(command);
 
     const response = handlerHelpers.createResponse(200, {
-      message: `all connections for ${profileData.registrationID}`,
+      message: `all quests for ${profileData.registrationID}`,
       data: result.Items
     });
 
