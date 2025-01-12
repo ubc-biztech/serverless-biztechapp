@@ -158,7 +158,10 @@ export async function updateHelper(data, createNew, email, fname) {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error("Failed to send SNS notification for registration update:", error);
+    console.error(
+      "Failed to send SNS notification for registration update:",
+      error
+    );
   }
 
   return response;
@@ -189,26 +192,25 @@ async function createRegistration(
       ...formResponse
     };
 
-    if(createNew) {
+    if (createNew) {
       updateObject["createdAt"] = new Date().getTime();
     }
 
     let conditionExpression =
       "attribute_exists(id) and attribute_exists(#eventIDYear)";
-    // if we are creating a new object, the condition expression needs to be different
-    if (createNew)
+    if (createNew) {
       conditionExpression =
         "attribute_not_exists(id) and attribute_not_exists(#eventIDYear)";
+    }
 
-    // construct the update expressions
     const {
       updateExpression,
       expressionAttributeValues,
       expressionAttributeNames
     } = db.createUpdateExpression(updateObject);
 
-    // Because biztechRegistration table has a sort key, we cannot use helpers.updateDB()
-    let params = {
+    // Update the primary table (USER_REGISTRATIONS_TABLE)
+    const primaryTableParams = {
       Key: {
         id: email,
         ["eventID;year"]: eventIDAndYear
@@ -226,11 +228,43 @@ async function createRegistration(
       ConditionExpression: conditionExpression
     };
 
-    const res = await db.updateDBCustom(params);
+    const primaryTableResponse = await db.updateDBCustom(primaryTableParams);
+
+    const bizProfilesParams = {
+      Key: {
+        id: email
+      },
+      TableName:
+        BIZ_PROFILES_TABLE +
+        (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
+      ExpressionAttributeValues: {
+        ":registrationStatus": registrationStatus,
+        ":eventIDAndYear": eventIDAndYear,
+        ":updatedAt": new Date().getTime()
+      },
+      ExpressionAttributeNames: {
+        "#registrationStatus": "registrationStatus",
+        "#eventIDAndYear": "eventIDAndYear",
+        "#updatedAt": "updatedAt"
+      },
+      UpdateExpression: `
+        SET #registrationStatus = :registrationStatus, 
+            #eventIDAndYear = :eventIDAndYear, 
+            #updatedAt = :updatedAt
+      `,
+      ReturnValues: "UPDATED_NEW"
+    };
+
+    try {
+      await db.updateDBCustom(bizProfilesParams);
+    } catch (secondaryError) {
+      console.error("Failed to update bizProfiles table:", secondaryError);
+      throw secondaryError;
+    }
+
     let message = `User with email ${email} successfully registered (through update) to status '${registrationStatus}'!`;
     let statusCode = 200;
 
-    // different status code if created new entry
     if (createNew) {
       message = `User with email ${email} successfully registered (created) to status '${registrationStatus}'!`;
       statusCode = 201;
@@ -239,7 +273,7 @@ async function createRegistration(
     const response = helpers.createResponse(statusCode, {
       registrationStatus,
       message,
-      response: res
+      primaryTableResponse
     });
 
     return response;
@@ -247,12 +281,14 @@ async function createRegistration(
     let errorResponse = db.dynamoErrorResponse(err);
     const errBody = JSON.parse(errorResponse.body);
 
-    // customize the error messsage if it is caused by the 'ConditionExpression' check
-    if (errBody.statusCode === 502 || errBody.code === "ConditionalCheckFailedException") {
+    if (
+      errBody.statusCode === 502 ||
+      errBody.code === "ConditionalCheckFailedException"
+    ) {
       errorResponse.statusCode = 409;
       errBody.statusCode = 409;
       if (createNew)
-        errBody.message = `Create error because the registration entry for user '${email}' and with eventID;year'${eventIDAndYear}' already exists`;
+        errBody.message = `Create error because the registration entry for user '${email}' and with eventID;year '${eventIDAndYear}' already exists`;
       else
         errBody.message = `Update error because the registration entry for user '${email}' and with eventID;year '${eventIDAndYear}' does not exist`;
       errorResponse.body = JSON.stringify(errBody);
@@ -517,7 +553,10 @@ export async function massUpdate(event, ctx, callback) {
 export const get = async (event, ctx, callback) => {
   try {
     const queryString = event.queryStringParameters;
-    if (!queryString || (!queryString.eventID && !queryString.year && !queryString.email))
+    if (
+      !queryString ||
+      (!queryString.eventID && !queryString.year && !queryString.email)
+    )
       throw helpers.missingIdQueryResponse("eventID/year/user ");
 
     let registrations = [];
@@ -532,13 +571,17 @@ export const get = async (event, ctx, callback) => {
           ":id": normalizedEmail
         }
       };
-      registrations = await db.query(USER_REGISTRATIONS_TABLE, null, keyCondition);
+      registrations = await db.query(
+        USER_REGISTRATIONS_TABLE,
+        null,
+        keyCondition
+      );
 
       // If eventID and year are provided, filter results
       if (queryString.eventID && queryString.year) {
         const eventIDYear = `${queryString.eventID};${queryString.year}`;
-        registrations = registrations.filter(reg =>
-          reg["eventID;year"] === eventIDYear
+        registrations = registrations.filter(
+          (reg) => reg["eventID;year"] === eventIDYear
         );
       }
     } else if (queryString.eventID && queryString.year) {
@@ -554,7 +597,11 @@ export const get = async (event, ctx, callback) => {
         }
       };
 
-      registrations = await db.query(USER_REGISTRATIONS_TABLE, "event-query", keyCondition);
+      registrations = await db.query(
+        USER_REGISTRATIONS_TABLE,
+        "event-query",
+        keyCondition
+      );
     }
 
     // filter by timestamp, if given
@@ -627,7 +674,10 @@ export const leaderboard = async (event, ctx, callback) => {
       throw helpers.missingIdQueryResponse("eventID/year");
     }
 
-    if (queryString.hasOwnProperty("eventID") && queryString.hasOwnProperty("year")) {
+    if (
+      queryString.hasOwnProperty("eventID") &&
+      queryString.hasOwnProperty("year")
+    ) {
       const eventIDAndYear = queryString.eventID + ";" + queryString.year;
       const keyCondition = {
         expression: "#eventIDYear = :query",
@@ -639,7 +689,11 @@ export const leaderboard = async (event, ctx, callback) => {
         }
       };
 
-      let registrations = await db.query(USER_REGISTRATIONS_TABLE, "event-query", keyCondition);
+      let registrations = await db.query(
+        USER_REGISTRATIONS_TABLE,
+        "event-query",
+        keyCondition
+      );
       registrations = registrations
         .filter((user) => {
           if (user.points !== undefined) {

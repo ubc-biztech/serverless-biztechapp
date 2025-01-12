@@ -1,5 +1,6 @@
 import docClient from "../../lib/docClient";
 import {
+  BIZ_PROFILES_TABLE,
   EVENTS_TABLE,
   USER_REGISTRATIONS_TABLE
 } from "../../constants/tables";
@@ -35,8 +36,11 @@ export default {
       const cappedQuestions = [];
       console.log("Event:", event);
 
-      if (event.registrationQuestions && Array.isArray(event.registrationQuestions)) {
-        event.registrationQuestions.forEach(question => {
+      if (
+        event.registrationQuestions &&
+        Array.isArray(event.registrationQuestions)
+      ) {
+        event.registrationQuestions.forEach((question) => {
           console.log("Question:", question);
           if (question.participantCap) {
             const choices = question.choices.split(",");
@@ -68,17 +72,21 @@ export default {
 
       console.log("Querying with params:", keyCondition);
 
-      const result = await db.query(USER_REGISTRATIONS_TABLE, "event-query", keyCondition);
+      const result = await db.query(
+        USER_REGISTRATIONS_TABLE,
+        "event-query",
+        keyCondition
+      );
       console.log("Query result:", result);
 
       let counts = {
         registeredCount: 0,
         checkedInCount: 0,
         waitlistCount: 0,
-        dynamicCounts: cappedQuestions.map(question => {
+        dynamicCounts: cappedQuestions.map((question) => {
           return {
             questionId: question.questionId,
-            counts: question.caps.map(cap => {
+            counts: question.caps.map((cap) => {
               return {
                 label: cap.label,
                 count: 0,
@@ -106,12 +114,16 @@ export default {
           }
 
           if (cappedQuestions.length > 0 && item.dynamicResponses) {
-            cappedQuestions.forEach(question => {
+            cappedQuestions.forEach((question) => {
               const response = item.dynamicResponses[`${question.questionId}`];
               if (response) {
-                const dynamicCount = counts.dynamicCounts.find(count => count.questionId === question.questionId);
+                const dynamicCount = counts.dynamicCounts.find(
+                  (count) => count.questionId === question.questionId
+                );
                 if (dynamicCount) {
-                  const workshopCount = dynamicCount.counts.find(q => q.label === response);
+                  const workshopCount = dynamicCount.counts.find(
+                    (q) => q.label === response
+                  );
                   if (workshopCount) {
                     workshopCount.count += 1;
                   }
@@ -215,15 +227,18 @@ export default {
     const base64 = Buffer.from(value).toString("base64");
     const base64Cal = base64.toString("base64");
 
-    const attachments = user.isPartner !== undefined || user.isPartner ? [] : [
-      {
-        name: "invite.ics",
-        filename: "invite.ics",
-        type: "text/calendar;method=REQUEST",
-        content: base64Cal,
-        disposition: "attachment"
-      }
-    ];
+    const attachments =
+      user.isPartner !== undefined || user.isPartner
+        ? []
+        : [
+          {
+            name: "invite.ics",
+            filename: "invite.ics",
+            type: "text/calendar;method=REQUEST",
+            content: base64Cal,
+            disposition: "attachment"
+          }
+        ];
 
     // send the email for the calendar invite
     // for the qr code email, go to handlers.js
