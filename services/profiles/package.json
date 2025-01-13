@@ -1,0 +1,17 @@
+{
+  "name": "biztechapi-profiles",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "itest": "npm run itest registrations --prefix ../../",
+    "utest": "npm run utest registrations --prefix ../../",
+    "test": "npm run utest registrations --prefix ../../ && npm run itest registrations --prefix ../../"
+  },
+  "devDependencies": {
+    "aws-sdk-client-mock": "^4.1.0",
+    "jest": "^29.7.0",
+    "serverless-offline": "^14.4.0",
+    "sinon": "^19.0.2",
+    "sinon-chai": "^4.0.0"
+  }
+}
