@@ -152,4 +152,35 @@ export const getProfile = async (event, ctx, callback) => {
     callback(null, err);
     return null;
   }
+};
+
+export const getProfileByEmail = async (event, ctx, callback) => {
+  try {
+    if (!event.pathParameters || !event.pathParameters.email || !event.pathParameters.eventID || !event.pathParameters.year) {
+      throw helpers.missingPathParamResponse("email, eventID, or year");
+    }
+
+    const { email, eventID, year } = event.pathParameters;
+    const eventIDAndYear = `${eventID};${year}`;
+
+    // Get profile by email and eventID;year
+    const profile = await db.getOne(email, PROFILES_TABLE, {
+      "eventID;year": eventIDAndYear
+    });
+
+    if (!profile) {
+      throw helpers.notFoundResponse("Profile", email);
+    }
+
+    const response = helpers.createResponse(200, {
+      profileID: profile.profileID
+    });
+    
+    callback(null, response);
+    return response;
+  } catch (err) {
+    console.error(err);
+    callback(null, err);
+    return null;
+  }
 }; 

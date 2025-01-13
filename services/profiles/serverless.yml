@@ -56,6 +56,20 @@ functions:
               paths:
                 profileID: true
 
+  getProfileByEmail:
+    handler: handler.getProfileByEmail
+    events:
+      - http:
+          path: profiles/email/{email}/{eventID}/{year}
+          method: get
+          cors: true
+          request:
+            parameters:
+              paths:
+                email: true
+                eventID: true
+                year: true
+
 resources:
   Resources:
     BiztechProfilesTable:
