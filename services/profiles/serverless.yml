@@ -1,0 +1,98 @@
+service: biztechApi-profiles
+app: biztechapp
+
+plugins:
+  - serverless-dynamodb
+  - serverless-offline
+  - serverless-domain-manager
+  - serverless-bundle
+  - serverless-prune-plugin
+  - serverless-mocha-plugin
+
+provider:
+  name: aws
+  stage: ${file(../../serverless.common.yml):provider.stage}
+  runtime: ${file(../../serverless.common.yml):provider.runtime}
+  region: ${file(../../serverless.common.yml):provider.region}
+  cfLogs: true
+  environment:
+    ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
+    NODE_ENV: ${env:NODE_ENV}
+  apiGateway:
+    restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
+    restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:Query
+      Resource: 
+        - "arn:aws:dynamodb:${aws:region}:*:table/biztechProfiles${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:${aws:region}:*:table/biztechProfiles${self:provider.environment.ENVIRONMENT}/index/profileID-index"
+        - "arn:aws:dynamodb:${aws:region}:*:table/biztechRegistrations${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:${aws:region}:*:table/biztechQRs${self:provider.environment.ENVIRONMENT}"
+
+custom: ${file(../../serverless.common.yml):custom}
+
+functions:
+  createProfile:
+    handler: handler.createProfile
+    events:
+      - http:
+          path: profiles
+          method: post
+          cors: true
+
+  getProfile:
+    handler: handler.getProfile
+    events:
+      - http:
+          path: profiles/{profileID}
+          method: get
+          cors: true
+          request:
+            parameters:
+              paths:
+                profileID: true
+
+  getProfileByEmail:
+    handler: handler.getProfileByEmail
+    events:
+      - http:
+          path: profiles/email/{email}/{eventID}/{year}
+          method: get
+          cors: true
+          request:
+            parameters:
+              paths:
+                email: true
+                eventID: true
+                year: true
+
+resources:
+  Resources:
+    BiztechProfilesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: biztechProfiles${self:provider.environment.ENVIRONMENT, ''}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: eventID;year
+            AttributeType: S
+          - AttributeName: profileID
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+          - AttributeName: eventID;year
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: profileID-index
+            KeySchema:
+              - AttributeName: profileID
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST 
