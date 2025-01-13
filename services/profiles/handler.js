@@ -1,9 +1,11 @@
 import db from "../../lib/db.js";
 import helpers from "../../lib/handlerHelpers.js";
 import { isEmpty } from "../../lib/utils.js";
+import { humanId } from "human-id";
 
 const PROFILES_TABLE = "biztechProfiles";
 const REGISTRATIONS_TABLE = "biztechRegistrations";
+const QRS_TABLE = "biztechQRs";
 
 export const createProfile = async (event, ctx, callback) => {
   try {
@@ -37,11 +39,15 @@ export const createProfile = async (event, ctx, callback) => {
       throw helpers.notFoundResponse("Registration", email);
     }
 
+    // Generate profileID
+    const profileID = humanId();
+
     // Map registration data to profile schema
     const timestamp = new Date().getTime();
     const profile = {
       id: email,
       "eventID;year": eventIDAndYear,
+      profileID,
       fname: registration.basicInformation.fname,
       lname: registration.basicInformation.lname,
       pronouns: registration.basicInformation.gender && registration.basicInformation.gender.length ? registration.basicInformation.gender[0] : "",
@@ -59,13 +65,27 @@ export const createProfile = async (event, ctx, callback) => {
       updatedAt: timestamp
     };
 
-    // Create profile in DynamoDB
-    const res = await db.create(profile, PROFILES_TABLE);
+    // Create NFC entry
+    const nfc = {
+      id: profileID,
+      "eventID;year": eventIDAndYear,
+      type: "NFC_ATTENDEE",
+      isUnlimitedScans: true,
+      data: {
+        registrationID: registration.id
+      }
+    };
+
+    // Create both profile and NFC entries
+    await Promise.all([
+      db.create(profile, PROFILES_TABLE),
+      db.create(nfc, QRS_TABLE)
+    ]);
 
     const response = helpers.createResponse(201, {
-      message: `Created profile for ${email} for event ${eventIDAndYear}`,
-      response: res,
-      profile
+      message: `Created profile and NFC for ${email} for event ${eventIDAndYear}`,
+      profile,
+      nfc
     });
 
     callback(null, response);
@@ -77,24 +97,54 @@ export const createProfile = async (event, ctx, callback) => {
   }
 };
 
+const filterPublicProfileFields = (profile) => ({
+  profileID: profile.profileID,
+  fname: profile.fname,
+  lname: profile.lname,
+  pronouns: profile.pronouns,
+  type: profile.type,
+  major: profile.major,
+  year: profile.year,
+  hobby1: profile.hobby1,
+  hobby2: profile.hobby2,
+  funQuestion1: profile.funQuestion1,
+  funQuestion2: profile.funQuestion2,
+  linkedIn: profile.linkedIn,
+  profilePictureURL: profile.profilePictureURL,
+  additionalLink: profile.additionalLink,
+  "eventID;year": profile["eventID;year"],
+  createdAt: profile.createdAt,
+  updatedAt: profile.updatedAt
+});
+
 export const getProfile = async (event, ctx, callback) => {
   try {
-    if (!event.pathParameters || !event.pathParameters.email || !event.pathParameters.eventID || !event.pathParameters.year) {
-      throw helpers.missingPathParamResponse("email", "eventID", "year");
+    if (!event.pathParameters || !event.pathParameters.profileID) {
+      throw helpers.missingPathParamResponse("profileID");
     }
 
-    const { email, eventID, year } = event.pathParameters;
-    const eventIDAndYear = `${eventID};${year}`;
+    const { profileID } = event.pathParameters;
 
-    const profile = await db.getOne(email, PROFILES_TABLE, {
-      "eventID;year": eventIDAndYear
-    });
+    // Query using the GSI
+    const result = await db.query(
+      PROFILES_TABLE,
+      "profileID-index",
+      {
+        expression: "profileID = :profileID",
+        expressionValues: {
+          ":profileID": profileID
+        }
+      }
+    );
 
-    if (isEmpty(profile)) {
-      throw helpers.notFoundResponse("Profile", email);
+    if (!result || result.length === 0) {
+      throw helpers.notFoundResponse("Profile", profileID);
     }
 
-    const response = helpers.createResponse(200, profile);
+    // Filter to only include public fields
+    const publicProfile = filterPublicProfileFields(result[0]);
+    
+    const response = helpers.createResponse(200, publicProfile);
     callback(null, response);
     return response;
   } catch (err) {
