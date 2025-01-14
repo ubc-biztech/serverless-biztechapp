@@ -1,8 +1,14 @@
 import db from "../../lib/db.js";
 import helpers from "../../lib/handlerHelpers.js";
-import { isEmpty } from "../../lib/utils.js";
-import { humanId } from "human-id";
-import { PROFILES_TABLE } from "../../constants/tables.js";
+import {
+  isEmpty
+} from "../../lib/utils.js";
+import {
+  humanId
+} from "human-id";
+import {
+  PROFILES_TABLE
+} from "../../constants/tables.js";
 const REGISTRATIONS_TABLE = "biztechRegistrations";
 const QRS_TABLE = "biztechQRs";
 
@@ -12,12 +18,23 @@ export const createProfile = async (event, ctx, callback) => {
 
     // Validate input
     helpers.checkPayloadProps(data, {
-      email: { required: true, type: "string" },
-      eventID: { required: true, type: "string" },
-      year: { required: true, type: "number" }
+      email: {
+        required: true,
+        type: "string"
+      },
+      eventID: {
+        required: true,
+        type: "string"
+      },
+      year: {
+        required: true,
+        type: "number"
+      }
     });
 
-    const { email, eventID, year } = data;
+    const {
+      email, eventID, year
+    } = data;
     const eventIDAndYear = `${eventID};${year}`;
 
     // Check if profile already exists
@@ -140,7 +157,9 @@ export const getProfile = async (event, ctx, callback) => {
       throw helpers.missingPathParamResponse("profileID");
     }
 
-    const { profileID } = event.pathParameters;
+    const {
+      profileID
+    } = event.pathParameters;
 
     // Query using the GSI
     const result = await db.query(PROFILES_TABLE, "profileID-index", {
@@ -178,7 +197,9 @@ export const getProfileByEmail = async (event, ctx, callback) => {
       throw helpers.missingPathParamResponse("email, eventID, or year");
     }
 
-    const { email, eventID, year } = event.pathParameters;
+    const {
+      email, eventID, year
+    } = event.pathParameters;
     const eventIDAndYear = `${eventID};${year}`;
 
     // Get profile by email and eventID;year
