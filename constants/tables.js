@@ -10,6 +10,7 @@ export const SOCKETS_TABLE = "bizSockets";
 export const TRANSACTIONS_TABLE = "biztechTransactions";
 export const USERS_TABLE = "biztechUsers";
 export const USER_REGISTRATIONS_TABLE = "biztechRegistrations";
+export const QUESTS_TABLE = "bizQuests";
 export const QRS_TABLE = "biztechQRs";
 export const TEAMS_TABLE = "biztechTeams";
 export const QR_SCANS_RECORD = "biztechQRScans";

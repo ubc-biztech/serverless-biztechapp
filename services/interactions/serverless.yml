@@ -58,25 +58,25 @@ functions:
           path: interactions/
           method: post
           cors: true
-  interactionGetAll:
+  interactionJournalGetAll:
     handler: handler.getAllConnections
     events:
       - http:
-          path: interactions/{id}
+          path: interactions/journal/{id}
           method: get
           request:
             parameters:
               path:
                 id: true
           cors: true
-  questsGetAll:
+  interactionQuestsGetAll:
     handler: handler.getAllQuests
     events:
       - http:
-        path: quests/{id}
-        method: get
-        request:
-          parameters:
-            path:
-              id: true
-        cors: true
+          path: interactions/quests/{id}
+          method: get
+          request:
+            parameters:
+              path:
+                id: true
+          cors: true
