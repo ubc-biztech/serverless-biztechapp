@@ -28,6 +28,9 @@ services:
   - srvName: stickers
     srvPath: stickers
     srvSource: services/stickers
+  - srvName: interactions
+    srvPath: interactions
+    srvSource: services/interactions
   - srvName: teams
     srvPath: team
     srvSource: services/teams

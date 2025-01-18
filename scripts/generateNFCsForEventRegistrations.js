@@ -5,7 +5,8 @@ import {
 import {
   PutCommand,
   ScanCommand,
-  QueryCommand
+  QueryCommand,
+  GetCommand
 } from "@aws-sdk/lib-dynamodb";
 import {
   humanId
@@ -46,12 +47,12 @@ const generateNFCsForEventRegistrations = async (eventID, year) => {
     IndexName: "event-query",
     KeyConditionExpression: "#eventIDYear = :eventIDYear",
     ExpressionAttributeNames: {
-        "#eventIDYear": "eventID;year"
+      "#eventIDYear": "eventID;year"
     },
     ExpressionAttributeValues: {
-        ":eventIDYear": `${eventID};${year}`
+      ":eventIDYear": `${eventID};${year}`
     }
-}));
+  }));
 
   // fetch all QRs for this event with type NFC
 
@@ -84,15 +85,40 @@ const generateNFCsForEventRegistrations = async (eventID, year) => {
 
   for (const registration of registrations.Items) {
     if (!registrationIDs.has(registration.id)) {
+      const profileID = humanId();
       const nfc = await create({
         id: humanId(),
         "eventID;year": `${eventID};${year}`,
         type: "NFC_ATTENDEE",
         isUnlimitedScans: true,
         data: {
-          registrationID: registration.id
+          registrationID: registration.id,
+          profileID: profileID
         }
       }, "biztechQRs" + (process.env.ENVIRONMENT || ""));
+
+      // Get existing profile
+      const existingProfile = await client.send(new GetCommand({
+        TableName: "biztechProfiles" + (process.env.ENVIRONMENT || ""),
+        Key: {
+          id: registration.basicInformation.email,
+          "eventID;year": `${eventID};${year}`
+        }
+      }));
+
+      if (existingProfile.Item) {
+        // Update the profile with the profileID while keeping existing data
+        await client.send(new PutCommand({
+          TableName: "biztechProfiles" + (process.env.ENVIRONMENT || ""),
+          Item: {
+            ...existingProfile.Item,
+            profileID: profileID,
+            updatedAt: new Date().getTime()
+          }
+        }));
+      } else {
+        console.warn(`No existing profile found for registration ${registration.id}`);
+      }
       count++;
     }
   }

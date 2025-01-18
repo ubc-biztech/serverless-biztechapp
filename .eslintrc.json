@@ -22,6 +22,7 @@
         "array-bracket-newline": ["warn", "consistent"],
         "eol-last": ["warn", "always"],
         "indent": ["warn", 2],
+        "no-fallthrough": "warn",
         "no-prototype-builtins": "off",
         "no-trailing-spaces": ["warn", { "ignoreComments": true }],
         "no-unused-vars": ["warn"],
