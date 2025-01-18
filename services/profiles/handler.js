@@ -51,7 +51,7 @@ export const createProfile = async (event, ctx, callback) => {
       fname: registration.basicInformation.fname,
       lname: registration.basicInformation.lname,
       pronouns: registration.basicInformation.gender && registration.basicInformation.gender.length ? registration.basicInformation.gender[0] : "",
-      type: "Attendee",
+      type: registration.isPartner ? "Partner" : "Attendee",
       major: registration.basicInformation.major,
       year: registration.basicInformation.year,
       hobby1: registration.dynamicResponses["130fac25-e5d7-4fd1-8fd8-d844bfdaef06"] || "",
@@ -61,6 +61,7 @@ export const createProfile = async (event, ctx, callback) => {
       linkedIn: registration.dynamicResponses["ffcb7fcf-6a24-46a3-bfca-e3dc96b6309f"] || "",
       profilePictureURL: registration.dynamicResponses["1fb1696d-9d90-4e02-9612-3eb9933e6c45"] || "",
       additionalLink: registration.dynamicResponses["e164e119-6d47-453b-b215-91837b70e9b7"] || "",
+      description: registration.dynamicResponses["6849bb7f-b8bd-438c-b03b-e046cede378a"] || "",
       createdAt: timestamp,
       updatedAt: timestamp
     };
@@ -76,10 +77,28 @@ export const createProfile = async (event, ctx, callback) => {
       }
     };
 
-    // Create both profile and NFC entries
+    const params = {
+      Key: {
+        id: email,
+        "eventID;year": eventIDAndYear
+      },
+      TableName: REGISTRATIONS_TABLE + (process.env.ENVIRONMENT || ""),
+      UpdateExpression: "set profileID = :profileID, updatedAt = :updatedAt",
+      ExpressionAttributeValues: {
+        ":profileID": profileID,
+        ":updatedAt": timestamp
+      },
+      ReturnValues: "UPDATED_NEW",
+      ConditionExpression: "attribute_exists(id) and attribute_exists(#eventIDYear)",
+      ExpressionAttributeNames: {
+        "#eventIDYear": "eventID;year"
+      }
+    };
+
     await Promise.all([
       db.create(profile, PROFILES_TABLE),
-      db.create(nfc, QRS_TABLE)
+      db.create(nfc, QRS_TABLE),
+      db.updateDBCustom(params)
     ]);
 
     const response = helpers.createResponse(201, {
@@ -112,6 +131,7 @@ const filterPublicProfileFields = (profile) => ({
   linkedIn: profile.linkedIn,
   profilePictureURL: profile.profilePictureURL,
   additionalLink: profile.additionalLink,
+  description: profile.description,
   "eventID;year": profile["eventID;year"],
   createdAt: profile.createdAt,
   updatedAt: profile.updatedAt
