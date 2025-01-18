@@ -1,6 +1,4 @@
-import {
-  QueryCommand, UpdateCommand
-} from "@aws-sdk/lib-dynamodb";
+import { QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import {
   QRS_TABLE,
   CONNECTIONS_TABLE,
@@ -30,34 +28,28 @@ import {
 } from "./constants";
 
 export const handleConnection = async (userID, connID, timestamp) => {
-  if (userID == connID) {
+  let userData = await db.getOne(userID, PROFILES_TABLE, {
+    "eventID;year": CURRENT_EVENT
+  });
+
+  let { data: connProfileData } = await db.getOne(connID, QRS_TABLE, {
+    "eventID;year": CURRENT_EVENT
+  });
+
+  if (userID == connProfileData.registrationID) {
     return handlerHelpers.createResponse(400, {
       message: "Cannot connect with yourself"
     });
   }
 
-  let {
-    data: profileData
-  } = await db.getOne(userID, QRS_TABLE, {
-    "eventID;year": CURRENT_EVENT
-  });
-  let {
-    data: connProfileData
-  } = await db.getOne(connID, QRS_TABLE, {
-    "eventID;year": CURRENT_EVENT
-  });
-
-  if (!profileData || !connProfileData) {
+  if (!userData || !connProfileData) {
     return handlerHelpers.createResponse(400, {
       message: `User profile does not exist for user identified by ${
-        !profileData ? userID : connID
+        !userData ? userID : connID
       }`
     });
   }
 
-  let userData = await db.getOne(profileData.registrationID, PROFILES_TABLE, {
-    "eventID;year": CURRENT_EVENT
-  });
   let connData = await db.getOne(
     connProfileData.registrationID,
     PROFILES_TABLE,
@@ -89,46 +81,39 @@ export const handleConnection = async (userID, connID, timestamp) => {
     createdAt: timestamp,
     ...(connData.linkedin
       ? {
-        linkedinURL: connData.linkedin
-      }
-      : {
-      }),
+          linkedinURL: connData.linkedin
+        }
+      : {}),
     ...(connData.fname
       ? {
-        fname: connData.fname
-      }
-      : {
-      }),
+          fname: connData.fname
+        }
+      : {}),
     ...(connData.lname
       ? {
-        lname: connData.lname
-      }
-      : {
-      }),
+          lname: connData.lname
+        }
+      : {}),
     ...(connData.major
       ? {
-        major: connData.major
-      }
-      : {
-      }),
+          major: connData.major
+        }
+      : {}),
     ...(connData.year
       ? {
-        year: connData.year
-      }
-      : {
-      }),
+          year: connData.year
+        }
+      : {}),
     ...(connData.company
       ? {
-        company: connData.company
-      }
-      : {
-      }),
+          company: connData.company
+        }
+      : {}),
     ...(connData.title
       ? {
-        title: connData.title
-      }
-      : {
-      })
+          title: connData.title
+        }
+      : {})
   };
 
   const connPut = {
@@ -138,73 +123,66 @@ export const handleConnection = async (userID, connID, timestamp) => {
     createdAt: timestamp,
     ...(userData.linkedin
       ? {
-        linkedinURL: userData.linkedin
-      }
-      : {
-      }),
+          linkedinURL: userData.linkedin
+        }
+      : {}),
     ...(userData.fname
       ? {
-        fname: userData.fname
-      }
-      : {
-      }),
+          fname: userData.fname
+        }
+      : {}),
     ...(userData.lname
       ? {
-        lname: userData.lname
-      }
-      : {
-      }),
+          lname: userData.lname
+        }
+      : {}),
     ...(userData.major
       ? {
-        major: userData.major
-      }
-      : {
-      }),
+          major: userData.major
+        }
+      : {}),
     ...(userData.year
       ? {
-        year: userData.year
-      }
-      : {
-      }),
+          year: userData.year
+        }
+      : {}),
     ...(userData.company
       ? {
-        company: userData.company
-      }
-      : {
-      }),
+          company: userData.company
+        }
+      : {}),
     ...(userData.title
       ? {
-        title: userData.title
-      }
-      : {
-      })
+          title: userData.title
+        }
+      : {})
   };
 
   const promises = [];
   switch (connData.type) {
-  case EXEC + EXEC:
-    promises.push(
-      incrementQuestProgress(connData.registrationID, QUEST_CONNECT_EXEC_H)
-    );
+    case EXEC + EXEC:
+      promises.push(
+        incrementQuestProgress(connData.registrationID, QUEST_CONNECT_EXEC_H)
+      );
 
-  case EXEC:
-    promises.push(
-      incrementQuestProgress(userData.registrationID, QUEST_CONNECT_EXEC_H)
-    );
+    case EXEC:
+      promises.push(
+        incrementQuestProgress(userData.registrationID, QUEST_CONNECT_EXEC_H)
+      );
 
     // case ATTENDEE:
-  default:
-    promises.push(
-      db.put(connPut, CONNECTIONS_TABLE, true),
-      db.put(userPut, CONNECTIONS_TABLE, true),
-      incrementQuestProgress(userData.id, QUEST_CONNECT_ONE),
-      incrementQuestProgress(userData.id, QUEST_CONNECT_FOUR),
-      incrementQuestProgress(userData.id, QUEST_CONNECT_TEN_H),
-      incrementQuestProgress(connData.id, QUEST_CONNECT_ONE),
-      incrementQuestProgress(connData.id, QUEST_CONNECT_FOUR),
-      incrementQuestProgress(connData.id, QUEST_CONNECT_TEN_H)
-    );
-    break;
+    default:
+      promises.push(
+        db.put(connPut, CONNECTIONS_TABLE, true),
+        db.put(userPut, CONNECTIONS_TABLE, true),
+        incrementQuestProgress(userData.id, QUEST_CONNECT_ONE),
+        incrementQuestProgress(userData.id, QUEST_CONNECT_FOUR),
+        incrementQuestProgress(userData.id, QUEST_CONNECT_TEN_H),
+        incrementQuestProgress(connData.id, QUEST_CONNECT_ONE),
+        incrementQuestProgress(connData.id, QUEST_CONNECT_FOUR),
+        incrementQuestProgress(connData.id, QUEST_CONNECT_TEN_H)
+      );
+      break;
   }
 
   try {
@@ -244,9 +222,7 @@ const isDuplicateRequest = async (userID, connID) => {
 };
 
 export const handleWorkshop = async (profileID, workshopID, timestamp) => {
-  const {
-    data
-  } = await db.getOne(profileID, QRS_TABLE, {
+  const { data } = await db.getOne(profileID, QRS_TABLE, {
     "eventID;year": CURRENT_EVENT
   });
 
@@ -270,9 +246,7 @@ export const handleWorkshop = async (profileID, workshopID, timestamp) => {
 };
 
 export const handleBooth = async (profileID, boothID, timestamp) => {
-  const {
-    data
-  } = await db.getOne(profileID, QRS_TABLE, {
+  const { data } = await db.getOne(profileID, QRS_TABLE, {
     "eventID;year": CURRENT_EVENT
   });
 
