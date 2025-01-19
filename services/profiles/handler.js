@@ -1,7 +1,11 @@
 import db from "../../lib/db.js";
 import helpers from "../../lib/handlerHelpers.js";
-import { isEmpty } from "../../lib/utils.js";
-import { humanId } from "human-id";
+import {
+  isEmpty
+} from "../../lib/utils.js";
+import {
+  humanId
+} from "human-id";
 
 const PROFILES_TABLE = "biztechProfiles";
 const REGISTRATIONS_TABLE = "biztechRegistrations";
@@ -10,15 +14,26 @@ const QRS_TABLE = "biztechQRs";
 export const createProfile = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
-    
+
     // Validate input
     helpers.checkPayloadProps(data, {
-      email: { required: true, type: "string" },
-      eventID: { required: true, type: "string" },
-      year: { required: true, type: "number" }
+      email: {
+        required: true,
+        type: "string"
+      },
+      eventID: {
+        required: true,
+        type: "string"
+      },
+      year: {
+        required: true,
+        type: "number"
+      }
     });
 
-    const { email, eventID, year } = data;
+    const {
+      email, eventID, year
+    } = data;
     const eventIDAndYear = `${eventID};${year}`;
 
     // Check if profile already exists
@@ -143,7 +158,9 @@ export const getProfile = async (event, ctx, callback) => {
       throw helpers.missingPathParamResponse("profileID");
     }
 
-    const { profileID } = event.pathParameters;
+    const {
+      profileID
+    } = event.pathParameters;
 
     // Query using the GSI
     const result = await db.query(
@@ -163,7 +180,7 @@ export const getProfile = async (event, ctx, callback) => {
 
     // Filter to only include public fields
     const publicProfile = filterPublicProfileFields(result[0]);
-    
+
     const response = helpers.createResponse(200, publicProfile);
     callback(null, response);
     return response;
@@ -180,7 +197,9 @@ export const getProfileByEmail = async (event, ctx, callback) => {
       throw helpers.missingPathParamResponse("email, eventID, or year");
     }
 
-    const { email, eventID, year } = event.pathParameters;
+    const {
+      email, eventID, year
+    } = event.pathParameters;
     const eventIDAndYear = `${eventID};${year}`;
 
     // Get profile by email and eventID;year
@@ -195,7 +214,7 @@ export const getProfileByEmail = async (event, ctx, callback) => {
     const response = helpers.createResponse(200, {
       profileID: profile.profileID
     });
-    
+
     callback(null, response);
     return response;
   } catch (err) {
@@ -203,4 +222,4 @@ export const getProfileByEmail = async (event, ctx, callback) => {
     callback(null, err);
     return null;
   }
-}; 
+};

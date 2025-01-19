@@ -1,6 +1,12 @@
-import { PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
-import { QUESTS_TABLE, USER_REGISTRATIONS_TABLE } from "../constants/tables.js";
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import {
+  PutCommand, QueryCommand
+} from "@aws-sdk/lib-dynamodb";
+import {
+  QUESTS_TABLE, USER_REGISTRATIONS_TABLE
+} from "../constants/tables.js";
+import {
+  DynamoDBClient
+} from "@aws-sdk/client-dynamodb";
 
 const awsConfig = {
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -40,19 +46,15 @@ const QUESTS = [
 ];
 
 const create = async (item, table) => {
-  try {
-    const params = {
-      Item: item,
-      TableName: table + (process.env.ENVIRONMENT || ""),
-      ConditionExpression: "attribute_not_exists(id)"
-    };
+  const params = {
+    Item: item,
+    TableName: table + (process.env.ENVIRONMENT || ""),
+    ConditionExpression: "attribute_not_exists(id)"
+  };
 
-    const command = new PutCommand(params);
-    const res = await docClient.send(command);
-    return res;
-  } catch (err) {
-    throw err;
-  }
+  const command = new PutCommand(params);
+  const res = await docClient.send(command);
+  return res;
 };
 
 const userQuestsArray = (id, eventString) => {
@@ -119,4 +121,4 @@ const questsForEventRegistrations = async (eventID, year) => {
   console.log(`Created ${count} Quest Entries for ${users} Users`);
 };
 
-await questsForEventRegistrations("blueprint", 2025);
+questsForEventRegistrations("blueprint", 2025);
