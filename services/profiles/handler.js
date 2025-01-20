@@ -6,8 +6,9 @@ import {
 import {
   humanId
 } from "human-id";
-
-const PROFILES_TABLE = "biztechProfiles";
+import {
+  PROFILES_TABLE
+} from "../../constants/tables.js";
 const REGISTRATIONS_TABLE = "biztechRegistrations";
 const QRS_TABLE = "biztechQRs";
 
@@ -163,16 +164,12 @@ export const getProfile = async (event, ctx, callback) => {
     } = event.pathParameters;
 
     // Query using the GSI
-    const result = await db.query(
-      PROFILES_TABLE,
-      "profileID-index",
-      {
-        expression: "profileID = :profileID",
-        expressionValues: {
-          ":profileID": profileID
-        }
+    const result = await db.query(PROFILES_TABLE, "profileID-index", {
+      expression: "profileID = :profileID",
+      expressionValues: {
+        ":profileID": profileID
       }
-    );
+    });
 
     if (!result || result.length === 0) {
       throw helpers.notFoundResponse("Profile", profileID);
@@ -193,7 +190,12 @@ export const getProfile = async (event, ctx, callback) => {
 
 export const getProfileByEmail = async (event, ctx, callback) => {
   try {
-    if (!event.pathParameters || !event.pathParameters.email || !event.pathParameters.eventID || !event.pathParameters.year) {
+    if (
+      !event.pathParameters ||
+      !event.pathParameters.email ||
+      !event.pathParameters.eventID ||
+      !event.pathParameters.year
+    ) {
       throw helpers.missingPathParamResponse("email, eventID, or year");
     }
 

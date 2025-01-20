@@ -1,10 +1,9 @@
-import {
-  QueryCommand, UpdateCommand
-} from "@aws-sdk/lib-dynamodb";
+import { QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import {
   QRS_TABLE,
   CONNECTIONS_TABLE,
-  QUESTS_TABLE
+  QUESTS_TABLE,
+  PROFILES_TABLE
 } from "../../constants/tables";
 import db from "../../lib/db";
 import handlerHelpers from "../../lib/handlerHelpers";
@@ -29,174 +28,161 @@ import {
 } from "./constants";
 
 export const handleConnection = async (userID, connID, timestamp) => {
-  if (userID == connID) {
+  let userData = await db.getOne(userID, PROFILES_TABLE, {
+    "eventID;year": CURRENT_EVENT
+  });
+
+  let { data: connProfileData } = await db.getOne(connID, QRS_TABLE, {
+    "eventID;year": CURRENT_EVENT
+  });
+
+  if (userID == connProfileData.registrationID) {
     return handlerHelpers.createResponse(400, {
       message: "Cannot connect with yourself"
     });
   }
 
-  let profileData = await db.getOne(userID, QRS_TABLE, {
-    "eventID;year": CURRENT_EVENT
-  });
-  let connProfileData = await db.getOne(connID, QRS_TABLE, {
-    "eventID;year": CURRENT_EVENT
-  });
-
-  if (!profileData || !connProfileData) {
+  if (!userData || !connProfileData) {
     return handlerHelpers.createResponse(400, {
       message: `User profile does not exist for user identified by ${
-        !profileData ? userID : connID
+        !userData ? userID : connID
       }`
     });
   }
 
-  let {
-    data: userData, type: userType
-  } = profileData;
-  let {
-    data: connData, type: connType
-  } = connProfileData;
+  let connData = await db.getOne(
+    connProfileData.registrationID,
+    PROFILES_TABLE,
+    {
+      "eventID;year": CURRENT_EVENT
+    }
+  );
 
-  if (await isDuplicateRequest(userData.registrationID, connID)) {
+  if (await isDuplicateRequest(userData.id, connID)) {
     return handlerHelpers.createResponse(400, {
       message: "Connection has already been made"
     });
   }
 
   let swap = false;
-  if (userType == EXEC && connType == EXEC) {
-    connType = EXEC + EXEC;
-  } else if (userType == EXEC) {
+  if (userData.type == EXEC && connData.type == EXEC) {
+    connData.type = EXEC + EXEC;
+  } else if (userData.type == EXEC) {
     // in the case that the first user is an EXEC, switch required for switch-case logic to catch
     userData = [connData, (connData = userData)][0];
-    userType = [connType, (connType = userType)][0];
     userID = [connID, (connID = userID)][0];
     swap = true;
   }
 
   const userPut = {
-    userID: userData.registrationID,
+    userID: userData.id,
     obfuscatedID: connID,
     "eventID;year": CURRENT_EVENT,
     createdAt: timestamp,
-    ...(connData.linkedinURL
+    ...(connData.linkedin
       ? {
-        linkedinURL: connData.linkedinURL
-      }
-      : {
-      }),
+          linkedinURL: connData.linkedin
+        }
+      : {}),
     ...(connData.fname
       ? {
-        fname: connData.fname
-      }
-      : {
-      }),
+          fname: connData.fname
+        }
+      : {}),
     ...(connData.lname
       ? {
-        lname: connData.lname
-      }
-      : {
-      }),
+          lname: connData.lname
+        }
+      : {}),
     ...(connData.major
       ? {
-        major: connData.major
-      }
-      : {
-      }),
+          major: connData.major
+        }
+      : {}),
     ...(connData.year
       ? {
-        year: connData.year
-      }
-      : {
-      }),
+          year: connData.year
+        }
+      : {}),
     ...(connData.company
       ? {
-        company: connData.company
-      }
-      : {
-      }),
+          company: connData.company
+        }
+      : {}),
     ...(connData.title
       ? {
-        title: connData.title
-      }
-      : {
-      })
+          title: connData.title
+        }
+      : {})
   };
 
   const connPut = {
-    userID: connData.registrationID,
+    userID: connData.id,
     obfuscatedID: userID,
     "eventID;year": CURRENT_EVENT,
     createdAt: timestamp,
-    ...(userData.linkedinURL
+    ...(userData.linkedin
       ? {
-        linkedinURL: userData.linkedinURL
-      }
-      : {
-      }),
+          linkedinURL: userData.linkedin
+        }
+      : {}),
     ...(userData.fname
       ? {
-        fname: userData.fname
-      }
-      : {
-      }),
+          fname: userData.fname
+        }
+      : {}),
     ...(userData.lname
       ? {
-        lname: userData.lname
-      }
-      : {
-      }),
+          lname: userData.lname
+        }
+      : {}),
     ...(userData.major
       ? {
-        major: userData.major
-      }
-      : {
-      }),
+          major: userData.major
+        }
+      : {}),
     ...(userData.year
       ? {
-        year: userData.year
-      }
-      : {
-      }),
+          year: userData.year
+        }
+      : {}),
     ...(userData.company
       ? {
-        company: userData.company
-      }
-      : {
-      }),
+          company: userData.company
+        }
+      : {}),
     ...(userData.title
       ? {
-        title: userData.title
-      }
-      : {
-      })
+          title: userData.title
+        }
+      : {})
   };
 
   const promises = [];
-  switch (connType) {
-  case EXEC + EXEC:
-    promises.push(
-      incrementQuestProgress(connData.registrationID, QUEST_CONNECT_EXEC_H)
-    );
+  switch (connData.type) {
+    case EXEC + EXEC:
+      promises.push(
+        incrementQuestProgress(connData.registrationID, QUEST_CONNECT_EXEC_H)
+      );
 
-  case EXEC:
-    promises.push(
-      incrementQuestProgress(userData.registrationID, QUEST_CONNECT_EXEC_H)
-    );
+    case EXEC:
+      promises.push(
+        incrementQuestProgress(userData.registrationID, QUEST_CONNECT_EXEC_H)
+      );
 
     // case ATTENDEE:
-  default:
-    promises.push(
-      db.put(connPut, CONNECTIONS_TABLE, true),
-      db.put(userPut, CONNECTIONS_TABLE, true),
-      incrementQuestProgress(userData.registrationID, QUEST_CONNECT_ONE),
-      incrementQuestProgress(userData.registrationID, QUEST_CONNECT_FOUR),
-      incrementQuestProgress(userData.registrationID, QUEST_CONNECT_TEN_H),
-      incrementQuestProgress(connData.registrationID, QUEST_CONNECT_ONE),
-      incrementQuestProgress(connData.registrationID, QUEST_CONNECT_FOUR),
-      incrementQuestProgress(connData.registrationID, QUEST_CONNECT_TEN_H)
-    );
-    break;
+    default:
+      promises.push(
+        db.put(connPut, CONNECTIONS_TABLE, true),
+        db.put(userPut, CONNECTIONS_TABLE, true),
+        incrementQuestProgress(userData.id, QUEST_CONNECT_ONE),
+        incrementQuestProgress(userData.id, QUEST_CONNECT_FOUR),
+        incrementQuestProgress(userData.id, QUEST_CONNECT_TEN_H),
+        incrementQuestProgress(connData.id, QUEST_CONNECT_ONE),
+        incrementQuestProgress(connData.id, QUEST_CONNECT_FOUR),
+        incrementQuestProgress(connData.id, QUEST_CONNECT_TEN_H)
+      );
+      break;
   }
 
   try {
@@ -236,9 +222,7 @@ const isDuplicateRequest = async (userID, connID) => {
 };
 
 export const handleWorkshop = async (profileID, workshopID, timestamp) => {
-  const {
-    data
-  } = await db.getOne(profileID, QRS_TABLE, {
+  const { data } = await db.getOne(profileID, QRS_TABLE, {
     "eventID;year": CURRENT_EVENT
   });
 
@@ -262,9 +246,7 @@ export const handleWorkshop = async (profileID, workshopID, timestamp) => {
 };
 
 export const handleBooth = async (profileID, boothID, timestamp) => {
-  const {
-    data
-  } = await db.getOne(profileID, QRS_TABLE, {
+  const { data } = await db.getOne(profileID, QRS_TABLE, {
     "eventID;year": CURRENT_EVENT
   });
 
