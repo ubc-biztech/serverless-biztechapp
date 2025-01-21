@@ -1,11 +1,10 @@
 {
   "name": "biztechapi-profiles",
   "version": "1.0.0",
-  "type": "module",
   "scripts": {
-    "itest": "npm run itest registrations --prefix ../../",
-    "utest": "npm run utest registrations --prefix ../../",
-    "test": "npm run utest registrations --prefix ../../ && npm run itest registrations --prefix ../../"
+    "itest": "npm run itest profiles --prefix ../../",
+    "utest": "npm run utest profiles --prefix ../../",
+    "test": "npm run utest profiles --prefix ../../ && npm run itest profiles --prefix ../../"
   },
   "devDependencies": {
     "aws-sdk-client-mock": "^4.1.0",

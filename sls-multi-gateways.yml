@@ -43,3 +43,6 @@ services:
   - srvName: users
     srvPath: users
     srvSource: services/users
+  - srvName: profiles
+    srvPath: profiles
+    srvSource: services/profiles
