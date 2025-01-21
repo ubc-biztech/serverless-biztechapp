@@ -1,18 +1,18 @@
 "use strict";
 
-const mochaPlugin = require("serverless-mocha-plugin");
-const expect = mochaPlugin.chai.expect;
-const {
+import mochaPlugin from "serverless-mocha-plugin";
+import {
   mockClient
-} = require("aws-sdk-client-mock");
-const {
-  DynamoDBDocumentClient, GetCommand, PutCommand
-} = require("@aws-sdk/lib-dynamodb");
-const sinon = require("sinon");
+} from "aws-sdk-client-mock";
+import {
+  DynamoDBDocumentClient,
+  GetCommand,
+  PutCommand
+} from "@aws-sdk/lib-dynamodb";
+import sinon from "sinon";
 
+const expect = mochaPlugin.chai.expect;
 const ddbMock = mockClient(DynamoDBDocumentClient);
-
-const handler = require("../handler");
 const wrappedCreate = mochaPlugin.getWrapper("createProfile", "/handler", "createProfile");
 const wrappedGet = mochaPlugin.getWrapper("getProfile", "/handler", "getProfile");
 
