@@ -1,11 +1,13 @@
 "use strict";
 
 import mochaPlugin from "serverless-mocha-plugin";
-import { mockClient } from "aws-sdk-client-mock";
-import { 
-  DynamoDBDocumentClient, 
-  GetCommand, 
-  PutCommand 
+import {
+  mockClient
+} from "aws-sdk-client-mock";
+import {
+  DynamoDBDocumentClient,
+  GetCommand,
+  PutCommand
 } from "@aws-sdk/lib-dynamodb";
 import sinon from "sinon";
 
