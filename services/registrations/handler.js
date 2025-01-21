@@ -542,14 +542,6 @@ export const get = async (event, ctx, callback) => {
         );
       }
     } else if (queryString.eventID && queryString.year) {
-      const claims = event.requestContext.authorizer.claims;
-
-      if (!claims || !claims.email || !claims.email.endsWith("@ubcbiztech.com")) {
-        throw helpers.createResponse(403, {
-          message: "Unauthorized: Admin access required"
-        });
-      }
-
       // Query by eventID;year using GSI
       const eventIDYear = `${queryString.eventID};${queryString.year}`;
       const keyCondition = {
