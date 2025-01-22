@@ -70,6 +70,10 @@ export const createProfile = async (event, ctx, callback) => {
       type: registration.isPartner ? "Partner" : "Attendee",
       major: registration.basicInformation.major,
       year: registration.basicInformation.year,
+      ...(registration.isPartner ? {
+        company: registration.basicInformation.companyName,
+        role: registration.basicInformation.role,
+      } : {}),
       hobby1: registration.dynamicResponses["130fac25-e5d7-4fd1-8fd8-d844bfdaef06"] || "",
       hobby2: registration.dynamicResponses["52a3e21c-e65f-4248-a38d-db93e410fe2c"] || "",
       funQuestion1: registration.dynamicResponses["3d130254-8f1c-456e-a325-109717ad2bd4"] || "",
@@ -140,6 +144,10 @@ const filterPublicProfileFields = (profile) => ({
   type: profile.type,
   major: profile.major,
   year: profile.year,
+  ...(profile.type === "Partner" ? {
+    company: profile.company,
+    role: profile.role,
+  } : {}),
   hobby1: profile.hobby1,
   hobby2: profile.hobby2,
   funQuestion1: profile.funQuestion1,
