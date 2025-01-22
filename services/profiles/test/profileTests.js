@@ -1,14 +1,18 @@
 "use strict";
 
-const mochaPlugin = require("serverless-mocha-plugin");
+import mochaPlugin from "serverless-mocha-plugin";
+import {
+  mockClient
+} from "aws-sdk-client-mock";
+import {
+  DynamoDBDocumentClient,
+  GetCommand,
+  PutCommand
+} from "@aws-sdk/lib-dynamodb";
+import sinon from "sinon";
+
 const expect = mochaPlugin.chai.expect;
-const { mockClient } = require("aws-sdk-client-mock");
-const { DynamoDBDocumentClient, GetCommand, PutCommand } = require("@aws-sdk/lib-dynamodb");
-const sinon = require("sinon");
-
 const ddbMock = mockClient(DynamoDBDocumentClient);
-
-const handler = require("../handler");
 const wrappedCreate = mochaPlugin.getWrapper("createProfile", "/handler", "createProfile");
 const wrappedGet = mochaPlugin.getWrapper("getProfile", "/handler", "getProfile");
 
@@ -66,24 +70,37 @@ describe("Profiles Service", () => {
       ddbMock.on(GetCommand).callsFake((params) => {
         if (params.TableName.includes("biztechRegistrations")) {
           if (params.Key.id === testEmail && params.Key["eventID;year"] === `${testEventId};${testYear}`) {
-            return { Item: mockRegistration };
+            return {
+              Item: mockRegistration
+            };
           }
-          return { Item: undefined };
+          return {
+            Item: undefined
+          };
         } else if (params.TableName.includes("biztechProfiles")) {
           if (params.Key.email === testEmail && params.Key["eventID;year"] === `${testEventId};${testYear}`) {
-            return { Item: mockProfile };
+            return {
+              Item: mockProfile
+            };
           }
-          return { Item: undefined };
+          return {
+            Item: undefined
+          };
         }
-        return { Item: undefined };
+        return {
+          Item: undefined
+        };
       });
 
       // Mock DynamoDB PutCommand
       ddbMock.on(PutCommand).callsFake((params) => {
         if (params.TableName.includes("biztechProfiles")) {
-          return { Item: params.Item };
+          return {
+            Item: params.Item
+          };
         }
-        return {};
+        return {
+        };
       });
 
       // Stub db module functions
@@ -91,7 +108,11 @@ describe("Profiles Service", () => {
         const params = {
           TableName: table,
           Key: {
-            ...(table.includes("biztechRegistrations") ? { id } : { email: id }),
+            ...(table.includes("biztechRegistrations") ? {
+              id
+            } : {
+              email: id
+            }),
             ...sortKey
           }
         };
@@ -243,4 +264,4 @@ describe("Profiles Service", () => {
       expect(body).to.deep.include(mockProfile);
     });
   });
-}); 
+});

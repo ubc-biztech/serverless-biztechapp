@@ -40,7 +40,11 @@ provider:
         - dynamodb:PutItem
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/bizQuests${self:provider.environment.ENVIRONMENT}"
-
+    - Effect: Allow
+      Action:
+        - dynamodb:GetItem
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechProfiles${self:provider.environment.ENVIRONMENT}"
     - Effect: Allow
       Action:
         - dynamodb:Query
