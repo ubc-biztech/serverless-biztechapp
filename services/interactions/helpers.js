@@ -222,12 +222,6 @@ const isDuplicateRequest = async (userID, connID) => {
 };
 
 export const handleWorkshop = async (profileID, workshopID, timestamp) => {
-  const { data } = await db.getOne(profileID, QRS_TABLE, {
-    "eventID;year": CURRENT_EVENT
-  });
-
-  let userID = data.registrationID;
-
   if (workshopID != WORKSHOP_TWO) {
     return handlerHelpers.createResponse(200, {
       message: `Checked into ${workshopID}`
@@ -235,7 +229,7 @@ export const handleWorkshop = async (profileID, workshopID, timestamp) => {
   }
 
   try {
-    await incrementQuestProgress(userID, QUEST_WORKSHOP);
+    await incrementQuestProgress(profileID, QUEST_WORKSHOP);
     return handlerHelpers.createResponse(200, {
       message: "Checked into workshop 2"
     });
@@ -246,15 +240,9 @@ export const handleWorkshop = async (profileID, workshopID, timestamp) => {
 };
 
 export const handleBooth = async (profileID, boothID, timestamp) => {
-  const { data } = await db.getOne(profileID, QRS_TABLE, {
-    "eventID;year": CURRENT_EVENT
-  });
-
-  let userID = data.registrationID;
-
   if (BIGTECH.includes(boothID)) {
     try {
-      await incrementQuestProgress(userID, QUEST_BIGTECH);
+      await incrementQuestProgress(profileID, QUEST_BIGTECH);
       return handlerHelpers.createResponse(200, {
         message: `Checked into booth ${boothID}`
       });
@@ -266,7 +254,7 @@ export const handleBooth = async (profileID, boothID, timestamp) => {
 
   if (STARTUPS.includes(boothID)) {
     try {
-      await incrementQuestProgress(userID, QUEST_STARTUP);
+      await incrementQuestProgress(profileID, QUEST_STARTUP);
       return handlerHelpers.createResponse(200, {
         message: `Checked into booth ${boothID}`
       });
@@ -278,7 +266,7 @@ export const handleBooth = async (profileID, boothID, timestamp) => {
 
   if (boothID == PHOTOBOOTH) {
     try {
-      await incrementQuestProgress(userID, QUEST_PHOTOBOOTH);
+      await incrementQuestProgress(profileID, QUEST_PHOTOBOOTH);
       return handlerHelpers.createResponse(200, {
         message: `Checked into booth ${boothID}`
       });

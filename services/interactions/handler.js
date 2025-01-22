@@ -39,6 +39,7 @@ export const postInteraction = async (event, ctx, callback) => {
     const timestamp = new Date().getTime();
     const { userID, eventType, eventParam } = data;
 
+    console.log(data);
     let response;
 
     switch (eventType) {
