@@ -45,6 +45,22 @@ functions:
           method: post
           cors: true
 
+  createCompanyProfile:
+    handler: handler.createCompanyProfile
+    events:
+      - http:
+          path: profiles/company
+          method: post
+          cors: true
+
+  linkPartnerToCompany:
+    handler: handler.linkPartnerToCompany
+    events:
+      - http:
+          path: profiles/company/link-partner
+          method: post
+          cors: true
+
   getProfile:
     handler: handler.getProfile
     events:
