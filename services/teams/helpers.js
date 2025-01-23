@@ -242,7 +242,6 @@ export default {
           const timestamp = new Date().toISOString();
           team.submission = timestamp;
         }
-
         const totalPoints = pointsPerQuestion * uniqueQuestions.length;
 
         if (totalPoints !== 0) {

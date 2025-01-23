@@ -136,6 +136,86 @@ export const createProfile = async (event, ctx, callback) => {
   }
 };
 
+export const createPartialPartnerProfile = async (event, ctx, callback) => {
+  try {
+    const data = JSON.parse(event.body);
+
+    // Validate input
+    helpers.checkPayloadProps(data, {
+      email: { required: true, type: "string" },
+      eventID: { required: true, type: "string" },
+      year: { required: true, type: "number" },
+      fname: { required: true, type: "string" },
+      lname: { required: true, type: "string" },
+      company: { required: true, type: "string" },
+      role: { required: true, type: "string" },
+      linkedIn: { required: false, type: "string" },
+      profilePictureURL: { required: false, type: "string" }
+    });
+
+    const { email, eventID, year, fname, lname, company, role, linkedIn = "", profilePictureURL = "" } = data;
+    const eventIDAndYear = `${eventID};${year}`;
+
+    // Check if profile already exists
+    const existingProfile = await db.getOne(email, PROFILES_TABLE, {
+      "eventID;year": eventIDAndYear
+    });
+
+    if (!isEmpty(existingProfile)) {
+      throw helpers.duplicateResponse("Profile", email);
+    }
+
+    // Generate profileID
+    const profileID = humanId();
+
+    // Create partial partner profile
+    const timestamp = new Date().getTime();
+    const profile = {
+      id: email,
+      "eventID;year": eventIDAndYear,
+      profileID,
+      fname,
+      lname,
+      type: "Partner",
+      company,
+      role,
+      linkedIn,
+      profilePictureURL,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+
+    // Create NFC entry
+    const nfc = {
+      id: profileID,
+      "eventID;year": eventIDAndYear,
+      type: "NFC_ATTENDEE",
+      isUnlimitedScans: true,
+      data: {
+        email
+      }
+    };
+
+    await Promise.all([
+      db.create(profile, PROFILES_TABLE),
+      db.create(nfc, QRS_TABLE)
+    ]);
+
+    const response = helpers.createResponse(201, {
+      message: `Created partial partner profile and NFC for ${email} for event ${eventIDAndYear}`,
+      profile,
+      nfc
+    });
+
+    callback(null, response);
+    return response;
+  } catch (err) {
+    console.error(err);
+    callback(null, err);
+    return null;
+  }
+};
+
 const filterPublicProfileFields = (profile) => ({
   profileID: profile.profileID,
   ...(profile.type === "Company" ? {

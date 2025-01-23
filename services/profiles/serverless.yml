@@ -45,6 +45,14 @@ functions:
           method: post
           cors: true
 
+  createPartialPartnerProfile:
+    handler: handler.createPartialPartnerProfile
+    events:
+      - http:
+          path: profiles/partner/partial
+          method: post
+          cors: true
+
   createCompanyProfile:
     handler: handler.createCompanyProfile
     events:
