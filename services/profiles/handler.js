@@ -150,10 +150,11 @@ export const createPartialPartnerProfile = async (event, ctx, callback) => {
       company: { required: true, type: "string" },
       role: { required: true, type: "string" },
       linkedIn: { required: false, type: "string" },
-      profilePictureURL: { required: false, type: "string" }
+      profilePictureURL: { required: false, type: "string" },
+      pronouns: { required: false, type: "string" }
     });
 
-    const { email, eventID, year, fname, lname, company, role, linkedIn = "", profilePictureURL = "" } = data;
+    const { email, eventID, year, fname, lname, company, role, linkedIn = "", profilePictureURL = "", pronouns = "" } = data;
     const eventIDAndYear = `${eventID};${year}`;
 
     // Check if profile already exists
@@ -176,6 +177,7 @@ export const createPartialPartnerProfile = async (event, ctx, callback) => {
       profileID,
       fname,
       lname,
+      pronouns,
       type: "Partner",
       company,
       role,
