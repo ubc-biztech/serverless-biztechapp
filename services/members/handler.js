@@ -53,10 +53,7 @@ export const create = async (event, ctx, callback) => {
         "Member could not be created because email already exists"
       );
     } else {
-      response = helpers.createResponse(
-        502,
-        "Internal server error"
-      );
+      response = helpers.createResponse(502, "Internal server error");
     }
     callback(null, response);
   }

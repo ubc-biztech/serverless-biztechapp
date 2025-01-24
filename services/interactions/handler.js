@@ -7,9 +7,15 @@ import db from "../../lib/db";
 import docClient from "../../lib/docClient";
 import handlerHelpers from "../../lib/handlerHelpers";
 import helpers from "../../lib/handlerHelpers";
-import { CURRENT_EVENT } from "./constants";
-import { handleBooth, handleConnection, handleWorkshop } from "./helpers";
-import { QueryCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  CURRENT_EVENT
+} from "./constants";
+import {
+  handleBooth, handleConnection, handleWorkshop
+} from "./helpers";
+import {
+  QueryCommand
+} from "@aws-sdk/lib-dynamodb";
 
 const CONNECTION = "CONNECTION";
 const WORK = "WORKSHOP";
@@ -37,27 +43,29 @@ export const postInteraction = async (event, ctx, callback) => {
     }
 
     const timestamp = new Date().getTime();
-    const { userID, eventType, eventParam } = data;
+    const {
+      userID, eventType, eventParam
+    } = data;
 
     let response;
 
     switch (eventType) {
-      case CONNECTION:
-        response = await handleConnection(userID, eventParam, timestamp);
-        break;
+    case CONNECTION:
+      response = await handleConnection(userID, eventParam, timestamp);
+      break;
 
-      case WORK:
-        response = await handleWorkshop(userID, eventParam, timestamp);
-        break;
+    case WORK:
+      response = await handleWorkshop(userID, eventParam, timestamp);
+      break;
 
-      case BOOTH:
-        response = await handleBooth(userID, eventParam, timestamp);
-        break;
+    case BOOTH:
+      response = await handleBooth(userID, eventParam, timestamp);
+      break;
 
-      default:
-        throw handlerHelpers.createResponse(400, {
-          message: "interactionType argument does not match known case"
-        });
+    default:
+      throw handlerHelpers.createResponse(400, {
+        message: "interactionType argument does not match known case"
+      });
     }
 
     callback(null, response);
