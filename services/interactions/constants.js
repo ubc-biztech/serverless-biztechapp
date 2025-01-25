@@ -20,16 +20,33 @@ export const WORKSHOP_TWO = "WORKSHOP_TWO";
 export const WORKSHOP_TWO_PARTICIPANT = "WORKSHOP_TWO_PARTICIPANT";
 
 export const BIGTECH = [
-  "aws",
-  "spotify",
-  "meta",
-  "google",
-  "slack",
-  "googlecloud",
   "amazon",
-  "stripe",
+  "aws",
+  "axonify",
+  "centrefordigitalmedia",
+  "deloitte",
+  "electronicarts",
+  "google",
+  "googlecloud",
+  "instacart",
+  "kpmg",
+  "linusmediagroup",
+  "mastercard",
+  "mckinseycompany",
+  "meta",
   "microsoft",
-  "perplexity"
+  "oracle",
+  "pwc",
+  "rbc",
+  "samsungelectronics",
+  "sap",
+  "shopify",
+  "slack",
+  "spotify",
+  "stripe",
+  "telus",
+  "vancity",
+  "wealthsimple"
 ];
 export const STARTUPS = [
   "futurpreneur",
