@@ -519,9 +519,9 @@ export const linkPartnerToCompany = async (event, ctx, callback) => {
   }
 };
 
-export const fixPartnerNFCTypes = async (event, ctx, callback) => {
+export const syncPartnerData = async (event, ctx, callback) => {
   try {
-    // Scan profiles table for all Partner type profiles
+    // Get all partner profiles
     const partnerProfiles = await db.scan(PROFILES_TABLE, {
       FilterExpression: "#type = :type",
       ExpressionAttributeNames: {
@@ -534,38 +534,90 @@ export const fixPartnerNFCTypes = async (event, ctx, callback) => {
 
     if (!partnerProfiles || partnerProfiles.length === 0) {
       const response = helpers.createResponse(200, {
-        message: "No partner profiles found to update"
+        message: "No partner profiles found to sync"
       });
       callback(null, response);
       return response;
     }
 
-    // Update each corresponding QR entry
-    const updatePromises = partnerProfiles.map(async (profile) => {
-      const params = {
-        Key: {
-          id: profile.profileID,
-          "eventID;year": profile["eventID;year"]
-        },
-        TableName: QRS_TABLE + (process.env.ENVIRONMENT || ""),
-        UpdateExpression: "set #type = :type",
-        ExpressionAttributeNames: {
-          "#type": "type"
-        },
-        ExpressionAttributeValues: {
-          ":type": "NFC_PARTNER"
-        },
-        ReturnValues: "UPDATED_NEW"
-      };
+    const results = await Promise.all(partnerProfiles.map(async (profile) => {
+      const [eventID, year] = profile["eventID;year"].split(";");
+      
+      // Try to find matching registration
+      const registration = await db.getOne(profile.id, REGISTRATIONS_TABLE, {
+        "eventID;year": profile["eventID;year"]
+      });
 
-      return db.updateDBCustom(params);
-    });
+      if (!registration) {
+        // Create registration entry if it doesn't exist
+        const timestamp = new Date().getTime();
+        const registrationData = {
+          id: profile.id,
+          "eventID;year": profile["eventID;year"],
+          isPartner: true,
+          profileID: profile.profileID,
+          basicInformation: {
+            fname: profile.fname,
+            lname: profile.lname,
+            companyName: profile.company,
+            role: profile.role,
+            gender: profile.pronouns
+          },
+          registrationStatus: "registered",
+          createdAt: timestamp,
+          updatedAt: timestamp
+        };
 
-    await Promise.all(updatePromises);
+        await db.create(registrationData, REGISTRATIONS_TABLE);
+        return {
+          profileID: profile.profileID,
+          action: "created_registration",
+          email: profile.id
+        };
+      } else {
+        // Update profile with registration data
+        const updateParams = {
+          Key: {
+            id: profile.id,
+            "eventID;year": profile["eventID;year"]
+          },
+          TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
+          UpdateExpression: "set fname = :fname, lname = :lname, pronouns = :pronouns, company = :company, role = :role, hobby1 = :hobby1, hobby2 = :hobby2, funQuestion1 = :funQuestion1, funQuestion2 = :funQuestion2, linkedIn = :linkedIn, additionalLink = :additionalLink, description = :description, updatedAt = :updatedAt",
+          ExpressionAttributeValues: {
+            ":fname": registration.basicInformation.fname,
+            ":lname": registration.basicInformation.lname,
+            ":pronouns": registration.basicInformation.gender || "",
+            ":company": registration.basicInformation.companyName,
+            ":role": registration.basicInformation.role,
+            ":hobby1": registration.dynamicResponses["130fac25-e5d7-4fd1-8fd8-d844bfdaef06"] || "",
+            ":hobby2": registration.dynamicResponses["52a3e21c-e65f-4248-a38d-db93e410fe2c"] || "",
+            ":funQuestion1": registration.dynamicResponses["3d130254-8f1c-456e-a325-109717ad2bd4"] || "",
+            ":funQuestion2": registration.dynamicResponses["f535e62d-96ee-4377-a8ac-c7b523d04583"] || "",
+            ":linkedIn": registration.dynamicResponses["ffcb7fcf-6a24-46a3-bfca-e3dc96b6309f"] || "",
+            ":additionalLink": registration.dynamicResponses["e164e119-6d47-453b-b215-91837b70e9b7"] || "",
+            ":description": registration.dynamicResponses["6849bb7f-b8bd-438c-b03b-e046cede378a"] || "",
+            ":updatedAt": new Date().getTime()
+          }
+        };
+
+        // Only update profile picture if it doesn't exist in profile
+        if (!profile.profilePictureURL && registration.dynamicResponses["1fb1696d-9d90-4e02-9612-3eb9933e6c45"]) {
+          updateParams.UpdateExpression += ", profilePictureURL = :profilePictureURL";
+          updateParams.ExpressionAttributeValues[":profilePictureURL"] = registration.dynamicResponses["1fb1696d-9d90-4e02-9612-3eb9933e6c45"];
+        }
+
+        await db.updateDBCustom(updateParams);
+        return {
+          profileID: profile.profileID,
+          action: "synced_from_registration",
+          email: profile.id
+        };
+      }
+    }));
 
     const response = helpers.createResponse(200, {
-      message: `Updated ${partnerProfiles.length} partner QR entries to NFC_PARTNER type`,
-      updatedProfiles: partnerProfiles.map(p => ({ profileID: p.profileID, eventIDYear: p["eventID;year"] }))
+      message: `Synced ${results.length} partner profiles`,
+      results
     });
 
     callback(null, response);

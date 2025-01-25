@@ -70,11 +70,11 @@ functions:
           method: post
           cors: true
 
-  fixPartnerNFCTypes:
-    handler: handler.fixPartnerNFCTypes
+  syncPartnerData:
+    handler: handler.syncPartnerData
     events:
       - http:
-          path: profiles/fix-partner-nfc-types
+          path: profiles/sync-partner-data
           method: post
           cors: true
 
