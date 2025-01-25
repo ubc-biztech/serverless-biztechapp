@@ -557,15 +557,16 @@ export const syncPartnerData = async (event, ctx, callback) => {
           isPartner: true,
           profileID: profile.profileID,
           basicInformation: {
-            fname: profile.fname,
-            lname: profile.lname,
-            companyName: profile.company,
-            role: profile.role,
-            gender: profile.pronouns
+            fname: profile.fname || "",
+            lname: profile.lname || "",
+            companyName: profile.company || "",
+            role: profile.role || "",
+            gender: profile.pronouns || ""
           },
           registrationStatus: "registered",
           createdAt: timestamp,
-          updatedAt: timestamp
+          updatedAt: timestamp,
+          dynamicResponses: {} // Ensure this exists even if empty
         };
 
         await db.create(registrationData, REGISTRATIONS_TABLE);
@@ -575,6 +576,9 @@ export const syncPartnerData = async (event, ctx, callback) => {
           email: profile.id
         };
       } else {
+        // Safely get dynamic responses with fallbacks
+        const dynamicResponses = registration.dynamicResponses || {};
+        
         // Update profile with registration data
         const updateParams = {
           Key: {
@@ -582,28 +586,31 @@ export const syncPartnerData = async (event, ctx, callback) => {
             "eventID;year": profile["eventID;year"]
           },
           TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
-          UpdateExpression: "set fname = :fname, lname = :lname, pronouns = :pronouns, company = :company, role = :role, hobby1 = :hobby1, hobby2 = :hobby2, funQuestion1 = :funQuestion1, funQuestion2 = :funQuestion2, linkedIn = :linkedIn, additionalLink = :additionalLink, description = :description, updatedAt = :updatedAt",
+          UpdateExpression: "set fname = :fname, lname = :lname, pronouns = :pronouns, company = :company, #role = :role, hobby1 = :hobby1, hobby2 = :hobby2, funQuestion1 = :funQuestion1, funQuestion2 = :funQuestion2, linkedIn = :linkedIn, additionalLink = :additionalLink, description = :description, updatedAt = :updatedAt",
+          ExpressionAttributeNames: {
+            "#role": "role"
+          },
           ExpressionAttributeValues: {
-            ":fname": registration.basicInformation.fname,
-            ":lname": registration.basicInformation.lname,
-            ":pronouns": registration.basicInformation.gender || "",
-            ":company": registration.basicInformation.companyName,
-            ":role": registration.basicInformation.role,
-            ":hobby1": registration.dynamicResponses["130fac25-e5d7-4fd1-8fd8-d844bfdaef06"] || "",
-            ":hobby2": registration.dynamicResponses["52a3e21c-e65f-4248-a38d-db93e410fe2c"] || "",
-            ":funQuestion1": registration.dynamicResponses["3d130254-8f1c-456e-a325-109717ad2bd4"] || "",
-            ":funQuestion2": registration.dynamicResponses["f535e62d-96ee-4377-a8ac-c7b523d04583"] || "",
-            ":linkedIn": registration.dynamicResponses["ffcb7fcf-6a24-46a3-bfca-e3dc96b6309f"] || "",
-            ":additionalLink": registration.dynamicResponses["e164e119-6d47-453b-b215-91837b70e9b7"] || "",
-            ":description": registration.dynamicResponses["6849bb7f-b8bd-438c-b03b-e046cede378a"] || "",
+            ":fname": registration.basicInformation?.fname || "",
+            ":lname": registration.basicInformation?.lname || "",
+            ":pronouns": registration.basicInformation?.gender || "",
+            ":company": registration.basicInformation?.companyName || "",
+            ":role": registration.basicInformation?.role || "",
+            ":hobby1": dynamicResponses["130fac25-e5d7-4fd1-8fd8-d844bfdaef06"] || "",
+            ":hobby2": dynamicResponses["52a3e21c-e65f-4248-a38d-db93e410fe2c"] || "",
+            ":funQuestion1": dynamicResponses["3d130254-8f1c-456e-a325-109717ad2bd4"] || "",
+            ":funQuestion2": dynamicResponses["f535e62d-96ee-4377-a8ac-c7b523d04583"] || "",
+            ":linkedIn": dynamicResponses["ffcb7fcf-6a24-46a3-bfca-e3dc96b6309f"] || "",
+            ":additionalLink": dynamicResponses["e164e119-6d47-453b-b215-91837b70e9b7"] || "",
+            ":description": dynamicResponses["6849bb7f-b8bd-438c-b03b-e046cede378a"] || "",
             ":updatedAt": new Date().getTime()
           }
         };
 
-        // Only update profile picture if it doesn't exist in profile
-        if (!profile.profilePictureURL && registration.dynamicResponses["1fb1696d-9d90-4e02-9612-3eb9933e6c45"]) {
+        // Only update profile picture if it doesn't exist in profile and exists in registration
+        if (!profile.profilePictureURL && dynamicResponses["1fb1696d-9d90-4e02-9612-3eb9933e6c45"]) {
           updateParams.UpdateExpression += ", profilePictureURL = :profilePictureURL";
-          updateParams.ExpressionAttributeValues[":profilePictureURL"] = registration.dynamicResponses["1fb1696d-9d90-4e02-9612-3eb9933e6c45"];
+          updateParams.ExpressionAttributeValues[":profilePictureURL"] = dynamicResponses["1fb1696d-9d90-4e02-9612-3eb9933e6c45"];
         }
 
         await db.updateDBCustom(updateParams);
