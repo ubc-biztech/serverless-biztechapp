@@ -14,9 +14,31 @@ export const QUEST_CONNECT_FOUR = "QUEST_CONNECT_FOUR";
 export const QUEST_BT_BOOTH_H = "QUEST_BT_BOOTH_H";
 export const QUEST_CONNECT_TEN_H = "QUEST_CONNECT_TEN_H";
 export const QUEST_CONNECT_EXEC_H = "QUEST_CONNECT_EXEC_H";
+export const QUEST_WORKSHOP_TWO_PARTICIPANT = "QUEST_WORKSHOP_TWO_PARTICIPANT";
 
 export const WORKSHOP_TWO = "WORKSHOP_TWO";
+export const WORKSHOP_TWO_PARTICIPANT = "WORKSHOP_TWO_PARTICIPANT";
 
-export const BIGTECH = ["Meta", "Google"]; // incomplete, check with partnerships
-export const STARTUPS = ["Perplexity", "InternInside", "Xpress"];
+export const BIGTECH = [
+  "aws",
+  "spotify",
+  "meta",
+  "google",
+  "slack",
+  "googlecloud",
+  "amazon",
+  "stripe",
+  "microsoft",
+  "perplexity"
+];
+export const STARTUPS = [
+  "futurpreneur",
+  "internalautomations",
+  "redpilllabs",
+  "techcareernorth",
+  "xpressselect",
+  "wonsulting",
+  "thecreativesolution",
+  "interninsider"
+];
 export const PHOTOBOOTH = "PHOTO";

@@ -24,7 +24,9 @@ import {
   WORKSHOP_TWO,
   PHOTOBOOTH,
   QUEST_PHOTOBOOTH,
-  QUEST_CONNECT_EXEC_H
+  QUEST_CONNECT_EXEC_H,
+  WORKSHOP_TWO_PARTICIPANT,
+  QUEST_WORKSHOP_TWO_PARTICIPANT
 } from "./constants";
 
 export const handleConnection = async (userID, connID, timestamp) => {
@@ -50,13 +52,16 @@ export const handleConnection = async (userID, connID, timestamp) => {
     });
   }
 
-  let connData = await db.getOne(
-    connProfileData.registrationID,
-    PROFILES_TABLE,
-    {
-      "eventID;year": CURRENT_EVENT
-    }
-  );
+  let profileID =
+    connProfileData.type === PARTNER
+      ? connProfileData.email
+      : connProfileData.registrationID;
+
+  let connData = await db.getOne(profileID, PROFILES_TABLE, {
+    "eventID;year": CURRENT_EVENT
+  });
+
+  console.log(connData);
 
   if (await isDuplicateRequest(userData.id, connID)) {
     return handlerHelpers.createResponse(400, {
@@ -68,7 +73,6 @@ export const handleConnection = async (userID, connID, timestamp) => {
   if (userData.type === EXEC && connData.type === EXEC) {
     connData.type = EXEC + EXEC;
   } else if (userData.type === EXEC) {
-    // in the case that the first user is an EXEC, switch required for switch-case logic to catch
     userData = [connData, (connData = userData)][0];
     userID = [connID, (connID = userID)][0];
     swap = true;
@@ -109,9 +113,9 @@ export const handleConnection = async (userID, connID, timestamp) => {
           company: connData.company
         }
       : {}),
-    ...(connData.title
+    ...(connData.role
       ? {
-          title: connData.title
+          title: connData.role
         }
       : {})
   };
@@ -151,9 +155,9 @@ export const handleConnection = async (userID, connID, timestamp) => {
           company: userData.company
         }
       : {}),
-    ...(userData.title
+    ...(userData.role
       ? {
-          title: userData.title
+          role: userData.role
         }
       : {})
   };
@@ -161,14 +165,10 @@ export const handleConnection = async (userID, connID, timestamp) => {
   const promises = [];
   switch (connData.type) {
     case EXEC + EXEC:
-      promises.push(
-        incrementQuestProgress(connData.registrationID, QUEST_CONNECT_EXEC_H)
-      );
+      promises.push(incrementQuestProgress(profileID, QUEST_CONNECT_EXEC_H));
 
     case EXEC:
-      promises.push(
-        incrementQuestProgress(userData.registrationID, QUEST_CONNECT_EXEC_H)
-      );
+      promises.push(incrementQuestProgress(userData.id, QUEST_CONNECT_EXEC_H));
 
     // case ATTENDEE:
     default:
@@ -229,17 +229,25 @@ const isDuplicateRequest = async (userID, connID) => {
 };
 
 export const handleWorkshop = async (profileID, workshopID, timestamp) => {
-  if (workshopID !== WORKSHOP_TWO) {
-    return handlerHelpers.createResponse(200, {
-      message: `Checked into ${workshopID}`
-    });
-  }
-
   try {
-    await incrementQuestProgress(profileID, QUEST_WORKSHOP);
-    return handlerHelpers.createResponse(200, {
-      message: "Checked into workshop 2"
-    });
+    switch (workshopID) {
+      case WORKSHOP_TWO:
+        await incrementQuestProgress(profileID, QUEST_WORKSHOP);
+        return handlerHelpers.createResponse(200, {
+          message: "Completed Workshop Two Challenge"
+        });
+
+      case WORKSHOP_TWO_PARTICIPANT:
+        await incrementQuestProgress(profileID, QUEST_WORKSHOP_TWO_PARTICIPANT);
+        return handlerHelpers.createResponse(200, {
+          message: "Braved 1-on-1 onstage interview"
+        });
+
+      default:
+        return handlerHelpers.createResponse(200, {
+          message: "Unknown workshop"
+        });
+    }
   } catch (error) {
     console.error(error);
     throw error;
