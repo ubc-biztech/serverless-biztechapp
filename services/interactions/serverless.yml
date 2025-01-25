@@ -34,6 +34,11 @@ provider:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/bizConnections${self:provider.environment.ENVIRONMENT}/index/eventID-year"
     - Effect: Allow
       Action:
+        - dynamodb:PutItem
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechNFCScans${self:provider.environment.ENVIRONMENT}"
+    - Effect: Allow
+      Action:
         - dynamodb:Query
         - dynamodb:GetItem
         - dynamodb:UpdateItem
