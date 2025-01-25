@@ -1,6 +1,4 @@
-import {
-  QueryCommand, UpdateCommand
-} from "@aws-sdk/lib-dynamodb";
+import { QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import {
   QRS_TABLE,
   CONNECTIONS_TABLE,
@@ -26,7 +24,9 @@ import {
   WORKSHOP_TWO,
   PHOTOBOOTH,
   QUEST_PHOTOBOOTH,
-  QUEST_CONNECT_EXEC_H
+  QUEST_CONNECT_EXEC_H,
+  WORKSHOP_TWO_PARTICIPANT,
+  QUEST_WORKSHOP_TWO_PARTICIPANT
 } from "./constants";
 
 export const handleConnection = async (userID, connID, timestamp) => {
@@ -34,13 +34,11 @@ export const handleConnection = async (userID, connID, timestamp) => {
     "eventID;year": CURRENT_EVENT
   });
 
-  let {
-    data: connProfileData
-  } = await db.getOne(connID, QRS_TABLE, {
+  let { data: connProfileData } = await db.getOne(connID, QRS_TABLE, {
     "eventID;year": CURRENT_EVENT
   });
 
-  if (userID == connProfileData.registrationID) {
+  if (userID === connProfileData.registrationID) {
     return handlerHelpers.createResponse(400, {
       message: "Cannot connect with yourself"
     });
@@ -54,13 +52,16 @@ export const handleConnection = async (userID, connID, timestamp) => {
     });
   }
 
-  let connData = await db.getOne(
-    connProfileData.registrationID,
-    PROFILES_TABLE,
-    {
-      "eventID;year": CURRENT_EVENT
-    }
-  );
+  let profileID =
+    connProfileData.type === PARTNER
+      ? connProfileData.email
+      : connProfileData.registrationID;
+
+  let connData = await db.getOne(profileID, PROFILES_TABLE, {
+    "eventID;year": CURRENT_EVENT
+  });
+
+  console.log(connData);
 
   if (await isDuplicateRequest(userData.id, connID)) {
     return handlerHelpers.createResponse(400, {
@@ -69,10 +70,9 @@ export const handleConnection = async (userID, connID, timestamp) => {
   }
 
   let swap = false;
-  if (userData.type == EXEC && connData.type == EXEC) {
+  if (userData.type === EXEC && connData.type === EXEC) {
     connData.type = EXEC + EXEC;
-  } else if (userData.type == EXEC) {
-    // in the case that the first user is an EXEC, switch required for switch-case logic to catch
+  } else if (userData.type === EXEC) {
     userData = [connData, (connData = userData)][0];
     userID = [connID, (connID = userID)][0];
     swap = true;
@@ -85,46 +85,39 @@ export const handleConnection = async (userID, connID, timestamp) => {
     createdAt: timestamp,
     ...(connData.linkedin
       ? {
-        linkedinURL: connData.linkedin
-      }
-      : {
-      }),
+          linkedinURL: connData.linkedin
+        }
+      : {}),
     ...(connData.fname
       ? {
-        fname: connData.fname
-      }
-      : {
-      }),
+          fname: connData.fname
+        }
+      : {}),
     ...(connData.lname
       ? {
-        lname: connData.lname
-      }
-      : {
-      }),
+          lname: connData.lname
+        }
+      : {}),
     ...(connData.major
       ? {
-        major: connData.major
-      }
-      : {
-      }),
+          major: connData.major
+        }
+      : {}),
     ...(connData.year
       ? {
-        year: connData.year
-      }
-      : {
-      }),
+          year: connData.year
+        }
+      : {}),
     ...(connData.company
       ? {
-        company: connData.company
-      }
-      : {
-      }),
-    ...(connData.title
+          company: connData.company
+        }
+      : {}),
+    ...(connData.role
       ? {
-        title: connData.title
-      }
-      : {
-      })
+          title: connData.role
+        }
+      : {})
   };
 
   const connPut = {
@@ -134,73 +127,62 @@ export const handleConnection = async (userID, connID, timestamp) => {
     createdAt: timestamp,
     ...(userData.linkedin
       ? {
-        linkedinURL: userData.linkedin
-      }
-      : {
-      }),
+          linkedinURL: userData.linkedin
+        }
+      : {}),
     ...(userData.fname
       ? {
-        fname: userData.fname
-      }
-      : {
-      }),
+          fname: userData.fname
+        }
+      : {}),
     ...(userData.lname
       ? {
-        lname: userData.lname
-      }
-      : {
-      }),
+          lname: userData.lname
+        }
+      : {}),
     ...(userData.major
       ? {
-        major: userData.major
-      }
-      : {
-      }),
+          major: userData.major
+        }
+      : {}),
     ...(userData.year
       ? {
-        year: userData.year
-      }
-      : {
-      }),
+          year: userData.year
+        }
+      : {}),
     ...(userData.company
       ? {
-        company: userData.company
-      }
-      : {
-      }),
-    ...(userData.title
+          company: userData.company
+        }
+      : {}),
+    ...(userData.role
       ? {
-        title: userData.title
-      }
-      : {
-      })
+          role: userData.role
+        }
+      : {})
   };
 
   const promises = [];
   switch (connData.type) {
-  case EXEC + EXEC:
-    promises.push(
-      incrementQuestProgress(connData.registrationID, QUEST_CONNECT_EXEC_H)
-    );
+    case EXEC + EXEC:
+      promises.push(incrementQuestProgress(profileID, QUEST_CONNECT_EXEC_H));
 
-  case EXEC:
-    promises.push(
-      incrementQuestProgress(userData.registrationID, QUEST_CONNECT_EXEC_H)
-    );
+    case EXEC:
+      promises.push(incrementQuestProgress(userData.id, QUEST_CONNECT_EXEC_H));
 
     // case ATTENDEE:
-  default:
-    promises.push(
-      db.put(connPut, CONNECTIONS_TABLE, true),
-      db.put(userPut, CONNECTIONS_TABLE, true),
-      incrementQuestProgress(userData.id, QUEST_CONNECT_ONE),
-      incrementQuestProgress(userData.id, QUEST_CONNECT_FOUR),
-      incrementQuestProgress(userData.id, QUEST_CONNECT_TEN_H),
-      incrementQuestProgress(connData.id, QUEST_CONNECT_ONE),
-      incrementQuestProgress(connData.id, QUEST_CONNECT_FOUR),
-      incrementQuestProgress(connData.id, QUEST_CONNECT_TEN_H)
-    );
-    break;
+    default:
+      promises.push(
+        db.put(connPut, CONNECTIONS_TABLE, true),
+        db.put(userPut, CONNECTIONS_TABLE, true),
+        incrementQuestProgress(userData.id, QUEST_CONNECT_ONE),
+        incrementQuestProgress(userData.id, QUEST_CONNECT_FOUR),
+        incrementQuestProgress(userData.id, QUEST_CONNECT_TEN_H),
+        incrementQuestProgress(connData.id, QUEST_CONNECT_ONE),
+        incrementQuestProgress(connData.id, QUEST_CONNECT_FOUR),
+        incrementQuestProgress(connData.id, QUEST_CONNECT_TEN_H)
+      );
+      break;
   }
 
   try {
@@ -213,7 +195,14 @@ export const handleConnection = async (userID, connID, timestamp) => {
   }
 
   return handlerHelpers.createResponse(200, {
-    message: `Connection created with ${swap ? userData.fname : connData.fname}`
+    message: `Connection created with ${
+      swap ? userData.fname : connData.fname
+    }`,
+    name: `${
+      swap
+        ? userData.fname + " " + userData.lname
+        : connData.fname + " " + connData.lname
+    }`
   });
 };
 
@@ -240,17 +229,25 @@ const isDuplicateRequest = async (userID, connID) => {
 };
 
 export const handleWorkshop = async (profileID, workshopID, timestamp) => {
-  if (workshopID != WORKSHOP_TWO) {
-    return handlerHelpers.createResponse(200, {
-      message: `Checked into ${workshopID}`
-    });
-  }
-
   try {
-    await incrementQuestProgress(profileID, QUEST_WORKSHOP);
-    return handlerHelpers.createResponse(200, {
-      message: "Checked into workshop 2"
-    });
+    switch (workshopID) {
+      case WORKSHOP_TWO:
+        await incrementQuestProgress(profileID, QUEST_WORKSHOP);
+        return handlerHelpers.createResponse(200, {
+          message: "Completed Workshop Two Challenge"
+        });
+
+      case WORKSHOP_TWO_PARTICIPANT:
+        await incrementQuestProgress(profileID, QUEST_WORKSHOP_TWO_PARTICIPANT);
+        return handlerHelpers.createResponse(200, {
+          message: "Braved 1-on-1 onstage interview"
+        });
+
+      default:
+        return handlerHelpers.createResponse(200, {
+          message: "Unknown workshop"
+        });
+    }
   } catch (error) {
     console.error(error);
     throw error;
@@ -282,7 +279,7 @@ export const handleBooth = async (profileID, boothID, timestamp) => {
     }
   }
 
-  if (boothID == PHOTOBOOTH) {
+  if (boothID === PHOTOBOOTH) {
     try {
       await incrementQuestProgress(profileID, QUEST_PHOTOBOOTH);
       return handlerHelpers.createResponse(200, {

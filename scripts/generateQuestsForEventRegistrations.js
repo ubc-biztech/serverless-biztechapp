@@ -27,6 +27,8 @@ const QUEST_CONNECT_TEN_H = "QUEST_CONNECT_TEN_H";
 const QUEST_BT_BOOTH_H = "QUEST_BT_BOOTH_H";
 const QUEST_CONNECT_EXEC_H = "QUEST_CONNECT_EXEC_H";
 
+const QUEST_WORKSHOP_TWO_PARTICIPANT = "QUEST_WORKSHOP_TWO_PARTICIPANT";
+
 const QUESTS = [
   [QUEST_CONNECT_ONE, 1, "First Impressionist", "Make your first connection!"],
   [QUEST_CONNECT_FOUR, 4, "Networking Pro", "Make 4 connections."],
@@ -41,8 +43,19 @@ const QUESTS = [
   [QUEST_SNACK, 1, "Snack Seeker", "Grab some food."],
   [QUEST_BOOTH_STARTUP, 1, "Startup Explorer", "Visit a startup booth."],
   [QUEST_BIGTECH, 1, "Big League Scout", "Visit a big company booth."],
-  [QUEST_WORKSHOP, 1, "Workshop Wonder", "Attend Workshop 2."],
-  [QUEST_PHOTOBOOTH, 1, "Memory Maker", "Take a photo to reminisce."]
+  [QUEST_PHOTOBOOTH, 1, "Memory Maker", "Take a photo to reminisce."],
+  [
+    QUEST_WORKSHOP,
+    1,
+    "Interview Ace",
+    "Complete our challenge at workshop two."
+  ],
+  [
+    QUEST_WORKSHOP_TWO_PARTICIPANT,
+    1,
+    "Bold Brilliance",
+    "Brave a on-stage 1-on-1 interview with a recruiter."
+  ]
 ];
 
 const create = async (item, table) => {
