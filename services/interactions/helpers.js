@@ -1,9 +1,10 @@
-import { QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import { PutCommand, QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import {
   QRS_TABLE,
   CONNECTIONS_TABLE,
   QUESTS_TABLE,
-  PROFILES_TABLE
+  PROFILES_TABLE,
+  NFC_SCANS_TABLE
 } from "../../constants/tables";
 import db from "../../lib/db";
 import handlerHelpers from "../../lib/handlerHelpers";
@@ -255,6 +256,25 @@ export const handleWorkshop = async (profileID, workshopID, timestamp) => {
 };
 
 export const handleBooth = async (profileID, boothID, timestamp) => {
+  let putItem = {
+    id: profileID,
+    name: boothID,
+    createdAt: timestamp
+  };
+
+  const params = {
+    Item: putItem,
+    TableName: NFC_SCANS_TABLE + (process.env.ENVIRONMENT || "")
+  };
+
+  try {
+    const command = new PutCommand(params);
+    await docClient.send(command);
+  } catch (err) {
+    const errorResponse = this.dynamoErrorResponse(err);
+    console.error(errorResponse);
+  }
+
   if (BIGTECH.includes(boothID)) {
     try {
       await incrementQuestProgress(profileID, QUEST_BIGTECH);
