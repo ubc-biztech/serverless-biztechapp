@@ -304,6 +304,11 @@ export async function sendEmail(
 
 export const post = async (event, ctx, callback) => {
   try {
+    console.log("REJECTING REGISTRATIONS - BP 2025");
+    return helpers.createResponse(404, {
+      message: `Registration period is over`
+    });
+
     const data = JSON.parse(event.body);
     // Normalize email to lowercase
     data.email = data.email.toLowerCase();
