@@ -1,4 +1,6 @@
-import { PutCommand, QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  PutCommand, QueryCommand, UpdateCommand
+} from "@aws-sdk/lib-dynamodb";
 import {
   QRS_TABLE,
   CONNECTIONS_TABLE,
@@ -35,7 +37,9 @@ export const handleConnection = async (userID, connID, timestamp) => {
     "eventID;year": CURRENT_EVENT
   });
 
-  let { data: connProfileData } = await db.getOne(connID, QRS_TABLE, {
+  let {
+    data: connProfileData
+  } = await db.getOne(connID, QRS_TABLE, {
     "eventID;year": CURRENT_EVENT
   });
 
@@ -86,39 +90,46 @@ export const handleConnection = async (userID, connID, timestamp) => {
     createdAt: timestamp,
     ...(connData.linkedin
       ? {
-          linkedinURL: connData.linkedin
-        }
-      : {}),
+        linkedinURL: connData.linkedin
+      }
+      : {
+      }),
     ...(connData.fname
       ? {
-          fname: connData.fname
-        }
-      : {}),
+        fname: connData.fname
+      }
+      : {
+      }),
     ...(connData.lname
       ? {
-          lname: connData.lname
-        }
-      : {}),
+        lname: connData.lname
+      }
+      : {
+      }),
     ...(connData.major
       ? {
-          major: connData.major
-        }
-      : {}),
+        major: connData.major
+      }
+      : {
+      }),
     ...(connData.year
       ? {
-          year: connData.year
-        }
-      : {}),
+        year: connData.year
+      }
+      : {
+      }),
     ...(connData.company
       ? {
-          company: connData.company
-        }
-      : {}),
+        company: connData.company
+      }
+      : {
+      }),
     ...(connData.role
       ? {
-          title: connData.role
-        }
-      : {})
+        title: connData.role
+      }
+      : {
+      })
   };
 
   const connPut = {
@@ -128,62 +139,69 @@ export const handleConnection = async (userID, connID, timestamp) => {
     createdAt: timestamp,
     ...(userData.linkedin
       ? {
-          linkedinURL: userData.linkedin
-        }
-      : {}),
+        linkedinURL: userData.linkedin
+      }
+      : {
+      }),
     ...(userData.fname
       ? {
-          fname: userData.fname
-        }
-      : {}),
+        fname: userData.fname
+      }
+      : {
+      }),
     ...(userData.lname
       ? {
-          lname: userData.lname
-        }
-      : {}),
+        lname: userData.lname
+      }
+      : {
+      }),
     ...(userData.major
       ? {
-          major: userData.major
-        }
-      : {}),
+        major: userData.major
+      }
+      : {
+      }),
     ...(userData.year
       ? {
-          year: userData.year
-        }
-      : {}),
+        year: userData.year
+      }
+      : {
+      }),
     ...(userData.company
       ? {
-          company: userData.company
-        }
-      : {}),
+        company: userData.company
+      }
+      : {
+      }),
     ...(userData.role
       ? {
-          role: userData.role
-        }
-      : {})
+        role: userData.role
+      }
+      : {
+      })
   };
 
   const promises = [];
   switch (connData.type) {
-    case EXEC + EXEC:
-      promises.push(incrementQuestProgress(profileID, QUEST_CONNECT_EXEC_H));
+  case EXEC + EXEC:
+    promises.push(incrementQuestProgress(profileID, QUEST_CONNECT_EXEC_H));
 
-    case EXEC:
-      promises.push(incrementQuestProgress(userData.id, QUEST_CONNECT_EXEC_H));
+  case EXEC:
+    promises.push(incrementQuestProgress(userData.id, QUEST_CONNECT_EXEC_H));
 
     // case ATTENDEE:
-    default:
-      promises.push(
-        db.put(connPut, CONNECTIONS_TABLE, true),
-        db.put(userPut, CONNECTIONS_TABLE, true),
-        incrementQuestProgress(userData.id, QUEST_CONNECT_ONE),
-        incrementQuestProgress(userData.id, QUEST_CONNECT_FOUR),
-        incrementQuestProgress(userData.id, QUEST_CONNECT_TEN_H),
-        incrementQuestProgress(connData.id, QUEST_CONNECT_ONE),
-        incrementQuestProgress(connData.id, QUEST_CONNECT_FOUR),
-        incrementQuestProgress(connData.id, QUEST_CONNECT_TEN_H)
-      );
-      break;
+  default:
+    promises.push(
+      db.put(connPut, CONNECTIONS_TABLE, true),
+      db.put(userPut, CONNECTIONS_TABLE, true),
+      incrementQuestProgress(userData.id, QUEST_CONNECT_ONE),
+      incrementQuestProgress(userData.id, QUEST_CONNECT_FOUR),
+      incrementQuestProgress(userData.id, QUEST_CONNECT_TEN_H),
+      incrementQuestProgress(connData.id, QUEST_CONNECT_ONE),
+      incrementQuestProgress(connData.id, QUEST_CONNECT_FOUR),
+      incrementQuestProgress(connData.id, QUEST_CONNECT_TEN_H)
+    );
+    break;
   }
 
   try {
@@ -232,22 +250,22 @@ const isDuplicateRequest = async (userID, connID) => {
 export const handleWorkshop = async (profileID, workshopID, timestamp) => {
   try {
     switch (workshopID) {
-      case WORKSHOP_TWO:
-        await incrementQuestProgress(profileID, QUEST_WORKSHOP);
-        return handlerHelpers.createResponse(200, {
-          message: "Completed Workshop Two Challenge"
-        });
+    case WORKSHOP_TWO:
+      await incrementQuestProgress(profileID, QUEST_WORKSHOP);
+      return handlerHelpers.createResponse(200, {
+        message: "Completed Workshop Two Challenge"
+      });
 
-      case WORKSHOP_TWO_PARTICIPANT:
-        await incrementQuestProgress(profileID, QUEST_WORKSHOP_TWO_PARTICIPANT);
-        return handlerHelpers.createResponse(200, {
-          message: "Braved 1-on-1 onstage interview"
-        });
+    case WORKSHOP_TWO_PARTICIPANT:
+      await incrementQuestProgress(profileID, QUEST_WORKSHOP_TWO_PARTICIPANT);
+      return handlerHelpers.createResponse(200, {
+        message: "Braved 1-on-1 onstage interview"
+      });
 
-      default:
-        return handlerHelpers.createResponse(200, {
-          message: "Unknown workshop"
-        });
+    default:
+      return handlerHelpers.createResponse(200, {
+        message: "Unknown workshop"
+      });
     }
   } catch (error) {
     console.error(error);
