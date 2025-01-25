@@ -85,7 +85,7 @@ export const handleConnection = async (userID, connID, timestamp) => {
 
   const userPut = {
     userID: userData.id,
-    obfuscatedID: connID,
+    obfuscatedID: connData.profileID,
     "eventID;year": CURRENT_EVENT,
     createdAt: timestamp,
     ...(connData.linkedin
@@ -134,7 +134,7 @@ export const handleConnection = async (userID, connID, timestamp) => {
 
   const connPut = {
     userID: connData.id,
-    obfuscatedID: userID,
+    obfuscatedID: userData.profileID,
     "eventID;year": CURRENT_EVENT,
     createdAt: timestamp,
     ...(userData.linkedin
