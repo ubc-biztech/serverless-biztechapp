@@ -518,3 +518,61 @@ export const linkPartnerToCompany = async (event, ctx, callback) => {
     return null;
   }
 };
+
+export const fixPartnerNFCTypes = async (event, ctx, callback) => {
+  try {
+    // Scan profiles table for all Partner type profiles
+    const partnerProfiles = await db.scan(PROFILES_TABLE, {
+      FilterExpression: "#type = :type",
+      ExpressionAttributeNames: {
+        "#type": "type"
+      },
+      ExpressionAttributeValues: {
+        ":type": "Partner"
+      }
+    });
+
+    if (!partnerProfiles || partnerProfiles.length === 0) {
+      const response = helpers.createResponse(200, {
+        message: "No partner profiles found to update"
+      });
+      callback(null, response);
+      return response;
+    }
+
+    // Update each corresponding QR entry
+    const updatePromises = partnerProfiles.map(async (profile) => {
+      const params = {
+        Key: {
+          id: profile.profileID,
+          "eventID;year": profile["eventID;year"]
+        },
+        TableName: QRS_TABLE + (process.env.ENVIRONMENT || ""),
+        UpdateExpression: "set #type = :type",
+        ExpressionAttributeNames: {
+          "#type": "type"
+        },
+        ExpressionAttributeValues: {
+          ":type": "NFC_PARTNER"
+        },
+        ReturnValues: "UPDATED_NEW"
+      };
+
+      return db.updateDBCustom(params);
+    });
+
+    await Promise.all(updatePromises);
+
+    const response = helpers.createResponse(200, {
+      message: `Updated ${partnerProfiles.length} partner QR entries to NFC_PARTNER type`,
+      updatedProfiles: partnerProfiles.map(p => ({ profileID: p.profileID, eventIDYear: p["eventID;year"] }))
+    });
+
+    callback(null, response);
+    return response;
+  } catch (err) {
+    console.error(err);
+    callback(null, err);
+    return null;
+  }
+};
