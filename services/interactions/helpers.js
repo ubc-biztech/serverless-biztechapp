@@ -57,16 +57,15 @@ export const handleConnection = async (userID, connID, timestamp) => {
     });
   }
 
-  let profileID =
-    connProfileData.type === PARTNER
-      ? connProfileData.email
-      : connProfileData.registrationID;
+  let profileID = connProfileData.email
+    ? connProfileData.email
+    : connProfileData.registrationID;
+
+  console.log(profileID);
 
   let connData = await db.getOne(profileID, PROFILES_TABLE, {
     "eventID;year": CURRENT_EVENT
   });
-
-  console.log(connData);
 
   if (await isDuplicateRequest(userData.id, connID)) {
     return handlerHelpers.createResponse(400, {
