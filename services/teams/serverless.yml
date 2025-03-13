@@ -153,8 +153,8 @@ functions:
           path: team/judge/feedback
           method: post
           cors: true
-  updateJudgeSubmissions:
-    handler: handler.updateJudgeSubmissions
+  updateJudgeSubmission:
+    handler: handler.updateJudgeSubmission
     events:
       - http:
           path: team/judge/feedback

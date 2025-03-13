@@ -185,7 +185,9 @@ export const get = async (event, ctx, callback) => {
     !event.pathParameters.year
   )
     throw helpers.missingPathParamResponse("event", "year");
-  const { eventID, year } = event.pathParameters;
+  const {
+    eventID, year
+  } = event.pathParameters;
 
   try {
     const eventIDYear = eventID + ";" + year;
@@ -458,7 +460,7 @@ export const checkQRScanned = async (event, ctx, callback) => {
       .then((bool) => {
         const response_success = helpers.createResponse(200, {
           message:
-            'Attached boolean for check if QR code has been scanned for that user\'s team; refer to "response" field.',
+            "Attached boolean for check if QR code has been scanned for that user's team; refer to \"response\" field.",
           response: bool
         });
 
@@ -481,15 +483,218 @@ export const checkQRScanned = async (event, ctx, callback) => {
   }
 };
 
-export const getAllFeedback = async (event, ctx, callback) => {};
+export const getAllFeedback = async (event, ctx, callback) => { };
 
-export const getTeamFeedback = async (event, ctx, callback) => {};
+export const getTeamFeedback = async (event, ctx, callback) => { };
 
-export const getJudgeSubmissions = async (event, ctx, callback) => {};
+export const getJudgeSubmissions = async (event, ctx, callback) => { };
 
-export const createJudgeSubmission = async (event, ctx, callback) => {};
+export const createJudgeSubmissions = async (event, ctx, callback) => {
+  try {
+    const data = JSON.parse(event.body);
 
-export const updateJudgeSubmission = async (event, ctx, callback) => {};
+    try {
+      helpers.checkPayloadProps(data, {
+        teamID: {
+          required: true
+        },
+        round: {
+          required: true
+        },
+        judgeID: {
+          required: true
+        }
+      });
+    } catch (error) {
+      callback(null, error);
+      return null;
+    }
+
+    if (!data.teamID || !data.round || !data.judgeID) {
+      throw helpers.createResponse(400, {
+        message: "Missing required fields: teamID;round or judgeID"
+      });
+    }
+
+    const teamID_round = data.teamID + ";" + data.round;
+
+    let existingFeedback;
+    try {
+      existingFeedback = await db.getOne(data.judgeID, FEEDBACK_TABLE, {
+        "teamID;round": teamID_round
+      });
+      if (existingFeedback) {
+        throw helpers.createResponse(409, {
+          message: "Feedback already exists for this judge and team round",
+          existingFeedback
+        });
+      }
+    } catch (error) {
+      if (error.statusCode !== 404) {
+        throw helpers.createResponse(500, {
+          message: "Error checking existing feedback",
+          error: error.message
+        });
+      }
+    }
+
+    const newFeedback = {
+      "teamID;round": teamID_round,
+      id: data.judgeID,
+      scores: data.scores || {
+      },
+      feedback: data.feedback || {
+      },
+      createdAt: new Date().toISOString()
+    };
+
+    try {
+      await db.put(newFeedback, FEEDBACK_TABLE, true);
+    } catch (error) {
+      throw helpers.createResponse(500, {
+        message: "Error creating feedback",
+        error: error.message
+      });
+    }
+
+    const response = helpers.createResponse(200, {
+      message: "Feedback created successfully",
+      newFeedback
+    });
+
+    callback(null, response);
+  } catch (err) {
+    console.error("Internal error:", err);
+    throw helpers.createResponse(500, {
+      message: "Internal server error"
+    });
+  }
+
+  return null;
+};
+
+export const updateJudgeSubmission = async (event, ctx, callback) => {
+  try {
+    const data = JSON.parse(event.body);
+
+    try {
+      helpers.checkPayloadProps(data, {
+        teamID: {
+          required: true
+        },
+        round: {
+          required: true
+        },
+        judgeID: {
+          required: true
+        }
+      });
+    } catch (error) {
+      callback(null, error);
+      return null;
+    }
+
+    if (!data.teamID || !data.round || !data.judgeID) {
+      throw helpers.createResponse(400, {
+        message: "Missing required fields: teamID;round or judgeID"
+      });
+    }
+
+    const teamID_round = data.teamID + ";" + data.round;
+
+    let existingFeedback;
+    try {
+      existingFeedback = await db.getOne(data.judgeID, FEEDBACK_TABLE, {
+        "teamID;round": teamID_round
+      });
+    } catch (error) {
+      throw helpers.createResponse(500, {
+        message: "Error retrieving existing feedback",
+        error: error.message
+      });
+    }
+
+    const updatedFeedback = {
+      "teamID;round": teamID_round,
+      id: data.judgeID,
+      scores: data.scores || (existingFeedback ? existingFeedback.scores : {
+      }),
+      feedback: data.feedback || (existingFeedback ? existingFeedback.feedback : ""),
+      updatedAt: new Date().toISOString()
+    };
+
+    try {
+      await db.put(updatedFeedback, FEEDBACK_TABLE, false);
+    } catch (error) {
+      throw helpers.createResponse(500, {
+        message: "Error updating feedback",
+        error: error.message
+      });
+    }
+
+    const response = helpers.createResponse(200, {
+      message: "Feedback updated successfully",
+      updatedFeedback
+    });
+
+    callback(null, response);
+  } catch (err) {
+    console.error("Internal error:", err);
+    throw helpers.createResponse(500, {
+      message: "Internal server error"
+    });
+  }
+
+  return null;
+};
+
+export const updateCurrentTeamForJudge = async (event, ctx, callback) => {
+  try {
+    const data = JSON.parse(event.body);
+
+    try {
+      helpers.checkPayloadProps(data, {
+        judgeIDs: {
+          required: true
+        }
+      });
+    } catch (error) {
+      callback(null, error);
+      return null;
+    }
+
+    const {
+      judgeIDs
+    } = data;
+    const teamID = event.pathParameters.teamID;
+
+    if (!teamID) {
+      throw helpers.createResponse(400, {
+        message: "Missing teamID parameter in path"
+      });
+    }
+
+    let response;
+
+    try {
+      response = await teamHelpers.updateJudgeTeam(judgeIDs, teamID);
+    } catch (error) {
+      throw helpers.createResponse(500, {
+        message: "Error updating judge entries",
+        error: error.message
+      });
+    }
+
+    callback(null, response);
+  } catch (err) {
+    console.error(err);
+    throw helpers.createResponse(500, {
+      message: "Internal server error"
+    });
+  }
+
+  return null;
+};
 
 // export const addTransaction = async (event, ctx, callback) => {
 
