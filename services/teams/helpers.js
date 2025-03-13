@@ -1,9 +1,5 @@
-import {
-  v4 as uuidv4
-} from "uuid";
-import {
-  USER_REGISTRATIONS_TABLE, TEAMS_TABLE
-} from "../../constants/tables";
+import { v4 as uuidv4 } from "uuid";
+import { USER_REGISTRATIONS_TABLE, TEAMS_TABLE } from "../../constants/tables";
 import helpers from "../../lib/handlerHelpers.js";
 import db from "../../lib/db.js";
 
@@ -86,6 +82,12 @@ export default {
               403
             );
           }
+
+          if (!res.teamID) {
+            throw helpers.inputError(
+              "User " + memberID + " is already registered to a team"
+            );
+          }
         });
     }
 
@@ -100,8 +102,7 @@ export default {
       transactions: [],
       inventory: [],
       submission: "",
-      metadata: {
-      }
+      metadata: {}
     };
 
     try {
@@ -114,7 +115,7 @@ export default {
 
         // Get the user's registration
         const res = await db.getOne(memberID, USER_REGISTRATIONS_TABLE, {
-          "eventID;year": eventID_year,
+          "eventID;year": eventID_year
         });
 
         if (res.teamID) {
@@ -130,7 +131,8 @@ export default {
 
         res.teamID = params.id;
 
-        let conditionExpression = "attribute_exists(id) and attribute_exists(#eventIDYear)";
+        let conditionExpression =
+          "attribute_exists(id) and attribute_exists(#eventIDYear)";
         const {
           updateExpression,
           expressionAttributeValues,
