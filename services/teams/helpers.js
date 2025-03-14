@@ -84,7 +84,7 @@ export default {
           }
 
           // disallow users from adding people already in other teams to their own team
-          if (res.teamID && res.teamID.length > 0) {
+          if (res.teamID?.length > 0) {
             throw helpers.inputError(
               "User " + memberID + " is already registered to a team"
             );
