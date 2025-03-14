@@ -26,7 +26,6 @@ provider:
   iamRoleStatements:
     - Effect: Allow
       Action:
-        - dynamodb:Scan
         - dynamodb:GetItem
         - dynamodb:PutItem
         - dynamodb:UpdateItem
@@ -35,7 +34,6 @@ provider:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechTeams${self:provider.environment.ENVIRONMENT}"
     - Effect: Allow
       Action:
-        - dynamodb:Scan
         - dynamodb:GetItem
         - dynamodb:PutItem
         - dynamodb:UpdateItem
@@ -53,7 +51,6 @@ provider:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechEvents${self:provider.environment.ENVIRONMENT}"
     - Effect: Allow
       Action:
-        - dynamodb:Scan
         - dynamodb:GetItem
         - dynamodb:PutItem
         - dynamodb:UpdateItem
@@ -62,7 +59,6 @@ provider:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/bizJudge${self:provider.environment.ENVIRONMENT}"
     - Effect: Allow
       Action:
-        - dynamodb:Scan
         - dynamodb:GetItem
         - dynamodb:PutItem
         - dynamodb:UpdateItem
@@ -120,14 +116,14 @@ functions:
           method: post
           cors: true
   getAllFeedback:
-    handler: handler.getAllFeedback
+    handler: handler.getAllScore
     events:
       - http:
-          path: team/feedback-all
+          path: team/score-all
           method: get
           cors: true
   getTeamFeedback:
-    handler: handler.getTeamFeedback
+    handler: handler.getTeamFeedbackScore
     events:
       - http:
           path: team/feedback/{teamID}

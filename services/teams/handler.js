@@ -483,9 +483,9 @@ export const checkQRScanned = async (event, ctx, callback) => {
   }
 };
 
-export const getAllFeedback = async (event, ctx, callback) => { };
+export const getAllScore = async (event, ctx, callback) => { };
 
-export const getTeamFeedback = async (event, ctx, callback) => { };
+export const getTeamFeedbackScore = async (event, ctx, callback) => { };
 
 export const getJudgeSubmissions = async (event, ctx, callback) => { };
 
