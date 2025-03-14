@@ -59,7 +59,7 @@ provider:
         - dynamodb:UpdateItem
         - dynamodb:Query
       Resource:
-        - "arn:aws:dynamodb:us-west-2:432714361962:table/bizJudges${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/bizJudge${self:provider.environment.ENVIRONMENT}"
     - Effect: Allow
       Action:
         - dynamodb:Scan
