@@ -341,3 +341,7 @@ export default {
     );
   }
 };
+
+export const scoreObjectAverage = (score) => {
+  return (score.metric1 + score.metric2 + score.metric3 + score.metric4) / 4;
+};

@@ -1,4 +1,4 @@
-import teamHelpers from "./helpers";
+import teamHelpers, { scoreObjectAverage } from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import {
   TEAMS_TABLE,
@@ -6,6 +6,9 @@ import {
   FEEDBACK_TABLE
 } from "../../constants/tables";
 import db from "../../lib/db.js";
+import { QueryCommand } from "@aws-sdk/client-dynamodb";
+import { createResponse } from "../stickers/helpers.js";
+import handlerHelpers from "../../lib/handlerHelpers";
 
 /*
   Team Table Schema from DynamoDB:
@@ -483,11 +486,82 @@ export const checkQRScanned = async (event, ctx, callback) => {
   }
 };
 
-export const getAllFeedback = async (event, ctx, callback) => { };
+export const getNormalizedRoundScores = async (event, ctx, callback) => {
+  let scores;
 
-export const getTeamFeedback = async (event, ctx, callback) => { };
+  try {
+    scores = await db.scan(FEEDBACK_TABLE);
+  } catch (error) {
+    console.error(error);
+    return db.createResponse(500, { message: "Failed to fetch all feedback" });
+  }
 
-export const getJudgeSubmissions = async (event, ctx, callback) => { };
+  // step 1: format data by team, track min and max (used for normalization)
+
+  console.log(scores);
+
+  let scoreByTeam = {};
+
+  for (let i = 0; i < scores.length; i++) {
+    const currScore = scoreObjectAverage(scores[i].scores);
+
+    if (!scoreByTeam[scores[i]["teamID;round"]]) {
+      scoreByTeam[scores[i]["teamID;round"]] = {
+        id: scores[i]["teamID;round"],
+        scores: [currScore],
+        max: currScore,
+        min: currScore,
+        originalScores: [scores[i].scores]
+      };
+      continue;
+    }
+
+    scoreByTeam[scores[i]["teamID;round"]].scores.push(currScore);
+    scoreByTeam[scores[i]["teamID;round"]].originalScores.push(
+      scores[i].scores
+    );
+
+    if (scoreByTeam[scores[i]["teamID;round"]].max < currScore) {
+      scoreByTeam[scores[i]["teamID;round"]].max = currScore;
+    } else if (scoreByTeam[scores[i]["teamID;round"]].min > currScore)
+      scoreByTeam[scores[i]["teamID;round"]].min = currScore;
+  }
+
+  let res = [];
+
+  Object.keys(scoreByTeam).forEach((idx) => {
+    let sum = scoreByTeam[idx].scores.reduce((a, b) => a + b, 0);
+    let avg = sum / scoreByTeam[idx].scores.length;
+
+    let normalizedScores = scoreByTeam[idx].scores.map((val) => {
+      return (
+        (val - scoreByTeam[idx].min) /
+        (scoreByTeam[idx].max - scoreByTeam[idx].min)
+      );
+    });
+
+    let nSum = normalizedScores.reduce((a, b) => a + b, 0);
+    let nAvg = nSum / normalizedScores.length;
+
+    res.push({
+      id: scoreByTeam[idx].id,
+      normalizedScore: nAvg * 100,
+      averageScore: avg,
+      originalScores: scoreByTeam[idx].scores,
+      adjustedScores: normalizedScores
+    });
+  });
+
+  res = res.sort((a, b) => {
+    return b.normalizedScore - a.normalizedScore;
+  });
+
+  return handlerHelpers.createResponse(200, { data: res });
+};
+
+export const getTeamFeedback = async (event, ctx, callback) => {};
+
+export const getJudgeSubmissions = async (event, ctx, callback) => {};
 
 export const createJudgeSubmissions = async (event, ctx, callback) => {
   try {
