@@ -485,92 +485,126 @@ export const checkQRScanned = async (event, ctx, callback) => {
 
 export const getAllScore = async (event, ctx, callback) => { };
 
-export const getTeamFeedbackScore = async (event, ctx, callback) => { };
-
-export const getJudgeSubmissions = async (event, ctx, callback) => { };
-
-export const createJudgeSubmissions = async (event, ctx, callback) => {
+export const getJudgeSubmissions = async (event, ctx, callback) => {
   try {
-    const data = JSON.parse(event.body);
+    const { eventID, year } = event.queryStringParameters || {}; 
 
-    try {
-      helpers.checkPayloadProps(data, {
-        teamID: {
-          required: true
-        },
-        round: {
-          required: true
-        },
-        judgeID: {
-          required: true
-        }
-      });
-    } catch (error) {
-      callback(null, error);
-      return null;
+    if (!eventID || !year) {
+      return callback(null, helpers.createResponse(400, { 
+        message: "eventID and year are required in query parameters" 
+      }));
     }
 
-    if (!data.teamID || !data.round || !data.judgeID) {
-      throw helpers.createResponse(400, {
-        message: "Missing required fields: teamID;round or judgeID"
-      });
+    const eventIDYear = `${eventID};${year}`;
+    const { judgeID } = event.pathParameters;
+
+    if (!judgeID) {
+      throw helpers.createResponse(400, { message: "judgeID is required" });
     }
 
-    const teamID_round = data.teamID + ";" + data.round;
-
-    let existingFeedback;
-    try {
-      existingFeedback = await db.getOne(data.judgeID, FEEDBACK_TABLE, {
-        "teamID;round": teamID_round
-      });
-      if (existingFeedback) {
-        throw helpers.createResponse(409, {
-          message: "Feedback already exists for this judge and team round",
-          existingFeedback
-        });
+    const feedbackEntries = await db.query(
+      FEEDBACK_TABLE,
+      null,
+      {
+        expression: "#id = :judgeID",
+        expressionValues: { ":judgeID": judgeID },
+        expressionNames: { "#id": "id" }
       }
-    } catch (error) {
-      if (error.statusCode !== 404) {
-        throw helpers.createResponse(500, {
-          message: "Error checking existing feedback",
-          error: error.message
+    );
+
+    if (!feedbackEntries || feedbackEntries.length === 0) {
+      throw helpers.createResponse(404, { message: "No feedback found for this judge" });
+    }
+
+    // Group scores by round
+    const scoresPerRound = await Promise.all(
+      feedbackEntries.map(async (item) => {
+        const [team, round] = item["teamID;round"].split(";");
+
+        const teamDetails = await db.getOne(team, TEAMS_TABLE, {
+          "eventID;year": eventIDYear
         });
+        const teamName = (teamDetails && teamDetails.teamName) ? teamDetails.teamName : "Team not found"; // Default if name is missing
+
+        return {
+          round,
+          judgeID: item.id,
+          scores: item.scores,
+          teamName,
+          feedback: item.feedback,
+          createdAt: item.createdAt
+        };
+      })
+    );
+
+    // Group the results by round
+    const groupedScores = scoresPerRound.reduce((acc, item) => {
+      if (!acc[item.round]) {
+        acc[item.round] = [];
       }
-    }
-
-    const newFeedback = {
-      "teamID;round": teamID_round,
-      id: data.judgeID,
-      scores: data.scores || {
-      },
-      feedback: data.feedback || {
-      },
-      createdAt: new Date().toISOString()
-    };
-
-    try {
-      await db.put(newFeedback, FEEDBACK_TABLE, true);
-    } catch (error) {
-      throw helpers.createResponse(500, {
-        message: "Error creating feedback",
-        error: error.message
-      });
-    }
+      acc[item.round].push(item);
+      return acc;
+    }, {});
 
     const response = helpers.createResponse(200, {
-      message: "Feedback created successfully",
-      newFeedback
+      message: "Scores retrieved successfully",
+      scores: groupedScores
     });
 
     callback(null, response);
   } catch (err) {
     console.error("Internal error:", err);
-    throw helpers.createResponse(500, {
-      message: "Internal server error"
-    });
+    throw helpers.createResponse(500, { message: "Internal server error" });
   }
+};
 
-  return null;
+export const getTeamFeedbackScore = async (event, ctx, callback) => {
+  try {
+    const { teamID } = event.pathParameters;
+    if (!teamID) {
+      throw helpers.createResponse(400, { message: "teamID is required" });
+    }
+
+    const feedbackEntries = await db.query(
+      FEEDBACK_TABLE,
+      "team-round-query",
+      {
+        expression: "#team = :teamID",
+        expressionValues: { ":teamID": teamID },
+        expressionNames: { "#team": "teamID" }
+      }
+    );
+
+    if (!feedbackEntries || feedbackEntries.length === 0) {
+      throw helpers.createResponse(404, { message: "No feedback found for this team" });
+    }
+
+    // Group scores by round
+    const scoresPerRound = feedbackEntries.reduce((acc, item) => {
+      const [team, round] = item["teamID;round"].split(";");
+      if (!acc[round]) {
+        acc[round] = [];
+      }
+      acc[round].push({
+        judgeID: item.id,
+        scores: item.scores,
+        feedback: item.feedback,
+        createdAt: item.createdAt
+      });
+
+      return acc;
+    }, {});
+
+    const response = helpers.createResponse(200, {
+      message: "Scores retrieved successfully",
+      scores: scoresPerRound
+    });
+
+    callback(null, response);
+  } catch (err) {
+    console.error("Internal error:", err);
+    throw helpers.createResponse(500, { message: "Internal server error" });
+  }
 };
 
 export const updateJudgeSubmission = async (event, ctx, callback) => {
