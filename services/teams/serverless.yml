@@ -57,6 +57,7 @@ provider:
         - dynamodb:Query
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/bizJudge${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/bizJudge${self:provider.environment.ENVIRONMENT}/index/*"
     - Effect: Allow
       Action:
         - dynamodb:ScanItem
@@ -66,6 +67,7 @@ provider:
         - dynamodb:Query
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/bizFeedback${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/bizFeedback${self:provider.environment.ENVIRONMENT}/index/*"
 
 custom: ${file(../../serverless.common.yml):custom}
 
