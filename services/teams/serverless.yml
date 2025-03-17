@@ -60,7 +60,7 @@ provider:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/bizJudge${self:provider.environment.ENVIRONMENT}/index/*"
     - Effect: Allow
       Action:
-        - dynamodb:ScanItem
+        - dynamodb:Scan
         - dynamodb:GetItem
         - dynamodb:PutItem
         - dynamodb:UpdateItem
