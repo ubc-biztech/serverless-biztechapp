@@ -766,9 +766,16 @@ export const getJudgeCurrentTeam = async (event, ctx, callback) => {
       });
     }
 
+    console.log(judge)
+    console.log(judge["eventID;year"])
+    const teamDetails = await db.getOne(judge.currentTeam, TEAMS_TABLE, {
+      "eventID;year": judge["eventID;year"]
+    });
+
     const response = helpers.createResponse(200, {
       message: "Current team retrieved successfully",
-      currentTeam: judge.currentTeam || null,
+      currentTeamID: judge.currentTeam, 
+      currentTeamName: teamDetails.teamName|| null,
     });
 
     callback(null, response);
