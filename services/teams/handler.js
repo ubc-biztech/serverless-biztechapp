@@ -13,7 +13,7 @@ import db from "../../lib/db.js";
 import { QueryCommand } from "@aws-sdk/client-dynamodb";
 import { createResponse } from "../stickers/helpers.js";
 import handlerHelpers from "../../lib/handlerHelpers";
-import { WEIGHTS } from "./constants..js";
+import { WEIGHTS } from "./constants.js";
 
 /*
   Team Table Schema from DynamoDB:
@@ -586,7 +586,7 @@ export const createJudgeSubmissions = async (event, ctx, callback) => {
         year: {
           required: true,
           type: "number"
-        },
+        }
       });
     } catch (error) {
       callback(null, error);
