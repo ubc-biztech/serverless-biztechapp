@@ -1,4 +1,6 @@
-import { v4 as uuidv4 } from "uuid";
+import {
+  v4 as uuidv4
+} from "uuid";
 import {
   USER_REGISTRATIONS_TABLE,
   TEAMS_TABLE,
@@ -393,7 +395,13 @@ export const normalizeScores = (scores, scoreAvg) => {
 // UNSAFE
 // doesn't account for length == 0 cause it will only be called on arrays > 0 length
 export const scoreObjectAverage = (originalScores) => {
-  let scoreAvg = { metric1: 0, metric2: 0, metric3: 0, metric4: 0, metric5: 0 };
+  let scoreAvg = {
+    metric1: 0,
+    metric2: 0,
+    metric3: 0,
+    metric4: 0,
+    metric5: 0
+  };
 
   for (let i = 0; i < originalScores.length; i++) {
     scoreAvg.metric1 += originalScores[i].metric1;
@@ -420,7 +428,13 @@ export const scoreObjectAverageWeighted = (
   w4,
   w5
 ) => {
-  let scoreAvg = { metric1: 0, metric2: 0, metric3: 0, metric4: 0, metric5: 0 };
+  let scoreAvg = {
+    metric1: 0,
+    metric2: 0,
+    metric3: 0,
+    metric4: 0,
+    metric5: 0
+  };
 
   for (let i = 0; i < originalScores.length; i++) {
     scoreAvg.metric1 += originalScores[i].metric1;
