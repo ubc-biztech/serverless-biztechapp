@@ -766,8 +766,6 @@ export const getJudgeCurrentTeam = async (event, ctx, callback) => {
       });
     }
 
-    console.log(judge)
-    console.log(judge["eventID;year"])
     const teamDetails = await db.getOne(judge.currentTeam, TEAMS_TABLE, {
       "eventID;year": judge["eventID;year"]
     });
