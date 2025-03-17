@@ -1,5 +1,9 @@
 import { v4 as uuidv4 } from "uuid";
-import { USER_REGISTRATIONS_TABLE, TEAMS_TABLE } from "../../constants/tables";
+import {
+  USER_REGISTRATIONS_TABLE,
+  TEAMS_TABLE,
+  JUDGING_TABLE
+} from "../../constants/tables";
 import helpers from "../../lib/handlerHelpers.js";
 import db from "../../lib/db.js";
 
@@ -48,6 +52,60 @@ export default {
         }
       });
   },
+  async updateJudgeTeam(judgeIDs, teamID) {
+    if (!Array.isArray(judgeIDs) || judgeIDs.length === 0) {
+      throw new Error("judgeIDs must be a non-empty array");
+    }
+
+    try {
+      const updateResults = await Promise.all(
+        judgeIDs.map(async (judgeID) => {
+          try {
+            if (!judgeID) {
+              console.error("Error: judgeID is missing!");
+              return null;
+            }
+
+            const judge = await db.getOne(judgeID, JUDGING_TABLE);
+            if (!judge) {
+              console.log(`Judge ${judgeID} not found, skipping.`);
+              return {
+                judgeID,
+                status: "not found"
+              };
+            }
+            judge.currentTeam = teamID;
+            await db.put(judge, JUDGING_TABLE, false);
+
+            console.log(`Judge ${judgeID} updated to team ${teamID}`);
+            return {
+              judgeID,
+              status: "updated"
+            };
+          } catch (err) {
+            console.error(`Failed to update judge ${judgeID}:`, err);
+            return {
+              judgeID,
+              status: "failed",
+              error: err.message
+            };
+          }
+        })
+      );
+
+      console.log("All judges updated successfully:", updateResults);
+
+      return helpers.createResponse(200, {
+        message: "Judges updated successfully",
+        updatedJudges: judgeIDs,
+        newTeamID: teamID
+      });
+    } catch (error) {
+      console.error("Database update error:", error);
+      throw new Error("Database update failed");
+    }
+  },
+
   async _putTeam(team, createNew) {
     /*
         Puts a team in the Teams table according to the Table Schema.
@@ -76,9 +134,9 @@ export default {
           if (!res) {
             throw helpers.inputError(
               "User " +
-                memberID +
-                " is not registered for event " +
-                eventID_year,
+              memberID +
+              " is not registered for event " +
+              eventID_year,
               403
             );
           }
@@ -289,4 +347,102 @@ export default {
       }
     );
   }
+};
+
+export const normalizeScores = (scores, scoreAvg) => {
+  let normalizedScores = [];
+  const count = scores.length;
+
+  let s1N = 0;
+  let s2N = 0;
+  let s3N = 0;
+  let s4N = 0;
+  let s5N = 0;
+
+  for (let i = 0; i < scores.length; i++) {
+    s1N += (scores[i].metric1 - scoreAvg.metric1) ** 2;
+    s2N += (scores[i].metric2 - scoreAvg.metric2) ** 2;
+    s3N += (scores[i].metric3 - scoreAvg.metric3) ** 2;
+    s4N += (scores[i].metric4 - scoreAvg.metric4) ** 2;
+    s5N += (scores[i].metric5 - scoreAvg.metric5) ** 2;
+  }
+
+  s1N /= count;
+  s2N /= count;
+  s3N /= count;
+  s4N /= count;
+  s5N /= count;
+
+  for (let i = 0; i < scores.length; i++) {
+    let scoreObj = {
+      team: scores[i].team,
+      judge: scores[i].judge,
+      metric1: s1N !== 0 ? (scores[i].metric1 - scoreAvg.metric1) / s1N : 0,
+      metric2: s2N !== 0 ? (scores[i].metric2 - scoreAvg.metric2) / s2N : 0,
+      metric3: s3N !== 0 ? (scores[i].metric3 - scoreAvg.metric3) / s3N : 0,
+      metric4: s4N !== 0 ? (scores[i].metric4 - scoreAvg.metric4) / s4N : 0,
+      metric5: s5N !== 0 ? (scores[i].metric5 - scoreAvg.metric5) / s5N : 0
+    };
+
+    normalizedScores.push(scoreObj);
+  }
+
+  return normalizedScores;
+};
+
+// UNSAFE
+// doesn't account for length == 0 cause it will only be called on arrays > 0 length
+export const scoreObjectAverage = (originalScores) => {
+  let scoreAvg = { metric1: 0, metric2: 0, metric3: 0, metric4: 0, metric5: 0 };
+
+  for (let i = 0; i < originalScores.length; i++) {
+    scoreAvg.metric1 += originalScores[i].metric1;
+    scoreAvg.metric2 += originalScores[i].metric2;
+    scoreAvg.metric3 += originalScores[i].metric3;
+    scoreAvg.metric4 += originalScores[i].metric4;
+    scoreAvg.metric5 += originalScores[i].metric5;
+  }
+
+  scoreAvg.metric1 = scoreAvg.metric1 / originalScores.length;
+  scoreAvg.metric2 = scoreAvg.metric2 / originalScores.length;
+  scoreAvg.metric3 = scoreAvg.metric3 / originalScores.length;
+  scoreAvg.metric4 = scoreAvg.metric4 / originalScores.length;
+  scoreAvg.metric5 = scoreAvg.metric5 / originalScores.length;
+
+  return scoreAvg;
+};
+
+export const scoreObjectAverageWeighted = (
+  originalScores,
+  w1,
+  w2,
+  w3,
+  w4,
+  w5
+) => {
+  let scoreAvg = { metric1: 0, metric2: 0, metric3: 0, metric4: 0, metric5: 0 };
+
+  for (let i = 0; i < originalScores.length; i++) {
+    scoreAvg.metric1 += originalScores[i].metric1;
+    scoreAvg.metric2 += originalScores[i].metric2;
+    scoreAvg.metric3 += originalScores[i].metric3;
+    scoreAvg.metric4 += originalScores[i].metric4;
+    scoreAvg.metric5 += originalScores[i].metric5;
+  }
+
+  scoreAvg.metric1 = scoreAvg.metric1 / originalScores.length;
+  scoreAvg.metric2 = scoreAvg.metric2 / originalScores.length;
+  scoreAvg.metric3 = scoreAvg.metric3 / originalScores.length;
+  scoreAvg.metric4 = scoreAvg.metric4 / originalScores.length;
+  scoreAvg.metric5 = scoreAvg.metric5 / originalScores.length;
+
+  console.log(scoreAvg);
+
+  return (
+    scoreAvg.metric1 * w1 +
+    scoreAvg.metric2 * w2 +
+    scoreAvg.metric3 * w3 +
+    scoreAvg.metric4 * w4 +
+    scoreAvg.metric5 * w5
+  );
 };

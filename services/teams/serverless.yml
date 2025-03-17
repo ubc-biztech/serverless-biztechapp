@@ -26,7 +26,6 @@ provider:
   iamRoleStatements:
     - Effect: Allow
       Action:
-        - dynamodb:Scan
         - dynamodb:GetItem
         - dynamodb:PutItem
         - dynamodb:UpdateItem
@@ -35,7 +34,6 @@ provider:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechTeams${self:provider.environment.ENVIRONMENT}"
     - Effect: Allow
       Action:
-        - dynamodb:Scan
         - dynamodb:GetItem
         - dynamodb:PutItem
         - dynamodb:UpdateItem
@@ -51,6 +49,22 @@ provider:
         - dynamodb:GetItem
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechEvents${self:provider.environment.ENVIRONMENT}"
+    - Effect: Allow
+      Action:
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:Query
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/bizJudge${self:provider.environment.ENVIRONMENT}"
+    - Effect: Allow
+      Action:
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:Query
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/bizFeedback${self:provider.environment.ENVIRONMENT}"
 
 custom: ${file(../../serverless.common.yml):custom}
 
@@ -100,4 +114,56 @@ functions:
       - http:
           path: team/changeTeamName
           method: post
+          cors: true
+  getNormalizedRoundScores:
+    handler: handler.getNormalizedRoundScores
+    events:
+      - http:
+          path: team/scores-all
+          method: get
+          cors: true
+  getTeamFeedback:
+    handler: handler.getTeamFeedbackScore
+    events:
+      - http:
+          path: team/feedback/{teamID}
+          request:
+            path:
+              teamID: true
+          method: get
+          cors: true
+  getJudgeSubmissions:
+    handler: handler.getJudgeSubmissions
+    events:
+      - http:
+          path: team/judge/feedback/{judgeID}
+          request:
+            path:
+              judgeID: true
+          method: get
+          cors: true
+  createJudgeSubmissions:
+    handler: handler.createJudgeSubmissions
+    events:
+      - http:
+          path: team/judge/feedback
+          method: post
+          cors: true
+  updateJudgeSubmission:
+    handler: handler.updateJudgeSubmission
+    events:
+      - http:
+          path: team/judge/feedback
+          method: put
+          cors: true
+
+  updateCurrentTeamForJudge:
+    handler: handler.updateCurrentTeamForJudge
+    events:
+      - http:
+          path: team/judge/currentTeam/{teamID}
+          request:
+            path:
+              teamID: true
+          method: put
           cors: true
