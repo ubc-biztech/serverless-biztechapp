@@ -532,8 +532,6 @@ export const getNormalizedRoundScores = async (event, ctx, callback) => {
     scoresNormalized = [...scoresNormalized, ...normalized];
   });
 
-  console.log(scoresNormalized);
-
   // step 3: calculate weighted average of each team and sort
   let scoresByTeamID = {};
   for (let i = 0; i < scoresNormalized.length; i++) {
@@ -561,8 +559,6 @@ export const getNormalizedRoundScores = async (event, ctx, callback) => {
       judges: scoresByTeamID[idx].map((s) => s.judge)
     });
   });
-
-  console.log(res);
 
   res.sort((a, b) => b.zScoreWeighted - a.zScoreWeighted);
 
