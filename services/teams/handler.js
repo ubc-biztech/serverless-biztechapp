@@ -1,4 +1,8 @@
-import teamHelpers, { scoreObjectAverage } from "./helpers";
+import teamHelpers, {
+  scoreObjectAverage,
+  normalizeScores,
+  scoreObjectAverageWeighted
+} from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import {
   TEAMS_TABLE,
@@ -9,6 +13,7 @@ import db from "../../lib/db.js";
 import { QueryCommand } from "@aws-sdk/client-dynamodb";
 import { createResponse } from "../stickers/helpers.js";
 import handlerHelpers from "../../lib/handlerHelpers";
+import { WEIGHTS } from "./constants..js";
 
 /*
   Team Table Schema from DynamoDB:
@@ -498,65 +503,70 @@ export const getNormalizedRoundScores = async (event, ctx, callback) => {
 
   // step 1: format data by team, track min and max (used for normalization)
 
-  console.log(scores);
-
-  let scoreByTeam = {};
-
+  let scoreByJudgeID = {};
   for (let i = 0; i < scores.length; i++) {
-    const currScore = scoreObjectAverage(scores[i].scores);
-
-    if (!scoreByTeam[scores[i]["teamID;round"]]) {
-      scoreByTeam[scores[i]["teamID;round"]] = {
-        id: scores[i]["teamID;round"],
-        scores: [currScore],
-        max: currScore,
-        min: currScore,
-        originalScores: [scores[i].scores]
-      };
+    if (!scoreByJudgeID[scores[i].id]) {
+      scoreByJudgeID[scores[i].id] = [
+        {
+          team: scores[i]["teamID;round"],
+          judge: scores[i].id,
+          ...scores[i].scores
+        }
+      ];
       continue;
     }
 
-    scoreByTeam[scores[i]["teamID;round"]].scores.push(currScore);
-    scoreByTeam[scores[i]["teamID;round"]].originalScores.push(
-      scores[i].scores
-    );
-
-    if (scoreByTeam[scores[i]["teamID;round"]].max < currScore) {
-      scoreByTeam[scores[i]["teamID;round"]].max = currScore;
-    } else if (scoreByTeam[scores[i]["teamID;round"]].min > currScore)
-      scoreByTeam[scores[i]["teamID;round"]].min = currScore;
+    scoreByJudgeID[scores[i].id].push({
+      team: scores[i]["teamID;round"],
+      judge: scores[i].id,
+      ...scores[i].scores
+    });
   }
 
-  let res = [];
+  // step 2: normalize for each metric, by each judge
+  let scoresNormalized = [];
+  Object.keys(scoreByJudgeID).forEach((idx) => {
+    let avg = scoreObjectAverage(scoreByJudgeID[idx]);
+    let normalized = normalizeScores(scoreByJudgeID[idx], avg);
 
-  Object.keys(scoreByTeam).forEach((idx) => {
-    let sum = scoreByTeam[idx].scores.reduce((a, b) => a + b, 0);
-    let avg = sum / scoreByTeam[idx].scores.length;
+    scoresNormalized = [...scoresNormalized, ...normalized];
+  });
 
-    let normalizedScores = scoreByTeam[idx].scores.map((val) => {
-      return (
-        (val - scoreByTeam[idx].min) /
-        (scoreByTeam[idx].max - scoreByTeam[idx].min)
-      );
-    });
+  console.log(scoresNormalized);
 
-    let nSum = normalizedScores.reduce((a, b) => a + b, 0);
-    let nAvg = nSum / normalizedScores.length;
+  // step 3: calculate weighted average of each team and sort
+  let scoresByTeamID = {};
+  for (let i = 0; i < scoresNormalized.length; i++) {
+    if (!scoresByTeamID[scoresNormalized[i].team]) {
+      scoresByTeamID[scoresNormalized[i].team] = [scoresNormalized[i]];
+      continue;
+    }
 
+    scoresByTeamID[scoresNormalized[i].team].push(scoresNormalized[i]);
+  }
+
+  const res = [];
+
+  Object.keys(scoresByTeamID).forEach((idx) => {
     res.push({
-      id: scoreByTeam[idx].id,
-      normalizedScore: nAvg * 100,
-      averageScore: avg,
-      originalScores: scoreByTeam[idx].scores,
-      adjustedScores: normalizedScores
+      team: scoresByTeamID[idx][0].team,
+      zScoreWeighted: scoreObjectAverageWeighted(
+        scoresByTeamID[idx],
+        WEIGHTS.ORIGINAL,
+        WEIGHTS.TECHNICAL,
+        WEIGHTS.UX,
+        WEIGHTS.PROBLEMSOLVING,
+        WEIGHTS.PROBLEMSOLVING
+      ),
+      judges: scoresByTeamID[idx].map((s) => s.judge)
     });
   });
 
-  res = res.sort((a, b) => {
-    return b.normalizedScore - a.normalizedScore;
-  });
+  console.log(res);
 
-  return handlerHelpers.createResponse(200, { data: res });
+  res.sort((a, b) => b.zScoreWeighted - a.zScoreWeighted);
+
+  return handlerHelpers.createResponse(200, res);
 };
 
 export const getTeamFeedback = async (event, ctx, callback) => {};
