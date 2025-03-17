@@ -140,6 +140,13 @@ export default {
               403
             );
           }
+
+          // disallow users from adding people already in other teams to their own team
+          if (res.teamID?.length > 0) {
+            throw helpers.inputError(
+              "User " + memberID + " is already registered to a team"
+            );
+          }
         });
     }
 
@@ -154,8 +161,7 @@ export default {
       transactions: [],
       inventory: [],
       submission: "",
-      metadata: {
-      }
+      metadata: {}
     };
 
     try {
@@ -168,7 +174,7 @@ export default {
 
         // Get the user's registration
         const res = await db.getOne(memberID, USER_REGISTRATIONS_TABLE, {
-          "eventID;year": eventID_year,
+          "eventID;year": eventID_year
         });
 
         if (res.teamID) {
@@ -184,7 +190,8 @@ export default {
 
         res.teamID = params.id;
 
-        let conditionExpression = "attribute_exists(id) and attribute_exists(#eventIDYear)";
+        let conditionExpression =
+          "attribute_exists(id) and attribute_exists(#eventIDYear)";
         const {
           updateExpression,
           expressionAttributeValues,
