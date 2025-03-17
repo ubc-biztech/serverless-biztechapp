@@ -135,6 +135,16 @@ functions:
               teamID: true
           method: get
           cors: true
+  getJudgeCurrentTeam:
+    handler: handler.getJudgeCurrentTeam
+    events:
+      - http:
+          path: team/judge/currentTeam/{judgeID}
+          request:
+            path:
+              judgeID: true
+          method: get
+          cors: true
   getJudgeSubmissions:
     handler: handler.getJudgeSubmissions
     events:
