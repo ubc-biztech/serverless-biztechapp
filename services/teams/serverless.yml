@@ -139,7 +139,7 @@ functions:
     handler: handler.getJudgeCurrentTeam
     events:
       - http:
-          path: team/judge/team/{judgeID}
+          path: team/judge/currentTeam/{judgeID}
           request:
             path:
               judgeID: true
