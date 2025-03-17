@@ -499,7 +499,7 @@ export const getNormalizedRoundScores = async (event, ctx, callback) => {
     return db.createResponse(500, { message: "Failed to fetch all feedback" });
   }
 
-  // step 1: format data by team, track min and max (used for normalization)
+  // step 1: format data by team
 
   let scoreByJudgeID = {};
   for (let i = 0; i < scores.length; i++) {
@@ -530,7 +530,7 @@ export const getNormalizedRoundScores = async (event, ctx, callback) => {
     scoresNormalized = [...scoresNormalized, ...normalized];
   });
 
-  // step 3: calculate weighted average of each team and sort
+  // step 3: rehash by team
   let scoresByTeamID = {};
   for (let i = 0; i < scoresNormalized.length; i++) {
     if (!scoresByTeamID[scoresNormalized[i].team]) {
@@ -543,6 +543,7 @@ export const getNormalizedRoundScores = async (event, ctx, callback) => {
 
   const res = [];
 
+  // step 4: calculate weighted average
   Object.keys(scoresByTeamID).forEach((idx) => {
     res.push({
       team: scoresByTeamID[idx][0].team,
