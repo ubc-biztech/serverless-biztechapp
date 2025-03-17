@@ -718,7 +718,7 @@ export const getJudgeSubmissions = async (event, ctx, callback) => {
           judgeID: item.id,
           scores: item.scores,
           feedback: item.feedback,
-          teamname: item.teamName,
+          teamName: item.teamName,
           createdAt: item.createdAt
         };
       })
