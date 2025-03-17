@@ -115,11 +115,11 @@ functions:
           path: team/changeTeamName
           method: post
           cors: true
-  getAllFeedback:
-    handler: handler.getAllScore
+  getNormalizedRoundScores:
+    handler: handler.getNormalizedRoundScores
     events:
       - http:
-          path: team/score-all
+          path: team/scores-all
           method: get
           cors: true
   getTeamFeedback:
