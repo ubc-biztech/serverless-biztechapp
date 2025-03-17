@@ -748,6 +748,36 @@ export const getJudgeSubmissions = async (event, ctx, callback) => {
   }
 };
 
+export const getJudgeCurrentTeam = async (event, ctx, callback) => {
+  try {
+    const { judgeID } = event.pathParameters;
+
+    if (!judgeID) {
+      throw helpers.createResponse(400, {
+        message: "judgeID is required"
+      });
+    }
+
+    const judge = await db.getOne(judgeID, JUDGING_TABLE);
+
+    if (!judge) {
+      throw helpers.createResponse(404, {
+        message: "Judge not found"
+      });
+    }
+
+    const response = helpers.createResponse(200, {
+      message: "Current team retrieved successfully",
+      currentTeam: judge.currentTeam || null,
+    });
+
+    callback(null, response);
+  } catch (err) {
+    console.error("Internal error:", err);
+    callback(null, helpers.createResponse(500, { message: "Internal server error" }));
+  }
+};
+
 export const getTeamFeedbackScore = async (event, ctx, callback) => {
   try {
     const {
