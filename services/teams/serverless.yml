@@ -139,7 +139,7 @@ functions:
     handler: handler.getJudgeCurrentTeam
     events:
       - http:
-          path: team/judge/currentTeam/{judgeID}
+          path: team/judge/currentTeamID/{judgeID}
           request:
             path:
               judgeID: true
@@ -169,7 +169,6 @@ functions:
           path: team/judge/feedback
           method: put
           cors: true
-
   updateCurrentTeamForJudge:
     handler: handler.updateCurrentTeamForJudge
     events:
