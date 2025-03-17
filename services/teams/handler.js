@@ -1,4 +1,8 @@
-import teamHelpers from "./helpers";
+import teamHelpers, {
+  scoreObjectAverage,
+  normalizeScores,
+  scoreObjectAverageWeighted
+} from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import {
   TEAMS_TABLE,
@@ -6,6 +10,10 @@ import {
   FEEDBACK_TABLE
 } from "../../constants/tables";
 import db from "../../lib/db.js";
+import { QueryCommand } from "@aws-sdk/client-dynamodb";
+import { createResponse } from "../stickers/helpers.js";
+import handlerHelpers from "../../lib/handlerHelpers";
+import { WEIGHTS } from "./constants..js";
 
 /*
   Team Table Schema from DynamoDB:
@@ -185,9 +193,7 @@ export const get = async (event, ctx, callback) => {
     !event.pathParameters.year
   )
     throw helpers.missingPathParamResponse("event", "year");
-  const {
-    eventID, year
-  } = event.pathParameters;
+  const { eventID, year } = event.pathParameters;
 
   try {
     const eventIDYear = eventID + ";" + year;
@@ -460,7 +466,7 @@ export const checkQRScanned = async (event, ctx, callback) => {
       .then((bool) => {
         const response_success = helpers.createResponse(200, {
           message:
-            "Attached boolean for check if QR code has been scanned for that user's team; refer to \"response\" field.",
+            'Attached boolean for check if QR code has been scanned for that user\'s team; refer to "response" field.',
           response: bool
         });
 
@@ -483,11 +489,80 @@ export const checkQRScanned = async (event, ctx, callback) => {
   }
 };
 
-export const getAllScore = async (event, ctx, callback) => { };
+export const getNormalizedRoundScores = async (event, ctx, callback) => {
+  let scores;
 
-export const getTeamFeedbackScore = async (event, ctx, callback) => { };
+  try {
+    scores = await db.scan(FEEDBACK_TABLE);
+  } catch (error) {
+    console.error(error);
+    return db.createResponse(500, { message: "Failed to fetch all feedback" });
+  }
 
-export const getJudgeSubmissions = async (event, ctx, callback) => { };
+  // step 1: format data by team
+
+  let scoreByJudgeID = {};
+  for (let i = 0; i < scores.length; i++) {
+    if (!scoreByJudgeID[scores[i].id]) {
+      scoreByJudgeID[scores[i].id] = [
+        {
+          team: scores[i]["teamID;round"],
+          judge: scores[i].id,
+          ...scores[i].scores
+        }
+      ];
+      continue;
+    }
+
+    scoreByJudgeID[scores[i].id].push({
+      team: scores[i]["teamID;round"],
+      judge: scores[i].id,
+      ...scores[i].scores
+    });
+  }
+
+  // step 2: normalize for each metric, by each judge
+  let scoresNormalized = [];
+  Object.keys(scoreByJudgeID).forEach((idx) => {
+    let avg = scoreObjectAverage(scoreByJudgeID[idx]);
+    let normalized = normalizeScores(scoreByJudgeID[idx], avg);
+
+    scoresNormalized = [...scoresNormalized, ...normalized];
+  });
+
+  // step 3: rehash by team
+  let scoresByTeamID = {};
+  for (let i = 0; i < scoresNormalized.length; i++) {
+    if (!scoresByTeamID[scoresNormalized[i].team]) {
+      scoresByTeamID[scoresNormalized[i].team] = [scoresNormalized[i]];
+      continue;
+    }
+
+    scoresByTeamID[scoresNormalized[i].team].push(scoresNormalized[i]);
+  }
+
+  const res = [];
+
+  // step 4: calculate weighted average
+  Object.keys(scoresByTeamID).forEach((idx) => {
+    res.push({
+      team: scoresByTeamID[idx][0].team,
+      zScoreWeighted: scoreObjectAverageWeighted(
+        scoresByTeamID[idx],
+        WEIGHTS.ORIGINAL,
+        WEIGHTS.TECHNICAL,
+        WEIGHTS.UX,
+        WEIGHTS.PROBLEMSOLVING,
+        WEIGHTS.PROBLEMSOLVING
+      ),
+      judges: scoresByTeamID[idx].map((s) => s.judge)
+    });
+  });
+
+  res.sort((a, b) => b.zScoreWeighted - a.zScoreWeighted);
+
+  return handlerHelpers.createResponse(200, res);
+};
 
 export const createJudgeSubmissions = async (event, ctx, callback) => {
   try {
@@ -503,12 +578,22 @@ export const createJudgeSubmissions = async (event, ctx, callback) => {
         },
         judgeID: {
           required: true
-        }
+        },
+        eventID: {
+          required: true,
+          type: "string"
+        },
+        year: {
+          required: true,
+          type: "number"
+        },
       });
     } catch (error) {
       callback(null, error);
       return null;
     }
+
+    const eventIDYear = `${data.eventID};${data.year}`;
 
     if (!data.teamID || !data.round || !data.judgeID) {
       throw helpers.createResponse(400, {
@@ -538,9 +623,16 @@ export const createJudgeSubmissions = async (event, ctx, callback) => {
       }
     }
 
+    const teamDetails = await db.getOne(data.teamID, TEAMS_TABLE, {
+      "eventID;year": eventIDYear
+    });
+    const teamName = (teamDetails && teamDetails.teamName) ? teamDetails.teamName : "Team not found"; // Default if name is missing
+
     const newFeedback = {
       "teamID;round": teamID_round,
       id: data.judgeID,
+      teamName: teamName,
+      teamID: data.teamID,
       scores: data.scores || {
       },
       feedback: data.feedback || {
@@ -571,6 +663,133 @@ export const createJudgeSubmissions = async (event, ctx, callback) => {
   }
 
   return null;
+};
+
+export const getJudgeSubmissions = async (event, ctx, callback) => {
+  try {
+    const {
+      judgeID
+    } = event.pathParameters;
+
+    if (!judgeID) {
+      throw helpers.createResponse(400, {
+        message: "judgeID is required"
+      });
+    }
+
+    const feedbackEntries = await db.query(FEEDBACK_TABLE, null, {
+      expression: "#id = :judgeID",
+      expressionValues: { ":judgeID": judgeID },
+      expressionNames: { "#id": "id" }
+    });
+
+    if (!feedbackEntries || feedbackEntries.length === 0) {
+      throw helpers.createResponse(404, {
+        message: "No feedback found for this judge"
+      });
+    }
+
+    // Group scores by round
+    const scoresPerRound = await Promise.all(
+      feedbackEntries.map(async (item) => {
+        const [team, round] = item["teamID;round"].split(";");
+
+        return {
+          round,
+          judgeID: item.id,
+          scores: item.scores,
+          feedback: item.feedback,
+          teamname: item.teamName,
+          createdAt: item.createdAt
+        };
+      })
+    );
+
+    // Group the results by round
+    const groupedScores = scoresPerRound.reduce((acc, item) => {
+      if (!acc[item.round]) {
+        acc[item.round] = [];
+      }
+      acc[item.round].push(item);
+      return acc;
+    }, {
+    });
+
+    const response = helpers.createResponse(200, {
+      message: "Scores retrieved successfully",
+      scores: groupedScores
+    });
+
+    callback(null, response);
+  } catch (err) {
+    console.error("Internal error:", err);
+    throw helpers.createResponse(500, {
+      message: "Internal server error"
+    });
+  }
+};
+
+export const getTeamFeedbackScore = async (event, ctx, callback) => {
+  try {
+    const {
+      teamID
+    } = event.pathParameters;
+    if (!teamID) {
+      throw helpers.createResponse(400, {
+        message: "teamID is required"
+      });
+    }
+
+    const feedbackEntries = await db.query(
+      FEEDBACK_TABLE,
+      "team-round-query",
+      {
+        expression: "#team = :teamID",
+        expressionValues: {
+          ":teamID": teamID
+        },
+        expressionNames: {
+          "#team": "teamID"
+        }
+      }
+    );
+
+    if (!feedbackEntries || feedbackEntries.length === 0) {
+      throw helpers.createResponse(404, {
+        message: "No feedback found for this team"
+      });
+    }
+
+    // Group scores by round
+    const scoresPerRound = feedbackEntries.reduce((acc, item) => {
+      const [team, round] = item["teamID;round"].split(";");
+      if (!acc[round]) {
+        acc[round] = [];
+      }
+      acc[round].push({
+        judgeID: item.id,
+        scores: item.scores,
+        feedback: item.feedback,
+        createdAt: item.createdAt,
+        teamName: item.teamName
+      });
+
+      return acc;
+    }, {
+    });
+
+    const response = helpers.createResponse(200, {
+      message: "Scores retrieved successfully",
+      scores: scoresPerRound
+    });
+
+    callback(null, response);
+  } catch (err) {
+    console.error("Internal error:", err);
+    throw helpers.createResponse(500, {
+      message: "Internal server error"
+    });
+  }
 };
 
 export const updateJudgeSubmission = async (event, ctx, callback) => {
@@ -617,9 +836,9 @@ export const updateJudgeSubmission = async (event, ctx, callback) => {
     const updatedFeedback = {
       "teamID;round": teamID_round,
       id: data.judgeID,
-      scores: data.scores || (existingFeedback ? existingFeedback.scores : {
-      }),
-      feedback: data.feedback || (existingFeedback ? existingFeedback.feedback : ""),
+      scores: data.scores || (existingFeedback ? existingFeedback.scores : {}),
+      feedback:
+        data.feedback || (existingFeedback ? existingFeedback.feedback : ""),
       updatedAt: new Date().toISOString()
     };
 
@@ -663,9 +882,7 @@ export const updateCurrentTeamForJudge = async (event, ctx, callback) => {
       return null;
     }
 
-    const {
-      judgeIDs
-    } = data;
+    const { judgeIDs } = data;
     const teamID = event.pathParameters.teamID;
 
     if (!teamID) {
