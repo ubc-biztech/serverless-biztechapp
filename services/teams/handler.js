@@ -565,7 +565,7 @@ export const getNormalizedRoundScores = async (event, ctx, callback) => {
         WEIGHTS.TECHNICAL,
         WEIGHTS.UX,
         WEIGHTS.PROBLEMSOLVING,
-        WEIGHTS.PROBLEMSOLVING
+        WEIGHTS.PRESENTATION
       ),
       judges: scoresByTeamID[idx].map((s) => s.judge)
     });
