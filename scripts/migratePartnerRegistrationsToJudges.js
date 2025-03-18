@@ -1,9 +1,5 @@
-import {
-  PutCommand, QueryCommand
-} from "@aws-sdk/lib-dynamodb";
-import {
-  DynamoDBClient
-} from "@aws-sdk/client-dynamodb";
+import { PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 
 const awsConfig = {
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -44,26 +40,30 @@ const migrateParterRegistrationsToJudges = async (eventID, year) => {
     const isJudge = user.isPartner;
 
     // Migrate if user is a judge
-    if (isJudge) {
-      count++;
-      try {
-        // * using PUT which overwrites judge data if it exists
-        await client.send(
-          new PutCommand({
-            TableName: "bizJudge" + (process.env.ENVIRONMENT || ""),
-            Item: {
-              user
-            }
-          })
-        );
-        judges++;
-        console.log("Migrated judge: " + email);
-      } catch (err) {
-        console.error(
-          `Error migrating ${email}: \n ${JSON.stringify(err, null, 2)}`
-        );
-        throw err;
-      }
+    if (!isJudge) {
+      continue;
+    }
+
+    count++;
+
+    try {
+      // * using PUT which overwrites judge data if it exists
+      await client.send(
+        new PutCommand({
+          TableName: "bizJudge" + (process.env.ENVIRONMENT || ""),
+          Item: {
+            id: user.id,
+            "eventID;year": user["eventID;year"]
+          }
+        })
+      );
+      judges++;
+      console.log("Migrated judge: " + email);
+    } catch (err) {
+      console.error(
+        `Error migrating ${email}: \n ${JSON.stringify(err, null, 2)}`
+      );
+      throw err;
     }
   }
   console.log(`Created ${count} Judge Entries for ${judges} Users`);
