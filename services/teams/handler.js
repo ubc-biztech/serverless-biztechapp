@@ -565,7 +565,7 @@ export const getNormalizedRoundScores = async (event, ctx, callback) => {
         WEIGHTS.TECHNICAL,
         WEIGHTS.UX,
         WEIGHTS.PROBLEMSOLVING,
-        WEIGHTS.PROBLEMSOLVING
+        WEIGHTS.PRESENTATION
       ),
       judges: scoresByTeamID[idx].map((s) => s.judge)
     });
@@ -766,9 +766,14 @@ export const getJudgeCurrentTeam = async (event, ctx, callback) => {
       });
     }
 
+    const teamDetails = await db.getOne(judge.currentTeam, TEAMS_TABLE, {
+      "eventID;year": judge["eventID;year"]
+    });
+
     const response = helpers.createResponse(200, {
       message: "Current team retrieved successfully",
-      currentTeam: judge.currentTeam || null,
+      currentTeamID: judge.currentTeam, 
+      currentTeamName: teamDetails.teamName|| null,
     });
 
     callback(null, response);
