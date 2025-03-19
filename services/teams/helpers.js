@@ -1,6 +1,4 @@
-import {
-  v4 as uuidv4
-} from "uuid";
+import { v4 as uuidv4 } from "uuid";
 import {
   USER_REGISTRATIONS_TABLE,
   TEAMS_TABLE,
@@ -136,9 +134,9 @@ export default {
           if (!res) {
             throw helpers.inputError(
               "User " +
-              memberID +
-              " is not registered for event " +
-              eventID_year,
+                memberID +
+                " is not registered for event " +
+                eventID_year,
               403
             );
           }

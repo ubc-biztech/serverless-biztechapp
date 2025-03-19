@@ -502,9 +502,20 @@ export const getNormalizedRoundScores = async (event, ctx, callback) => {
   }
 
   // step 1: format data by team
-
+  let teamRawFeedback = {};
   let scoreByJudgeID = {};
   for (let i = 0; i < scores.length; i++) {
+    if (!teamRawFeedback[scores[i]["teamID;round"]]) {
+      teamRawFeedback[scores[i]["teamID;round"]] = [
+        { judge: scores[i].id, ...scores[i].scores }
+      ];
+    } else {
+      teamRawFeedback[scores[i]["teamID;round"]].push({
+        judge: scores[i].id,
+        ...scores[i].scores
+      });
+    }
+
     if (!scoreByJudgeID[scores[i].id]) {
       scoreByJudgeID[scores[i].id] = [
         {
@@ -557,7 +568,8 @@ export const getNormalizedRoundScores = async (event, ctx, callback) => {
         WEIGHTS.PROBLEMSOLVING,
         WEIGHTS.PRESENTATION
       ),
-      judges: scoresByTeamID[idx].map((s) => s.judge)
+      judges: scoresByTeamID[idx].map((s) => s.judge),
+      originalResponses: teamRawFeedback[scoresByTeamID[idx][0].team]
     });
   });
 
