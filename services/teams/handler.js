@@ -954,7 +954,10 @@ export const updateJudgeSubmission = async (event, ctx, callback) => {
       scores: data.scores || (existingFeedback ? existingFeedback.scores : {}),
       feedback:
         data.feedback || (existingFeedback ? existingFeedback.feedback : ""),
-      updatedAt: new Date().toISOString()
+      teamID: data.teamID || (existingFeedback ? existingFeedback.teamID : ""),
+      teamName: data.teamName || (existingFeedback ? existingFeedback.teamName : ""),
+      createdAt: data.createdAt || (existingFeedback ? existingFeedback.createdAt : new Date().toISOString()),
+      judgeName: data.judgeName || (existingFeedback ? existingFeedback.judgeName : ""),
     };
 
     try {
