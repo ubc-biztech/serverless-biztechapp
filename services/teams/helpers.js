@@ -1,6 +1,4 @@
-import {
-  v4 as uuidv4
-} from "uuid";
+import { v4 as uuidv4 } from "uuid";
 import {
   USER_REGISTRATIONS_TABLE,
   TEAMS_TABLE,
@@ -136,9 +134,9 @@ export default {
           if (!res) {
             throw helpers.inputError(
               "User " +
-              memberID +
-              " is not registered for event " +
-              eventID_year,
+                memberID +
+                " is not registered for event " +
+                eventID_year,
               403
             );
           }
@@ -383,7 +381,8 @@ export const normalizeScores = (scores, scoreAvg) => {
       metric2: s2N !== 0 ? (scores[i].metric2 - scoreAvg.metric2) / s2N : 0,
       metric3: s3N !== 0 ? (scores[i].metric3 - scoreAvg.metric3) / s3N : 0,
       metric4: s4N !== 0 ? (scores[i].metric4 - scoreAvg.metric4) / s4N : 0,
-      metric5: s5N !== 0 ? (scores[i].metric5 - scoreAvg.metric5) / s5N : 0
+      metric5: s5N !== 0 ? (scores[i].metric5 - scoreAvg.metric5) / s5N : 0,
+      originalScores: scores
     };
 
     normalizedScores.push(scoreObj);

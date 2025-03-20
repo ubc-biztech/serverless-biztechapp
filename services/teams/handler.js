@@ -7,7 +7,8 @@ import helpers from "../../lib/handlerHelpers";
 import {
   TEAMS_TABLE,
   JUDGING_TABLE,
-  FEEDBACK_TABLE
+  FEEDBACK_TABLE,
+  USER_REGISTRATIONS_TABLE
 } from "../../constants/tables";
 import db from "../../lib/db.js";
 import { QueryCommand } from "@aws-sdk/client-dynamodb";
@@ -496,15 +497,32 @@ export const getNormalizedRoundScores = async (event, ctx, callback) => {
     scores = await db.scan(FEEDBACK_TABLE);
   } catch (error) {
     console.error(error);
-    return db.createResponse(500, {
-      message: "Failed to fetch all feedback"
-    });
+    callback(
+      null,
+      db.createResponse(500, {
+        message: "Failed to fetch all feedback"
+      })
+    );
   }
 
   // step 1: format data by team
-
+  let teamRawFeedback = {};
   let scoreByJudgeID = {};
   for (let i = 0; i < scores.length; i++) {
+    if (!teamRawFeedback[scores[i]["teamID;round"]]) {
+      teamRawFeedback[scores[i]["teamID;round"]] = [
+        {
+          judge: scores[i].id,
+          ...scores[i].scores
+        }
+      ];
+    } else {
+      teamRawFeedback[scores[i]["teamID;round"]].push({
+        judge: scores[i].id,
+        ...scores[i].scores
+      });
+    }
+
     if (!scoreByJudgeID[scores[i].id]) {
       scoreByJudgeID[scores[i].id] = [
         {
@@ -557,7 +575,8 @@ export const getNormalizedRoundScores = async (event, ctx, callback) => {
         WEIGHTS.PROBLEMSOLVING,
         WEIGHTS.PRESENTATION
       ),
-      judges: scoresByTeamID[idx].map((s) => s.judge)
+      judges: scoresByTeamID[idx].map((s) => s.judge),
+      originalResponses: teamRawFeedback[scoresByTeamID[idx][0].team]
     });
   });
 
@@ -588,8 +607,24 @@ export const createJudgeSubmissions = async (event, ctx, callback) => {
         year: {
           required: true,
           type: "number"
+        },
+        scores: {
+          required: true,
+          type: "object"
         }
       });
+
+      if (
+        !data.scores.metric1 ||
+        !data.scores.metric2 ||
+        !data.scores.metric3 ||
+        !data.scores.metric4 ||
+        !data.scores.metric5
+      ) {
+        callback(null, {
+          message: "invalid scores object; should have valid metrics in body"
+        });
+      }
     } catch (error) {
       callback(null, error);
       return null;
@@ -598,9 +633,36 @@ export const createJudgeSubmissions = async (event, ctx, callback) => {
     const eventIDYear = `${data.eventID};${data.year}`;
 
     if (!data.teamID || !data.round || !data.judgeID) {
-      throw helpers.createResponse(400, {
-        message: "Missing required fields: teamID;round or judgeID"
+      callback(
+        null,
+        helpers.createResponse(400, {
+          message: "Missing required fields: teamID;round or judgeID"
+        })
+      );
+    }
+
+    let judgeReg;
+
+    try {
+      judgeReg = await db.getOne(data.judgeID, USER_REGISTRATIONS_TABLE, {
+        ["eventID;year"]: "productx;2025"
       });
+    } catch (error) {
+      callback(
+        null,
+        helpers.createResponse(409, {
+          message: "judge registration doesn't exist"
+        })
+      );
+    }
+
+    if (!judgeReg.isPartner) {
+      callback(
+        null,
+        helpers.createResponse(409, {
+          message: "not a judge"
+        })
+      );
     }
 
     const teamID_round = data.teamID + ";" + data.round;
@@ -611,17 +673,25 @@ export const createJudgeSubmissions = async (event, ctx, callback) => {
         "teamID;round": teamID_round
       });
       if (existingFeedback) {
-        throw helpers.createResponse(409, {
-          message: "Feedback already exists for this judge and team round",
-          existingFeedback
-        });
+        callback(
+          null,
+          helpers.createResponse(409, {
+            message: "Feedback already exists for this judge and team round",
+            existingFeedback
+          })
+        );
       }
     } catch (error) {
+      console.error(error);
+
       if (error.statusCode !== 404) {
-        throw helpers.createResponse(500, {
-          message: "Error checking existing feedback",
-          error: error.message
-        });
+        callback(
+          null,
+          helpers.createResponse(500, {
+            message: "Error checking existing feedback",
+            error: error.message
+          })
+        );
       }
     }
 
@@ -636,6 +706,7 @@ export const createJudgeSubmissions = async (event, ctx, callback) => {
     const newFeedback = {
       "teamID;round": teamID_round,
       id: data.judgeID,
+      judgeName: judgeReg.fname,
       teamName: teamName,
       teamID: data.teamID,
       scores: data.scores || {},
@@ -646,10 +717,13 @@ export const createJudgeSubmissions = async (event, ctx, callback) => {
     try {
       await db.put(newFeedback, FEEDBACK_TABLE, true);
     } catch (error) {
-      throw helpers.createResponse(500, {
-        message: "Error creating feedback",
-        error: error.message
-      });
+      callback(
+        null,
+        helpers.createResponse(500, {
+          message: "Error creating feedback",
+          error: error.message
+        })
+      );
     }
 
     const response = helpers.createResponse(200, {
@@ -660,9 +734,12 @@ export const createJudgeSubmissions = async (event, ctx, callback) => {
     callback(null, response);
   } catch (err) {
     console.error("Internal error:", err);
-    throw helpers.createResponse(500, {
-      message: "Internal server error"
-    });
+    callback(
+      null,
+      helpers.createResponse(500, {
+        message: "Internal server error"
+      })
+    );
   }
 
   return null;
@@ -701,6 +778,7 @@ export const getJudgeSubmissions = async (event, ctx, callback) => {
       return {
         round,
         judgeID: item.id,
+        judgeName: item.judgeName,
         scores: item.scores,
         feedback: item.feedback,
         teamID: team,
@@ -765,7 +843,9 @@ export const getJudgeCurrentTeam = async (event, ctx, callback) => {
     console.error("Internal error:", err);
     callback(
       null,
-      helpers.createResponse(500, { message: "Internal server error" })
+      helpers.createResponse(500, {
+        message: "Internal server error"
+      })
     );
   }
 };
@@ -803,6 +883,7 @@ export const getTeamFeedbackScore = async (event, ctx, callback) => {
       }
       acc[round].push({
         judgeID: item.id,
+        judgeName: item.judgeName,
         scores: item.scores,
         feedback: item.feedback,
         createdAt: item.createdAt,
@@ -873,7 +954,10 @@ export const updateJudgeSubmission = async (event, ctx, callback) => {
       scores: data.scores || (existingFeedback ? existingFeedback.scores : {}),
       feedback:
         data.feedback || (existingFeedback ? existingFeedback.feedback : ""),
-      updatedAt: new Date().toISOString()
+      teamID: data.teamID || (existingFeedback ? existingFeedback.teamID : ""),
+      teamName: data.teamName || (existingFeedback ? existingFeedback.teamName : ""),
+      createdAt: data.createdAt || (existingFeedback ? existingFeedback.createdAt : new Date().toISOString()),
+      judgeName: data.judgeName || (existingFeedback ? existingFeedback.judgeName : ""),
     };
 
     try {
