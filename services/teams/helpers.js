@@ -374,7 +374,8 @@ export const normalizeScores = (scores, scoreAvg) => {
       metric2: s2N !== 0 ? (scores[i].metric2 - scoreAvg.metric2) / s2N : 0,
       metric3: s3N !== 0 ? (scores[i].metric3 - scoreAvg.metric3) / s3N : 0,
       metric4: s4N !== 0 ? (scores[i].metric4 - scoreAvg.metric4) / s4N : 0,
-      metric5: s5N !== 0 ? (scores[i].metric5 - scoreAvg.metric5) / s5N : 0
+      metric5: s5N !== 0 ? (scores[i].metric5 - scoreAvg.metric5) / s5N : 0,
+      originalScores: scores
     };
 
     normalizedScores.push(scoreObj);
