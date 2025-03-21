@@ -12,7 +12,7 @@ import {
 } from "../../constants/tables";
 import db from "../../lib/db.js";
 import handlerHelpers from "../../lib/handlerHelpers";
-import { WEIGHT, ROUND } from "./constants.js";
+import { WEIGHTS, ROUND } from "./constants.js";
 
 /*
   Team Table Schema from DynamoDB:
