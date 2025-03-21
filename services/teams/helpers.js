@@ -376,6 +376,7 @@ export const normalizeScores = (scores, scoreAvg) => {
   for (let i = 0; i < scores.length; i++) {
     let scoreObj = {
       team: scores[i].team,
+      teamName: scores[i].teamName,
       judge: scores[i].judge,
       metric1: s1N !== 0 ? (scores[i].metric1 - scoreAvg.metric1) / s1N : 0,
       metric2: s2N !== 0 ? (scores[i].metric2 - scoreAvg.metric2) / s2N : 0,
@@ -448,8 +449,6 @@ export const scoreObjectAverageWeighted = (
   scoreAvg.metric3 = scoreAvg.metric3 / originalScores.length;
   scoreAvg.metric4 = scoreAvg.metric4 / originalScores.length;
   scoreAvg.metric5 = scoreAvg.metric5 / originalScores.length;
-
-  console.log(scoreAvg);
 
   return (
     scoreAvg.metric1 * w1 +

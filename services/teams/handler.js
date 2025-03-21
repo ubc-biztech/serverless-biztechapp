@@ -12,7 +12,9 @@ import {
 } from "../../constants/tables";
 import db from "../../lib/db.js";
 import handlerHelpers from "../../lib/handlerHelpers";
-import { WEIGHTS } from "./constants.js";
+import {
+  WEIGHTS
+} from "./constants.js";
 
 /*
   Team Table Schema from DynamoDB:
@@ -192,7 +194,9 @@ export const get = async (event, ctx, callback) => {
     !event.pathParameters.year
   )
     throw helpers.missingPathParamResponse("event", "year");
-  const { eventID, year } = event.pathParameters;
+  const {
+    eventID, year
+  } = event.pathParameters;
 
   try {
     const eventIDYear = eventID + ";" + year;
@@ -465,7 +469,7 @@ export const checkQRScanned = async (event, ctx, callback) => {
       .then((bool) => {
         const response_success = helpers.createResponse(200, {
           message:
-            'Attached boolean for check if QR code has been scanned for that user\'s team; refer to "response" field.',
+            "Attached boolean for check if QR code has been scanned for that user's team; refer to \"response\" field.",
           response: bool
         });
 
@@ -504,8 +508,10 @@ export const getNormalizedRoundScores = async (event, ctx, callback) => {
   }
 
   // step 1: format data by team
-  let teamRawFeedback = {};
-  let scoreByJudgeID = {};
+  let teamRawFeedback = {
+  };
+  let scoreByJudgeID = {
+  };
   for (let i = 0; i < scores.length; i++) {
     if (!teamRawFeedback[scores[i]["teamID;round"]]) {
       teamRawFeedback[scores[i]["teamID;round"]] = [
@@ -525,6 +531,7 @@ export const getNormalizedRoundScores = async (event, ctx, callback) => {
       scoreByJudgeID[scores[i].id] = [
         {
           team: scores[i]["teamID;round"],
+          teamName: scores[i].teamName || "Unnamed Team",
           judge: scores[i].id,
           ...scores[i].scores
         }
@@ -534,6 +541,7 @@ export const getNormalizedRoundScores = async (event, ctx, callback) => {
 
     scoreByJudgeID[scores[i].id].push({
       team: scores[i]["teamID;round"],
+      teamName: scores[i].teamName || "Unnamed Team",
       judge: scores[i].id,
       ...scores[i].scores
     });
@@ -549,7 +557,8 @@ export const getNormalizedRoundScores = async (event, ctx, callback) => {
   });
 
   // step 3: rehash by team
-  let scoresByTeamID = {};
+  let scoresByTeamID = {
+  };
   for (let i = 0; i < scoresNormalized.length; i++) {
     if (!scoresByTeamID[scoresNormalized[i].team]) {
       scoresByTeamID[scoresNormalized[i].team] = [scoresNormalized[i]];
@@ -564,7 +573,8 @@ export const getNormalizedRoundScores = async (event, ctx, callback) => {
   // step 4: calculate weighted average
   Object.keys(scoresByTeamID).forEach((idx) => {
     res.push({
-      team: scoresByTeamID[idx][0].team,
+      teamID: scoresByTeamID[idx][0].team,
+      teamName: scoresByTeamID[idx][0].teamName,
       zScoreWeighted: scoreObjectAverageWeighted(
         scoresByTeamID[idx],
         WEIGHTS.ORIGINAL,
@@ -707,8 +717,10 @@ export const createJudgeSubmissions = async (event, ctx, callback) => {
       judgeName: judgeReg.fname,
       teamName: teamName,
       teamID: data.teamID,
-      scores: data.scores || {},
-      feedback: data.feedback || {},
+      scores: data.scores || {
+      },
+      feedback: data.feedback || {
+      },
       createdAt: new Date().toISOString()
     };
 
@@ -745,7 +757,9 @@ export const createJudgeSubmissions = async (event, ctx, callback) => {
 
 export const getJudgeSubmissions = async (event, ctx, callback) => {
   try {
-    const { judgeID } = event.pathParameters;
+    const {
+      judgeID
+    } = event.pathParameters;
 
     if (!judgeID) {
       throw helpers.createResponse(400, {
@@ -792,7 +806,8 @@ export const getJudgeSubmissions = async (event, ctx, callback) => {
       }
       acc[item.round].push(item);
       return acc;
-    }, {});
+    }, {
+    });
 
     const response = helpers.createResponse(200, {
       message: "Scores retrieved successfully",
@@ -810,7 +825,9 @@ export const getJudgeSubmissions = async (event, ctx, callback) => {
 
 export const getJudgeCurrentTeam = async (event, ctx, callback) => {
   try {
-    const { judgeID } = event.pathParameters;
+    const {
+      judgeID
+    } = event.pathParameters;
 
     if (!judgeID) {
       throw helpers.createResponse(400, {
@@ -850,7 +867,9 @@ export const getJudgeCurrentTeam = async (event, ctx, callback) => {
 
 export const getTeamFeedbackScore = async (event, ctx, callback) => {
   try {
-    const { teamID } = event.pathParameters;
+    const {
+      teamID
+    } = event.pathParameters;
     if (!teamID) {
       throw helpers.createResponse(400, {
         message: "teamID is required"
@@ -889,7 +908,8 @@ export const getTeamFeedbackScore = async (event, ctx, callback) => {
       });
 
       return acc;
-    }, {});
+    }, {
+    });
 
     const response = helpers.createResponse(200, {
       message: "Scores retrieved successfully",
@@ -949,7 +969,8 @@ export const updateJudgeSubmission = async (event, ctx, callback) => {
     const updatedFeedback = {
       "teamID;round": teamID_round,
       id: data.judgeID,
-      scores: data.scores || (existingFeedback ? existingFeedback.scores : {}),
+      scores: data.scores || (existingFeedback ? existingFeedback.scores : {
+      }),
       feedback:
         data.feedback || (existingFeedback ? existingFeedback.feedback : ""),
       teamID: data.teamID || (existingFeedback ? existingFeedback.teamID : ""),
@@ -1004,7 +1025,9 @@ export const updateCurrentTeamForJudge = async (event, ctx, callback) => {
       return null;
     }
 
-    const { judgeIDs } = data;
+    const {
+      judgeIDs
+    } = data;
     const teamID = event.pathParameters.teamID;
 
     if (!teamID) {
