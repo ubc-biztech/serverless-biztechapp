@@ -7,16 +7,10 @@ import helpers from "../../lib/handlerHelpers";
 import {
   TEAMS_TABLE,
   JUDGING_TABLE,
-<<<<<<< HEAD
   FEEDBACK_TABLE,
   USER_REGISTRATIONS_TABLE
-=======
-  FEEDBACK_TABLE
->>>>>>> product-x-teams
 } from "../../constants/tables";
 import db from "../../lib/db.js";
-import { QueryCommand } from "@aws-sdk/client-dynamodb";
-import { createResponse } from "../stickers/helpers.js";
 import handlerHelpers from "../../lib/handlerHelpers";
 import { WEIGHTS } from "./constants.js";
 
@@ -959,9 +953,15 @@ export const updateJudgeSubmission = async (event, ctx, callback) => {
       feedback:
         data.feedback || (existingFeedback ? existingFeedback.feedback : ""),
       teamID: data.teamID || (existingFeedback ? existingFeedback.teamID : ""),
-      teamName: data.teamName || (existingFeedback ? existingFeedback.teamName : ""),
-      createdAt: data.createdAt || (existingFeedback ? existingFeedback.createdAt : new Date().toISOString()),
-      judgeName: data.judgeName || (existingFeedback ? existingFeedback.judgeName : ""),
+      teamName:
+        data.teamName || (existingFeedback ? existingFeedback.teamName : ""),
+      createdAt:
+        data.createdAt ||
+        (existingFeedback
+          ? existingFeedback.createdAt
+          : new Date().toISOString()),
+      judgeName:
+        data.judgeName || (existingFeedback ? existingFeedback.judgeName : "")
     };
 
     try {
