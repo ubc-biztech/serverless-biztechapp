@@ -7,8 +7,12 @@ import helpers from "../../lib/handlerHelpers";
 import {
   TEAMS_TABLE,
   JUDGING_TABLE,
+<<<<<<< HEAD
   FEEDBACK_TABLE,
   USER_REGISTRATIONS_TABLE
+=======
+  FEEDBACK_TABLE
+>>>>>>> product-x-teams
 } from "../../constants/tables";
 import db from "../../lib/db.js";
 import { QueryCommand } from "@aws-sdk/client-dynamodb";
