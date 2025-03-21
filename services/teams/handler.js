@@ -595,9 +595,6 @@ export const createJudgeSubmissions = async (event, ctx, callback) => {
         teamID: {
           required: true
         },
-        round: {
-          required: true
-        },
         judgeID: {
           required: true
         },
@@ -633,7 +630,7 @@ export const createJudgeSubmissions = async (event, ctx, callback) => {
 
     const eventIDYear = `${data.eventID};${data.year}`;
 
-    if (!data.teamID || !data.round || !data.judgeID) {
+    if (!data.teamID || !data.judgeID) {
       callback(
         null,
         helpers.createResponse(400, {
@@ -666,7 +663,8 @@ export const createJudgeSubmissions = async (event, ctx, callback) => {
       );
     }
 
-    const teamID_round = data.teamID + ";" + data.round;
+    const round = await db.getOne(ROUND, JUDGING_TABLE);
+    const teamID_round = data.teamID + ";" + round.currentTeam;
 
     let existingFeedback;
     try {
