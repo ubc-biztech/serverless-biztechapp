@@ -179,3 +179,20 @@ functions:
               teamID: true
           method: put
           cors: true
+  getCurrentRound:
+    handler: handler.getCurrentRound
+    events:
+      - http:
+          path: team/round
+          method: get
+          cors: true
+  setCurrentRound:
+    handler: handler.setCurrentRound
+    events:
+      - http:
+          path: team/round/{round}
+          request:
+            path:
+              round: true
+          method: put
+          cors: true

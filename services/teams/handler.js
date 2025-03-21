@@ -12,7 +12,7 @@ import {
 } from "../../constants/tables";
 import db from "../../lib/db.js";
 import handlerHelpers from "../../lib/handlerHelpers";
-import { WEIGHTS } from "./constants.js";
+import { WEIGHT, ROUND } from "./constants.js";
 
 /*
   Team Table Schema from DynamoDB:
@@ -851,6 +851,56 @@ export const getJudgeCurrentTeam = async (event, ctx, callback) => {
   }
 };
 
+export const getCurrentRound = async (event, ctx, callback) => {
+  try {
+    const round = await db.getOne(ROUND, JUDGING_TABLE);
+
+    return helpers.createResponse(200, {
+      round: round.currentTeam
+    });
+  } catch (err) {
+    console.error("Internal error:", err);
+    callback(
+      null,
+      helpers.createResponse(500, {
+        message: "unable to fetch current round"
+      })
+    );
+  }
+};
+
+export const setCurrentRound = async (event, ctx, callback) => {
+  try {
+    const { round } = event.pathParameters;
+
+    if (!round) {
+      return helpers.createResponse(400, {
+        message: "must include round in setting current round"
+      });
+    }
+
+    let val = {
+      id: ROUND,
+      currentTeam: round
+    };
+
+    const roundValue = await db.put(val, JUDGING_TABLE, false);
+
+    return helpers.createResponse(200, {
+      message: "successfully updated round",
+      round
+    });
+  } catch (err) {
+    console.error("Internal error:", err);
+    callback(
+      null,
+      helpers.createResponse(500, {
+        message: "unable to set current round"
+      })
+    );
+  }
+};
+
 export const getTeamFeedbackScore = async (event, ctx, callback) => {
   try {
     const { teamID } = event.pathParameters;
@@ -1010,7 +1060,7 @@ export const updateCurrentTeamForJudge = async (event, ctx, callback) => {
     const { judgeIDs } = data;
     const teamID = event.pathParameters.teamID;
 
-    let round = await db.getOne("CURRENT_ROUND", JUDGING_TABLE);
+    let round = await db.getOne(ROUND, JUDGING_TABLE);
     round = round.currentTeam;
 
     const feedbackEntries = await db.query(FEEDBACK_TABLE, "team-round-query", {

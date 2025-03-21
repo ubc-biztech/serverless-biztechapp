@@ -5,3 +5,5 @@ export const WEIGHTS = {
   PROBLEMSOLVING: 0.2,
   PRESENTATION: 0.1
 };
+
+export const ROUND = "CURRENT_ROUND";
