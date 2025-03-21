@@ -38,7 +38,8 @@
     "sls-offline-i": "find services/* -maxdepth 0 -type d -exec sh -c 'cd \"{}\" && serverless plugin install -n serverless-offline' \\;",
     "dev": "node ./index.js",
     "init:db": "cd scripts && node ./initlocal.js",
-    "populate-quests": "cd scripts && node ./generateQuestsForEventRegistrations.js"
+    "populate-quests": "cd scripts && node ./generateQuestsForEventRegistrations.js",
+    "migrate-judges": "cd scripts && node ./migratePartnerRegistrationsToJudges.js"
   },
   "devDependencies": {
     "aws-sdk-mock": "^5.1.0",
