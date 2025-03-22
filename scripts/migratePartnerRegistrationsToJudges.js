@@ -1,5 +1,9 @@
-import { PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import {
+  PutCommand, QueryCommand
+} from "@aws-sdk/lib-dynamodb";
+import {
+  DynamoDBClient
+} from "@aws-sdk/client-dynamodb";
 
 const awsConfig = {
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
