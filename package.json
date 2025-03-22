@@ -39,7 +39,8 @@
     "dev": "node ./index.js",
     "init:db": "cd scripts && node ./initlocal.js",
     "populate-quests": "cd scripts && node ./generateQuestsForEventRegistrations.js",
-    "migrate-judges": "cd scripts && node ./migratePartnerRegistrationsToJudges.js"
+    "migrate-judges": "cd scripts && node ./migratePartnerRegistrationsToJudges.js",
+    "judge-rooms": "cd scripts && node ./generateRoomLinks.js"
   },
   "devDependencies": {
     "aws-sdk-mock": "^5.1.0",

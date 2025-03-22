@@ -9,3 +9,6 @@ jspm_packages
 .env
 .vscode
 .idea
+
+# Ignore generated room files
+scripts/data/*_judges.txt

@@ -1,5 +1,9 @@
-import { PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import {
+  PutCommand, QueryCommand
+} from "@aws-sdk/lib-dynamodb";
+import {
+  DynamoDBClient
+} from "@aws-sdk/client-dynamodb";
 import fs from "fs/promises";
 
 const awsConfig = {
@@ -33,7 +37,8 @@ const generateRoomLinks = async (eventID, year) => {
     throw err;
   }
 
-  let judges = {};
+  let judges = {
+  };
   for (let i = 0; i < registrations.Items.length; i++) {
     const user = registrations.Items[i];
     const email = user.id;
@@ -55,7 +60,8 @@ const generateRoomLinks = async (eventID, year) => {
 
   try {
     // Create an object with all teams and their encoded judge arrays
-    const encodedTeamData = {};
+    const encodedTeamData = {
+    };
 
     for (const team in judges) {
       const judgesString = JSON.stringify(judges[team]);
@@ -75,7 +81,7 @@ const generateRoomLinks = async (eventID, year) => {
       `Successfully wrote all encoded judges data to ${outputFilename}`
     );
   } catch (error) {
-    console.error(`Error writing judges data file:`, error);
+    console.error("Error writing judges data file:", error);
   }
 };
 
