@@ -64,12 +64,13 @@ const generateRoomLinks = async (eventID, year) => {
         Buffer.from(judgesString).toString("base64");
     }
 
-    // Write all encoded team data to a single file
+    // Format the output without quotes or brackets
     const outputFilename = `./data/${eventID}_${year}_judges.txt`;
-    await fs.writeFile(
-      outputFilename,
-      JSON.stringify(encodedTeamData, null, 2)
-    );
+    const formattedOutput = Object.entries(encodedTeamData)
+      .map(([team, encodedValue]) => `${team}: ${encodedValue}`)
+      .join("\n");
+
+    await fs.writeFile(outputFilename, formattedOutput);
     console.log(
       `Successfully wrote all encoded judges data to ${outputFilename}`
     );
