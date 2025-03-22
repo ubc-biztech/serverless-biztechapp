@@ -4,6 +4,7 @@ import {
 import {
   DynamoDBClient
 } from "@aws-sdk/client-dynamodb";
+import fs from "fs/promises";
 
 const awsConfig = {
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -13,7 +14,7 @@ const awsConfig = {
 
 const client = new DynamoDBClient(awsConfig);
 
-const migrateParterRegistrationsToJudges = async (eventID, year) => {
+const generateRoomLinks = async (eventID, year) => {
   let registrations;
   try {
     registrations = await client.send(
@@ -36,41 +37,52 @@ const migrateParterRegistrationsToJudges = async (eventID, year) => {
     throw err;
   }
 
-  let count = 0;
-  let judges = 0;
+  let judges = {
+  };
   for (let i = 0; i < registrations.Items.length; i++) {
     const user = registrations.Items[i];
     const email = user.id;
     const isJudge = user.isPartner;
+    const team = user.teamID;
 
     // Migrate if user is a judge
     if (!isJudge) {
       continue;
     }
 
-    count++;
-
-    try {
-      // * using PUT which overwrites judge data if it exists
-      await client.send(
-        new PutCommand({
-          TableName: "bizJudge" + (process.env.ENVIRONMENT || ""),
-          Item: {
-            id: user.id,
-            "eventID;year": user["eventID;year"]
-          }
-        })
-      );
-      judges++;
-      console.log("Migrated judge: " + email);
-    } catch (err) {
-      console.error(
-        `Error migrating ${email}: \n ${JSON.stringify(err, null, 2)}`
-      );
-      throw err;
+    if (!judges[team]) {
+      judges[team] = [email];
+      continue;
     }
+
+    judges[team].push(email);
   }
-  console.log(`Created ${count} Judge Entries for ${judges} Users`);
+
+  try {
+    // Create an object with all teams and their encoded judge arrays
+    const encodedTeamData = {
+    };
+
+    for (const team in judges) {
+      const judgesString = JSON.stringify(judges[team]);
+      encodedTeamData[team] =
+        "https://v2.ubcbiztech.com/companion/redirect/" +
+        Buffer.from(judgesString).toString("base64");
+    }
+
+    // Format the output without quotes or brackets
+    const outputFilename = `./data/${eventID}_${year}_judges.txt`;
+    const formattedOutput = Object.entries(encodedTeamData)
+      .map(([team, encodedValue]) => `${team}: ${encodedValue}`)
+      .join("\n");
+
+    await fs.writeFile(outputFilename, formattedOutput);
+    console.log(
+      `Successfully wrote all encoded judges data to ${outputFilename}`
+    );
+  } catch (error) {
+    console.error("Error writing judges data file:", error);
+  }
 };
 
-migrateParterRegistrationsToJudges("productx", 2025);
+generateRoomLinks("productx", 2025);
