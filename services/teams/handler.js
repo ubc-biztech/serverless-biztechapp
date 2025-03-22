@@ -860,6 +860,7 @@ export const getJudgeCurrentTeam = async (event, ctx, callback) => {
         message: "Internal server error"
       })
     );
+
   }
 };
 
