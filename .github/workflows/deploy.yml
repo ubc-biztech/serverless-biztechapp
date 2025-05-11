@@ -50,14 +50,16 @@ jobs:
         pids=()
 
         for DIR in *; do
-          (cd $DIR && sls deploy --conceal \
-            --stage dev \
-            && cd ..) & pids +=($!) & done; 
+          cd "$DIR"
+          sls deploy --conceal --stage dev &
+          pid=$!
+          pids+=("$pid")
+          cd ..
+        done
 
         for pid in "${pids[@]}"; do
-          wait $pid || exit 1
-
-        wait
+          wait "$pid" || exit 1
+        done
 
    - name: 'Deploy Prod'
      if: github.ref == 'refs/heads/master'
