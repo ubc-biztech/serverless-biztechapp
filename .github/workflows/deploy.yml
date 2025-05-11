@@ -11,7 +11,7 @@ jobs:
    - name: Use Node.js ${{ matrix.node-version }}
      uses: actions/setup-node@v4
      with:
-       node-version: '20.7'
+       node-version: '20.x'
 
    # https://help.github.com/en/actions/configuring-and-managing-workflows/caching-dependencies-to-speed-up-workflows
    - name: Cache node modules
@@ -47,17 +47,10 @@ jobs:
       NODE_ENV: ${{ secrets.NODE_ENV }}
      run: |
         cd services
-        pids=()
-
         for DIR in *; do
-          (cd $DIR && sls deploy --conceal \
+          (cd $DIR && npx sls deploy --conceal \
             --stage dev \
-            && cd ..) & pids +=($!) & done; 
-
-        for pid in "${pids[@]}"; do
-          wait $pid || exit 1
-
-        wait
+            && cd ..) & done; wait
 
    - name: 'Deploy Prod'
      if: github.ref == 'refs/heads/master'
