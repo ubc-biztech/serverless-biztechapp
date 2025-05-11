@@ -48,7 +48,7 @@ jobs:
      run: |
         cd services
         for DIR in *; do
-          (cd $DIR && sls deploy --conceal \
+          (cd $DIR && npx sls deploy --conceal \
             --stage dev \
             && cd ..) & done; wait
 
