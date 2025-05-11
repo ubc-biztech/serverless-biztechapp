@@ -52,12 +52,13 @@ jobs:
         for DIR in *; do
           (cd $DIR && sls deploy --conceal \
             --stage dev \
-            && cd ..) & pids +=($!) & done; 
+            && cd ..) & 
+            pids +=($!)
+        done 
 
         for pid in "${pids[@]}"; do
           wait $pid || exit 1
-
-        wait
+        done; wait
 
    - name: 'Deploy Prod'
      if: github.ref == 'refs/heads/master'
