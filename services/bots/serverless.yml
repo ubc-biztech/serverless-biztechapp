@@ -1,0 +1,60 @@
+service: biztechApi-bots
+tenant: ianmh
+app: biztechapp
+
+plugins:
+  - serverless-dynamodb
+  - serverless-offline
+  - serverless-domain-manager
+  - serverless-prune-plugin
+  - serverless-mocha-plugin
+
+provider:
+  name: aws
+  stage: ${file(../../serverless.common.yml):provider.stage}
+  runtime: ${file(../../serverless.common.yml):provider.runtime}
+  region: ${file(../../serverless.common.yml):provider.region}
+  cfLogs: true
+  environment:
+    ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
+    NODE_ENV: ${env:NODE_ENV}
+    SLACK_BOT_TOKEN: ${env:SLACK_BOT_TOKEN}
+  timeout: 30 # in seconds
+  apiGateway:
+    restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
+    restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
+
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Scan
+        - dynamodb:Query
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechEvents${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechEvents${self:provider.environment.ENVIRONMENT}/index/event-overview"
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechRegistrations${self:provider.environment.ENVIRONMENT}/index/event-query"
+    - Effect: Allow
+      Action:
+        - dynamodb:BatchGetItem
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechUsers${self:provider.environment.ENVIRONMENT}"
+
+
+custom: ${file(../../serverless.common.yml):custom}
+
+functions:
+  slackShortcutEventHandler:
+    handler: handler.shortcutHandler
+    events:
+      - http:
+          path: slack/shortcut/events
+          method: post
+          cors: true
