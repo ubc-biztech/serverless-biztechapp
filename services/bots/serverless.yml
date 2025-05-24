@@ -5,6 +5,8 @@ app: biztechapp
 plugins:
   - serverless-dynamodb
   - serverless-offline
+  - serverless-prune-plugin
+  - serverless-mocha-plugin
 
 provider:
   name: aws
