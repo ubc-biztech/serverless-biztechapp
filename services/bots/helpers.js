@@ -1,5 +1,3 @@
-const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
-
 const groups = {
   "@leads": [
     "grace",
@@ -66,6 +64,7 @@ const groups = {
 };
 
 async function slackApi(method, endpoint, body) {
+  const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
   try {
     console.log("Token Slice:", SLACK_BOT_TOKEN.slice(0, 5), "...");
     const res = await fetch(`https://slack.com/api/${endpoint}`, {
