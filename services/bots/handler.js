@@ -53,7 +53,7 @@ export const shortcutHandler = async (event, ctx, callback) => {
 
   if (body.type === "view_submission" && body.view.callback_id === "ping_modal_submit") {
     callback(null, ack)
-    openPingShortcut(body);
+    submitPingShortcut(body);
     return;
   }
 
