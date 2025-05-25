@@ -42,6 +42,9 @@ jobs:
       STRIPE_PROD_ENDPOINT: ${{ secrets.STRIPE_PROD_ENDPOINT }}
       STRIPE_PROD_KEY: ${{ secrets.STRIPE_PROD_KEY}}
       STRIPE_DEV_KEY: ${{ secrets.STRIPE_DEV_KEY}}
+      SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      SLACK_SIGNING_SECRET: ${{ secrets.SLACK_SIGNING_SECRET }}
+      SLACK_APP_TOKEN: ${{ secrets.SLACK_APP_TOKEN }}
       NODE_ENV: ${{ secrets.NODE_ENV }}
 
      # TODO: deploy all to production
