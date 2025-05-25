@@ -5,7 +5,6 @@ app: biztechapp
 plugins:
   - serverless-dynamodb
   - serverless-offline
-  - serverless-domain-manager
   - serverless-prune-plugin
   - serverless-mocha-plugin
 
@@ -23,30 +22,6 @@ provider:
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
     restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
-
-  iamRoleStatements:
-    - Effect: Allow
-      Action:
-        - dynamodb:Scan
-        - dynamodb:Query
-        - dynamodb:GetItem
-        - dynamodb:PutItem
-        - dynamodb:UpdateItem
-        - dynamodb:DeleteItem
-      Resource:
-        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechEvents${self:provider.environment.ENVIRONMENT}"
-        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechEvents${self:provider.environment.ENVIRONMENT}/index/event-overview"
-    - Effect: Allow
-      Action:
-        - dynamodb:Query
-      Resource:
-        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechRegistrations${self:provider.environment.ENVIRONMENT}/index/event-query"
-    - Effect: Allow
-      Action:
-        - dynamodb:BatchGetItem
-      Resource:
-        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechUsers${self:provider.environment.ENVIRONMENT}"
-
 
 custom: ${file(../../serverless.common.yml):custom}
 
