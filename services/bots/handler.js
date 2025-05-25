@@ -58,5 +58,4 @@ export const shortcutHandler = async (event, ctx, callback) => {
   }
 
   callback(null, ack)
-  return;
 };

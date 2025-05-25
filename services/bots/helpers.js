@@ -83,7 +83,6 @@ async function slackApi(method, endpoint, body) {
     return data;
   } catch (error) {
     console.error("Failed to call Slack API:", error);
-    return;
   }
 }
 
@@ -150,7 +149,6 @@ export async function openPingShortcut(body) {
       });
   } catch (error) {
     console.error("Error opening modal:", error);
-    return;
   }
 }
 
@@ -181,6 +179,5 @@ export async function submitPingShortcut(body) {
     });
   } catch (error) {
     console.error("Error sending message:", error);
-    return;
   }
 }
