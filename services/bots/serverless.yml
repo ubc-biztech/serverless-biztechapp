@@ -5,6 +5,7 @@ app: biztechapp
 plugins:
   - serverless-dynamodb
   - serverless-offline
+  - serverless-domain-manager
   - serverless-prune-plugin
   - serverless-mocha-plugin
 
@@ -17,7 +18,6 @@ provider:
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
-    SLACK_BOT_TOKEN: ${env:SLACK_BOT_TOKEN}
   timeout: 30 # in seconds
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
