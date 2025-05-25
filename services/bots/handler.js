@@ -16,12 +16,15 @@ export const shortcutHandler = async (event, ctx, callback) => {
     const payload = params.get("payload");
     if (payload) {
       body = JSON.parse(payload);
+    } else {
+      body = Object.fromEntries(params);
     }
   } else {
     body = JSON.parse(event.body);
   }
 
   if (!body || !body.type) {
+    console.error("Invalid request body", body);
     return {
       statusCode: 400,
       body: JSON.stringify({
@@ -30,6 +33,7 @@ export const shortcutHandler = async (event, ctx, callback) => {
     };
   }
 
+  // url verification
   if (body.type === "url_verification") {
     return {
       statusCode: 200,
@@ -42,19 +46,13 @@ export const shortcutHandler = async (event, ctx, callback) => {
   // ping shortcut
   if (body.type === "message_action" && body.callback_id === "ping") {
     queueMicrotask(() => openPingShortcut(body));
-
     return ack;
   }
 
   if (body.type === "view_submission" && body.view.callback_id === "ping_modal_submit") {
     queueMicrotask(() => submitPingShortcut(body));
-
     return ack;
   }
 
-  return {
-    statusCode: 200,
-    body: JSON.stringify({
-    }),
-  };
+  return ack;
 };

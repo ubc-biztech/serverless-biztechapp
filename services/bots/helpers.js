@@ -66,17 +66,25 @@ const groups = {
 };
 
 async function slackApi(method, endpoint, body) {
-  const res = await fetch(`https://slack.com/api/${endpoint}`, {
-    method,
-    headers: {
-      "Authorization": `Bearer ${SLACK_BOT_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const data = await res.json();
-  if (!data.ok) throw new Error(`Slack API error: ${data.error}`);
-  return data;
+  try {
+    const res = await fetch(`https://slack.com/api/${endpoint}`, {
+      method,
+      headers: {
+        "Authorization": `Bearer ${SLACK_BOT_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      console.error("Slack API Error occurred:", error);
+      throw new Error(`Slack API Error: ${data.error}`);
+    } 
+    return data;
+  } catch (error) {
+    console.error("Failed to call Slack API:", error);
+    throw error;
+  }
 }
 
 export async function openPingShortcut(body) {
@@ -93,54 +101,65 @@ export async function openPingShortcut(body) {
     value: group,
   }));
 
-  await slackApi("POST", "views.open", {
-    trigger_id: body.trigger_id,
-    view: {
-      type: "modal",
-      callback_id: "ping_modal_submit",
-      title: {
-        type: "plain_text",
-        text: "Ping Group",
-      },
-      submit: {
-        type: "plain_text",
-        text: "Send",
-      },
-      close: {
-        type: "plain_text",
-        text: "Cancel",
-      },
-      private_metadata: JSON.stringify({
-        channel_id: body.channel.id,
-        message_ts: body.message_ts,
-        user_id: body.user.id,
-      }),
-      blocks: [
-        {
-          type: "input",
-          block_id: "group_select",
-          label: {
+  // trigger modal
+  try { 
+    await slackApi("POST", "views.open", {
+        trigger_id: body.trigger_id,
+        view: {
+          type: "modal",
+          callback_id: "ping_modal_submit",
+          title: {
             type: "plain_text",
-            text: "Select a group",
+            text: "Ping Group",
           },
-          element: {
-            type: "static_select",
-            action_id: "selected_group",
-            placeholder: {
-              type: "plain_text",
-              text: "Choose a group",
+          submit: {
+            type: "plain_text",
+            text: "Send",
+          },
+          close: {
+            type: "plain_text",
+            text: "Cancel",
+          },
+          private_metadata: JSON.stringify({
+            channel_id: body.channel.id,
+            message_ts: body.message_ts,
+            user_id: body.user.id,
+          }),
+          blocks: [
+            {
+              type: "input",
+              block_id: "group_select",
+              label: {
+                type: "plain_text",
+                text: "Select a group",
+              },
+              element: {
+                type: "static_select",
+                action_id: "selected_group",
+                placeholder: {
+                  type: "plain_text",
+                  text: "Choose a group",
+                },
+                options: groupOptions,
+              },
             },
-            options: groupOptions,
-          },
+          ],
         },
-      ],
-    },
-  });
-
-  return {
-    statusCode: 200,
-    body: ""
-  };
+      });
+    
+    return {
+      statusCode: 200,
+      body: ""
+    };
+  } catch (error) {
+    console.error("Error opening modal:", error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        error: "Failed to open modal",
+      }),
+    };
+  }
 }
 
 export async function submitPingShortcut(body) {
@@ -160,11 +179,22 @@ export async function submitPingShortcut(body) {
   const mentions = members.map(id => `<@${id}>`).join(" ");
   const message = `🔔 <@${user}> pinged *${group}*: ${mentions}`;
 
-  await slackApi("POST", "chat.postMessage", {
-    channel,
-    thread_ts: message_ts,
-    text: message,
-  });
+  // attempt to ping in thread
+  try {
+    await slackApi("POST", "chat.postMessage", {
+      channel,
+      thread_ts: message_ts,
+      text: message,
+    });
+  } catch (error) {
+    console.error("Error sending message:", error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        error: "Failed to send message",
+      }),
+    };
+  }
 
   return {
     statusCode: 200,
