@@ -77,7 +77,8 @@ async function slackApi(method, endpoint, body) {
     });
     const data = await res.json();
     if (!data.ok) {
-      console.error("Slack API Error occurred:", error);
+      console.error("Slack API Error occurred:", JSON.stringify(data));
+      return;
     } 
     return data;
   } catch (error) {
@@ -89,6 +90,7 @@ export async function openPingShortcut(body) {
   console.log("Opening ping shortcut modal", body);
   if (body.type !== "message_action" || body.callback_id !== "ping") {
     console.error("Invalid shortcut call:", body);
+    return;
   }
 
   const groupOptions = Object.keys(groups).map(group => ({
@@ -154,6 +156,7 @@ export async function submitPingShortcut(body) {
   console.log("Submitting ping shortcut modal", body);
   if (body.type !== "view_submission" || body.view.callback_id !== "ping_modal_submit") {
     console.error("Invalid modal submission:", body);
+    return;
   }
   try {
     // parse data from modal submission
