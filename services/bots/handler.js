@@ -31,6 +31,7 @@ export const shortcutHandler = async (event, ctx, callback) => {
         error: "Invalid request body",
       }),
     });
+    return;
   }
 
   // url verification
@@ -40,18 +41,22 @@ export const shortcutHandler = async (event, ctx, callback) => {
         body: JSON.stringify({
           challenge: body.challenge
         })})
+    return;
   }
 
   // ping shortcut
   if (body.type === "message_action" && body.callback_id === "ping") {
     callback(null, ack)
     openPingShortcut(body);
+    return;
   }
 
   if (body.type === "view_submission" && body.view.callback_id === "ping_modal_submit") {
     callback(null, ack)
     openPingShortcut(body);
+    return;
   }
 
   callback(null, ack)
+  return;
 };
