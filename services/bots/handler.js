@@ -25,34 +25,33 @@ export const shortcutHandler = async (event, ctx, callback) => {
 
   if (!body || !body.type) {
     console.error("Invalid request body", body);
-    return {
+    callback(null, {
       statusCode: 400,
       body: JSON.stringify({
         error: "Invalid request body",
       }),
-    };
+    });
   }
 
   // url verification
   if (body.type === "url_verification") {
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        challenge: body.challenge
-      }),
-    };
+    callback(null, 
+      {statusCode: 200, 
+        body: JSON.stringify({
+          challenge: body.challenge
+        })})
   }
 
   // ping shortcut
   if (body.type === "message_action" && body.callback_id === "ping") {
-    queueMicrotask(() => openPingShortcut(body));
-    return ack;
+    callback(null, ack)
+    openPingShortcut(body);
   }
 
   if (body.type === "view_submission" && body.view.callback_id === "ping_modal_submit") {
-    queueMicrotask(() => submitPingShortcut(body));
-    return ack;
+    callback(null, ack)
+    openPingShortcut(body);
   }
 
-  return ack;
+  callback(null, ack)
 };

@@ -78,18 +78,17 @@ async function slackApi(method, endpoint, body) {
     const data = await res.json();
     if (!data.ok) {
       console.error("Slack API Error occurred:", error);
-      throw new Error(`Slack API Error: ${data.error}`);
     } 
     return data;
   } catch (error) {
     console.error("Failed to call Slack API:", error);
-    throw error;
   }
 }
 
 export async function openPingShortcut(body) {
+  console.log("Opening ping shortcut modal", body);
   if (body.type !== "message_action" || body.callback_id !== "ping") {
-    throw new Error("Invalid body for opening modal");
+    console.error("Invalid shortcut call:", body);
   }
 
   const groupOptions = Object.keys(groups).map(group => ({
@@ -146,41 +145,30 @@ export async function openPingShortcut(body) {
           ],
         },
       });
-    
-    return {
-      statusCode: 200,
-      body: ""
-    };
   } catch (error) {
     console.error("Error opening modal:", error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        error: "Failed to open modal",
-      }),
-    };
   }
 }
 
 export async function submitPingShortcut(body) {
+  console.log("Submitting ping shortcut modal", body);
   if (body.type !== "view_submission" || body.view.callback_id !== "ping_modal_submit") {
-    throw new Error("Invalid body for submitting modal");
+    console.error("Invalid modal submission:", body);
   }
-
-  // parse data from modal submission
-  const metadata = JSON.parse(body.view.private_metadata);
-  const group = body.view.state.values.group_select.selected_group.selected_option.value;
-  const user = metadata.user_id;
-  const channel = metadata.channel_id;
-  const message_ts = metadata.message_ts;
-
-  const members = groups[group] || [];
-
-  const mentions = members.map(id => `<@${id}>`).join(" ");
-  const message = `🔔 <@${user}> pinged *${group}*: ${mentions}`;
-
-  // attempt to ping in thread
   try {
+    // parse data from modal submission
+    const metadata = JSON.parse(body.view.private_metadata);
+    const group = body.view.state.values.group_select.selected_group.selected_option.value;
+    const user = metadata.user_id;
+    const channel = metadata.channel_id;
+    const message_ts = metadata.message_ts;
+
+    const members = groups[group] || [];
+
+    const mentions = members.map(id => `<@${id}>`).join(" ");
+    const message = `🔔 <@${user}> pinged *${group}*: ${mentions}`;
+
+    // attempt to ping in thread
     await slackApi("POST", "chat.postMessage", {
       channel,
       thread_ts: message_ts,
@@ -188,16 +176,5 @@ export async function submitPingShortcut(body) {
     });
   } catch (error) {
     console.error("Error sending message:", error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        error: "Failed to send message",
-      }),
-    };
   }
-
-  return {
-    statusCode: 200,
-    body: ""
-  };
 }
