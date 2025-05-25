@@ -67,11 +67,12 @@ const groups = {
 
 async function slackApi(method, endpoint, body) {
   try {
+    console.log("Token Slice:", SLACK_BOT_TOKEN.slice(0, 5), "...");
     const res = await fetch(`https://slack.com/api/${endpoint}`, {
       method,
       headers: {
         "Authorization": `Bearer ${SLACK_BOT_TOKEN}`,
-        "Content-Type": "application/json",
+        "Content-Type": "application/json; charset=utf-8",
       },
       body: body ? JSON.stringify(body) : undefined,
     });
