@@ -21,6 +21,15 @@ export const shortcutHandler = async (event, ctx, callback) => {
     body = JSON.parse(event.body);
   }
 
+  if (!body || !body.type) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({
+        error: "Invalid request body",
+      }),
+    };
+  }
+
   if (body.type === "url_verification") {
     return {
       statusCode: 200,
