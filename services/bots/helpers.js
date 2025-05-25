@@ -77,7 +77,7 @@ async function slackApi(method, endpoint, body) {
     });
     const data = await res.json();
     if (!data.ok) {
-      console.error("Slack API Error occurred:", error);
+      console.error("Slack API Error occurred:", data);
       return;
     } 
     return data;
