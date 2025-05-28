@@ -26,11 +26,11 @@ export const shortcutHandler = async (event, ctx, callback) => {
   }
 
   if (body.command === "/summarize") {
+    ctx.callbackWaitsForEmptyEventLoop = false;
+
     callback(null, {
       statusCode: 200,
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         response_type: "ephemeral",
         text: "Generating summary..."
@@ -67,6 +67,19 @@ export const shortcutHandler = async (event, ctx, callback) => {
   if (body.type === "message_action" && body.callback_id === "ping") {
     callback(null, ack);
     openPingShortcut(body);
+    return;
+  }
+
+  if (
+    body.type === "message_action" &&
+    body.callback_id === "summarize_thread"
+  ) {
+    callback(null, ack);
+    await summarizeRecentMessages({
+      channel_id: body.channel.id,
+      thread_ts: body.message.thread_ts || body.message_ts, // handle both
+      response_url: body.response_url
+    });
     return;
   }
 
