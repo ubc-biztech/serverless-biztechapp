@@ -8,7 +8,8 @@
     "test": "npm run utest events --prefix ../../ && npm run itest events --prefix ../../"
   },
   "dependencies": {
-    "@slack/bolt": "^4.4.0"
+    "@slack/bolt": "^4.4.0",
+    "node-fetch": "^3.3.2"
   },
   "devDependencies": {
     "serverless-offline": "^14.3.2"
