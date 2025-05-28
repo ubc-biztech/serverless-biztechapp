@@ -183,9 +183,7 @@ export async function submitPingShortcut(body) {
 import fetch from "node-fetch";
 
 export async function summarizeRecentMessages(body) {
-  const {
-    channel_id, response_url
-  } = body;
+  const { channel_id, response_url } = body;
 
   const messages = await fetchRecentMessages(channel_id);
   if (!messages || messages.length === 0) {
@@ -287,6 +285,7 @@ async function respondToSlack(response_url, message) {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
+      response_type: "in_channel",
       text: message
     })
   });
