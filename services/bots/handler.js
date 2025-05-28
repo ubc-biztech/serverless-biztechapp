@@ -28,7 +28,13 @@ export const shortcutHandler = async (event, ctx, callback) => {
   if (body.command === "/summarize") {
     callback(null, {
       statusCode: 200,
-      body: ""
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        response_type: "ephemeral",
+        text: "Generating summary..."
+      })
     });
 
     summarizeRecentMessages(body);
