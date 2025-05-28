@@ -26,8 +26,12 @@ export const shortcutHandler = async (event, ctx, callback) => {
   }
 
   if (body.command === "/summarize") {
-    callback(null, ack);
-    await summarizeRecentMessages(body);
+    callback(null, {
+      statusCode: 200,
+      body: ""
+    });
+
+    summarizeRecentMessages(body);
     return;
   }
 
