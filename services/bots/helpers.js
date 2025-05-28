@@ -183,7 +183,9 @@ export async function submitPingShortcut(body) {
 import fetch from "node-fetch";
 
 export async function summarizeRecentMessages(body) {
-  const { channel_id, response_url } = body;
+  const {
+    channel_id, response_url
+  } = body;
 
   const messages = await fetchRecentMessages(channel_id);
   if (!messages || messages.length === 0) {
@@ -281,7 +283,11 @@ export async function getSummaryFromOpenAI(text) {
 async function respondToSlack(response_url, message) {
   await fetch(response_url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text: message })
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      text: message
+    })
   });
 }
