@@ -1,10 +1,12 @@
 import {
-  openPingShortcut, submitPingShortcut
+  openPingShortcut,
+  submitPingShortcut,
+  summarizeRecentMessages
 } from "./helpers.js";
 
 const ack = {
   statusCode: 200,
-  body: "",
+  body: ""
 };
 
 // router
@@ -28,34 +30,44 @@ export const shortcutHandler = async (event, ctx, callback) => {
     callback(null, {
       statusCode: 400,
       body: JSON.stringify({
-        error: "Invalid request body",
-      }),
+        error: "Invalid request body"
+      })
     });
     return;
   }
 
   // url verification
   if (body.type === "url_verification") {
-    callback(null, 
-      {statusCode: 200, 
-        body: JSON.stringify({
-          challenge: body.challenge
-        })})
+    callback(null, {
+      statusCode: 200,
+      body: JSON.stringify({
+        challenge: body.challenge
+      })
+    });
     return;
   }
 
   // ping shortcut
   if (body.type === "message_action" && body.callback_id === "ping") {
-    callback(null, ack)
+    callback(null, ack);
     openPingShortcut(body);
     return;
   }
 
-  if (body.type === "view_submission" && body.view.callback_id === "ping_modal_submit") {
-    callback(null, ack)
+  if (
+    body.type === "view_submission" &&
+    body.view.callback_id === "ping_modal_submit"
+  ) {
+    callback(null, ack);
     submitPingShortcut(body);
     return;
   }
 
-  callback(null, ack)
+  if (body.command === "/summarize") {
+    callback(null, ack);
+    await summarizeRecentMessages(body);
+    return;
+  }
+
+  callback(null, ack);
 };
