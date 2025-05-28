@@ -25,6 +25,12 @@ export const shortcutHandler = async (event, ctx, callback) => {
     body = JSON.parse(event.body);
   }
 
+  if (body.command === "/summarize") {
+    callback(null, ack);
+    await summarizeRecentMessages(body);
+    return;
+  }
+
   if (!body || !body.type) {
     console.error("Invalid request body", body);
     callback(null, {
@@ -60,12 +66,6 @@ export const shortcutHandler = async (event, ctx, callback) => {
   ) {
     callback(null, ack);
     submitPingShortcut(body);
-    return;
-  }
-
-  if (body.command === "/summarize") {
-    callback(null, ack);
-    await summarizeRecentMessages(body);
     return;
   }
 
