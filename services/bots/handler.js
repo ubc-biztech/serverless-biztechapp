@@ -10,6 +10,8 @@ const ack = {
   body: ""
 };
 
+const processedEventIds = new Set();
+
 // router
 export const shortcutHandler = async (event, ctx, callback) => {
   let body;
@@ -55,6 +57,17 @@ export const shortcutHandler = async (event, ctx, callback) => {
     if (event.user === BOT_USER_ID) {
       // Bot is the author, ignoring to avoid loops
       return;
+    }
+
+    if (processedEventIds.has(body.event_id)) {
+      return;
+    }
+    processedEventIds.add(body.event_id);
+
+    if (processedEventIds.size > 1000) {
+      // remove oldest key
+      const [first] = processedEventIds;
+      processedEventIds.delete(first);
     }
 
     const wantsSummary = /summarize/i.test(event.text);
