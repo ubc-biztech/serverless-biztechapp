@@ -54,7 +54,7 @@ const groups = {
   "@data": ["ethanx", "hiro", "elena", "janaye"]
 };
 
-async function slackApi(method, endpoint, body) {
+export async function slackApi(method, endpoint, body) {
   const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
   try {
     console.log(
