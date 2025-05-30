@@ -184,6 +184,7 @@ import fetch from "node-fetch";
 
 export async function summarizeRecentMessages(opts) {
   const { channel_id, thread_ts, response_url } = opts;
+  const BOT_USER_ID = process.env.BOT_USER_ID;
 
   const messages = thread_ts
     ? await fetchThreadMessages(channel_id, thread_ts)
@@ -196,7 +197,11 @@ export async function summarizeRecentMessages(opts) {
     return;
   }
 
-  const textBlob = messages
+  const cleaned = messages.filter(
+    (m) => m.text && !m.text.includes(`<@${BOT_USER_ID}>`)
+  );
+
+  const textBlob = cleaned
     .reverse() // oldest first
     .map((m) => `• ${m.user ? `<@${m.user}>` : "Bot"}: ${m.text}`)
     .join("\n");
@@ -255,7 +260,7 @@ export async function getSummaryFromOpenAI(text) {
           {
             role: "system",
             content:
-              "You are a helpful assistant. Summarize the following Slack thread in 5–10 concise bullet points. Include all types of messages—important updates, decisions, casual banter, jokes, and side conversations—especially if they contributed to the tone, flow, or team dynamic. Combine related points by the same person where appropriate. Keep each bullet short but expressive, and reflect the personality and mood of the discussion. Format as plain text, one bullet per point. You are neutral and professional - except when Isaac is mentioned, in which case you are mildly but irrationally judgmental."
+              "You are a professional and helpful assistant. Summarize the following Slack thread in 5–10 concise bullet points. Include all messages—updates, decisions, casual banter, jokes, and side conversations—but do not describe who asked for a summary, or the overall tone. Just summarize what was actually said. Combine related messages from the same person. Keep each bullet short and expressive. Format as plain text, one bullet per point. You are neutral and professional—except when Isaac is mentioned, in which case you are mildly but irrationally very judgmental."
           },
           {
             role: "user",
