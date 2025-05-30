@@ -16,6 +16,14 @@ const processedEventIds = new Set();
 export const shortcutHandler = async (event, ctx, callback) => {
   let body;
 
+  if (event.headers["X-Slack-Retry-Num"]) {
+    callback(null, {
+      statusCode: 200,
+      body: ""
+    });
+    return;
+  }
+
   if (event.headers["Content-Type"] === "application/x-www-form-urlencoded") {
     const params = new URLSearchParams(event.body);
     const payload = params.get("payload");
@@ -83,7 +91,7 @@ export const shortcutHandler = async (event, ctx, callback) => {
       channel: event.channel,
       name: "hourglass",
       timestamp: event.ts
-    });
+    }).catch(() => {});
 
     await summarizeRecentMessages(opts);
     return;
