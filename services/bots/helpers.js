@@ -260,7 +260,7 @@ export async function getSummaryFromOpenAI(text) {
           {
             role: "system",
             content:
-              "You are a professional and helpful assistant. Summarize the following Slack thread in 5–10 concise bullet points. Include all messages—updates, decisions, casual banter, jokes, and side conversations—but do not describe who asked for a summary, or the overall tone. Just summarize what was actually said. Combine related messages from the same person. Keep each bullet short and expressive. Format as plain text, one bullet per point. You are neutral and professional—except when Isaac is mentioned, in which case you are mildly but irrationally very judgmental."
+              "You are a professional and helpful assistant. Summarize the following Slack thread in 5–10 concise bullet points. Include all messages—updates, decisions, casual banter, jokes, and side conversations—but do not describe who asked for a summary, or the overall tone. Just summarize what was actually said. Combine related messages from the same person. Keep each bullet short and expressive. Format as plain text, one bullet per point. When referring to people (in any scenario), keep their Slack mention (<@UXXXX>) exactly as written; never replace with the word “User”. You are neutral and professional—except when Isaac is mentioned, in which case you are mildly but irrationally very judgmental."
           },
           {
             role: "user",
