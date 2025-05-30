@@ -182,10 +182,12 @@ export async function submitPingShortcut(body) {
 
 import fetch from "node-fetch";
 
-export async function summarizeRecentMessages(body) {
-  const { channel_id, response_url } = body;
+export async function summarizeRecentMessages(opts) {
+  const { channel_id, thread_ts, response_url } = opts;
 
-  const messages = await fetchRecentMessages(channel_id);
+  const messages = thread_ts
+    ? await fetchThreadMessages(channel_id, thread_ts)
+    : await fetchRecentMessages(channel_id);
   if (!messages || messages.length === 0) {
     await respondToSlack(
       response_url,
@@ -202,7 +204,15 @@ export async function summarizeRecentMessages(body) {
   const summary = await getSummaryFromOpenAI(textBlob);
 
   const reply = `📌 *Here’s your summary of the last ${messages.length} messages:*\n${summary}`;
-  await respondToSlack(response_url, reply);
+  if (thread_ts) {
+    await slackApi("POST", "chat.postMessage", {
+      channel: channel_id,
+      thread_ts,
+      text: reply
+    });
+  } else {
+    await respondToSlack(response_url, reply);
+  }
 }
 
 export async function fetchRecentMessages(channel) {
@@ -289,4 +299,15 @@ async function respondToSlack(response_url, message) {
       text: message
     })
   });
+}
+
+export async function fetchThreadMessages(channel, thread_ts) {
+  const result = await slackApi(
+    "GET",
+    `conversations.replies?channel=${channel}&ts=${thread_ts}&limit=100`
+  );
+  if (!result || !result.messages) {
+    return [];
+  }
+  return result.messages.filter((m) => m.text && !m.subtype);
 }

@@ -1,7 +1,8 @@
 import {
   openPingShortcut,
   submitPingShortcut,
-  summarizeRecentMessages
+  summarizeRecentMessages,
+  slackApi
 } from "./helpers.js";
 
 const ack = {
@@ -38,6 +39,33 @@ export const shortcutHandler = async (event, ctx, callback) => {
     });
 
     summarizeRecentMessages(body);
+    return;
+  }
+
+  if (
+    body.type === "event_callback" &&
+    body.event &&
+    body.event.type === "app_mention"
+  ) {
+    callback(null, ack);
+
+    const event = body.event;
+    const wantsSummary = /summarize/i.test(event.text);
+    if (!wantsSummary) return;
+
+    const opts = {
+      channel_id: event.channel,
+      thread_ts: event.thread_ts,
+      response_url: null
+    };
+
+    await slackApi("POST", "reactions.add", {
+      channel: event.channel,
+      name: "hourglass",
+      timestamp: event.ts
+    });
+
+    await summarizeRecentMessages(opts);
     return;
   }
 
