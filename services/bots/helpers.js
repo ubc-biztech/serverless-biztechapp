@@ -201,8 +201,9 @@ export async function summarizeRecentMessages(opts) {
     (m) => m.text && !m.text.includes(`<@${BOT_USER_ID}>`)
   );
 
-  const textBlob = cleaned
-    .reverse() // oldest first
+  const ordered = thread_ts ? cleaned : cleaned.reverse();
+
+  const textBlob = ordered
     .map((m) => `• ${m.user ? `<@${m.user}>` : "Bot"}: ${m.text}`)
     .join("\n");
 
