@@ -50,6 +50,13 @@ export const shortcutHandler = async (event, ctx, callback) => {
     callback(null, ack);
 
     const event = body.event;
+    const BOT_USER_ID = process.env.BOT_USER_ID;
+
+    if (event.user === BOT_USER_ID) {
+      // Bot is the author, ignoring to avoid loops
+      return;
+    }
+
     const wantsSummary = /summarize/i.test(event.text);
     if (!wantsSummary) return;
 
