@@ -1,8 +1,8 @@
 import {
   openPingShortcut,
+  slackApi,
   submitPingShortcut,
-  summarizeRecentMessages,
-  slackApi
+  summarizeRecentMessages
 } from "./helpers.js";
 
 const ack = {
