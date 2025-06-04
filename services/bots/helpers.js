@@ -43,6 +43,7 @@ const groups = {
   ],
   "@devs": [
     "kevin",
+    "ali",
     "jay",
     "ethan",
     "benny",
@@ -51,7 +52,9 @@ const groups = {
     "aurora",
     "alexg"
   ],
-  "@data": ["ethanx", "hiro", "elena", "janaye"]
+  "@data": ["ethanx", "hiro", "elena", "janaye"],
+  "@bizbot": ["alexg", "kevinh", "isaac", "jay", "kevin"],
+  "@bt-web-v2": ["benny", "ethan", "aurora", "ali", "jay", "kevin"]
 };
 
 export async function slackApi(method, endpoint, body) {
