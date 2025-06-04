@@ -43,6 +43,7 @@ const groups = {
   ],
   "@devs": [
     "kevin",
+    "ali",
     "jay",
     "ethan",
     "benny",
