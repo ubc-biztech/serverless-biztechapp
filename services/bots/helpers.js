@@ -1,4 +1,6 @@
-import { groups, query } from "./constants.js";
+import {
+  groups, query
+} from "./constants.js";
 import jwt from "jsonwebtoken";
 import fetch from "node-fetch";
 
@@ -129,7 +131,9 @@ export async function submitPingShortcut(body) {
 }
 
 export async function summarizeRecentMessages(opts) {
-  const { channel_id, thread_ts, response_url } = opts;
+  const {
+    channel_id, thread_ts, response_url
+  } = opts;
   const BOT_USER_ID = process.env.BOT_USER_ID;
 
   const messages = thread_ts
@@ -276,10 +280,12 @@ async function getGithubToken() {
     iss: GH_CLIENT_ID
   };
 
-  const token = jwt.sign(payload, GH_PRIVATE_KEY, { algorithm: "RS256" });
+  const token = jwt.sign(payload, GH_PRIVATE_KEY, {
+    algorithm: "RS256"
+  });
 
   const authResponse = await fetch(
-    `https://api.github.com/app/installations/71407901/access_tokens`,
+    "https://api.github.com/app/installations/71407901/access_tokens",
     {
       method: "POST",
       headers: {
