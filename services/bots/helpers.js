@@ -1,5 +1,8 @@
 import {
-  groups, query
+  groups,
+  query,
+  installationID,
+  reminderChannelID
 } from "./constants.js";
 import jwt from "jsonwebtoken";
 import fetch from "node-fetch";
@@ -131,9 +134,7 @@ export async function submitPingShortcut(body) {
 }
 
 export async function summarizeRecentMessages(opts) {
-  const {
-    channel_id, thread_ts, response_url
-  } = opts;
+  const { channel_id, thread_ts, response_url } = opts;
   const BOT_USER_ID = process.env.BOT_USER_ID;
 
   const messages = thread_ts
@@ -285,7 +286,7 @@ async function getGithubToken() {
   });
 
   const authResponse = await fetch(
-    "https://api.github.com/app/installations/71407901/access_tokens",
+    `https://api.github.com/app/installations/${installationID}/access_tokens`,
     {
       method: "POST",
       headers: {
@@ -324,4 +325,141 @@ export async function getProjectBoard() {
   }
 
   return projects;
+}
+
+export async function sendIssueReminders(projectBoard) {
+  const issues = processIssues(projectBoard);
+  const message = formatIssuesForSlackText(issues);
+
+  try {
+    await slackApi("POST", "chat.postMessage", {
+      channel: reminderChannelID,
+      text: message
+    });
+  } catch (error) {
+    console.error("failed to send message to slack");
+  }
+}
+
+function processIssues(projectBoard) {
+  const items = projectBoard.data.organization.projectV2.items.nodes;
+  const oneWeekFromNow = new Date();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
+
+  const issues = items
+    .filter((it) => {
+      const endDateField = it.fieldValues.nodes.find(
+        (node) => node.field && node.field.name.toLowerCase() === "end date"
+      );
+
+      if (
+        !endDateField ||
+        !endDateField.date ||
+        !it.content.assignees ||
+        !it.content.assignees.nodes
+      ) {
+        return false;
+      }
+
+      const endDate = new Date(endDateField.date);
+
+      return (
+        it.content.state !== "CLOSED" &&
+        endDate <= oneWeekFromNow &&
+        it.content.assignees.nodes.length > 0
+      );
+    })
+    .map((it) => {
+      const endDateField = it.fieldValues.nodes.find(
+        (node) => node.field && node.field.name.toLowerCase() === "end date"
+      );
+
+      const endDate = new Date(endDateField.date);
+
+      const diffTime = endDate - today;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      let dueStatus;
+      const diff = Math.abs(diffDays);
+      if (diffDays < 0) {
+        dueStatus = `${diff} day${diff === 1 ? "" : "s"} overdue`;
+      } else if (diffDays === 0) {
+        dueStatus = "Due today";
+      } else if (diffDays === 1) {
+        dueStatus = "Due tomorrow";
+      } else {
+        dueStatus = `Due in ${diffDays} days`;
+      }
+
+      return {
+        id: it.id,
+        title: it.content.title,
+        number: it.content.number,
+        url: it.content.url,
+        state: it.content.state,
+        createdAt: it.content.createdAt,
+        endDate: endDateField.date,
+        endDateFormatted: endDate.toLocaleDateString(),
+        dueStatus: dueStatus,
+        daysUntilDue: diffDays,
+        assignees: it.content.assignees.nodes.map((assignee) => ({
+          login: assignee.login,
+          ...(assignee.name && { name: assignee.name }),
+          ...(assignee.email && { email: assignee.email })
+        })),
+        labels: it.content.labels.nodes.map((label) => {
+          return label.name;
+        })
+      };
+    });
+  return issues;
+}
+
+function formatIssuesForSlackText(issues) {
+  if (!issues || issues.length === 0) {
+    return "🎉 No overdue or upcoming issues found!";
+  }
+
+  let message = `🚨 *Issue Reminders - ${issues.length} items need attention*\n`;
+
+  const addIssueSection = (
+    sectionIssues,
+    sectionTitle,
+    emoji,
+    includeLabels = false
+  ) => {
+    if (sectionIssues.length === 0) return;
+
+    message += `\n\n\n ${emoji} *${sectionTitle}:*\n`;
+
+    sectionIssues.forEach((issue) => {
+      const assignees = issue.assignees
+        .map((a) => `<https://github.com/${a.login}|@${a.login}>`)
+        .join(", ");
+
+      message += `\n<${issue.url}|#${issue.number}: ${issue.title}>\n`;
+
+      if (includeLabels) {
+        console.log(issue.labels);
+        const labels = issue.labels ? issue.labels.join(", ") : "";
+        message += ` 🏷️ labels: ${labels}\n`;
+      }
+
+      const dueText = issue.daysUntilDue === 0 ? "Due today" : issue.dueStatus;
+      message += ` 📅 ${dueText} • 👥 ${assignees}\n\n`;
+    });
+  };
+
+  const overdue = issues.filter((issue) => issue.daysUntilDue < 0);
+  const dueToday = issues.filter((issue) => issue.daysUntilDue === 0);
+  const dueSoon = issues.filter((issue) => issue.daysUntilDue > 0);
+
+  addIssueSection(overdue, "OVERDUE ISSUES", "🔥", true);
+  addIssueSection(dueToday, "DUE TODAY", "🎯", true);
+  addIssueSection(dueSoon, "DUE SOON", "⏰", true);
+
+  message += `\n💡 _Generated on ${new Date().toLocaleDateString()}_`;
+  return message;
 }

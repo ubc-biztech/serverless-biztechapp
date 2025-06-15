@@ -17,9 +17,7 @@ provider:
   cfLogs: true
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
-    GH_APP_ID: ${env:GH_APP_ID}
     GH_CLIENT_ID: ${env:GH_CLIENT_ID}
-    GH_PROJECT_ACCESS_KEY: ${env:GH_PROJECT_ACCESS_KEY}
     GH_PRIVATE_KEY: ${env:GH_PRIVATE_KEY}
     NODE_ENV: ${env:NODE_ENV}
     SLACK_BOT_TOKEN: ${env:SLACK_BOT_TOKEN}

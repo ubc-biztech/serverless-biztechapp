@@ -64,6 +64,10 @@ export const projects = [
   "Internal Tools"
 ];
 
+export const installationID = 71407901;
+
+export const reminderChannelID = "C08PTKNPCHX";
+
 export const query = `
   query {
     organization(login: "ubc-biztech") {
@@ -83,6 +87,11 @@ export const query = `
                 assignees(first: 5) {
                   nodes {
                     login
+                  }
+                }
+                labels(first: 3) {
+                  nodes {
+                    name
                   }
                 }
               }
