@@ -1,61 +1,6 @@
-const groups = {
-  "@leads": [
-    "grace",
-    "pauline",
-    "ethanx",
-    "kevin",
-    "john",
-    "dhrishty",
-    "mikayla",
-    "lillian",
-    "lucas"
-  ],
-  "@internal": ["mikayla", "erping", "ashley"],
-  "@experiences": [
-    "pauline",
-    "angela",
-    "gautham",
-    "jack",
-    "allison",
-    "danielz",
-    "danielt",
-    "chris"
-  ],
-  "@partnerships": [
-    "john",
-    "rohan",
-    "darius",
-    "jimmy",
-    "keon",
-    "karens",
-    "angelaf"
-  ],
-  "@mmd": [
-    "dhrishty",
-    "riana",
-    "emilyl",
-    "stephanie",
-    "ali",
-    "yumin",
-    "indy",
-    "chelsea",
-    "julianna"
-  ],
-  "@devs": [
-    "kevin",
-    "ali",
-    "jay",
-    "ethan",
-    "benny",
-    "kevinh",
-    "isaac",
-    "aurora",
-    "alexg"
-  ],
-  "@data": ["ethanx", "hiro", "elena", "janaye"],
-  "@bizbot": ["alexg", "kevinh", "isaac", "jay", "kevin"],
-  "@bt-web-v2": ["benny", "ethan", "aurora", "ali", "jay", "kevin"]
-};
+import { groups, query } from "./constants.js";
+import jwt from "jsonwebtoken";
+import fetch from "node-fetch";
 
 export async function slackApi(method, endpoint, body) {
   const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
@@ -182,8 +127,6 @@ export async function submitPingShortcut(body) {
     console.error("Error sending message:", error);
   }
 }
-
-import fetch from "node-fetch";
 
 export async function summarizeRecentMessages(opts) {
   const { channel_id, thread_ts, response_url } = opts;
@@ -319,4 +262,60 @@ export async function fetchThreadMessages(channel, thread_ts) {
     return [];
   }
   return result.messages.filter((m) => m.text && !m.subtype);
+}
+
+async function getGithubToken() {
+  const GH_PRIVATE_KEY = process.env.GH_PRIVATE_KEY;
+  const GH_CLIENT_ID = process.env.GH_CLIENT_ID;
+
+  const now = Math.floor(Date.now() / 1000);
+
+  const payload = {
+    iat: now - 60,
+    exp: now + 10 * 60,
+    iss: GH_CLIENT_ID
+  };
+
+  const token = jwt.sign(payload, GH_PRIVATE_KEY, { algorithm: "RS256" });
+
+  const authResponse = await fetch(
+    `https://api.github.com/app/installations/71407901/access_tokens`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${token}`,
+        "X-GitHub-Api-Version": "2022-11-28"
+      }
+    }
+  );
+
+  const auth = await authResponse.json();
+  return auth.token;
+}
+
+export async function getProjectBoard() {
+  let projects;
+
+  try {
+    const token = await getGithubToken();
+    console.log(token);
+
+    const response = await fetch("https://api.github.com/graphql", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        query
+      })
+    });
+    projects = await response.json();
+    console.log(JSON.stringify(projects, 2));
+  } catch (error) {
+    console.error(error);
+  }
+
+  return projects;
 }

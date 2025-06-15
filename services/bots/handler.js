@@ -1,4 +1,5 @@
 import {
+  getProjectBoard,
   openPingShortcut,
   slackApi,
   submitPingShortcut,
@@ -149,4 +150,8 @@ export const shortcutHandler = async (event, ctx, callback) => {
   }
 
   callback(null, ack);
+};
+
+export const slackGithubReminder = async (event, ctx, callback) => {
+  const projectBoard = await getProjectBoard();
 };
