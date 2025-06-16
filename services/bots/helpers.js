@@ -2,7 +2,8 @@ import {
   groups,
   query,
   installationID,
-  reminderChannelID
+  reminderChannelID,
+  btFields
 } from "./constants.js";
 import jwt from "jsonwebtoken";
 import fetch from "node-fetch";
@@ -351,7 +352,8 @@ function processIssues(projectBoard) {
   const issues = items
     .filter((it) => {
       const endDateField = it.fieldValues.nodes.find(
-        (node) => node.field && node.field.name.toLowerCase() === "end date"
+        (node) =>
+          node.field && node.field.name.toLowerCase() === btFields.endDate
       );
 
       if (
@@ -373,7 +375,8 @@ function processIssues(projectBoard) {
     })
     .map((it) => {
       const endDateField = it.fieldValues.nodes.find(
-        (node) => node.field && node.field.name.toLowerCase() === "end date"
+        (node) =>
+          node.field && node.field.name.toLowerCase() === btFields.endDate
       );
 
       const endDate = new Date(endDateField.date);

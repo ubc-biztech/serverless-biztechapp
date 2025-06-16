@@ -114,3 +114,7 @@ export const query = `
     }
   }
 `;
+
+export const btFields = Object.freeze({
+  endDate: "end date"
+});
