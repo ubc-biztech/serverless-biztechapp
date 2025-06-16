@@ -352,8 +352,7 @@ function processIssues(projectBoard) {
   const issues = items
     .filter((it) => {
       const endDateField = it.fieldValues.nodes.find(
-        (node) =>
-          node.field && node.field.name.toLowerCase() === btFields.endDate
+        (node) => node.field && node.field.name === btFields.endDate
       );
 
       if (
@@ -375,8 +374,7 @@ function processIssues(projectBoard) {
     })
     .map((it) => {
       const endDateField = it.fieldValues.nodes.find(
-        (node) =>
-          node.field && node.field.name.toLowerCase() === btFields.endDate
+        (node) => node.field && node.field.name === btFields.endDate
       );
 
       const endDate = new Date(endDateField.date);
