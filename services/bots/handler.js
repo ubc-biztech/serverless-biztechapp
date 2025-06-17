@@ -1,3 +1,4 @@
+import handlerHelpers from "../../lib/handlerHelpers.js";
 import {
   getProjectBoard,
   openPingShortcut,
@@ -156,5 +157,8 @@ export const shortcutHandler = async (event, ctx, callback) => {
 export const slackGithubReminder = async (event, ctx, callback) => {
   const projectBoard = await getProjectBoard();
   sendIssueReminders(projectBoard);
-  callback(null);
+  callback(
+    null,
+    handlerHelpers.createResponse(201, { message: "successfully pinged" })
+  );
 };
