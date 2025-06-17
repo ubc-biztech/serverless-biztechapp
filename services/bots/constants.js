@@ -118,3 +118,15 @@ export const query = `
 export const btFields = Object.freeze({
   endDate: "End date"
 });
+
+export const btDevs = Object.freeze({
+  "ethan-t-hansen": "ethan",
+  kevinxiao27: "kevin",
+  Kevmister331: "kevinh",
+  ahosseini06: "ali",
+  jaypark25: "jay",
+  bennypc: "benny",
+  liuisaac: "isaac",
+  auroraxcheng: "aurora",
+  "alex-gour": "alexg"
+});
