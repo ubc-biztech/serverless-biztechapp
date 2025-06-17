@@ -38,8 +38,11 @@ functions:
           method: post
           cors: true
       - schedule:
-          rate: cron(0 17 ? SUN, THU *)
-          description: "Runs Sunday and Thursday at 9 AM PST"
+          rate: cron(0 17 ? * 1 *)
+          enabled: true
+      - schedule:
+          rate: cron(0 17 ? * 5 *)
+          enabled: true
 
   slackShortcutEventHandler:
     handler: handler.shortcutHandler
