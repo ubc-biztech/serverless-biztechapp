@@ -17,7 +17,7 @@ jobs:
 
       # https://help.github.com/en/actions/configuring-and-managing-workflows/caching-dependencies-to-speed-up-workflows
       - name: Cache node modules
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         env:
           cache-name: cache-node-modules
         with:
@@ -35,6 +35,9 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          GH_CLIENT_ID: ${{ secrets.GH_CLIENT_ID }}
+          GH_PROJECT_ACCESS_KEY: ${{ secrets.GH_PROJECT_ACCESS_KEY }}
+          GH_PRIVATE_KEY: ${{ secrets.GH_PRIVATE_KEY }}
           SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
           STRIPE_DEV_CANCEL: ${{ secrets.STRIPE_DEV_CANCEL }}
           STRIPE_DEV_ENDPOINT: ${{ secrets.STRIPE_DEV_ENDPOINT }}

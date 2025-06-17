@@ -17,6 +17,8 @@ provider:
   cfLogs: true
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
+    GH_CLIENT_ID: ${env:GH_CLIENT_ID}
+    GH_PRIVATE_KEY: ${env:GH_PRIVATE_KEY}
     NODE_ENV: ${env:NODE_ENV}
     SLACK_BOT_TOKEN: ${env:SLACK_BOT_TOKEN}
     OPENAI_API_KEY: ${env:OPENAI_API_KEY}
@@ -28,6 +30,17 @@ provider:
 custom: ${file(../../serverless.common.yml):custom}
 
 functions:
+  slackGithubReminder:
+    handler: handler.slackGithubReminder
+    events:
+      - http:
+          path: slack/github
+          method: post
+          cors: true
+      - schedule:
+          rate: cron(0 17 ? SUN, THU *)
+          description: "Runs Sunday and Thursday at 9 AM PST"
+
   slackShortcutEventHandler:
     handler: handler.shortcutHandler
     events:

@@ -1,6 +1,8 @@
 import {
+  getProjectBoard,
   openPingShortcut,
   slackApi,
+  sendIssueReminders as sendIssueReminders,
   submitPingShortcut,
   summarizeRecentMessages
 } from "./helpers.js";
@@ -149,4 +151,10 @@ export const shortcutHandler = async (event, ctx, callback) => {
   }
 
   callback(null, ack);
+};
+
+export const slackGithubReminder = async (event, ctx, callback) => {
+  const projectBoard = await getProjectBoard();
+  sendIssueReminders(projectBoard);
+  callback(null);
 };
