@@ -3,7 +3,8 @@ import {
   query,
   installationID,
   reminderChannelID,
-  btFields
+  btFields,
+  btDevs
 } from "./constants.js";
 import jwt from "jsonwebtoken";
 import fetch from "node-fetch";
@@ -307,7 +308,6 @@ export async function getProjectBoard() {
 
   try {
     const token = await getGithubToken();
-    console.log(token);
 
     const response = await fetch("https://api.github.com/graphql", {
       method: "POST",
@@ -320,7 +320,6 @@ export async function getProjectBoard() {
       })
     });
     projects = await response.json();
-    console.log(JSON.stringify(projects, 2));
   } catch (error) {
     console.error(error);
   }
@@ -437,13 +436,12 @@ function formatIssuesForSlackText(issues) {
 
     sectionIssues.forEach((issue) => {
       const assignees = issue.assignees
-        .map((a) => `<https://github.com/${a.login}|@${a.login}>`)
+        .map((a) => `<@${btDevs[a.login]}>` || `@${a.login}`)
         .join(", ");
 
       message += `\n<${issue.url}|#${issue.number}: ${issue.title}>\n`;
 
       if (includeLabels) {
-        console.log(issue.labels);
         const labels = issue.labels ? issue.labels.join(", ") : "";
         message += ` 🏷️ labels: ${labels}\n`;
       }
