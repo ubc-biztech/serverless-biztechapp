@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@slack/bolt": "^4.4.0",
+    "discord-interactions": "^4.3.0",
     "jsonwebtoken": "^9.0.2",
     "node-fetch": "^3.3.2"
   },
