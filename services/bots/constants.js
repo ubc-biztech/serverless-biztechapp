@@ -64,6 +64,11 @@ export const projects = [
   "Internal Tools"
 ];
 
+export const ack = {
+  statusCode: 200,
+  body: ""
+};
+
 export const installationID = 71407901;
 
 export const reminderChannelID = "C08PTKNPCHX";

@@ -17,11 +17,14 @@ provider:
   cfLogs: true
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
+    NODE_ENV: ${env:NODE_ENV}
+    DISCORD_APPLICATION_ID: ${env:DISCORD_APPLICATION_ID}
+    DISCORD_PUBLIC_KEY: ${env:DISCORD_PUBLIC_KEY}
+    DISCORD_TOKEN: ${env:DISCORD_TOKEN}
     GH_CLIENT_ID: ${env:GH_CLIENT_ID}
     GH_PRIVATE_KEY: ${env:GH_PRIVATE_KEY}
-    NODE_ENV: ${env:NODE_ENV}
-    SLACK_BOT_TOKEN: ${env:SLACK_BOT_TOKEN}
     OPENAI_API_KEY: ${env:OPENAI_API_KEY}
+    SLACK_BOT_TOKEN: ${env:SLACK_BOT_TOKEN}
   timeout: 30 # in seconds
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
@@ -30,8 +33,24 @@ provider:
 custom: ${file(../../serverless.common.yml):custom}
 
 functions:
+  discordInteractions:
+    handler: handlerDiscord.interactions
+    events:
+      - http:
+        path: discord/interactions
+        method: post
+        cors: true
+
+  discordWebhook:
+    handler: handlerDiscord.webhook
+    events:
+      - http:
+        path: discord/webhook
+        method: post
+        cors: true
+
   slackGithubReminder:
-    handler: handler.slackGithubReminder
+    handler: handlerSlack.slackGithubReminder
     events:
       - http:
           path: slack/github
@@ -45,7 +64,7 @@ functions:
           enabled: true
 
   slackShortcutEventHandler:
-    handler: handler.shortcutHandler
+    handler: handlerSlack.shortcutHandler
     events:
       - http:
           path: slack/shortcut/events

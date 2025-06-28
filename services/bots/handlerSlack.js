@@ -5,12 +5,9 @@ import {
   sendIssueReminders as sendIssueReminders,
   submitPingShortcut,
   summarizeRecentMessages
-} from "./helpers.js";
+} from "./helpersSlack.js";
 
-const ack = {
-  statusCode: 200,
-  body: ""
-};
+import { ack } from "./constants.js";
 
 const processedEventIds = new Set();
 
