@@ -26,6 +26,10 @@ export const interactions = (event, ctx, callback) => {
   if (type === InteractionType.PING) {
     return res.send({ type: InteractionResponseType.PONG });
   }
+
+  //stub
 };
 
-export const webhook = (event, ctx, callback) => {};
+export const webhook = (event, ctx, callback) => {
+  //stub
+};
