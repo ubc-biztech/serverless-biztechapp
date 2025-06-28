@@ -12,7 +12,7 @@ custom:
   bundle:
     sourcemaps: false
   serverless-offline:
-    port: 4000
+    host: 0.0.0.0
   serverless-mocha-plugin:
     # use test template to overwrite plugin usage of commonjs
     testTemplate: ../../lib/testTemplate.ejs

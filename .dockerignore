@@ -1,0 +1,32 @@
+# package directories
+node_modules
+.webpack
+jspm_packages
+
+# Serverless directories
+.serverless
+.webpack
+
+.env
+.vscode
+.idea
+
+# Ignore generated room files
+scripts/data/*_judges.txt
+
+# Root junk
+*.log
+*.zip
+*.tar.gz
+dist
+build
+
+# Nested junk in all services
+**/node_modules
+**/.serverless
+**/.next
+**/coverage
+**/dist
+
+# Generated files
+scripts/data/*

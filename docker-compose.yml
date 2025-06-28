@@ -1,0 +1,41 @@
+services:
+  proxy:
+    environment:
+      - NODE_ENV=development
+      - 'SERVERLESS_ARN=${SERVERLESS_ARN}'
+      - 'AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}'
+      - 'AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}'
+      - 'SERVERLESS_ACCESS_KEY=${SERVERLESS_ACCESS_KEY}'
+      - 'STRIPE_DEV_CANCEL=${STRIPE_DEV_CANCEL}'
+      - 'STRIPE_DEV_ENDPOINT=${STRIPE_DEV_ENDPOINT}'
+      - 'STRIPE_DEV_KEY=${STRIPE_DEV_KEY}'
+      - 'SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}'
+      - 'SLACK_SIGNING_SECRET=${SLACK_SIGNING_SECRET}'
+      - 'SLACK_APP_TOKEN=${SLACK_APP_TOKEN}'
+      - 'OPENAI_API_KEY=${OPENAI_API_KEY}'
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+      target: dev
+      cache_from:
+        - 'users-service:latest'
+        - 'users-service:cache'
+    volumes:
+      - './:/app'
+    ports:
+      - '4001:4001'
+      - '4002:4002'
+      - '4003:4003'
+      - '4004:4004'
+      - '4005:4005'
+      - '4006:4006'
+      - '4007:4007'
+      - '4008:4008'
+      - '4009:4009'
+      - '4010:4010'
+      - '4011:4011'
+      - '4012:4012'
+      - '4013:4013'
+      - '4014:4014'
+      - '4015:4015'
+      - '4016:4016'

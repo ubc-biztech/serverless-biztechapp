@@ -10,5 +10,8 @@ jspm_packages
 .vscode
 .idea
 
+# zsh secrets
+export 
+
 # Ignore generated room files
 scripts/data/*_judges.txt
