@@ -37,17 +37,17 @@ functions:
     handler: handlerDiscord.interactions
     events:
       - http:
-        path: discord/interactions
-        method: post
-        cors: true
+          path: discord/interactions
+          method: post
+          cors: true
 
   discordWebhook:
     handler: handlerDiscord.webhook
     events:
       - http:
-        path: discord/webhook
-        method: post
-        cors: true
+          path: discord/webhook
+          method: post
+          cors: true
 
   slackGithubReminder:
     handler: handlerSlack.slackGithubReminder
