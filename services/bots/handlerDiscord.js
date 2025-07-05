@@ -69,24 +69,24 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
       required: true,
       type: "string"
     },
-    discord_id: {
+    discordId: {
       required: true,
       type: "string"
     }
   });
 
-  const { email, discord_id } = data;
+  const { email, discordId } = data;
 
-  if (!email || !discord_id) {
+  if (!email || !discordId) {
     return callback(null, 
       helpers.createResponse(400, {
-        message: "Missing email or discord_id",
+        message: "Missing email or discordId",
       })
     );
   }
 
   try {
-    console.log(`Attempting to map Discord ID ${discord_id} to email ${email}`);
+    console.log(`Attempting to map Discord ID ${discordId} to email ${email}`);
     const exists = await db.getOne(email, MEMBERS2025_TABLE);
 
     if (!exists) {
@@ -98,7 +98,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
     }
 
     // guard to prevent overwriting existing ids, should require manual unlinking if neccesary
-    if (exists.discord_id) {
+    if (exists.discordId) {
       return callback(null, 
         helpers.createResponse(409, {
           message: "Discord account has already been linked to this membership",
@@ -107,7 +107,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
     }
 
     // update with new field
-    await db.updateDB(email, { discord_id }, MEMBERS2025_TABLE);
+    await db.updateDB(email, { discordId }, MEMBERS2025_TABLE);
 
     // TODO: call role assignment API here
 
