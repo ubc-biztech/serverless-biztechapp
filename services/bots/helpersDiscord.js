@@ -1,4 +1,4 @@
-import { verifyKey } from "discord-interactions";
+import nacl from "tweetnacl";
 import fetch from "node-fetch";
 
 export async function DiscordRequest(endpoint, options) {
@@ -33,16 +33,11 @@ export function verifyRequestSignature(req) {
     console.error("Missing signature or timestamp in request headers");
     return false
   }
-  console.log("body", body);
-  console.log("public key", process.env.DISCORD_PUBLIC_KEY);
-  console.log("signature", signature);
-  console.log("timestamp", timestamp);
 
-  const isValid = verifyKey(
-    body,
-    signature,
-    timestamp,
-    process.env.DISCORD_PUBLIC_KEY
+  const isValid = nacl.sign.detached.verify(
+    Buffer.from(timestamp + body),
+    Buffer.from(signature, "hex"),
+    Buffer.from(process.env.DISCORD_PUBLIC_KEY, "hex")
   );
 
   return isValid;

@@ -9,8 +9,7 @@ const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 export const interactions = (event, ctx, callback) => {
   const body = JSON.parse(event.body);
 
-  const isValid = verifyRequestSignature(event);
-  if (!isValid) {
+  if (!verifyRequestSignature(event)) {
     console.error("Invalid request signature");
     return callback(null, {
       statusCode: 401,
@@ -35,11 +34,9 @@ export const interactions = (event, ctx, callback) => {
 
   if (type === InteractionType.PING) {
     console.log("Received PING interaction");
-    return callback(null, {         
+    return callback(null, {
       statusCode: 200,
-      body: JSON.stringify({ 
-        type: InteractionResponseType.PONG 
-      }) 
+      body: JSON.stringify({ type: InteractionResponseType.PONG })
     });
   }
 
