@@ -42,3 +42,72 @@ export function verifyRequestSignature(req) {
 
   return isValid;
 }
+
+// Handles application commands and routes them to the appropriate handler
+// handlers should return a response object with statusCode and body
+export function applicationCommandRouter(name, body) {
+  const { member } = body;
+  switch (name) {
+    case "verify":
+      return handleVerifyCommand(member);
+
+    default:
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: `Unknown command: /${data.name}`,
+            flags: 64
+          }
+        })
+      };
+  }
+}
+
+// handles /verify slash command
+function handleVerifyCommand(member) {
+  const discordUserId = member.user.id
+
+  console.log("User initiating verify:", discordUserId);
+
+  const idpLoginUrl = `https://app.ubcbiztech.com/login?discordId=${discordUserId}`;
+
+  // guard against use outside of a server
+  if (!discordUserId) {
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: "❌ This command can only be used in a server.",
+          flags: 64
+        }
+      })
+    };
+  }
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: "🔐 Click below to verify your account.",
+        flags: 64,
+        components: [
+          {
+            type: 1,
+            components: [
+              {
+                type: 2,
+                style: 5,
+                label: "Login with the UBC BizTech web app",
+                url: idpLoginUrl
+              }
+            ]
+          }
+        ]
+      }
+    })
+  };
+}

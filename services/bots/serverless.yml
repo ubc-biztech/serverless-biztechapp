@@ -29,6 +29,14 @@ provider:
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
     restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2025${self:provider.environment.ENVIRONMENT}"
 
 custom: ${file(../../serverless.common.yml):custom}
 
@@ -38,6 +46,14 @@ functions:
     events:
       - http:
           path: discord/interactions
+          method: post
+          cors: true
+  
+  discordAccountMapping:
+    handler: handlerDiscord.mapDiscordAccountToMembership
+    events:
+      - http:
+          path: discord/account/mapping
           method: post
           cors: true
 
