@@ -107,7 +107,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
     }
 
     // update with new field
-    await db.updateDB(email, { discord_id: discord_id }, MEMBERSHIPS_TABLE);
+    await db.updateDB(email, { discord_id }, MEMBERS2025_TABLE);
 
     // TODO: call role assignment API here
 
