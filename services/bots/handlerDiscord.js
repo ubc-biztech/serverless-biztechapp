@@ -117,7 +117,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
       })
     );
   } catch (err) {
-    console.error("DynamoDB error:", err);
+    console.error(db.dynamoErrorResponse(err)); // better error logging
     callback(
       null,
       helpers.createResponse(500, {
