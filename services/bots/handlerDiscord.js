@@ -1,5 +1,5 @@
 import db from "../../lib/db.js";
-import helpers from "../../lib/handlerHelpers.js";
+import handlerHelpers from "../../lib/handlerHelpers.js";
 import { 
   InteractionResponseType, 
   InteractionType 
@@ -64,7 +64,7 @@ export const webhook = (event, ctx, callback) => {
 export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
   const data = JSON.parse(event.body);
 
-  helpers.checkPayloadProps(data, {
+  handlerHelpers.checkPayloadProps(data, {
     email: {
       required: true,
       type: "string"
@@ -79,7 +79,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
 
   if (!email || !discordId) {
     return callback(null, 
-      helpers.createResponse(400, {
+      handlerHelpers.createResponse(400, {
         message: "Missing email or discordId",
       })
     );
@@ -91,7 +91,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
 
     if (!exists) {
       return callback(null, 
-        helpers.createResponse(404, {
+        handlerHelpers.createResponse(404, {
           message: "Membership not found",
         })
       )
@@ -100,7 +100,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
     // guard to prevent overwriting existing ids, should require manual unlinking if neccesary
     if (exists.discordId) {
       return callback(null, 
-        helpers.createResponse(409, {
+        handlerHelpers.createResponse(409, {
           message: "Discord account has already been linked to this membership",
         })
       );
@@ -112,7 +112,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
     // TODO: call role assignment API here
 
     return callback(null,         
-      helpers.createResponse(200, {
+      handlerHelpers.createResponse(200, {
         message: "Successfully mapped Discord account to membership",
       })
     );
@@ -120,7 +120,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
     console.error(db.dynamoErrorResponse(err)); // better error logging
     callback(
       null,
-      helpers.createResponse(500, {
+      handlerHelpers.createResponse(500, {
         message: "Internal server error"
       })
     );

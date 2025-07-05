@@ -1,5 +1,8 @@
 import nacl from "tweetnacl";
 import fetch from "node-fetch";
+import { 
+  InteractionResponseType, 
+} from "discord-interactions";
 
 export async function DiscordRequest(endpoint, options) {
   const url = "https://discord.com/api/v10/" + endpoint;
@@ -67,7 +70,7 @@ export function applicationCommandRouter(name, body) {
 
 // handles /verify slash command
 function handleVerifyCommand(member) {
-  const discordUserId = member.user.id
+  const discordUserId = member?.user?.id
 
   console.log("User initiating verify:", discordUserId);
 
