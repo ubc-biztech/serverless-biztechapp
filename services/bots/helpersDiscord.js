@@ -1,3 +1,4 @@
+import nacl from "tweetnacl";
 import fetch from "node-fetch";
 
 export async function DiscordRequest(endpoint, options) {
@@ -20,4 +21,24 @@ export async function DiscordRequest(endpoint, options) {
   }
 
   return res;
+}
+
+export function verifyRequestSignature(req) {
+  let isValid = false;
+  const signature = req.headers["X-Signature-Ed25519"];
+  const timestamp = req.headers["X-Signature-Timestamp"];
+  const body = req.body;
+
+  if (!signature || !timestamp) {
+    console.error("Missing signature or timestamp in request headers");
+    return false
+  }
+
+  isValid = nacl.sign.detached.verify(
+    Buffer.from(timestamp + body),
+    Buffer.from(signature, "hex"),
+    Buffer.from(process.env.DISCORD_PUBLIC_KEY, "hex")
+  );
+
+  return isValid;
 }

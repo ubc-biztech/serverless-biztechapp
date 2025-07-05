@@ -12,6 +12,7 @@
     "concurrently": "^6.2.0",
     "copy-dynamodb-table": "^2.2.1",
     "csv-parser": "^3.0.0",
+    "discord-interactions": "^4.3.0",
     "dotenv": "^16.0.3",
     "express": "^4.17.1",
     "express-http-proxy": "^1.6.2",
@@ -22,6 +23,7 @@
     "path": "^0.12.7",
     "serverless": "^3.39.0",
     "serverless-dynamodb": "^0.2.54",
+    "tweetnacl": "^1.0.3",
     "yaml": "^1.10.2"
   },
   "scripts": {
