@@ -24,7 +24,7 @@ export async function DiscordRequest(endpoint, options) {
 }
 
 export function verifyRequestSignature(req) {
-  console.log(JSON.stringify(req));
+  let isValid = false;
   const signature = req.headers["X-Signature-Ed25519"];
   const timestamp = req.headers["X-Signature-Timestamp"];
   const body = req.body;
@@ -34,11 +34,16 @@ export function verifyRequestSignature(req) {
     return false
   }
 
-  const isValid = nacl.sign.detached.verify(
-    Buffer.from(timestamp + body),
-    Buffer.from(signature, "hex"),
-    Buffer.from(process.env.DISCORD_PUBLIC_KEY, "hex")
-  );
+  try {
+    isValid = nacl.sign.detached.verify(
+      Buffer.from(timestamp + body),
+      Buffer.from(signature, "hex"),
+      Buffer.from(process.env.DISCORD_PUBLIC_KEY, "hex")
+    );
+  } catch (error) {
+    console.error("Error verifying signature:", error);
+    return false;
+  }
 
   return isValid;
 }
