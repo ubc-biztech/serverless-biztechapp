@@ -109,6 +109,8 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
     // update with new field
     await db.updateDB(email, { discord_id: discord_id }, MEMBERSHIPS_TABLE);
 
+    // TODO: call role assignment API here
+
     return callback(null,         
       helpers.createResponse(200, {
         message: "Successfully mapped Discord account to membership",
