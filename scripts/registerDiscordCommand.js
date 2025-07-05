@@ -17,23 +17,23 @@ switch (setting) {
     listCommands()
     break;
   case "LOCAL":
-    await fetch(`https://discord.com/api/v10/applications/${APP_ID}/commands`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bot ${DISCORD_TOKEN}`,
-        },
-        body: JSON.stringify(command),
+    await fetch(`https://discord.com/api/v10/applications/${APP_ID}/guilds/${GUILD_ID}/commands`, {
+      method: "POST",
+      headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bot ${DISCORD_TOKEN}`,
+      },
+      body: JSON.stringify(command),
     });
     break;
   case "GLOBAL":
-    await fetch(`https://discord.com/api/v10/applications/${APP_ID}/guilds/${GUILD_ID}/commands`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bot ${DISCORD_TOKEN}`,
-        },
-        body: JSON.stringify(command),
+    await fetch(`https://discord.com/api/v10/applications/${APP_ID}/commands`, {
+      method: "POST",
+      headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bot ${DISCORD_TOKEN}`,
+      },
+      body: JSON.stringify(command),
     });
     break;
   default:
