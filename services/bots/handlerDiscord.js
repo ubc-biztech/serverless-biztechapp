@@ -10,7 +10,7 @@ import {
   applicationCommandRouter 
 } from "./helpersDiscord.js";
 import {
-  MEMBERS2025_TABLE
+  MEMBERS2026_TABLE
 } from "../../constants/tables.js";
 
 export const interactions = (event, ctx, callback) => {
@@ -87,7 +87,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
 
   try {
     console.log(`Attempting to map Discord ID ${discordId} to email ${email}`);
-    const exists = await db.getOne(email, MEMBERS2025_TABLE);
+    const exists = await db.getOne(email, MEMBERS2026_TABLE);
 
     if (!exists) {
       return callback(null, 
@@ -107,7 +107,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
     }
 
     // update with new field
-    await db.updateDB(email, { discordId }, MEMBERS2025_TABLE);
+    await db.updateDB(email, { discordId }, MEMBERS2026_TABLE);
 
     // TODO: call role assignment API here
 
