@@ -5,6 +5,7 @@ export const JUDGING_TABLE = "bizJudge";
 export const MEMBERSHIPS2021_TABLE = "biztechMemberships2021";
 export const MEMBERS2022_TABLE = "biztechMembers2022";
 export const MEMBERS2025_TABLE = "biztechMembers2025";
+export const MEMBERS2026_TABLE = "biztechMembers2026";
 export const PRIZES_TABLE = "biztechPrizes";
 export const STICKERS_TABLE = "bizStickers";
 export const SCORE_TABLE = "bizScores";
