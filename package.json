@@ -22,7 +22,6 @@
     "ics": "^2.40.0",
     "path": "^0.12.7",
     "serverless": "^3.39.0",
-    "serverless-dynamodb": "^0.2.54",
     "tweetnacl": "^1.0.3",
     "yaml": "^1.10.2"
   },
@@ -55,8 +54,10 @@
     "pre-commit": "^1.2.2",
     "serverless-bundle": "^6.1.0",
     "serverless-domain-manager": "^5.1.0",
+    "serverless-dotenv-plugin": "^6.0.0",
+    "serverless-dynamodb": "^0.2.56",
     "serverless-mocha-plugin": "^1.12.0",
-    "serverless-offline": "^13.9.0",
+    "serverless-offline": "^14.4.0",
     "serverless-prune-plugin": "^2.0.2"
   },
   "pre-commit": [],
