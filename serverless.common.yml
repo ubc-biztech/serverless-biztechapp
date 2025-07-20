@@ -36,4 +36,5 @@ custom:
 plugins:
   - serverless-dynamodb
   - serverless-offline
-
+  - serverless-dotenv-plugin
+  
