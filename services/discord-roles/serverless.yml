@@ -1,0 +1,39 @@
+service: biztechApi-discord-roles
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: us-west-2
+  stage: dev
+  
+  environment:
+    ENVIRONMENT: dev
+    DISCORD_GUILD_ID: ${env:DISCORD_GUILD_ID, ""}
+    DISCORD_BOT_TOKEN: ${env:DISCORD_BOT_TOKEN, ""}
+    BASIC_MEMBER_ROLE_ID: ${env:BASIC_MEMBER_ROLE_ID, ""}
+    PREMIUM_MEMBER_ROLE_ID: ${env:PREMIUM_MEMBER_ROLE_ID, ""}
+    EXECUTIVE_ROLE_ID: ${env:EXECUTIVE_ROLE_ID, ""}
+
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:GetItem
+        - dynamodb:UpdateItem
+      Resource:
+        - "arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/*"
+
+functions:
+  batchRoles:
+    handler: handler.batchRoles
+    events:
+      - httpApi:
+          path: /discord/batch-roles
+          method: post
+
+  backfill:
+    handler: handler.backfill
+    events:
+      - httpApi:
+          path: /discord/backfill/{userID}
+          method: post
