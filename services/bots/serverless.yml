@@ -18,13 +18,16 @@ provider:
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
-    DISCORD_APPLICATION_ID: ${env:DISCORD_APPLICATION_ID,""}
-    DISCORD_PUBLIC_KEY: ${env:DISCORD_PUBLIC_KEY,""}
-    DISCORD_TOKEN: ${env:DISCORD_TOKEN,""}
-    GH_CLIENT_ID: ${env:GH_CLIENT_ID,""}
-    GH_PRIVATE_KEY: ${env:GH_PRIVATE_KEY,""}
-    OPENAI_API_KEY: ${env:OPENAI_API_KEY,""}
-    SLACK_BOT_TOKEN: ${env:SLACK_BOT_TOKEN,""}
+    DISCORD_APPLICATION_ID: ${env:DISCORD_APPLICATION_ID}
+    DISCORD_PUBLIC_KEY: ${env:DISCORD_PUBLIC_KEY}
+    DISCORD_TOKEN: ${env:DISCORD_TOKEN}
+    DISCORD_GUILD_ID: ${env:DISCORD_GUILD_ID}  # Add this
+    BASIC_MEMBER_ROLE_ID: ${env:BASIC_MEMBER_ROLE_ID}  # Add this
+    EXECUTIVE_ROLE_ID: ${env:EXECUTIVE_ROLE_ID}  # Add this
+    GH_CLIENT_ID: ${env:GH_CLIENT_ID}
+    GH_PRIVATE_KEY: ${env:GH_PRIVATE_KEY}
+    OPENAI_API_KEY: ${env:OPENAI_API_KEY}
+    SLACK_BOT_TOKEN: ${env:SLACK_BOT_TOKEN}
   timeout: 30 # in seconds
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
@@ -74,6 +77,30 @@ functions:
     events:
       - http:
           path: discord/webhook
+          method: post
+          cors: true
+
+  discordAssignRoles:
+    handler: handlerDiscord.assignRoles
+    events:
+      - http:
+          path: discord/roles/assign
+          method: post
+          cors: true
+
+  discordRemoveRoles:
+    handler: handlerDiscord.removeRoles
+    events:
+      - http:
+          path: discord/roles/remove
+          method: post
+          cors: true
+
+  discordBackfillRoles:
+    handler: handlerDiscord.backfillRoles
+    events:
+      - http:
+          path: discord/roles/backfill/{userID}
           method: post
           cors: true
 

@@ -1,17 +1,19 @@
 import db from "../../lib/db.js";
 import handlerHelpers from "../../lib/handlerHelpers.js";
-import {
-  InteractionResponseType,
-  InteractionType
+import { 
+  InteractionResponseType, 
+  InteractionType 
 } from "discord-interactions";
-import {
-  DiscordRequest,
-  verifyRequestSignature,
-  applicationCommandRouter
+import { 
+  DiscordRequest, 
+  verifyRequestSignature, 
+  applicationCommandRouter 
 } from "./helpersDiscord.js";
 import {
   MEMBERS2026_TABLE
 } from "../../constants/tables.js";
+import { assignUserRoles, removeUserRoles, backfillUserRoles } from "./helpersDiscord.js";
+
 
 export const interactions = (event, ctx, callback) => {
   const body = JSON.parse(event.body);
@@ -105,7 +107,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
       );
     }
 
-    // guard to prevent overwriting existing ids, should require manual unlinking if neccesary
+    // guard to prevent overwriting existing ids, should require manual unlinking if necessary
     if (exists.discordId) {
       return callback(null,
         handlerHelpers.createResponse(409, {
@@ -119,7 +121,15 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
       discordId
     }, MEMBERS2026_TABLE);
 
-    // TODO: call role assignment API here
+    // Assign initial roles based on membership tier
+    try {
+      const membershipTier = exists.membershipTier || 'basic';
+      await assignUserRoles(email, membershipTier);
+      console.log(`Successfully assigned ${membershipTier} role to ${email}`);
+    } catch (roleError) {
+      console.warn(`Failed to assign roles to ${email}:`, roleError.message);
+      // Don't fail the mapping if role assignment fails
+    }
 
     return callback(null,
       handlerHelpers.createResponse(200, {
@@ -127,7 +137,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
       })
     );
   } catch (err) {
-    console.error(db.dynamoErrorResponse(err)); // better error logging
+    console.error(db.dynamoErrorResponse(err));
     callback(
       null,
       handlerHelpers.createResponse(500, {
