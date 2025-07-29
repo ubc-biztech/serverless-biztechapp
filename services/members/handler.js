@@ -58,8 +58,8 @@ export const create = async (event, ctx, callback) => {
 export const get = async (event, ctx, callback) => {
   try {
     // eslint-disable-next-line
-    if (!event.pathParameters || !event.pathParameters.email)
-      throw helpers.missingIdQueryResponse("email");
+    if (!event.pathParameters || !event.pathParameters.id)
+      throw helpers.missingIdQueryResponse("id");
     const email = event.pathParameters.id;
 
     if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
