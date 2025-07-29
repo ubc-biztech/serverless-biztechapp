@@ -5,7 +5,7 @@ import { humanId } from "human-id";
 import { PROFILES_TABLE } from "../../constants/tables.js";
 import { MEMBERS2026_TABLE } from "../../constants/tables.js";
 import { TYPES } from "./constants.js";
-import { createProfile } from "./helpers.js";
+import { createProfile, filterPublicProfileFields } from "./helpers.js";
 const REGISTRATIONS_TABLE = "biztechRegistrations";
 const QRS_TABLE = "biztechQRs";
 
@@ -124,19 +124,6 @@ export const createPartialPartnerProfile = async (event, ctx, callback) => {
     callback(null, err);
     return null;
   }
-};
-
-const filterPublicProfileFields = (profile) => {
-  const publicFields = {};
-  const map = profile.viewableMap;
-
-  for (const key in profile) {
-    if (profile.hasOwnProperty(key) && map[key]) {
-      publicFields[key] = profile[key];
-    }
-  }
-
-  return publicFields;
 };
 
 export const getPublicProfile = async (event, ctx, callback) => {

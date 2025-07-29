@@ -93,3 +93,17 @@ export async function createProfile(email) {
 
   return response;
 }
+
+export function filterPublicProfileFields(profile) {
+  const publicFields = {
+  };
+  const map = profile.viewableMap;
+
+  for (const key in profile) {
+    if (profile.hasOwnProperty(key) && map[key]) {
+      publicFields[key] = profile[key];
+    }
+  }
+
+  return publicFields;
+}
