@@ -29,9 +29,9 @@ provider:
         - dynamodb:UpdateItem
         - dynamodb:Query
         - dynamodb:Scan
-      Resource: 
+      Resource:
         - "arn:aws:dynamodb:${aws:region}:*:table/biztechProfiles${self:provider.environment.ENVIRONMENT}"
-        - "arn:aws:dynamodb:${aws:region}:*:table/biztechProfiles${self:provider.environment.ENVIRONMENT}/index/profileID-index"
+        # - "arn:aws:dynamodb:${aws:region}:*:table/biztechProfiles${self:provider.environment.ENVIRONMENT}/index/type-index"
         - "arn:aws:dynamodb:${aws:region}:*:table/biztechRegistrations${self:provider.environment.ENVIRONMENT}"
         - "arn:aws:dynamodb:${aws:region}:*:table/biztechQRs${self:provider.environment.ENVIRONMENT}"
 
@@ -113,20 +113,20 @@ resources:
         AttributeDefinitions:
           - AttributeName: id
             AttributeType: S
-          - AttributeName: eventID;year
+          - AttributeName: compositeID
             AttributeType: S
-          - AttributeName: profileID
+          - AttributeName: type
             AttributeType: S
         KeySchema:
           - AttributeName: id
             KeyType: HASH
-          - AttributeName: eventID;year
+          - AttributeName: type
             KeyType: RANGE
-        GlobalSecondaryIndexes:
-          - IndexName: profileID-index
-            KeySchema:
-              - AttributeName: profileID
-                KeyType: HASH
-            Projection:
-              ProjectionType: ALL
-        BillingMode: PAY_PER_REQUEST 
+        # GlobalSecondaryIndexes:
+        #   - IndexName: type-index
+        #     KeySchema:
+        #       - AttributeName: type
+        #         KeyType: HASH
+        #     Projection:
+        #       ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST

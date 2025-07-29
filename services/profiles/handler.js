@@ -1,14 +1,10 @@
 import db from "../../lib/db.js";
 import helpers from "../../lib/handlerHelpers.js";
-import {
-  isEmpty
-} from "../../lib/utils.js";
-import {
-  humanId
-} from "human-id";
-import {
-  PROFILES_TABLE
-} from "../../constants/tables.js";
+import { isEmpty } from "../../lib/utils.js";
+import { humanId } from "human-id";
+import { PROFILES_TABLE } from "../../constants/tables.js";
+import { MEMBERS2026_TABLE } from "../../constants/tables.js";
+import { TYPES } from "../members/constants.js";
 const REGISTRATIONS_TABLE = "biztechRegistrations";
 const QRS_TABLE = "biztechQRs";
 
@@ -21,98 +17,81 @@ export const createProfile = async (event, ctx, callback) => {
       email: {
         required: true,
         type: "string"
-      },
-      eventID: {
-        required: true,
-        type: "string"
-      },
-      year: {
-        required: true,
-        type: "number"
       }
     });
 
-    const {
-      email, eventID, year
-    } = data;
-    const eventIDAndYear = `${eventID};${year}`;
+    const { email } = data;
 
-    // Check if profile already exists
-    const existingProfile = await db.getOne(email, PROFILES_TABLE, {
-      "eventID;year": eventIDAndYear
-    });
+    // Check if profile already exists, member entry implies profile entry
+    const memberData = await db.getOne(email, MEMBERS2026_TABLE);
 
-    if (!isEmpty(existingProfile)) {
+    if (memberData.profileID) {
       throw helpers.duplicateResponse("Profile", email);
-    }
-
-    // Get registration data
-    const registration = await db.getOne(email, REGISTRATIONS_TABLE, {
-      "eventID;year": eventIDAndYear
-    });
-
-    if (isEmpty(registration)) {
-      throw helpers.notFoundResponse("Registration", email);
     }
 
     // Generate profileID
     const profileID = humanId();
 
+    const viewableMap = {
+      fname: true,
+      lname: true,
+      pronouns: true,
+      major: true,
+      year: true,
+      hobby1: false,
+      hobby2: false,
+      funQuestion1: false,
+      funQuestion2: false,
+      linkedIn: false,
+      profilePictureURL: false,
+      additionalLink: false,
+      description: false
+    };
+
     // Map registration data to profile schema
     const timestamp = new Date().getTime();
     const profile = {
-      id: email,
-      "eventID;year": eventIDAndYear,
-      profileID,
-      fname: registration.basicInformation.fname,
-      lname: registration.basicInformation.lname,
-      pronouns: registration.basicInformation.gender || "",
-      type: registration.isPartner ? "Partner" : "Attendee",
-      major: registration.basicInformation.major,
-      year: registration.basicInformation.year,
-      ...(registration.isPartner ? {
-        company: registration.basicInformation.companyName,
-        role: registration.basicInformation.role,
-      } : {}),
-      hobby1: registration.dynamicResponses["130fac25-e5d7-4fd1-8fd8-d844bfdaef06"] || "",
-      hobby2: registration.dynamicResponses["52a3e21c-e65f-4248-a38d-db93e410fe2c"] || "",
-      funQuestion1: registration.dynamicResponses["3d130254-8f1c-456e-a325-109717ad2bd4"] || "",
-      funQuestion2: registration.dynamicResponses["f535e62d-96ee-4377-a8ac-c7b523d04583"] || "",
-      linkedIn: registration.dynamicResponses["ffcb7fcf-6a24-46a3-bfca-e3dc96b6309f"] || "",
-      profilePictureURL: registration.dynamicResponses["1fb1696d-9d90-4e02-9612-3eb9933e6c45"] || "",
-      additionalLink: registration.dynamicResponses["e164e119-6d47-453b-b215-91837b70e9b7"] || "",
-      description: registration.dynamicResponses["6849bb7f-b8bd-438c-b03b-e046cede378a"] || "",
+      compositeID: `PROFILE#${profileID}`,
+      type: TYPES.PROFILE,
+      fname: memberData.firstName,
+      lname: memberData.lastName,
+      pronouns: memberData.pronouns || "",
+      major: memberData.major,
+      year: memberData.year,
+      hobby1: "",
+      hobby2: "",
+      funQuestion1: "",
+      funQuestion2: "",
+      linkedIn: "",
+      profilePictureURL: "",
+      additionalLink: "",
+      description: "",
       createdAt: timestamp,
-      updatedAt: timestamp
+      updatedAt: timestamp,
+      viewableMap
     };
 
     // Create NFC entry
     const nfc = {
-      id: profileID,
-      "eventID;year": eventIDAndYear,
+      id: email,
+      "eventID;year": "member;2026",
       type: "NFC_ATTENDEE",
       isUnlimitedScans: true,
-      data: {
-        registrationID: registration.id
-      }
+      data: profileID
     };
 
     const params = {
       Key: {
-        id: email,
-        "eventID;year": eventIDAndYear
+        id: email
       },
-      TableName: REGISTRATIONS_TABLE + (process.env.ENVIRONMENT || ""),
+      TableName: MEMBERS2026_TABLE + (process.env.ENVIRONMENT || ""),
       UpdateExpression: "set profileID = :profileID, updatedAt = :updatedAt",
       ExpressionAttributeValues: {
         ":profileID": profileID,
         ":updatedAt": timestamp
       },
       ReturnValues: "UPDATED_NEW",
-      ConditionExpression: "attribute_exists(id) and attribute_exists(#eventIDYear)",
-      ExpressionAttributeNames: {
-        "#eventIDYear": "eventID;year"
-      }
+      ConditionExpression: "attribute_exists(id)"
     };
 
     await Promise.all([
@@ -122,7 +101,7 @@ export const createProfile = async (event, ctx, callback) => {
     ]);
 
     const response = helpers.createResponse(201, {
-      message: `Created profile and NFC for ${email} for event ${eventIDAndYear}`,
+      message: `Created profile and NFC for ${email} for event`,
       profile,
       nfc
     });
@@ -299,9 +278,7 @@ export const getProfileByEmail = async (event, ctx, callback) => {
       throw helpers.missingPathParamResponse("email, eventID, or year");
     }
 
-    const {
-      email, eventID, year
-    } = event.pathParameters;
+    const { email, eventID, year } = event.pathParameters;
     const eventIDAndYear = `${eventID};${year}`;
 
     // Get profile by email and eventID;year
@@ -354,11 +331,19 @@ export const createCompanyProfile = async (event, ctx, callback) => {
       });
     }
 
-    const { name, description, profilePictureURL, eventID, year, links = [], delegateProfileIDs = [] } = data;
+    const {
+      name,
+      description,
+      profilePictureURL,
+      eventID,
+      year,
+      links = [],
+      delegateProfileIDs = []
+    } = data;
     const eventIDAndYear = `${eventID};${year}`;
 
     // Format company name to create ID (remove spaces and special characters)
-    const companyId = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const companyId = name.toLowerCase().replace(/[^a-z0-9]/g, "");
 
     // Check if company profile already exists
     const existingProfile = await db.getOne(companyId, PROFILES_TABLE, {
@@ -445,7 +430,9 @@ export const linkPartnerToCompany = async (event, ctx, callback) => {
 
     const companyProfile = companyResults[0];
     if (companyProfile.type !== "Company") {
-      throw helpers.createResponse(400, { message: "Provided profile ID is not a company profile" });
+      throw helpers.createResponse(400, {
+        message: "Provided profile ID is not a company profile"
+      });
     }
 
     // Get partner profile
