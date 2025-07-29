@@ -31,20 +31,23 @@ provider:
         - dynamodb:Scan
       Resource:
         - "arn:aws:dynamodb:${aws:region}:*:table/biztechProfiles${self:provider.environment.ENVIRONMENT}"
-        # - "arn:aws:dynamodb:${aws:region}:*:table/biztechProfiles${self:provider.environment.ENVIRONMENT}/index/type-index"
-        - "arn:aws:dynamodb:${aws:region}:*:table/biztechRegistrations${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:${aws:region}:*:table/biztechMembers2026${self:provider.environment.ENVIRONMENT}"
         - "arn:aws:dynamodb:${aws:region}:*:table/biztechQRs${self:provider.environment.ENVIRONMENT}"
 
 custom: ${file(../../serverless.common.yml):custom}
 
 functions:
   createProfile:
-    handler: handler.createProfile
+    handler: handler.create
     events:
       - http:
           path: profiles
           method: post
           cors: true
+          authorizer:
+            name: ${self:service}-authorizer
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
 
   createPartialPartnerProfile:
     handler: handler.createPartialPartnerProfile
@@ -78,11 +81,11 @@ functions:
           method: post
           cors: true
 
-  getProfile:
-    handler: handler.getProfile
+  getPublicProfile:
+    handler: handler.getPublicProfile
     events:
       - http:
-          path: profiles/{profileID}
+          path: profiles/profile/{profileID}
           method: get
           cors: true
           request:
@@ -90,19 +93,21 @@ functions:
               paths:
                 profileID: true
 
-  getProfileByEmail:
-    handler: handler.getProfileByEmail
+  getUserProfile:
+    handler: handler.getUserProfile
     events:
       - http:
-          path: profiles/email/{email}/{eventID}/{year}
+          path: profiles/user/{userID}
           method: get
           cors: true
           request:
             parameters:
               paths:
-                email: true
-                eventID: true
-                year: true
+                userID: true
+          authorizer:
+            name: ${self:service}-authorizer
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
 
 resources:
   Resources:
@@ -122,11 +127,4 @@ resources:
             KeyType: HASH
           - AttributeName: type
             KeyType: RANGE
-        # GlobalSecondaryIndexes:
-        #   - IndexName: type-index
-        #     KeySchema:
-        #       - AttributeName: type
-        #         KeyType: HASH
-        #     Projection:
-        #       ProjectionType: ALL
         BillingMode: PAY_PER_REQUEST
