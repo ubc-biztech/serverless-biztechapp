@@ -76,7 +76,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
     }
   });
 
-  const { email, discordID: discordId } = data;
+  const { email, discordId } = data;
 
   if (!email || !discordId) {
     return callback(null,
