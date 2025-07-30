@@ -57,6 +57,7 @@
     "serverless-bundle": "^6.1.0",
     "serverless-domain-manager": "^5.1.0",
     "serverless-mocha-plugin": "^1.12.0",
+    "serverless-offline": "^13.9.0",
     "serverless-prune-plugin": "^2.0.2"
   },
   "pre-commit": [
