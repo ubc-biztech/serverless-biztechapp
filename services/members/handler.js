@@ -1,12 +1,8 @@
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
-import {
-  isEmpty, isValidEmail
-} from "../../lib/utils";
+import { isEmpty, isValidEmail } from "../../lib/utils";
 import docClient from "../../lib/docClient";
-const {
-  MEMBERS2025_TABLE
-} = require("../../constants/tables");
+const { MEMBERS2025_TABLE } = require("../../constants/tables");
 
 export const create = async (event, ctx, callback) => {
   const timestamp = new Date().getTime();
@@ -62,9 +58,9 @@ export const create = async (event, ctx, callback) => {
 export const get = async (event, ctx, callback) => {
   try {
     // eslint-disable-next-line
-    if (!event.pathParameters || !event.pathParameters.email)
-      throw helpers.missingIdQueryResponse("email");
-    const email = event.pathParameters.email;
+    if (!event.pathParameters || !event.pathParameters.id)
+      throw helpers.missingIdQueryResponse("id");
+    const email = event.pathParameters.id;
 
     if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
     const member = await db.getOne(email, MEMBERS2025_TABLE);
@@ -86,8 +82,7 @@ export const getAll = async (event, ctx, callback) => {
     const members = await db.scan(MEMBERS2025_TABLE);
 
     // re-organize the response
-    let response = {
-    };
+    let response = {};
     if (members !== null) response = helpers.createResponse(200, members);
 
     // return the response object

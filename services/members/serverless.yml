@@ -52,7 +52,7 @@ functions:
     handler: handler.get
     events:
       - http:
-          path: members/{email}
+          path: members/{id}
           method: get
           request:
             parameters:
