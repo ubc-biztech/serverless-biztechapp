@@ -6,6 +6,7 @@ import {
   MEMBERS2026_TABLE
 } from "../../constants/tables.js";
 import { assignUserRoles, removeUserRoles, backfillUserRoles } from "./helpersDiscord.js";
+import { createSupportTicket, addTicketResponse, updateTicketStatus } from "../support-tickets/handler.js";
 
 
 export const interactions = (event, ctx, callback) => {
@@ -241,6 +242,117 @@ export const backfillRoles = async (event, ctx, callback) => {
   } catch (error) {
     console.error("Backfill failed:", error);
     callback(null, error);
+  }
+};
+
+// Support ticket functions for Discord bot integration
+
+export const createSupportTicketFromDiscord = async (event, ctx, callback) => {
+  try {
+    const data = JSON.parse(event.body);
+    
+    handlerHelpers.checkPayloadProps(data, {
+      user_id: {
+        required: true,
+        type: "string"
+      },
+      message: {
+        required: true,
+        type: "string"
+      },
+      discord_id: {
+        required: true,
+        type: "string"
+      },
+      username: {
+        required: true,
+        type: "string"
+      }
+    });
+
+    const result = await createSupportTicket(event, ctx, callback);
+    return result;
+    
+  } catch (error) {
+    console.error("Error creating support ticket from Discord:", error);
+    return callback(null, handlerHelpers.createResponse(500, {
+      message: "Failed to create support ticket",
+      error: error.message
+    }));
+  }
+};
+
+export const addTicketResponseFromDiscord = async (event, ctx, callback) => {
+  try {
+    const data = JSON.parse(event.body);
+    
+    handlerHelpers.checkPayloadProps(data, {
+      ticket_id: {
+        required: true,
+        type: "string"
+      },
+      response: {
+        required: true,
+        type: "string"
+      },
+      responder_id: {
+        required: true,
+        type: "string"
+      },
+      responder_name: {
+        required: true,
+        type: "string"
+      },
+      is_exec: {
+        required: true,
+        type: "boolean"
+      }
+    });
+
+    const result = await addTicketResponse(event, ctx, callback);
+    return result;
+    
+  } catch (error) {
+    console.error("Error adding ticket response from Discord:", error);
+    return callback(null, handlerHelpers.createResponse(500, {
+      message: "Failed to add ticket response",
+      error: error.message
+    }));
+  }
+};
+
+export const updateTicketStatusFromDiscord = async (event, ctx, callback) => {
+  try {
+    const data = JSON.parse(event.body);
+    
+    handlerHelpers.checkPayloadProps(data, {
+      ticket_id: {
+        required: true,
+        type: "string"
+      },
+      status: {
+        required: true,
+        type: "string"
+      },
+      exec_id: {
+        required: true,
+        type: "string"
+      },
+      exec_name: {
+        required: true,
+        type: "string"
+      }
+    });
+
+    const result = await updateTicketStatus(event, ctx, callback);
+    return result;
+    
+  } catch (error) {
+    console.error("Error updating ticket status from Discord:", error);
+    return callback(null, handlerHelpers.createResponse(500, {
+      message: "Failed to update ticket status",
+      error: error.message
+    }));
   }
 };
 

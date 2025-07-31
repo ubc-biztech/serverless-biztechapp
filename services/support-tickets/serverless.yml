@@ -1,0 +1,99 @@
+service: biztechApi-support-tickets
+tenant: ianmh
+app: biztechapp
+
+plugins:
+  - serverless-dynamodb
+  - serverless-offline
+  - serverless-domain-manager
+  - serverless-prune-plugin
+  - serverless-mocha-plugin
+
+provider:
+  name: aws
+  stage: ${file(../../serverless.common.yml):provider.stage}
+  runtime: ${file(../../serverless.common.yml):provider.runtime}
+  region: ${file(../../serverless.common.yml):provider.region}
+  cfLogs: true
+  environment:
+    ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
+    NODE_ENV: ${env:NODE_ENV}
+    DISCORD_TOKEN: ${env:DISCORD_TOKEN}
+    DISCORD_GUILD_ID: ${env:DISCORD_GUILD_ID}
+    SUPPORT_TICKETS_EXEC_CHANNEL_ID: ${env:SUPPORT_TICKETS_EXEC_CHANNEL_ID}
+    SUPPORT_TICKETS_CHANNEL_ID: ${env:SUPPORT_TICKETS_CHANNEL_ID}
+    DISCORD_PUBLIC_KEY: ${env:DISCORD_PUBLIC_KEY}
+  timeout: 30
+  apiGateway:
+    restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
+    restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:Query
+        - dynamodb:Scan
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechSupportTickets${self:provider.environment.ENVIRONMENT}"
+
+custom: ${file(../../serverless.common.yml):custom}
+
+functions:
+  createTicket:
+    handler: handler.createTicket
+    events:
+      - http:
+          path: support-tickets
+          method: post
+          cors: true
+
+  getTickets:
+    handler: handler.getTickets
+    events:
+      - http:
+          path: support-tickets
+          method: get
+          cors: true
+
+  getTicket:
+    handler: handler.getTicket
+    events:
+      - http:
+          path: support-tickets/{ticket_id}
+          method: get
+          cors: true
+
+  addResponse:
+    handler: handler.addResponse
+    events:
+      - http:
+          path: support-tickets/response
+          method: post
+          cors: true
+
+  updateTicketStatus:
+    handler: handler.updateTicketStatus
+    events:
+      - http:
+          path: support-tickets/status
+          method: put
+          cors: true
+
+  getUserTickets:
+    handler: handler.getUserTickets
+    events:
+      - http:
+          path: support-tickets/user/{user_id}
+          method: get
+          cors: true
+
+  # Webhook for processing support channel messages
+  processSupportChannelMessage:
+    handler: webhookHandler.processSupportChannelMessage
+    events:
+      - http:
+          path: support-tickets/webhook
+          method: post
+          cors: true 

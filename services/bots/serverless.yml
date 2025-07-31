@@ -92,6 +92,31 @@ functions:
           method: post
           cors: true
 
+  # Support ticket endpoints
+  discordCreateSupportTicket:
+    handler: handlerDiscord.createSupportTicketFromDiscord
+    events:
+      - http:
+          path: discord/support-tickets/create
+          method: post
+          cors: true
+
+  discordAddTicketResponse:
+    handler: handlerDiscord.addTicketResponseFromDiscord
+    events:
+      - http:
+          path: discord/support-tickets/response
+          method: post
+          cors: true
+
+  discordUpdateTicketStatus:
+    handler: handlerDiscord.updateTicketStatusFromDiscord
+    events:
+      - http:
+          path: discord/support-tickets/status
+          method: put
+          cors: true
+
   slackGithubReminder:
     handler: handlerSlack.slackGithubReminder
     events:

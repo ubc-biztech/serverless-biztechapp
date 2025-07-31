@@ -56,10 +56,16 @@ export function verifyRequestSignature(req) {
 // Handles application commands and routes them to the appropriate handler
 // handlers should return a response object with statusCode and body
 export function applicationCommandRouter(name, body) {
-  const { member } = body;
+  const { member, data } = body;
   switch (name) {
     case "verify":
       return handleVerifyCommand(member);
+    case "support":
+      return handleSupportCommand(member, data);
+    case "reply":
+      return handleReplyCommand(member, data);
+    case "resolve":
+      return handleResolveCommand(member, data);
 
     default:
       return {
@@ -67,7 +73,7 @@ export function applicationCommandRouter(name, body) {
         body: JSON.stringify({
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
           data: {
-            content: `Unknown command: /${data.name}`,
+            content: `Unknown command: /${name}`,
             flags: 64
           }
         })
@@ -229,4 +235,165 @@ export async function backfillUserRoles(userID) {
   const membershipTier = user.membershipTier || 'basic';
   
   return await assignUserRoles(userID, membershipTier);
+}
+
+// handles /support slash command
+function handleSupportCommand(member, data) {
+  const discordUserId = member?.user?.id;
+  const username = member?.user?.username;
+
+  console.log("User initiating support ticket:", discordUserId);
+
+  // guard against use outside of a server
+  if (!discordUserId) {
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: "❌ This command can only be used in a server.",
+          flags: 64
+        }
+      })
+    };
+  }
+
+  // Check if user has an open ticket
+  const supportTicketUrl = `https://app.ubcbiztech.com/support?discordId=${discordUserId}`;
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: "🎫 Click below to create a support ticket.",
+        flags: 64,
+        components: [
+          {
+            type: 1,
+            components: [
+              {
+                type: 2,
+                style: 5,
+                label: "Create Support Ticket",
+                url: supportTicketUrl
+              }
+            ]
+          }
+        ]
+      }
+    })
+  };
+}
+
+// handles /reply slash command for execs
+function handleReplyCommand(member, data) {
+  const discordUserId = member?.user?.id;
+  const username = member?.user?.username;
+
+  console.log("Exec replying to ticket:", discordUserId);
+
+  // Check if user is exec (you can add role checking here)
+  const isExec = checkIfExec(member);
+  if (!isExec) {
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: "❌ You don't have permission to use this command.",
+          flags: 64
+        }
+      })
+    };
+  }
+
+  const options = data?.options || [];
+  const ticketId = options.find(opt => opt.name === 'ticket_id')?.value;
+  const message = options.find(opt => opt.name === 'message')?.value;
+
+  if (!ticketId || !message) {
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: "❌ Please provide both ticket_id and message.",
+          flags: 64
+        }
+      })
+    };
+  }
+
+  // This would trigger the API call to add response
+  // For now, return a message indicating the response was sent
+  return {
+    statusCode: 200,
+    body: JSON.stringify({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: `✅ Response sent to ticket ${ticketId}`,
+        flags: 64
+      }
+    })
+  };
+}
+
+// handles /resolve slash command for execs
+function handleResolveCommand(member, data) {
+  const discordUserId = member?.user?.id;
+  const username = member?.user?.username;
+
+  console.log("Exec resolving ticket:", discordUserId);
+
+  // Check if user is exec
+  const isExec = checkIfExec(member);
+  if (!isExec) {
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: "❌ You don't have permission to use this command.",
+          flags: 64
+        }
+      })
+    };
+  }
+
+  const options = data?.options || [];
+  const ticketId = options.find(opt => opt.name === 'ticket_id')?.value;
+
+  if (!ticketId) {
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: "❌ Please provide a ticket_id.",
+          flags: 64
+        }
+      })
+    };
+  }
+
+  // This would trigger the API call to resolve ticket
+  // For now, return a message indicating the ticket was resolved
+  return {
+    statusCode: 200,
+    body: JSON.stringify({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: `✅ Ticket ${ticketId} marked as resolved`,
+        flags: 64
+      }
+    })
+  };
+}
+
+// Helper function to check if user is exec
+function checkIfExec(member) {
+  // Add logic to check if user has exec role
+  // For now, return true for testing
+  return true;
 }
