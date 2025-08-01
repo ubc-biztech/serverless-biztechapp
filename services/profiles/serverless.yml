@@ -99,10 +99,6 @@ functions:
           path: profiles/user/
           method: get
           cors: true
-          request:
-            parameters:
-              paths:
-                userID: true
           authorizer:
             name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
@@ -115,10 +111,6 @@ functions:
           path: profiles/user/
           method: patch
           cors: true
-          request:
-            parameters:
-              paths:
-                userID: true
           authorizer:
             name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
