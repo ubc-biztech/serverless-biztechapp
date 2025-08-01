@@ -32,7 +32,6 @@ provider:
       Resource:
         - "arn:aws:dynamodb:${aws:region}:*:table/biztechProfiles${self:provider.environment.ENVIRONMENT}"
         - "arn:aws:dynamodb:${aws:region}:*:table/biztechMembers2026${self:provider.environment.ENVIRONMENT}"
-        - "arn:aws:dynamodb:${aws:region}:*:table/biztechQRs${self:provider.environment.ENVIRONMENT}"
 
 custom: ${file(../../serverless.common.yml):custom}
 
