@@ -37,6 +37,7 @@ export const create = async (event, ctx, callback) => {
   }
 };
 
+// deprecated, will be done in another pr
 export const createPartialPartnerProfile = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
@@ -130,10 +131,10 @@ export const createPartialPartnerProfile = async (event, ctx, callback) => {
   }
 };
 
+// NEEDS new cognito service + rewrite, we'll allow this for now while building
 export const updatePublicProfile = async (event, ctx, callback) => {
   try {
     if (!event.pathParameters || !event.pathParameters.userID) {
-      // NEEDS new cognito service + rewrite, we'll allow this for now while building
       throw helpers.missingPathParamResponse("userID");
     }
 
@@ -150,7 +151,6 @@ export const updatePublicProfile = async (event, ctx, callback) => {
       !viewableMap ||
       Object.prototype.toString.call(viewableMap) !== "[object Object]"
     ) {
-      console.log(Object.prototype.toString.call(viewableMap));
       throw helpers.inputError("Viewable map is not a literal object", body);
     }
 
@@ -303,6 +303,7 @@ export const getUserProfile = async (event, ctx, callback) => {
   }
 };
 
+// deprecated, will be done in another pr
 export const createCompanyProfile = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
