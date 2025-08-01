@@ -124,21 +124,3 @@ functions:
             name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
-
-resources:
-  Resources:
-    BiztechProfilesTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: biztechProfiles${self:provider.environment.ENVIRONMENT, ''}
-        AttributeDefinitions:
-          - AttributeName: compositeID
-            AttributeType: S
-          - AttributeName: type
-            AttributeType: S
-        KeySchema:
-          - AttributeName: compositeID
-            KeyType: HASH
-          - AttributeName: type
-            KeyType: RANGE
-        BillingMode: PAY_PER_REQUEST
