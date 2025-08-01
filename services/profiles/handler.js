@@ -120,7 +120,6 @@ export const createPartialPartnerProfile = async (event, ctx, callback) => {
   }
 };
 
-// NEEDS new cognito service + rewrite, we'll allow this for now while building
 export const updatePublicProfile = async (event, ctx, callback) => {
   try {
     const userID = event.requestContext.authorizer.claims.email;
@@ -251,7 +250,6 @@ export const getUserProfile = async (event, ctx, callback) => {
   try {
     const userID = event.requestContext.authorizer.claims.email;
 
-    // Get profile by email and eventID;year
     const member = await db.getOne(userID, MEMBERS2026_TABLE);
     const { profileID = null } = member || {};
 
