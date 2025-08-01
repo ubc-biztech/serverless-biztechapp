@@ -132,14 +132,12 @@ resources:
       Properties:
         TableName: biztechProfiles${self:provider.environment.ENVIRONMENT, ''}
         AttributeDefinitions:
-          - AttributeName: id
-            AttributeType: S
           - AttributeName: compositeID
             AttributeType: S
           - AttributeName: type
             AttributeType: S
         KeySchema:
-          - AttributeName: id
+          - AttributeName: compositeID
             KeyType: HASH
           - AttributeName: type
             KeyType: RANGE
