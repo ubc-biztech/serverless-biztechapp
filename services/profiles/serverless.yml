@@ -109,6 +109,22 @@ functions:
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
 
+  updateUserProfile:
+    handler: handler.updatePublicProfile
+    events:
+      - http:
+          path: profiles/user/{userID}
+          method: patch
+          cors: true
+          request:
+            parameters:
+              paths:
+                userID: true
+          authorizer:
+            name: ${self:service}-authorizer
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+
 resources:
   Resources:
     BiztechProfilesTable:

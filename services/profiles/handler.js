@@ -4,8 +4,12 @@ import { isEmpty } from "../../lib/utils.js";
 import { humanId } from "human-id";
 import { PROFILES_TABLE } from "../../constants/tables.js";
 import { MEMBERS2026_TABLE } from "../../constants/tables.js";
-import { TYPES } from "./constants.js";
-import { createProfile, filterPublicProfileFields } from "./helpers.js";
+import { MUTABLE_PROFILE_ATTRIBUTES, TYPES } from "./constants.js";
+import {
+  buildProfileUpdateParams,
+  createProfile,
+  filterPublicProfileFields
+} from "./helpers.js";
 const REGISTRATIONS_TABLE = "biztechRegistrations";
 const QRS_TABLE = "biztechQRs";
 
@@ -117,6 +121,101 @@ export const createPartialPartnerProfile = async (event, ctx, callback) => {
       nfc
     });
 
+    callback(null, response);
+    return response;
+  } catch (err) {
+    console.error(err);
+    callback(null, err);
+    return null;
+  }
+};
+
+export const updatePublicProfile = async (event, ctx, callback) => {
+  try {
+    if (!event.pathParameters || !event.pathParameters.userID) {
+      // NEEDS new cognito service + rewrite, we'll allow this for now while building
+      throw helpers.missingPathParamResponse("userID");
+    }
+
+    const { userID } = event.pathParameters;
+    const body = JSON.parse(event.body);
+    helpers.checkPayloadProps(body, {
+      viewableMap: {
+        required: true
+      }
+    });
+    const { viewableMap } = body;
+
+    if (
+      !viewableMap ||
+      Object.prototype.toString.call(viewableMap) !== "[object Object]"
+    ) {
+      console.log(Object.prototype.toString.call(viewableMap));
+      throw helpers.inputError("Viewable map is not a literal object", body);
+    }
+
+    const member = await db.getOne(userID, MEMBERS2026_TABLE);
+    const { profileID = null } = member || {};
+
+    if (!profileID) {
+      throw helpers.notFoundResponse("Profile", userID);
+    }
+
+    const compositeID = `PROFILE#${profileID}`;
+
+    const result = await db.query(PROFILES_TABLE, null, {
+      expression: "compositeID = :compositeID AND #type = :profileType",
+      expressionValues: {
+        ":compositeID": compositeID,
+        ":profileType": TYPES.PROFILE
+      },
+      expressionNames: {
+        "#type": "type"
+      }
+    });
+
+    if (!result || result.length == 0) {
+      throw helpers.createResponse(404, {
+        message: `Profile: ${userID} not found`
+      });
+    }
+
+    const profile = result[0];
+
+    Object.keys(viewableMap).forEach((key) => {
+      if (
+        Object.hasOwn(MUTABLE_PROFILE_ATTRIBUTES, key) &&
+        typeof viewableMap[key] == "boolean"
+      ) {
+        profile.viewableMap[key] = viewableMap[key];
+      }
+    });
+
+    delete body["viewableMap"];
+
+    const updateBody = {};
+    Object.keys(body).forEach((key) => {
+      if (
+        Object.hasOwn(MUTABLE_PROFILE_ATTRIBUTES, key) &&
+        typeof body[key] == "string"
+      ) {
+        updateBody[key] = body[key];
+      }
+    });
+
+    const updateProfileParam = buildProfileUpdateParams(
+      compositeID,
+      updateBody,
+      profile.viewableMap,
+      PROFILES_TABLE,
+      new Date().getTime()
+    );
+
+    const data = await db.updateDBCustom(updateProfileParam);
+    const response = helpers.createResponse(200, {
+      message: `successfully updated profile: ${userID}`,
+      data
+    });
     callback(null, response);
     return response;
   } catch (err) {

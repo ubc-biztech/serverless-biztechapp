@@ -1,12 +1,8 @@
 import humanId from "human-id";
-import {
-  MEMBERS2026_TABLE, PROFILES_TABLE
-} from "../../constants/tables";
+import { MEMBERS2026_TABLE, PROFILES_TABLE } from "../../constants/tables";
 import db from "../../lib/db";
 import helpers from "../../lib/handlerHelpers";
-import {
-  TYPES
-} from "./constants";
+import { MUTABLE_PROFILE_ATTRIBUTES, TYPES } from "./constants";
 
 export async function createProfile(email) {
   const memberData = await db.getOne(email, MEMBERS2026_TABLE);
@@ -95,8 +91,7 @@ export async function createProfile(email) {
 }
 
 export function filterPublicProfileFields(profile) {
-  const publicFields = {
-  };
+  const publicFields = {};
   const map = profile.viewableMap;
 
   for (const key in profile) {
@@ -107,3 +102,60 @@ export function filterPublicProfileFields(profile) {
 
   return publicFields;
 }
+
+/**
+ * Builds dynamic update parameters for profile updates
+ * @param {string} compositeID - The composeID for the profile string
+ * @param {Object} updateData - The data to update (valid attributes from MUTABLE_PROFILE_ATTRIBUTES)
+ * @param {Object} viewableMap - The viewable map to update
+ * @param {string} tableName - The DynamoDB table name
+ * @param {number} timestamp - The update timestamp
+ * @returns {Object} DynamoDB update parameters
+ */
+export const buildProfileUpdateParams = (
+  compositeID,
+  updateData = {},
+  viewableMap,
+  tableName,
+  timestamp
+) => {
+  const updateExpressions = [];
+  const expressionAttributeValues = {};
+  const expressionAttributeNames = {};
+
+  // Add timestamp to updates
+  updateExpressions.push("#updatedAt = :updatedAt");
+  expressionAttributeValues[":updatedAt"] = timestamp;
+  expressionAttributeNames["#updatedAt"] = "updatedAt";
+
+  // Process valid mutable attributes
+  Object.keys(updateData).forEach((key) => {
+    if (Object.hasOwn(MUTABLE_PROFILE_ATTRIBUTES, key)) {
+      const attrName = `#${key}`;
+      const attrValue = `:${key}`;
+
+      updateExpressions.push(`${attrName} = ${attrValue}`);
+      expressionAttributeValues[attrValue] = updateData[key];
+      expressionAttributeNames[attrName] = key;
+    }
+  });
+
+  // Add viewableMap update if provided
+  if (viewableMap !== null) {
+    updateExpressions.push("#viewableMap = :viewableMap");
+    expressionAttributeValues[":viewableMap"] = viewableMap;
+    expressionAttributeNames["#viewableMap"] = "viewableMap";
+  }
+
+  return {
+    Key: {
+      compositeID,
+      type: TYPES.PROFILE
+    },
+    TableName: tableName + (process.env.ENVIRONMENT || ""),
+    UpdateExpression: `SET ${updateExpressions.join(", ")}`,
+    ExpressionAttributeValues: expressionAttributeValues,
+    ExpressionAttributeNames: expressionAttributeNames,
+    ReturnValues: "UPDATED_NEW"
+  };
+};
