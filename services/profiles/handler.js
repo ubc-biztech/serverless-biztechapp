@@ -227,18 +227,15 @@ export const getPublicProfile = async (event, ctx, callback) => {
     const { profileID } = event.pathParameters;
 
     // Query using the GSI
-    const result = await db.query(PROFILES_TABLE, null, {
-      expression: "compositeID = :compositeID AND #type = :profileType",
-      expressionValues: {
-        ":compositeID": `PROFILE#${profileID}`,
-        ":profileType": TYPES.PROFILE
-      },
-      expressionNames: {
-        "#type": "type"
+    const result = await db.getOneCustom({
+      TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
+      Key: {
+        compositeID: `PROFILE#${profileID}`,
+        type: TYPES.PROFILE
       }
     });
 
-    if (!result || result.length === 0) {
+    if (!result) {
       throw helpers.notFoundResponse("Profile", profileID);
     }
 
@@ -266,18 +263,15 @@ export const getUserProfile = async (event, ctx, callback) => {
       throw helpers.notFoundResponse("Profile", userID);
     }
 
-    const result = await db.query(PROFILES_TABLE, null, {
-      expression: "compositeID = :compositeID AND #type = :profileType",
-      expressionValues: {
-        ":compositeID": `PROFILE#${profileID}`,
-        ":profileType": TYPES.PROFILE
-      },
-      expressionNames: {
-        "#type": "type"
+    const result = await db.getOneCustom({
+      TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
+      Key: {
+        compositeID: `PROFILE#${profileID}`,
+        type: TYPES.PROFILE
       }
     });
 
-    if (!result || result.length === 0) {
+    if (!result) {
       throw helpers.notFoundResponse("Profile", profileID);
     }
 

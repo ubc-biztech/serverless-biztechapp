@@ -1,12 +1,11 @@
-import {
-  PutCommand, QueryCommand, UpdateCommand
-} from "@aws-sdk/lib-dynamodb";
+import { PutCommand, QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import {
   QRS_TABLE,
   CONNECTIONS_TABLE,
   QUESTS_TABLE,
   PROFILES_TABLE,
-  NFC_SCANS_TABLE
+  NFC_SCANS_TABLE,
+  MEMBERS2026_TABLE
 } from "../../constants/tables";
 import db from "../../lib/db";
 import handlerHelpers from "../../lib/handlerHelpers";
@@ -31,176 +30,168 @@ import {
   WORKSHOP_TWO_PARTICIPANT,
   QUEST_WORKSHOP_TWO_PARTICIPANT
 } from "./constants";
+import { TYPES } from "../profiles/constants";
 
-export const handleConnection = async (userID, connID, timestamp) => {
-  let userData = await db.getOne(userID, PROFILES_TABLE, {
-    "eventID;year": CURRENT_EVENT
-  });
+export const handleConnection = async (userID, connProfileID, timestamp) => {
+  let memberData = await db.getOne(userID, MEMBERS2026_TABLE);
 
-  let {
-    data: connProfileData
-  } = await db.getOne(connID, QRS_TABLE, {
-    "eventID;year": CURRENT_EVENT
-  });
+  let userProfileID = memberData.profileID;
 
-  if (userID === connProfileData.registrationID) {
+  if (userProfileID === connProfileID) {
     return handlerHelpers.createResponse(400, {
       message: "Cannot connect with yourself"
     });
   }
 
-  if (!userData || !connProfileData) {
-    return handlerHelpers.createResponse(400, {
-      message: `User profile does not exist for user identified by ${
-        !userData ? userID : connID
-      }`
-    });
+  let [q1, q2] = await Promise.all([
+    db.getOneCustom({
+      TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
+      Key: {
+        compositeID: `PROFILE#${userProfileID}`,
+        type: TYPES.PROFILE
+      }
+    }),
+    db.getOneCustom({
+      TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
+      Key: {
+        compositeID: `PROFILE#${connProfileID}`,
+        type: TYPES.PROFILE
+      }
+    })
+  ]);
+
+  if (!q1 || !q2) {
+    throw handlerHelpers.notFoundResponse(
+      "Profile",
+      q1 ? connProfileID : userID
+    );
   }
 
-  let profileID = connProfileData.email
-    ? connProfileData.email
-    : connProfileData.registrationID;
+  const userProfile = q1[0];
+  const connProfile = q2[0];
 
-  console.log(profileID);
-
-  let connData = await db.getOne(profileID, PROFILES_TABLE, {
-    "eventID;year": CURRENT_EVENT
-  });
-
-  if (await isDuplicateRequest(userData.id, connID)) {
-    return handlerHelpers.createResponse(400, {
+  if (await isDuplicateRequest(userProfileID, connProfileID)) {
+    return handlerHelpers.createResponse(200, {
       message: "Connection has already been made"
     });
   }
 
   let swap = false;
-  if (userData.type === EXEC && connData.type === EXEC) {
-    connData.type = EXEC + EXEC;
-  } else if (userData.type === EXEC) {
-    userData = [connData, (connData = userData)][0];
-    userID = [connID, (connID = userID)][0];
+  if (userProfile.type === EXEC && connProfile.type === EXEC) {
+    connProfile.type = EXEC + EXEC;
+  } else if (userProfile.type === EXEC) {
+    userProfile = [connProfile, (connProfile = userProfile)][0];
+    userID = [connProfileID, (connProfileID = userID)][0];
     swap = true;
   }
 
   const userPut = {
-    userID: userData.id,
-    obfuscatedID: connData.profileID,
+    userID: userProfile.id,
+    obfuscatedID: connProfile.profileID,
     "eventID;year": CURRENT_EVENT,
     createdAt: timestamp,
-    ...(connData.linkedin
+    ...(connProfile.linkedin
       ? {
-        linkedinURL: connData.linkedin
-      }
-      : {
-      }),
-    ...(connData.fname
+          linkedinURL: connProfile.linkedin
+        }
+      : {}),
+    ...(connProfile.fname
       ? {
-        fname: connData.fname
-      }
-      : {
-      }),
-    ...(connData.lname
+          fname: connProfile.fname
+        }
+      : {}),
+    ...(connProfile.lname
       ? {
-        lname: connData.lname
-      }
-      : {
-      }),
-    ...(connData.major
+          lname: connProfile.lname
+        }
+      : {}),
+    ...(connProfile.major
       ? {
-        major: connData.major
-      }
-      : {
-      }),
-    ...(connData.year
+          major: connProfile.major
+        }
+      : {}),
+    ...(connProfile.year
       ? {
-        year: connData.year
-      }
-      : {
-      }),
-    ...(connData.company
+          year: connProfile.year
+        }
+      : {}),
+    ...(connProfile.company
       ? {
-        company: connData.company
-      }
-      : {
-      }),
-    ...(connData.role
+          company: connProfile.company
+        }
+      : {}),
+    ...(connProfile.role
       ? {
-        title: connData.role
-      }
-      : {
-      })
+          title: connProfile.role
+        }
+      : {})
   };
 
   const connPut = {
-    userID: connData.id,
-    obfuscatedID: userData.profileID,
+    userID: connProfile.id,
+    obfuscatedID: userProfile.profileID,
     "eventID;year": CURRENT_EVENT,
     createdAt: timestamp,
-    ...(userData.linkedin
+    ...(userProfile.linkedin
       ? {
-        linkedinURL: userData.linkedin
-      }
-      : {
-      }),
-    ...(userData.fname
+          linkedinURL: userProfile.linkedin
+        }
+      : {}),
+    ...(userProfile.fname
       ? {
-        fname: userData.fname
-      }
-      : {
-      }),
-    ...(userData.lname
+          fname: userProfile.fname
+        }
+      : {}),
+    ...(userProfile.lname
       ? {
-        lname: userData.lname
-      }
-      : {
-      }),
-    ...(userData.major
+          lname: userProfile.lname
+        }
+      : {}),
+    ...(userProfile.major
       ? {
-        major: userData.major
-      }
-      : {
-      }),
-    ...(userData.year
+          major: userProfile.major
+        }
+      : {}),
+    ...(userProfile.year
       ? {
-        year: userData.year
-      }
-      : {
-      }),
-    ...(userData.company
+          year: userProfile.year
+        }
+      : {}),
+    ...(userProfile.company
       ? {
-        company: userData.company
-      }
-      : {
-      }),
-    ...(userData.role
+          company: userProfile.company
+        }
+      : {}),
+    ...(userProfile.role
       ? {
-        role: userData.role
-      }
-      : {
-      })
+          role: userProfile.role
+        }
+      : {})
   };
 
   const promises = [];
-  switch (connData.type) {
-  case EXEC + EXEC:
-    promises.push(incrementQuestProgress(profileID, QUEST_CONNECT_EXEC_H));
+  switch (connProfile.type) {
+    case EXEC + EXEC:
+      promises.push(incrementQuestProgress(profileID, QUEST_CONNECT_EXEC_H));
 
-  case EXEC:
-    promises.push(incrementQuestProgress(userData.id, QUEST_CONNECT_EXEC_H));
+    case EXEC:
+      promises.push(
+        incrementQuestProgress(userProfile.id, QUEST_CONNECT_EXEC_H)
+      );
 
     // case ATTENDEE:
-  default:
-    promises.push(
-      db.put(connPut, CONNECTIONS_TABLE, true),
-      db.put(userPut, CONNECTIONS_TABLE, true),
-      incrementQuestProgress(userData.id, QUEST_CONNECT_ONE),
-      incrementQuestProgress(userData.id, QUEST_CONNECT_FOUR),
-      incrementQuestProgress(userData.id, QUEST_CONNECT_TEN_H),
-      incrementQuestProgress(connData.id, QUEST_CONNECT_ONE),
-      incrementQuestProgress(connData.id, QUEST_CONNECT_FOUR),
-      incrementQuestProgress(connData.id, QUEST_CONNECT_TEN_H)
-    );
-    break;
+    default:
+      promises.push(
+        db.put(connPut, CONNECTIONS_TABLE, true),
+        db.put(userPut, CONNECTIONS_TABLE, true),
+        incrementQuestProgress(userProfile.id, QUEST_CONNECT_ONE),
+        incrementQuestProgress(userProfile.id, QUEST_CONNECT_FOUR),
+        incrementQuestProgress(userProfile.id, QUEST_CONNECT_TEN_H),
+        incrementQuestProgress(connProfile.id, QUEST_CONNECT_ONE),
+        incrementQuestProgress(connProfile.id, QUEST_CONNECT_FOUR),
+        incrementQuestProgress(connProfile.id, QUEST_CONNECT_TEN_H)
+      );
+      break;
   }
 
   try {
@@ -214,12 +205,12 @@ export const handleConnection = async (userID, connID, timestamp) => {
 
   return handlerHelpers.createResponse(200, {
     message: `Connection created with ${
-      swap ? userData.fname : connData.fname
+      swap ? userProfile.fname : connProfile.fname
     }`,
     name: `${
       swap
-        ? userData.fname + " " + userData.lname
-        : connData.fname + " " + connData.lname
+        ? userProfile.fname + " " + userProfile.lname
+        : connProfile.fname + " " + connProfile.lname
     }`
   });
 };
@@ -227,44 +218,40 @@ export const handleConnection = async (userID, connID, timestamp) => {
 const isDuplicateRequest = async (userID, connID) => {
   let result;
   try {
-    const command = new QueryCommand({
-      ExpressionAttributeValues: {
-        ":uid": userID,
-        ":conn": connID
-      },
-      KeyConditionExpression: "userID = :uid AND obfuscatedID = :conn",
-      ProjectionExpression: "userID, obfuscatedID",
-      TableName: CONNECTIONS_TABLE + (process.env.ENVIRONMENT || "")
+    result = await db.getOneCustom({
+      TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
+      Key: {
+        compositeID: `PROFILE#${userID}`,
+        type: `${TYPES.CONNECTION}#${connID}`
+      }
     });
-
-    result = await docClient.send(command);
   } catch (error) {
     console.error(error);
     throw error;
   }
 
-  return result.Items.length > 0;
+  return Boolean(result);
 };
 
 export const handleWorkshop = async (profileID, workshopID, timestamp) => {
   try {
     switch (workshopID) {
-    case WORKSHOP_TWO:
-      await incrementQuestProgress(profileID, QUEST_WORKSHOP);
-      return handlerHelpers.createResponse(200, {
-        message: "Completed Workshop Two Challenge"
-      });
+      case WORKSHOP_TWO:
+        await incrementQuestProgress(profileID, QUEST_WORKSHOP);
+        return handlerHelpers.createResponse(200, {
+          message: "Completed Workshop Two Challenge"
+        });
 
-    case WORKSHOP_TWO_PARTICIPANT:
-      await incrementQuestProgress(profileID, QUEST_WORKSHOP_TWO_PARTICIPANT);
-      return handlerHelpers.createResponse(200, {
-        message: "Braved 1-on-1 onstage interview"
-      });
+      case WORKSHOP_TWO_PARTICIPANT:
+        await incrementQuestProgress(profileID, QUEST_WORKSHOP_TWO_PARTICIPANT);
+        return handlerHelpers.createResponse(200, {
+          message: "Braved 1-on-1 onstage interview"
+        });
 
-    default:
-      return handlerHelpers.createResponse(200, {
-        message: "Unknown workshop"
-      });
+      default:
+        return handlerHelpers.createResponse(200, {
+          message: "Unknown workshop"
+        });
     }
   } catch (error) {
     console.error(error);
