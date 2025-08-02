@@ -28,9 +28,10 @@ import {
   QUEST_PHOTOBOOTH,
   QUEST_CONNECT_EXEC_H,
   WORKSHOP_TWO_PARTICIPANT,
-  QUEST_WORKSHOP_TWO_PARTICIPANT
+  QUEST_WORKSHOP_TWO_PARTICIPANT,
+  QUEST_TOTAL_CONNECTIONS
 } from "./constants";
-import { TYPES } from "../profiles/constants";
+import { PROFILE_TYPES, TYPES } from "../profiles/constants";
 
 export const handleConnection = async (userID, connProfileID, timestamp) => {
   let memberData = await db.getOne(userID, MEMBERS2026_TABLE);
@@ -77,34 +78,20 @@ export const handleConnection = async (userID, connProfileID, timestamp) => {
   }
 
   let swap = false;
-  if (userProfile.type === EXEC && connProfile.type === EXEC) {
-    connProfile.type = EXEC + EXEC;
-  } else if (userProfile.type === EXEC) {
+  if (userProfile.profileType === EXEC && connProfile.profileType === EXEC) {
+    connProfile.type = PROFILE_TYPES.EXEC + PROFILE_TYPES.EXEC;
+  } else if (userProfile.profileType === EXEC) {
     userProfile = [connProfile, (connProfile = userProfile)][0];
     userID = [connProfileID, (connProfileID = userID)][0];
     swap = true;
   }
 
   const userPut = {
-    userID: userProfile.id,
-    obfuscatedID: connProfile.profileID,
-    "eventID;year": CURRENT_EVENT,
+    compositeID: `${TYPES.PROFILE}#${userProfileID}`,
+    type: `${TYPES.CONNECTION}#${connProfileID}`,
     createdAt: timestamp,
-    ...(connProfile.linkedin
-      ? {
-          linkedinURL: connProfile.linkedin
-        }
-      : {}),
-    ...(connProfile.fname
-      ? {
-          fname: connProfile.fname
-        }
-      : {}),
-    ...(connProfile.lname
-      ? {
-          lname: connProfile.lname
-        }
-      : {}),
+    firstName: connProfile.fname,
+    lastName: connProfile.lname,
     ...(connProfile.major
       ? {
           major: connProfile.major
@@ -120,33 +107,19 @@ export const handleConnection = async (userID, connProfileID, timestamp) => {
           company: connProfile.company
         }
       : {}),
-    ...(connProfile.role
+    ...(connProfile.title
       ? {
-          title: connProfile.role
+          title: connProfile.title
         }
       : {})
   };
 
   const connPut = {
-    userID: connProfile.id,
-    obfuscatedID: userProfile.profileID,
-    "eventID;year": CURRENT_EVENT,
+    compositeID: `${TYPES.PROFILE}#${connProfileID}`,
+    type: `${TYPES.CONNECTION}#${userProfileID}`,
     createdAt: timestamp,
-    ...(userProfile.linkedin
-      ? {
-          linkedinURL: userProfile.linkedin
-        }
-      : {}),
-    ...(userProfile.fname
-      ? {
-          fname: userProfile.fname
-        }
-      : {}),
-    ...(userProfile.lname
-      ? {
-          lname: userProfile.lname
-        }
-      : {}),
+    firstName: userProfile.fname,
+    lastName: userProfile.lname,
     ...(userProfile.major
       ? {
           major: userProfile.major
@@ -162,34 +135,33 @@ export const handleConnection = async (userID, connProfileID, timestamp) => {
           company: userProfile.company
         }
       : {}),
-    ...(userProfile.role
+    ...(userProfile.title
       ? {
-          role: userProfile.role
+          title: userProfile.title
         }
       : {})
   };
 
   const promises = [];
-  switch (connProfile.type) {
-    case EXEC + EXEC:
-      promises.push(incrementQuestProgress(profileID, QUEST_CONNECT_EXEC_H));
+  switch (connProfile.profileType) {
+    // exec cases temporarily will be paused as we decide how to handle other interactions
+    case PROFILE_TYPES.EXEC + PROFILE_TYPES.EXEC:
+    // promises.push(
+    //   incrementQuestProgress(userProfileID, QUEST_CONNECT_EXEC_H)
+    // );
 
-    case EXEC:
-      promises.push(
-        incrementQuestProgress(userProfile.id, QUEST_CONNECT_EXEC_H)
-      );
+    case PROFILE_TYPES.EXEC:
+    // promises.push(
+    //   incrementQuestProgress(connProfileID, QUEST_CONNECT_EXEC_H)
+    // );
 
     // case ATTENDEE:
     default:
       promises.push(
-        db.put(connPut, CONNECTIONS_TABLE, true),
-        db.put(userPut, CONNECTIONS_TABLE, true),
-        incrementQuestProgress(userProfile.id, QUEST_CONNECT_ONE),
-        incrementQuestProgress(userProfile.id, QUEST_CONNECT_FOUR),
-        incrementQuestProgress(userProfile.id, QUEST_CONNECT_TEN_H),
-        incrementQuestProgress(connProfile.id, QUEST_CONNECT_ONE),
-        incrementQuestProgress(connProfile.id, QUEST_CONNECT_FOUR),
-        incrementQuestProgress(connProfile.id, QUEST_CONNECT_TEN_H)
+        db.put(connPut, PROFILES_TABLE, true),
+        db.put(userPut, PROFILES_TABLE, true),
+        incrementQuestProgress(userProfile.id, QUEST_TOTAL_CONNECTIONS),
+        incrementQuestProgress(connProfile.id, QUEST_TOTAL_CONNECTIONS)
       );
       break;
   }
@@ -216,20 +188,13 @@ export const handleConnection = async (userID, connProfileID, timestamp) => {
 };
 
 const isDuplicateRequest = async (userID, connID) => {
-  let result;
-  try {
-    result = await db.getOneCustom({
-      TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
-      Key: {
-        compositeID: `PROFILE#${userID}`,
-        type: `${TYPES.CONNECTION}#${connID}`
-      }
-    });
-  } catch (error) {
-    console.error(error);
-    throw error;
-  }
-
+  const result = await db.getOneCustom({
+    TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
+    Key: {
+      compositeID: `PROFILE#${userID}`,
+      type: `${TYPES.CONNECTION}#${connID}`
+    }
+  });
   return Boolean(result);
 };
 
@@ -323,8 +288,10 @@ const incrementQuestProgress = async (userID, questID) => {
       userID,
       questID
     },
-    UpdateExpression: "ADD progress :incrementValue",
+    UpdateExpression:
+      "SET progress = if_not_exists(progress, :startValue) + :incrementValue",
     ExpressionAttributeValues: {
+      ":startValue": 1,
       ":incrementValue": 1
     },
     ReturnValues: "ALL_NEW"
