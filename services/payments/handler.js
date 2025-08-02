@@ -101,6 +101,12 @@ export const webhook = async (event, ctx, callback) => {
 
     try {
       await db.put(memberParams, MEMBERS2026_TABLE, true);
+      await createProfile(
+        email,
+        email.endsWith("@ubcbiztech.com")
+          ? PROFILE_TYPES.EXEC
+          : PROFILE_TYPES.ATTENDEE
+      );
     } catch (error) {
       let response;
       console.log(error);
@@ -237,6 +243,17 @@ export const webhook = async (event, ctx, callback) => {
         );
       }
       callback(null, response);
+    });
+    await createProfile(
+      email,
+      email.endsWith("@ubcbiztech.com")
+        ? PROFILE_TYPES.EXEC
+        : PROFILE_TYPES.ATTENDEE
+    ).catch((error) => {
+      response = helpers.createResponse(
+        409,
+        `Could not create profile for ${email}`
+      );
     });
 
     const response = helpers.createResponse(201, {
