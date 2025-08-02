@@ -15,18 +15,7 @@ const QRS_TABLE = "biztechQRs";
 
 export const create = async (event, ctx, callback) => {
   try {
-    const data = JSON.parse(event.body);
-
-    // Validate input
-    helpers.checkPayloadProps(data, {
-      email: {
-        required: true,
-        type: "string"
-      }
-    });
-
-    const { email } = data;
-
+    const email = event.requestContext.authorizer.claims.email;
     const response = await createProfile(email);
     callback(null, response);
     return response;
@@ -134,11 +123,7 @@ export const createPartialPartnerProfile = async (event, ctx, callback) => {
 // NEEDS new cognito service + rewrite, we'll allow this for now while building
 export const updatePublicProfile = async (event, ctx, callback) => {
   try {
-    if (!event.pathParameters || !event.pathParameters.userID) {
-      throw helpers.missingPathParamResponse("userID");
-    }
-
-    const { userID } = event.pathParameters;
+    const userID = event.requestContext.authorizer.claims.email;
     const body = JSON.parse(event.body);
     helpers.checkPayloadProps(body, {
       viewableMap: {
@@ -264,11 +249,7 @@ export const getPublicProfile = async (event, ctx, callback) => {
 
 export const getUserProfile = async (event, ctx, callback) => {
   try {
-    if (!event.pathParameters || !event.pathParameters.userID) {
-      throw helpers.missingPathParamResponse("userID");
-    }
-
-    const { userID } = event.pathParameters;
+    const userID = event.requestContext.authorizer.claims.email;
 
     // Get profile by email and eventID;year
     const member = await db.getOne(userID, MEMBERS2026_TABLE);

@@ -8,6 +8,10 @@ export async function createProfile(email) {
   const memberData = await db.getOne(email, MEMBERS2026_TABLE);
 
   // Check if profile already exists, member entry implies profile entry
+  if (!memberData) {
+    throw helpers.notFoundResponse("id", email);
+  }
+
   if (memberData.profileID) {
     throw helpers.duplicateResponse("Profile", email);
   }

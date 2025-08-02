@@ -97,7 +97,7 @@ functions:
     handler: handler.getUserProfile
     events:
       - http:
-          path: profiles/user/{userID}
+          path: profiles/user/
           method: get
           cors: true
           request:
@@ -113,7 +113,7 @@ functions:
     handler: handler.updatePublicProfile
     events:
       - http:
-          path: profiles/user/{userID}
+          path: profiles/user/
           method: patch
           cors: true
           request:
