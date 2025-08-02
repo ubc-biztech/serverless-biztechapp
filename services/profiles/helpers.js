@@ -4,7 +4,7 @@ import db from "../../lib/db";
 import helpers from "../../lib/handlerHelpers";
 import { MUTABLE_PROFILE_ATTRIBUTES, TYPES } from "./constants";
 
-export async function createProfile(email) {
+export async function createProfile(email, profileType) {
   const memberData = await db.getOne(email, MEMBERS2026_TABLE);
 
   // Check if profile already exists, member entry implies profile entry
@@ -25,6 +25,7 @@ export async function createProfile(email) {
     pronouns: true,
     major: true,
     year: true,
+    profileType: true,
     hobby1: false,
     hobby2: false,
     funQuestion1: false,
@@ -55,16 +56,9 @@ export async function createProfile(email) {
     description: "",
     createdAt: timestamp,
     updatedAt: timestamp,
+    profileType,
     viewableMap
   };
-
-  // const nfc = {
-  //   id: email,
-  //   "eventID;year": "member;2026",
-  //   type: "NFC_ATTENDEE",
-  //   isUnlimitedScans: true,
-  //   data: profileID
-  // };
 
   const params = {
     Key: {
@@ -82,7 +76,6 @@ export async function createProfile(email) {
 
   await Promise.all([
     db.create(profile, PROFILES_TABLE),
-    // db.create(nfc, QRS_TABLE), redundant?
     db.updateDBCustom(params)
   ]);
 

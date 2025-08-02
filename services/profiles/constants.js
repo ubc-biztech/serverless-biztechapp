@@ -3,6 +3,12 @@ export const TYPES = Object.freeze({
   PROFILE: "PROFILE"
 });
 
+export const PROFILE_TYPES = Object.freeze({
+  ATTENDEE: "ATTENDEE",
+  PARTNER: "PARTNER",
+  EXEC: "EXEC"
+});
+
 export const MUTABLE_PROFILE_ATTRIBUTES = Object.freeze({
   hobby1: "hobby1",
   hobby2: "hobby2",

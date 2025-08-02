@@ -4,7 +4,11 @@ import { isEmpty } from "../../lib/utils.js";
 import { humanId } from "human-id";
 import { PROFILES_TABLE } from "../../constants/tables.js";
 import { MEMBERS2026_TABLE } from "../../constants/tables.js";
-import { MUTABLE_PROFILE_ATTRIBUTES, TYPES } from "./constants.js";
+import {
+  MUTABLE_PROFILE_ATTRIBUTES,
+  PROFILE_TYPES,
+  TYPES
+} from "./constants.js";
 import {
   buildProfileUpdateParams,
   createProfile,
@@ -15,8 +19,13 @@ const QRS_TABLE = "biztechQRs";
 
 export const create = async (event, ctx, callback) => {
   try {
-    const email = event.requestContext.authorizer.claims.email;
-    const response = await createProfile(email);
+    const email = event.requestContext.authorizer.claims.email.toLowerCase();
+    const response = await createProfile(
+      email,
+      email.endsWith("@ubcbiztech.com")
+        ? PROFILE_TYPES.EXEC
+        : PROFILE_TYPES.ATTENDEE
+    );
     callback(null, response);
     return response;
   } catch (err) {
