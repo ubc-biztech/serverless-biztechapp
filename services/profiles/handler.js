@@ -131,7 +131,7 @@ export const createPartialPartnerProfile = async (event, ctx, callback) => {
 
 export const updatePublicProfile = async (event, ctx, callback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email;
+    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
     const body = JSON.parse(event.body);
     helpers.checkPayloadProps(body, {
       viewableMap: {
@@ -254,7 +254,7 @@ export const getPublicProfile = async (event, ctx, callback) => {
 
 export const getUserProfile = async (event, ctx, callback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email;
+    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
 
     const member = await db.getOne(userID, MEMBERS2026_TABLE);
     const { profileID = null } = member || {};

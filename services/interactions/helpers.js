@@ -68,8 +68,8 @@ export const handleConnection = async (userID, connProfileID, timestamp) => {
     );
   }
 
-  const userProfile = q1[0];
-  const connProfile = q2[0];
+  let userProfile = q1;
+  let connProfile = q2;
 
   if (await isDuplicateRequest(userProfileID, connProfileID)) {
     return handlerHelpers.createResponse(200, {
@@ -89,9 +89,11 @@ export const handleConnection = async (userID, connProfileID, timestamp) => {
   const userPut = {
     compositeID: `${TYPES.PROFILE}#${userProfileID}`,
     type: `${TYPES.CONNECTION}#${connProfileID}`,
+    connectionID: connProfileID,
     createdAt: timestamp,
-    firstName: connProfile.fname,
-    lastName: connProfile.lname,
+    fname: connProfile.fname,
+    lname: connProfile.lname,
+    pronouns: connProfile.pronouns,
     ...(connProfile.major
       ? {
           major: connProfile.major
@@ -118,8 +120,9 @@ export const handleConnection = async (userID, connProfileID, timestamp) => {
     compositeID: `${TYPES.PROFILE}#${connProfileID}`,
     type: `${TYPES.CONNECTION}#${userProfileID}`,
     createdAt: timestamp,
-    firstName: userProfile.fname,
-    lastName: userProfile.lname,
+    fname: userProfile.fname,
+    lname: userProfile.lname,
+    pronouns: userProfile.pronouns,
     ...(userProfile.major
       ? {
           major: userProfile.major
@@ -159,9 +162,9 @@ export const handleConnection = async (userID, connProfileID, timestamp) => {
     default:
       promises.push(
         db.put(connPut, PROFILES_TABLE, true),
-        db.put(userPut, PROFILES_TABLE, true),
-        incrementQuestProgress(userProfile.id, QUEST_TOTAL_CONNECTIONS),
-        incrementQuestProgress(connProfile.id, QUEST_TOTAL_CONNECTIONS)
+        db.put(userPut, PROFILES_TABLE, true)
+        // incrementQuestProgress(userProfile.id, QUEST_TOTAL_CONNECTIONS),
+        // incrementQuestProgress(connProfile.id, QUEST_TOTAL_CONNECTIONS)
       );
       break;
   }
