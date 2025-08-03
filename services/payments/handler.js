@@ -1,20 +1,15 @@
 import helpers from "../../lib/handlerHelpers";
-import {
-  isValidEmail
-} from "../../lib/utils";
-import {
-  updateHelper
-} from "../registrations/handler";
+import { isValidEmail } from "../../lib/utils";
+import { updateHelper } from "../registrations/handler";
 import db from "../../lib/db";
-import docClient from "../../lib/docClient";
-const {
-  CognitoIdentityProvider
-} = require("@aws-sdk/client-cognito-identity-provider");
-const {
+import { CognitoIdentityProvider } from "@aws-sdk/client-cognito-identity-provider";
+
+import {
   USERS_TABLE,
-  MEMBERS2025_TABLE,
+  MEMBERS2026_TABLE,
   USER_REGISTRATIONS_TABLE
-} = require("../../constants/tables");
+} from "../../constants/tables";
+
 const stripe = require("stripe")(
   process.env.ENVIRONMENT === "PROD"
     ? process.env.STRIPE_PROD_KEY
@@ -105,7 +100,13 @@ export const webhook = async (event, ctx, callback) => {
     }
 
     try {
-      await db.put(memberParams, MEMBERS2025_TABLE, true);
+      await db.put(memberParams, MEMBERS2026_TABLE, true);
+      await createProfile(
+        email,
+        email.endsWith("@ubcbiztech.com")
+          ? PROFILE_TYPES.EXEC
+          : PROFILE_TYPES.ATTENDEE
+      );
     } catch (error) {
       let response;
       console.log(error);
@@ -217,7 +218,7 @@ export const webhook = async (event, ctx, callback) => {
     // but if we change the bt web payment body for oauth users from usermember to memebr,
     // we will neesd a check here to see if user is first time oauth
     // if yes, we want a db.post instead of db.update
-    await db.updateDB(email, userParams, USERS_TABLE).catch(error => {
+    await db.updateDB(email, userParams, USERS_TABLE).catch((error) => {
       let response;
 
       response = helpers.createResponse(
@@ -228,22 +229,32 @@ export const webhook = async (event, ctx, callback) => {
       callback(null, response);
     });
 
-    await db.put(memberParams, MEMBERS2025_TABLE, true)
-      .catch(error => {
-        let response;
-        if (error.code === "ConditionalCheckFailedException") {
-          response = helpers.createResponse(
-            409,
-            "Member could not be created because email already exists"
-          );
-        } else {
-          response = helpers.createResponse(
-            502,
-            "Internal Server Error occurred"
-          );
-        }
-        callback(null, response);
-      });
+    await db.put(memberParams, MEMBERS2026_TABLE, true).catch((error) => {
+      let response;
+      if (error.code === "ConditionalCheckFailedException") {
+        response = helpers.createResponse(
+          409,
+          "Member could not be created because email already exists"
+        );
+      } else {
+        response = helpers.createResponse(
+          502,
+          "Internal Server Error occurred"
+        );
+      }
+      callback(null, response);
+    });
+    await createProfile(
+      email,
+      email.endsWith("@ubcbiztech.com")
+        ? PROFILE_TYPES.EXEC
+        : PROFILE_TYPES.ATTENDEE
+    ).catch((error) => {
+      response = helpers.createResponse(
+        409,
+        `Could not create profile for ${email}`
+      );
+    });
 
     const response = helpers.createResponse(201, {
       message: "Created member and updated user!"
@@ -292,22 +303,22 @@ export const webhook = async (event, ctx, callback) => {
     }
 
     switch (data.paymentType) {
-    case "UserMember":
-      await userMemberSignup(data);
-      break;
-    case "OAuthMember":
-      await OAuthMemberSignup(data);
-      break;
-    case "Member":
-      await memberSignup(data);
-      break;
-    case "Event":
-      await eventRegistration(data);
-      break;
-    default:
-      return helpers.createResponse(400, {
-        message: "Webhook Error: unidentified payment type"
-      });
+      case "UserMember":
+        await userMemberSignup(data);
+        break;
+      case "OAuthMember":
+        await OAuthMemberSignup(data);
+        break;
+      case "Member":
+        await memberSignup(data);
+        break;
+      case "Event":
+        await eventRegistration(data);
+        break;
+      default:
+        return helpers.createResponse(400, {
+          message: "Webhook Error: unidentified payment type"
+        });
     }
   }
 };
@@ -318,9 +329,7 @@ export const payment = async (event, ctx, callback) => {
     if (data.email) {
       data.email = data.email.toLowerCase();
     }
-    const {
-      paymentImages
-    } = data;
+    const { paymentImages } = data;
     delete data.paymentImages;
 
     const session = await stripe.checkout.sessions.create({
@@ -375,9 +384,7 @@ export const cancel = async (event, ctx, callback) => {
   );
   const data = eventData.data.object.metadata;
   const email = data.email ? data.email.toLowerCase() : data.email;
-  const {
-    eventID, year, paymentType
-  } = data;
+  const { eventID, year, paymentType } = data;
   if (paymentType === "Event") {
     try {
       // const eventIDAndYear = eventID + ";" + year;
@@ -388,8 +395,7 @@ export const cancel = async (event, ctx, callback) => {
 
       const response = helpers.createResponse(200, {
         message: "Cancel webhook disabled",
-        response: {
-        }
+        response: {}
       });
 
       callback(null, response);
