@@ -9,6 +9,8 @@ import {
   MEMBERS2026_TABLE,
   USER_REGISTRATIONS_TABLE
 } from "../../constants/tables";
+import { createProfile } from "../profiles/helpers";
+import { PROFILE_TYPES } from "../profiles/constants";
 
 const stripe = require("stripe")(
   process.env.ENVIRONMENT === "PROD"
@@ -250,10 +252,14 @@ export const webhook = async (event, ctx, callback) => {
         ? PROFILE_TYPES.EXEC
         : PROFILE_TYPES.ATTENDEE
     ).catch((error) => {
+      let response;
+
       response = helpers.createResponse(
         409,
         `Could not create profile for ${email}`
       );
+
+      callback(null, response);
     });
 
     const response = helpers.createResponse(201, {
