@@ -160,22 +160,21 @@ export const handleConnection = async (userID, connProfileID, timestamp) => {
 
     // case ATTENDEE:
     default:
-      promises.push(
-        db.put(connPut, PROFILES_TABLE, true),
-        db.put(userPut, PROFILES_TABLE, true)
-        // incrementQuestProgress(userProfile.id, QUEST_TOTAL_CONNECTIONS),
-        // incrementQuestProgress(connProfile.id, QUEST_TOTAL_CONNECTIONS)
-      );
+      try {
+        await db.putMultiple(
+          [connPut, userPut],
+          [PROFILES_TABLE, PROFILES_TABLE],
+          true
+        );
+      } catch (error) {
+        console.error(error);
+        return handlerHelpers.createResponse(500, {
+          message: "Internal server error"
+        });
+      }
+      // incrementQuestProgress(userProfile.id, QUEST_TOTAL_CONNECTIONS),
+      // incrementQuestProgress(connProfile.id, QUEST_TOTAL_CONNECTIONS)
       break;
-  }
-
-  try {
-    await Promise.all(promises);
-  } catch (error) {
-    console.error(error);
-    return handlerHelpers.createResponse(500, {
-      message: "Internal server error"
-    });
   }
 
   return handlerHelpers.createResponse(200, {

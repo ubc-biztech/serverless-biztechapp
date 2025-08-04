@@ -20,7 +20,7 @@ const BOOTH = "BOOTH";
 
 export const postInteraction = async (event, ctx, callback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email;
+    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
     const data = JSON.parse(event.body);
 
     try {
@@ -79,14 +79,6 @@ export const getAllConnections = async (event, ctx, callback) => {
 
     const { profileID } = memberData;
 
-    const params = {
-      TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
-      Key: {
-        compositeID: `PROFILE#${profileID}`,
-        type: TYPES.CONNECTION
-      }
-    };
-
     const result = await db.query(PROFILES_TABLE, null, {
       expression:
         "compositeID = :compositeID AND  begins_with(#type, :typePrefix)",
@@ -121,7 +113,7 @@ export const getAllConnections = async (event, ctx, callback) => {
 
 export const getAllQuests = async (event, ctx, callback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email;
+    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
 
     const command = new QueryCommand({
       ExpressionAttributeValues: {
