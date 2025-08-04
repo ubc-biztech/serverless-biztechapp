@@ -252,11 +252,13 @@ export const webhook = async (event, ctx, callback) => {
         ? PROFILE_TYPES.EXEC
         : PROFILE_TYPES.ATTENDEE
     ).catch((error) => {
+      console.error(error);
+
       let response;
 
       response = helpers.createResponse(
-        409,
-        `Could not create profile for ${email}`
+        207,
+        `Profile for ${email} was not created, but member created and updated user!`
       );
 
       callback(null, response);
