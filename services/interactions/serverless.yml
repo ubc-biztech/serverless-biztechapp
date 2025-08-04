@@ -67,25 +67,31 @@ functions:
           path: interactions/
           method: post
           cors: true
+          authorizer:
+            name: ${self:service}-authorizer
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+
   interactionJournalGetAll:
     handler: handler.getAllConnections
     events:
       - http:
-          path: interactions/journal/{id}
+          path: interactions/journal/
           method: get
-          request:
-            parameters:
-              path:
-                id: true
           cors: true
+          authorizer:
+            name: ${self:service}-authorizer
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+
   interactionQuestsGetAll:
     handler: handler.getAllQuests
     events:
       - http:
-          path: interactions/quests/{id}
+          path: interactions/quests/
           method: get
-          request:
-            parameters:
-              path:
-                id: true
           cors: true
+          authorizer:
+            name: ${self:service}-authorizer
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp

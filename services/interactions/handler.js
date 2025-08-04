@@ -1,5 +1,7 @@
 import {
   CONNECTIONS_TABLE,
+  MEMBERS2026_TABLE,
+  PROFILES_TABLE,
   QRS_TABLE,
   QUESTS_TABLE
 } from "../../constants/tables";
@@ -7,15 +9,10 @@ import db from "../../lib/db";
 import docClient from "../../lib/docClient";
 import handlerHelpers from "../../lib/handlerHelpers";
 import helpers from "../../lib/handlerHelpers";
-import {
-  CURRENT_EVENT
-} from "./constants";
-import {
-  handleBooth, handleConnection, handleWorkshop
-} from "./helpers";
-import {
-  QueryCommand
-} from "@aws-sdk/lib-dynamodb";
+import { TYPES } from "../profiles/constants";
+import { CURRENT_EVENT } from "./constants";
+import { handleBooth, handleConnection, handleWorkshop } from "./helpers";
+import { QueryCommand } from "@aws-sdk/lib-dynamodb";
 
 const CONNECTION = "CONNECTION";
 const WORK = "WORKSHOP";
@@ -23,13 +20,11 @@ const BOOTH = "BOOTH";
 
 export const postInteraction = async (event, ctx, callback) => {
   try {
+    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
     const data = JSON.parse(event.body);
 
     try {
       helpers.checkPayloadProps(data, {
-        userID: {
-          required: true
-        },
         eventType: {
           required: true
         },
@@ -43,37 +38,34 @@ export const postInteraction = async (event, ctx, callback) => {
     }
 
     const timestamp = new Date().getTime();
-    const {
-      userID, eventType, eventParam
-    } = data;
+    const { eventType, eventParam } = data;
 
     let response;
 
     switch (eventType) {
-    case CONNECTION:
-      response = await handleConnection(userID, eventParam, timestamp);
-      break;
+      case CONNECTION:
+        response = await handleConnection(userID, eventParam, timestamp);
+        break;
 
-    case WORK:
-      response = await handleWorkshop(userID, eventParam, timestamp);
-      break;
+      case WORK:
+        response = await handleWorkshop(userID, eventParam, timestamp);
+        break;
 
-    case BOOTH:
-      response = await handleBooth(userID, eventParam, timestamp);
-      break;
+      case BOOTH:
+        response = await handleBooth(userID, eventParam, timestamp);
+        break;
 
-    default:
-      throw handlerHelpers.createResponse(400, {
-        message: "interactionType argument does not match known case"
-      });
+      default:
+        throw handlerHelpers.createResponse(400, {
+          message: "interactionType argument does not match known case"
+        });
     }
 
     callback(null, response);
   } catch (err) {
     console.error(err);
-    throw handlerHelpers.createResponse(500, {
-      message: "Internal server error"
-    });
+    callback(null, err);
+    return err;
   }
 
   return null;
@@ -81,20 +73,25 @@ export const postInteraction = async (event, ctx, callback) => {
 
 export const getAllConnections = async (event, ctx, callback) => {
   try {
-    if (!event.pathParameters || !event.pathParameters.id)
-      throw helpers.missingIdQueryResponse("id");
+    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
 
-    const userID = event.pathParameters.id;
+    const memberData = await db.getOne(userID, MEMBERS2026_TABLE);
 
-    const command = new QueryCommand({
-      ExpressionAttributeValues: {
-        ":uid": userID
+    const { profileID } = memberData;
+
+    const result = await db.query(PROFILES_TABLE, null, {
+      expression:
+        "compositeID = :compositeID AND  begins_with(#type, :typePrefix)",
+      expressionValues: {
+        ":compositeID": `PROFILE#${profileID}`,
+        ":typePrefix": `${TYPES.CONNECTION}#`
       },
-      KeyConditionExpression: "userID = :uid",
-      TableName: CONNECTIONS_TABLE + (process.env.ENVIRONMENT || "")
+      expressionNames: {
+        "#type": "type"
+      }
     });
-    const result = await docClient.send(command);
-    const data = result.Items.sort((a, b) => {
+
+    const data = result.sort((a, b) => {
       return b.createdAt - a.createdAt;
     });
 
@@ -116,10 +113,7 @@ export const getAllConnections = async (event, ctx, callback) => {
 
 export const getAllQuests = async (event, ctx, callback) => {
   try {
-    if (!event.pathParameters || !event.pathParameters.id)
-      throw helpers.missingIdQueryResponse("id");
-
-    const userID = event.pathParameters.id;
+    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
 
     const command = new QueryCommand({
       ExpressionAttributeValues: {
