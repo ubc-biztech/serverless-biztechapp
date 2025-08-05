@@ -56,12 +56,12 @@ provider:
         - dynamodb:GetItem
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechQRs${self:provider.environment.ENVIRONMENT}"
-      Effect: Allow
+    - Effect: Allow
       Action:
         - dynamodb:GetItem
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers${self:provider.environment.ENVIRONMENT}"
-      
+
 custom: ${file(../../serverless.common.yml):custom}
 
 functions:
