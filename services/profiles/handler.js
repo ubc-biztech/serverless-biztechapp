@@ -240,7 +240,7 @@ export const getPublicProfile = async (event, ctx, callback) => {
     }
 
     // Filter to only include public fields
-    const publicProfile = filterPublicProfileFields(result[0]);
+    const publicProfile = filterPublicProfileFields(result);
 
     const response = helpers.createResponse(200, publicProfile);
     callback(null, response);
@@ -275,7 +275,7 @@ export const getUserProfile = async (event, ctx, callback) => {
       throw helpers.notFoundResponse("Profile", profileID);
     }
 
-    const response = helpers.createResponse(200, result[0]);
+    const response = helpers.createResponse(200, result);
     callback(null, response);
     return response;
   } catch (err) {
