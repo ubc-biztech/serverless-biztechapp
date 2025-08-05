@@ -48,6 +48,9 @@ provider:
     - Effect: Allow
       Action:
         - dynamodb:GetItem
+        - dynamodb:Query
+        - dynamodb:PutItem
+        - dynamodb:TransactWriteItems
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechProfiles${self:provider.environment.ENVIRONMENT}"
     - Effect: Allow
@@ -56,6 +59,11 @@ provider:
         - dynamodb:GetItem
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechQRs${self:provider.environment.ENVIRONMENT}"
+    - Effect: Allow
+      Action:
+        - dynamodb:GetItem
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2026${self:provider.environment.ENVIRONMENT}"
 
 custom: ${file(../../serverless.common.yml):custom}
 
@@ -68,9 +76,8 @@ functions:
           method: post
           cors: true
           authorizer:
-            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
 
   interactionJournalGetAll:
     handler: handler.getAllConnections
@@ -80,9 +87,8 @@ functions:
           method: get
           cors: true
           authorizer:
-            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
 
   interactionQuestsGetAll:
     handler: handler.getAllQuests
@@ -92,6 +98,5 @@ functions:
           method: get
           cors: true
           authorizer:
-            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}

@@ -76,6 +76,14 @@ provider:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechEvents${self:provider.environment.ENVIRONMENT}"
     - Effect: Allow
       Action:
+        - dynamodb:GetItem
+        - dynamodb:Query
+        - dynamodb:PutItem
+        - dynamodb:TransactWriteItems
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechProfiles${self:provider.environment.ENVIRONMENT}"
+    - Effect: Allow
+      Action:
         - sns:Publish
       Resource:
         - ${self:provider.environment.SNS_TOPIC_ARN}

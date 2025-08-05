@@ -47,7 +47,6 @@ provider:
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechUsers${self:provider.environment.ENVIRONMENT}"
 
-
 custom: ${file(../../serverless.common.yml):custom}
 
 functions:
@@ -59,9 +58,8 @@ functions:
           method: post
           cors: true
           authorizer:
-            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   eventDelete:
     handler: handler.del
     events:
@@ -74,9 +72,8 @@ functions:
               id: true
           cors: true
           authorizer:
-            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   eventGetAll:
     handler: handler.getAll
     events:
@@ -101,9 +98,8 @@ functions:
               year: true
           cors: true
           authorizer:
-            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   eventGet:
     handler: handler.get
     events:
