@@ -35,7 +35,6 @@ provider:
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechPrizes${self:provider.environment.ENVIRONMENT}"
 
-
 custom: ${file(../../serverless.common.yml):custom}
 
 functions:
@@ -47,9 +46,8 @@ functions:
           method: get
           cors: true
           authorizer:
-            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   prizeCreate:
     handler: handler.create
     events:
@@ -58,9 +56,8 @@ functions:
           method: post
           cors: true
           authorizer:
-            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   prizeUpdate:
     handler: handler.update
     events:
@@ -72,9 +69,8 @@ functions:
               id: true
           cors: true
           authorizer:
-            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   prizeDelete:
     handler: handler.del
     events:
@@ -86,6 +82,5 @@ functions:
               id: true
           cors: true
           authorizer:
-            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}

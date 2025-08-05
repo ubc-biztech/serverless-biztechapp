@@ -1,6 +1,5 @@
 # Always deploy the "hello" endpoint first (for any new environment)
 service: biztechApi
-tenant: ianmh
 app: biztechapp
 
 plugins:
@@ -35,6 +34,19 @@ functions:
 # Helps to share the endpoint between services
 # https://serverless-stack.com/chapters/share-an-api-endpoint-between-services.html
 resources:
+  Resources:
+    CognitoAuthorizer:
+      Type: AWS::ApiGateway::Authorizer
+      Properties:
+        Name: ${self:service}-authorizer
+        AuthorizerResultTtlInSeconds: 60
+        IdentitySource: method.request.header.Authorization
+        ProviderARNs:
+          - arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+        RestApiId:
+          "Fn::ImportValue": ${self:provider.stage}-ExtApiGatewayRestApiId
+        Type: COGNITO_USER_POOLS
+
   Outputs:
     ApiGatewayRestApiId:
       Value:
@@ -44,8 +56,14 @@ resources:
 
     ApiGatewayRestApiRootResourceId:
       Value:
-          Fn::GetAtt:
+        Fn::GetAtt:
           - ApiGatewayRestApi
           - RootResourceId
       Export:
         Name: ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
+
+    CognitoAuthorizer:
+      Value:
+        Ref: CognitoAuthorizer
+      Export:
+        Name: CognitoAuthorizer
