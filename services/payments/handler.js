@@ -11,6 +11,7 @@ import {
 } from "../../constants/tables";
 import { createProfile } from "../profiles/helpers";
 import { PROFILE_TYPES } from "../profiles/constants";
+import { MEMBERSHIP_PRICE } from "./constants";
 
 const stripe = require("stripe")(
   process.env.ENVIRONMENT === "PROD"
@@ -350,7 +351,10 @@ export const payment = async (event, ctx, callback) => {
               name: data.paymentName,
               images: paymentImages
             },
-            unit_amount: data.paymentPrice
+            unit_amount:
+              data.paymentType === "Event"
+                ? data.paymentPrice
+                : MEMBERSHIP_PRICE
           },
           quantity: 1
         }
