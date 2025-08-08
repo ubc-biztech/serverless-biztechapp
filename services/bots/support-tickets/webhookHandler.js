@@ -1,12 +1,8 @@
 import { createTicket } from "./handler.js";
-import { DiscordRequest } from "../bots/helpersDiscord.js";
-import { verifyRequestSignature } from "../bots/helpersDiscord.js";
-import handlerHelpers from "../../lib/handlerHelpers.js";
+import { DiscordRequest, verifyRequestSignature } from "../helpersDiscord.js";
 
-// Webhook handler for processing messages from #support-tickets channel
 export const processSupportChannelMessage = async (event, ctx, callback) => {
   try {
-    // Verify the webhook signature
     if (!verifyRequestSignature(event)) {
       console.error("Invalid webhook signature");
       return callback(null, {
@@ -19,7 +15,6 @@ export const processSupportChannelMessage = async (event, ctx, callback) => {
 
     const body = JSON.parse(event.body);
     
-    // Only process message create events
     if (body.t !== 'MESSAGE_CREATE') {
       return callback(null, {
         statusCode: 200,
@@ -29,7 +24,6 @@ export const processSupportChannelMessage = async (event, ctx, callback) => {
 
     const message = body.d;
     
-    // Only process messages from the support-tickets channel
     const supportChannelId = process.env.SUPPORT_TICKETS_CHANNEL_ID;
     if (message.channel_id !== supportChannelId) {
       return callback(null, {
@@ -38,7 +32,6 @@ export const processSupportChannelMessage = async (event, ctx, callback) => {
       });
     }
 
-    // Ignore bot messages
     if (message.author.bot) {
       return callback(null, {
         statusCode: 200,
@@ -46,32 +39,27 @@ export const processSupportChannelMessage = async (event, ctx, callback) => {
       });
     }
 
-    // Extract user information
     const discordId = message.author.id;
     const username = message.author.username;
     const content = message.content;
 
-    // Check if this is a command (starts with /)
     if (content.startsWith('/')) {
       return processCommand(message, callback);
     }
 
-    // Create support ticket from message
     const ticketData = {
-      user_id: discordId, // Using Discord ID as user_id for now
+      user_id: discordId,
       message: content,
       discord_id: discordId,
       username: username
     };
 
-    // Create a mock event object for the createTicket function
     const mockEvent = {
       body: JSON.stringify(ticketData)
     };
 
     const result = await createTicket(mockEvent, ctx, callback);
 
-    // Send confirmation to the channel
     await sendTicketConfirmation(message.channel_id, ticketData);
 
     return callback(null, {
@@ -93,7 +81,6 @@ export const processSupportChannelMessage = async (event, ctx, callback) => {
   }
 };
 
-// Process commands from the support channel
 async function processCommand(message, callback) {
   const content = message.content;
   const args = content.slice(1).trim().split(' ');
@@ -116,7 +103,6 @@ async function processCommand(message, callback) {
   }
 }
 
-// Send help message
 async function sendHelpMessage(channelId, callback) {
   try {
     const embed = {
@@ -162,7 +148,6 @@ async function sendHelpMessage(channelId, callback) {
   }
 }
 
-// Send status message
 async function sendStatusMessage(channelId, callback) {
   try {
     const embed = {
@@ -198,7 +183,6 @@ async function sendStatusMessage(channelId, callback) {
   }
 }
 
-// Send ticket confirmation
 async function sendTicketConfirmation(channelId, ticketData) {
   try {
     const embed = {
@@ -229,4 +213,4 @@ async function sendTicketConfirmation(channelId, ticketData) {
   } catch (error) {
     console.error("Error sending ticket confirmation:", error);
   }
-} 
+}

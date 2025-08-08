@@ -21,9 +21,11 @@ provider:
     DISCORD_APPLICATION_ID: ${env:DISCORD_APPLICATION_ID}
     DISCORD_PUBLIC_KEY: ${env:DISCORD_PUBLIC_KEY}
     DISCORD_TOKEN: ${env:DISCORD_TOKEN}
-    DISCORD_GUILD_ID: ${env:DISCORD_GUILD_ID}  # Add this
-    BASIC_MEMBER_ROLE_ID: ${env:BASIC_MEMBER_ROLE_ID}  # Add this
-    EXECUTIVE_ROLE_ID: ${env:EXECUTIVE_ROLE_ID}  # Add this
+    DISCORD_GUILD_ID: ${env:DISCORD_GUILD_ID}
+    BASIC_MEMBER_ROLE_ID: ${env:BASIC_MEMBER_ROLE_ID}
+    EXECUTIVE_ROLE_ID: ${env:EXECUTIVE_ROLE_ID}
+    SUPPORT_TICKETS_EXEC_CHANNEL_ID: ${env:SUPPORT_TICKETS_EXEC_CHANNEL_ID}
+    SUPPORT_TICKETS_CHANNEL_ID: ${env:SUPPORT_TICKETS_CHANNEL_ID}
     GH_CLIENT_ID: ${env:GH_CLIENT_ID}
     GH_PRIVATE_KEY: ${env:GH_PRIVATE_KEY}
     OPENAI_API_KEY: ${env:OPENAI_API_KEY}
@@ -38,8 +40,11 @@ provider:
         - dynamodb:GetItem
         - dynamodb:PutItem
         - dynamodb:UpdateItem
+        - dynamodb:Query
+        - dynamodb:Scan
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2025${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechSupportTickets${self:provider.environment.ENVIRONMENT}"
 
 custom: ${file(../../serverless.common.yml):custom}
 
@@ -92,7 +97,6 @@ functions:
           method: post
           cors: true
 
-  # Support ticket endpoints
   discordCreateSupportTicket:
     handler: handlerDiscord.createSupportTicketFromDiscord
     events:
@@ -136,5 +140,62 @@ functions:
     events:
       - http:
           path: slack/shortcut/events
+          method: post
+          cors: true
+
+  # Support Tickets Functions
+  createTicket:
+    handler: support-tickets/handler.createTicket
+    events:
+      - http:
+          path: support-tickets
+          method: post
+          cors: true
+
+  getTickets:
+    handler: support-tickets/handler.getTickets
+    events:
+      - http:
+          path: support-tickets
+          method: get
+          cors: true
+
+  getTicket:
+    handler: support-tickets/handler.getTicket
+    events:
+      - http:
+          path: support-tickets/{ticket_id}
+          method: get
+          cors: true
+
+  addResponse:
+    handler: support-tickets/handler.addResponse
+    events:
+      - http:
+          path: support-tickets/response
+          method: post
+          cors: true
+
+  updateTicketStatus:
+    handler: support-tickets/handler.updateTicketStatus
+    events:
+      - http:
+          path: support-tickets/status
+          method: put
+          cors: true
+
+  getUserTickets:
+    handler: support-tickets/handler.getUserTickets
+    events:
+      - http:
+          path: support-tickets/user/{user_id}
+          method: get
+          cors: true
+
+  processSupportChannelMessage:
+    handler: support-tickets/webhookHandler.processSupportChannelMessage
+    events:
+      - http:
+          path: support-tickets/webhook
           method: post
           cors: true

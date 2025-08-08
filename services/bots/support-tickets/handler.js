@@ -1,18 +1,16 @@
-import db from "../../lib/db.js";
-import handlerHelpers from "../../lib/handlerHelpers.js";
-import { DiscordRequest } from "../bots/helpersDiscord.js";
-import { SUPPORT_TICKETS_TABLE } from "../../constants/tables.js";
+import db from "../../../lib/db.js";
+import handlerHelpers from "../../../lib/handlerHelpers.js";
+import { DiscordRequest } from "../helpersDiscord.js";
+import { SUPPORT_TICKETS_TABLE } from "../../../constants/tables.js";
 import { v4 as uuidv4 } from "uuid";
 
-// Support ticket statuses
-const TICKET_STATUS = {
+export const TICKET_STATUS = {
   OPEN: "open",
   IN_PROGRESS: "in_progress", 
   RESOLVED: "resolved",
   CLOSED: "closed"
 };
 
-// Create a new support ticket
 export const createTicket = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
@@ -38,7 +36,6 @@ export const createTicket = async (event, ctx, callback) => {
 
     const { user_id, message, discord_id, username } = data;
     
-    // Check if user already has an open ticket
     const existingTickets = await db.query(SUPPORT_TICKETS_TABLE, null, {
       expression: "user_id = :user_id AND #status = :status",
       expressionValues: { ":user_id": user_id, ":status": TICKET_STATUS.OPEN },
@@ -67,9 +64,8 @@ export const createTicket = async (event, ctx, callback) => {
       responses: []
     };
 
-    await db.putDB(ticket, SUPPORT_TICKETS_TABLE);
+    await db.put(ticket, SUPPORT_TICKETS_TABLE);
 
-    // Send notification to execs channel
     await notifyExecsChannel(ticket);
 
     return callback(null, handlerHelpers.createResponse(201, {
@@ -87,7 +83,6 @@ export const createTicket = async (event, ctx, callback) => {
   }
 };
 
-// Get all tickets (for execs)
 export const getTickets = async (event, ctx, callback) => {
   try {
     const { status } = event.queryStringParameters || {};
@@ -103,7 +98,6 @@ export const getTickets = async (event, ctx, callback) => {
       tickets = await db.scan(SUPPORT_TICKETS_TABLE);
     }
 
-    // Sort by created date (newest first)
     tickets.sort((a, b) => new Date(b.created) - new Date(a.created));
 
     return callback(null, handlerHelpers.createResponse(200, {
@@ -120,7 +114,6 @@ export const getTickets = async (event, ctx, callback) => {
   }
 };
 
-// Get a specific ticket
 export const getTicket = async (event, ctx, callback) => {
   try {
     const { ticket_id } = event.pathParameters;
@@ -152,7 +145,6 @@ export const getTicket = async (event, ctx, callback) => {
   }
 };
 
-// Add response to ticket
 export const addResponse = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
@@ -205,7 +197,6 @@ export const addResponse = async (event, ctx, callback) => {
       timestamp: new Date().toISOString()
     };
 
-    // Update ticket with new response
     const updatedTicket = {
       ...ticket,
       responses: [...(ticket.responses || []), newResponse],
@@ -215,7 +206,6 @@ export const addResponse = async (event, ctx, callback) => {
 
     await db.updateDB(ticket_id, updatedTicket, SUPPORT_TICKETS_TABLE);
 
-    // Send DM to user if response is from exec
     if (is_exec) {
       await sendResponseToUser(ticket, newResponse);
     }
@@ -234,7 +224,6 @@ export const addResponse = async (event, ctx, callback) => {
   }
 };
 
-// Update ticket status
 export const updateTicketStatus = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
@@ -282,7 +271,6 @@ export const updateTicketStatus = async (event, ctx, callback) => {
 
     await db.updateDB(ticket_id, updatedTicket, SUPPORT_TICKETS_TABLE);
 
-    // Send status update to user
     await sendStatusUpdateToUser(ticket, status, exec_name);
 
     return callback(null, handlerHelpers.createResponse(200, {
@@ -299,7 +287,6 @@ export const updateTicketStatus = async (event, ctx, callback) => {
   }
 };
 
-// Get user's tickets
 export const getUserTickets = async (event, ctx, callback) => {
   try {
     const { user_id } = event.pathParameters;
@@ -315,7 +302,6 @@ export const getUserTickets = async (event, ctx, callback) => {
       expressionValues: { ":user_id": user_id }
     });
 
-    // Sort by created date (newest first)
     tickets.sort((a, b) => new Date(b.created) - new Date(a.created));
 
     return callback(null, handlerHelpers.createResponse(200, {
@@ -332,8 +318,7 @@ export const getUserTickets = async (event, ctx, callback) => {
   }
 };
 
-// Helper function to notify execs channel
-async function notifyExecsChannel(ticket) {
+export async function notifyExecsChannel(ticket) {
   try {
     const execChannelId = process.env.SUPPORT_TICKETS_EXEC_CHANNEL_ID;
     if (!execChannelId) {
@@ -381,8 +366,7 @@ async function notifyExecsChannel(ticket) {
   }
 }
 
-// Helper function to send response to user via DM
-async function sendResponseToUser(ticket, response) {
+export async function sendResponseToUser(ticket, response) {
   try {
     const embed = {
       title: "📬 Response to Your Support Ticket",
@@ -426,8 +410,7 @@ async function sendResponseToUser(ticket, response) {
   }
 }
 
-// Helper function to send status update to user
-async function sendStatusUpdateToUser(ticket, status, execName) {
+export async function sendStatusUpdateToUser(ticket, status, execName) {
   try {
     const statusEmoji = {
       [TICKET_STATUS.OPEN]: "🟡",
@@ -475,4 +458,4 @@ async function sendStatusUpdateToUser(ticket, status, execName) {
   } catch (error) {
     console.error("Error sending status update to user:", error);
   }
-} 
+}
