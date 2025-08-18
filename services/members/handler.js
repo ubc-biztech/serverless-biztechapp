@@ -5,6 +5,12 @@ import docClient from "../../lib/docClient";
 import { MEMBERS2026_TABLE } from "../../constants/tables";
 
 export const create = async (event, ctx, callback) => {
+  const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+  if (!userID.endsWith("@ubcbiztech.com"))
+    throw helpers.createResponse(403, {
+      message: "unauthorized to perform this action"
+    });
+
   const timestamp = new Date().getTime();
   const data = JSON.parse(event.body);
   if (!isValidEmail(data.email)) {
@@ -59,7 +65,7 @@ export const get = async (event, ctx, callback) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
     if (!userID.endsWith("@ubcbiztech.com"))
-      throw helpers.createResponse(404, {
+      throw helpers.createResponse(403, {
         message: "unauthorized for this action"
       });
 
@@ -84,6 +90,12 @@ export const get = async (event, ctx, callback) => {
 
 export const getAll = async (event, ctx, callback) => {
   try {
+    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    if (!userID.endsWith("@ubcbiztech.com"))
+      throw helpers.createResponse(403, {
+        message: "unauthorized for this action"
+      });
+
     // scan the table
     const members = await db.scan(MEMBERS2026_TABLE);
 
@@ -104,7 +116,7 @@ export const update = async (event, ctx, callback) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
     if (!userID.endsWith("@ubcbiztech.com"))
-      throw helpers.createResponse(404, {
+      throw helpers.createResponse(403, {
         message: "unauthorized for this action"
       });
 
@@ -138,6 +150,12 @@ export const update = async (event, ctx, callback) => {
 
 export const del = async (event, ctx, callback) => {
   try {
+    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    if (!userID.endsWith("@ubcbiztech.com"))
+      throw helpers.createResponse(403, {
+        message: "unauthorized for this action"
+      });
+
     if (!event.pathParameters || !event.pathParameters.id)
       throw helpers.missingIdQueryResponse("id");
 

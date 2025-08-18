@@ -83,6 +83,13 @@ export const getOneConnection = async (event, ctx, callback) => {
     const connectionID = event.pathParameters.id;
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
     const memberData = await db.getOne(userID, MEMBERS2026_TABLE);
+
+    if (!memberData)
+      return helpers.createResponse(200, {
+        message: `No profile associated with ${userID}`,
+        connected: false
+      });
+
     const { profileID } = memberData;
 
     if (connectionID == profileID)
