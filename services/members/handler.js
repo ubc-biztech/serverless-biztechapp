@@ -57,9 +57,15 @@ export const create = async (event, ctx, callback) => {
 
 export const get = async (event, ctx, callback) => {
   try {
-    // eslint-disable-next-line
+    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    if (!userID.endsWith("@ubcbiztech.com"))
+      throw helpers.createResponse(404, {
+        message: "unauthorized for this action"
+      });
+
     if (!event.pathParameters || !event.pathParameters.id)
       throw helpers.missingIdQueryResponse("id");
+
     const email = event.pathParameters.id;
 
     if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
@@ -96,6 +102,12 @@ export const getAll = async (event, ctx, callback) => {
 
 export const update = async (event, ctx, callback) => {
   try {
+    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    if (!userID.endsWith("@ubcbiztech.com"))
+      throw helpers.createResponse(404, {
+        message: "unauthorized for this action"
+      });
+
     // eslint-disable-next-line
     if (!event.pathParameters || !event.pathParameters.id)
       throw helpers.missingIdQueryResponse("id");
