@@ -183,9 +183,10 @@ export const get = async (event, ctx, callback) => {
     if (
       email.endsWith("@ubcbiztech.com") &&
       event.pathParameters &&
-      event.pathParameters.email
+      event.pathParameters.email &&
+      isValidEmail(event.pathParameters.email)
     )
-      email = event.pathParameters;
+      email = event.pathParameters.email;
 
     if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
     const user = await db.getOne(email, USERS_TABLE);
