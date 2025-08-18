@@ -41,7 +41,7 @@ export const create = async (event, ctx, callback) => {
   };
 
   try {
-    await db.put(memberParams, MEMBERS2026_TABLE);
+    await db.put(memberParams, MEMBERS2026_TABLE, true);
     const response = helpers.createResponse(201, {
       message: "Created!",
       params: memberParams
