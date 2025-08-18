@@ -71,7 +71,7 @@ export const postInteraction = async (event, ctx, callback) => {
   return null;
 };
 
-export const getOneConnection = async (event, ctx, callback) => {
+export const checkConnection = async (event, ctx, callback) => {
   try {
     if (
       !event.pathParameters ||
