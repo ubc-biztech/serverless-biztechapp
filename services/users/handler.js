@@ -1,11 +1,10 @@
-
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
+import { isEmpty, isValidEmail } from "../../lib/utils";
 import {
-  isEmpty, isValidEmail
-} from "../../lib/utils";
-import {
-  USERS_TABLE, EVENTS_TABLE, IMMUTABLE_USER_PROPS
+  USERS_TABLE,
+  EVENTS_TABLE,
+  IMMUTABLE_USER_PROPS
 } from "../../constants/tables";
 import docClient from "../../lib/docClient";
 
@@ -179,9 +178,16 @@ export const checkUserMembership = async (event, ctx, callback) => {
 
 export const get = async (event, ctx, callback) => {
   try {
-    if (!event.pathParameters || !event.pathParameters.email)
-      throw helpers.missingIdQueryResponse("email");
-    const email = event.pathParameters.email;
+    let email = event.requestContext.authorizer.claims.email.toLowerCase();
+
+    if (
+      email.endsWith("@ubcbiztech.com") &&
+      event.pathParameters &&
+      event.pathParameters.email &&
+      isValidEmail(event.pathParameters.email)
+    )
+      email = event.pathParameters.email;
+
     if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
     const user = await db.getOne(email, USERS_TABLE);
     if (isEmpty(user)) throw helpers.notFoundResponse("user", email);
