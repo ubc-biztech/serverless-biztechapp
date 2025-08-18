@@ -18,13 +18,13 @@ provider:
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
-    DISCORD_APPLICATION_ID: ${env:DISCORD_APPLICATION_ID}
-    DISCORD_PUBLIC_KEY: ${env:DISCORD_PUBLIC_KEY}
-    DISCORD_TOKEN: ${env:DISCORD_TOKEN}
-    GH_CLIENT_ID: ${env:GH_CLIENT_ID}
-    GH_PRIVATE_KEY: ${env:GH_PRIVATE_KEY}
-    OPENAI_API_KEY: ${env:OPENAI_API_KEY}
-    SLACK_BOT_TOKEN: ${env:SLACK_BOT_TOKEN}
+    DISCORD_APPLICATION_ID: ${env:DISCORD_APPLICATION_ID || ""}
+    DISCORD_PUBLIC_KEY: ${env:DISCORD_PUBLIC_KEY || ""}
+    DISCORD_TOKEN: ${env:DISCORD_TOKEN || ""}
+    GH_CLIENT_ID: ${env:GH_CLIENT_ID || ""}
+    GH_PRIVATE_KEY: ${env:GH_PRIVATE_KEY || ""}
+    OPENAI_API_KEY: ${env:OPENAI_API_KEY || ""}
+    SLACK_BOT_TOKEN: ${env:SLACK_BOT_TOKEN || ""}
   timeout: 30 # in seconds
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId

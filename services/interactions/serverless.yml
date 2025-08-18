@@ -79,6 +79,21 @@ functions:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
 
+  checkConnection:
+    handler: handler.checkConnection
+    events:
+      - http:
+          path: interactions/journal/{id}
+          method: get
+          request:
+            parameters:
+              paths:
+                id: true
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
   interactionJournalGetAll:
     handler: handler.getAllConnections
     events:

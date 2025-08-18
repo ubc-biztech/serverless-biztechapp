@@ -71,6 +71,52 @@ export const postInteraction = async (event, ctx, callback) => {
   return null;
 };
 
+export const checkConnection = async (event, ctx, callback) => {
+  try {
+    if (
+      !event.pathParameters ||
+      !event.pathParameters.id ||
+      typeof event.pathParameters.id !== "string"
+    )
+      throw helpers.missingIdQueryResponse("profile ID in request path");
+
+    const connectionID = event.pathParameters.id;
+    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    const memberData = await db.getOne(userID, MEMBERS2026_TABLE);
+
+    if (!memberData)
+      return helpers.createResponse(200, {
+        message: `No profile associated with ${userID}`,
+        connected: false
+      });
+
+    const { profileID } = memberData;
+
+    if (connectionID == profileID)
+      throw helpers.createResponse(400, {
+        message: "cannot be connected to yourself",
+        connected: false
+      });
+
+    const result = await db.getOneCustom({
+      TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
+      Key: {
+        compositeID: `${TYPES.PROFILE}#${profileID}`,
+        type: `${TYPES.CONNECTION}#${connectionID}`
+      }
+    });
+
+    return helpers.createResponse(200, {
+      connected: !!result
+    });
+  } catch (error) {
+    console.error(error);
+    return helpers.createResponse(502, {
+      message: "internal server error, contact a biztech exec"
+    });
+  }
+};
+
 export const getAllConnections = async (event, ctx, callback) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
