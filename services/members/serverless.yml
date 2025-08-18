@@ -48,6 +48,9 @@ functions:
           path: members/
           method: post
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   memberGet:
     handler: handler.get
     events:
