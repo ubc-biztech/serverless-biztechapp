@@ -93,7 +93,7 @@ export const checkConnection = async (event, ctx, callback) => {
     const { profileID } = memberData;
 
     if (connectionID == profileID)
-      throw helpers.createResponse(400, {
+      return helpers.createResponse(400, {
         message: "cannot be connected to yourself",
         connected: false
       });
