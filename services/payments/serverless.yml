@@ -43,6 +43,7 @@ provider:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2023${self:provider.environment.ENVIRONMENT}"
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2024${self:provider.environment.ENVIRONMENT}"
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2025${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2026${self:provider.environment.ENVIRONMENT}"
     - Effect: Allow
       Action:
         - dynamodb:Scan
@@ -73,6 +74,14 @@ provider:
         - dynamodb:GetItem
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechEvents${self:provider.environment.ENVIRONMENT}"
+    - Effect: Allow
+      Action:
+        - dynamodb:GetItem
+        - dynamodb:Query
+        - dynamodb:PutItem
+        - dynamodb:TransactWriteItems
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechProfiles${self:provider.environment.ENVIRONMENT}"
     - Effect: Allow
       Action:
         - sns:Publish
@@ -109,4 +118,3 @@ functions:
           path: payments/cancel
           method: post
           cors: true
-

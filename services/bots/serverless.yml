@@ -1,0 +1,100 @@
+service: biztechApi-bots
+tenant: ianmh
+app: biztechapp
+
+plugins:
+  - serverless-dynamodb
+  - serverless-offline
+  - serverless-domain-manager
+  - serverless-prune-plugin
+  - serverless-mocha-plugin
+
+provider:
+  name: aws
+  stage: ${file(../../serverless.common.yml):provider.stage}
+  runtime: ${file(../../serverless.common.yml):provider.runtime}
+  region: ${file(../../serverless.common.yml):provider.region}
+  cfLogs: true
+  environment:
+    ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
+    NODE_ENV: ${env:NODE_ENV}
+    DISCORD_APPLICATION_ID: ${env:DISCORD_APPLICATION_ID,""}
+    DISCORD_PUBLIC_KEY: ${env:DISCORD_PUBLIC_KEY,""}
+    DISCORD_TOKEN: ${env:DISCORD_TOKEN,""}
+    GH_CLIENT_ID: ${env:GH_CLIENT_ID,""}
+    GH_PRIVATE_KEY: ${env:GH_PRIVATE_KEY,""}
+    OPENAI_API_KEY: ${env:OPENAI_API_KEY,""}
+    SLACK_BOT_TOKEN: ${env:SLACK_BOT_TOKEN,""}
+  timeout: 30 # in seconds
+  apiGateway:
+    restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
+    restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2025${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2026${self:provider.environment.ENVIRONMENT}"
+
+custom:
+  prune: ${file(../../serverless.common.yml):custom.prune}
+  bundle: ${file(../../serverless.common.yml):custom.bundle}
+  serverless-offline: ${file(../../serverless.common.yml):custom.serverless-offline}
+  serverless-mocha-plugin: ${file(../../serverless.common.yml):custom.serverless-mocha-plugin}
+  stage: ${file(../../serverless.common.yml):custom.stage}
+  domains: ${file(../../serverless.common.yml):custom.domains}
+  customDomain: ${file(../../serverless.common.yml):custom.customDomain}
+  environment: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
+  slackEnabled: ${self:custom.slackEnabledMap.${self:custom.environment}, true}
+  slackEnabledMap:
+    PROD: false
+
+functions:
+  discordInteractions:
+    handler: handlerDiscord.interactions
+    events:
+      - http:
+          path: discord/interactions
+          method: post
+          cors: true
+
+  discordAccountMapping:
+    handler: handlerDiscord.mapDiscordAccountToMembership
+    events:
+      - http:
+          path: discord/account/mapping
+          method: post
+          cors: true
+
+  discordWebhook:
+    handler: handlerDiscord.webhook
+    events:
+      - http:
+          path: discord/webhook
+          method: post
+          cors: true
+
+  slackGithubReminder:
+    handler: handlerSlack.slackGithubReminder
+    events:
+      - http:
+          path: slack/github
+          method: post
+          cors: true
+      - schedule:
+          rate: cron(0 17 ? * 1 *)
+          enabled: ${self:custom.slackEnabled}
+      - schedule:
+          rate: cron(0 17 ? * 5 *)
+          enabled: ${self:custom.slackEnabled}
+
+  slackShortcutEventHandler:
+    handler: handlerSlack.shortcutHandler
+    events:
+      - http:
+          path: slack/shortcut/events
+          method: post
+          cors: true

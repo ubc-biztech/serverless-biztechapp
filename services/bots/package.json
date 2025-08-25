@@ -1,0 +1,19 @@
+{
+  "name": "biztechapi-bots",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "itest": "npm run itest events --prefix ../../",
+    "utest": "npm run utest events --prefix ../../",
+    "test": "npm run utest events --prefix ../../ && npm run itest events --prefix ../../"
+  },
+  "dependencies": {
+    "@slack/bolt": "^4.4.0",
+    "discord-interactions": "^4.3.0",
+    "jsonwebtoken": "^9.0.2",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "serverless-offline": "^14.3.2"
+  }
+}

@@ -12,6 +12,7 @@
     "concurrently": "^6.2.0",
     "copy-dynamodb-table": "^2.2.1",
     "csv-parser": "^3.0.0",
+    "discord-interactions": "^4.3.0",
     "dotenv": "^16.0.3",
     "express": "^4.17.1",
     "express-http-proxy": "^1.6.2",
@@ -22,6 +23,7 @@
     "path": "^0.12.7",
     "serverless": "^3.39.0",
     "serverless-dynamodb": "^0.2.54",
+    "tweetnacl": "^1.0.3",
     "yaml": "^1.10.2"
   },
   "scripts": {
@@ -38,7 +40,10 @@
     "sls-offline-i": "find services/* -maxdepth 0 -type d -exec sh -c 'cd \"{}\" && serverless plugin install -n serverless-offline' \\;",
     "dev": "node ./index.js",
     "init:db": "cd scripts && node ./initlocal.js",
-    "populate-quests": "cd scripts && node ./generateQuestsForEventRegistrations.js"
+    "populate-quests": "cd scripts && node ./generateQuestsForEventRegistrations.js",
+    "migrate-judges": "cd scripts && node ./migratePartnerRegistrationsToJudges.js",
+    "judge-rooms": "cd scripts && node ./generateRoomLinks.js",
+    "discord-create-cmd": "cd scripts && node ./registerDiscordCommand.js"
   },
   "devDependencies": {
     "aws-sdk-mock": "^5.1.0",
@@ -52,6 +57,7 @@
     "serverless-bundle": "^6.1.0",
     "serverless-domain-manager": "^5.1.0",
     "serverless-mocha-plugin": "^1.12.0",
+    "serverless-offline": "^13.9.0",
     "serverless-prune-plugin": "^2.0.2"
   },
   "pre-commit": [

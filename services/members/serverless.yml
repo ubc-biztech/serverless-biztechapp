@@ -33,10 +33,8 @@ provider:
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
       Resource:
-        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMemberships2021"
-        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2022${self:provider.environment.ENVIRONMENT}"
-        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2023${self:provider.environment.ENVIRONMENT}"
-        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2024${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2025${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2026${self:provider.environment.ENVIRONMENT}"
 
 custom: ${file(../../serverless.common.yml):custom}
 
@@ -48,11 +46,14 @@ functions:
           path: members/
           method: post
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   memberGet:
     handler: handler.get
     events:
       - http:
-          path: members/{email}
+          path: members/{id}
           method: get
           request:
             parameters:
@@ -60,9 +61,8 @@ functions:
                 email: true
           cors: true
           authorizer:
-            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   memberGetAll:
     handler: handler.getAll
     events:
@@ -71,9 +71,8 @@ functions:
           method: get
           cors: true
           authorizer:
-            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   memberUpdate:
     handler: handler.update
     events:
@@ -85,9 +84,8 @@ functions:
               email: true
             cors: true
             authorizer:
-              name: ${self:service}-authorizer
               type: COGNITO_USER_POOLS
-              arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+              authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   memberDelete:
     handler: handler.del
     events:
@@ -99,6 +97,5 @@ functions:
               email: true
           cors: true
           authorizer:
-            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}

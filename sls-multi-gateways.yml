@@ -46,3 +46,6 @@ services:
   - srvName: profiles
     srvPath: profiles
     srvSource: services/profiles
+  - srvName: bots
+    srvPath: bots
+    srvSource: services/bots

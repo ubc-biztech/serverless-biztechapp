@@ -48,6 +48,9 @@ provider:
     - Effect: Allow
       Action:
         - dynamodb:GetItem
+        - dynamodb:Query
+        - dynamodb:PutItem
+        - dynamodb:TransactWriteItems
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechProfiles${self:provider.environment.ENVIRONMENT}"
     - Effect: Allow
@@ -56,6 +59,11 @@ provider:
         - dynamodb:GetItem
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechQRs${self:provider.environment.ENVIRONMENT}"
+    - Effect: Allow
+      Action:
+        - dynamodb:GetItem
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2026${self:provider.environment.ENVIRONMENT}"
 
 custom: ${file(../../serverless.common.yml):custom}
 
@@ -67,25 +75,43 @@ functions:
           path: interactions/
           method: post
           cors: true
-  interactionJournalGetAll:
-    handler: handler.getAllConnections
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  checkConnection:
+    handler: handler.checkConnection
     events:
       - http:
           path: interactions/journal/{id}
           method: get
           request:
             parameters:
-              path:
+              paths:
                 id: true
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  interactionJournalGetAll:
+    handler: handler.getAllConnections
+    events:
+      - http:
+          path: interactions/journal/
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
   interactionQuestsGetAll:
     handler: handler.getAllQuests
     events:
       - http:
-          path: interactions/quests/{id}
+          path: interactions/quests/
           method: get
-          request:
-            parameters:
-              path:
-                id: true
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}

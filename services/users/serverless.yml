@@ -89,9 +89,8 @@ functions:
                 email: true
           cors: true
           authorizer:
-            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   userGetAll:
     handler: handler.getAll
     events:
@@ -100,9 +99,8 @@ functions:
           method: get
           cors: true
           authorizer:
-            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   userUpdate:
     handler: handler.update
     events:
@@ -114,9 +112,8 @@ functions:
               email: true
           cors: true
           authorizer:
-            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   userFavouriteEvent:
     handler: handler.favouriteEvent
     events:
@@ -128,9 +125,8 @@ functions:
               email: true
           cors: true
           authorizer:
-            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   userDelete:
     handler: handler.del
     events:
@@ -142,7 +138,5 @@ functions:
               email: true
           cors: true
           authorizer:
-            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
-
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
