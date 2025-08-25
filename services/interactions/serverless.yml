@@ -77,7 +77,7 @@ functions:
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS
-            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer-${self:provider.stage}}
 
   checkConnection:
     handler: handler.checkConnection
@@ -92,7 +92,7 @@ functions:
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS
-            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer-${self:provider.stage}}
 
   interactionJournalGetAll:
     handler: handler.getAllConnections
@@ -103,7 +103,7 @@ functions:
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS
-            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer-${self:provider.stage}}
 
   interactionQuestsGetAll:
     handler: handler.getAllQuests
@@ -114,4 +114,4 @@ functions:
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS
-            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer-${self:provider.stage}}

@@ -47,7 +47,7 @@ functions:
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS
-            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer-${self:provider.stage}}
   prizeCreate:
     handler: handler.create
     events:
@@ -57,7 +57,7 @@ functions:
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS
-            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer-${self:provider.stage}}
   prizeUpdate:
     handler: handler.update
     events:
@@ -70,7 +70,7 @@ functions:
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS
-            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer-${self:provider.stage}}
   prizeDelete:
     handler: handler.del
     events:
@@ -83,4 +83,4 @@ functions:
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS
-            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer-${self:provider.stage}}
