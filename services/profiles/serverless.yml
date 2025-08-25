@@ -18,6 +18,7 @@ provider:
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
+    PROFILE_BUCKET: biztech-profile-pictures
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
     restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
@@ -29,9 +30,11 @@ provider:
         - dynamodb:UpdateItem
         - dynamodb:Query
         - dynamodb:Scan
+        - s3:PutObject
       Resource:
         - "arn:aws:dynamodb:${aws:region}:*:table/biztechProfiles${self:provider.environment.ENVIRONMENT}"
         - "arn:aws:dynamodb:${aws:region}:*:table/biztechMembers2026${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:s3:::biztech-profile-pictures/profile-pictures/*"
 
 custom: ${file(../../serverless.common.yml):custom}
 
@@ -109,6 +112,30 @@ functions:
           path: profiles/user/
           method: patch
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  getProfilePicUploadUrl:
+    handler: handler.getProfilePicUploadUrl
+    events:
+      - http:
+          path: profiles/profile-picture-upload-url
+          method: post
+          cors:
+            origins:
+              - http://localhost:3000
+              - https://app.ubcbiztech.com
+              - https://dev.v2.ubcbiztech.com/
+            headers:
+              - Content-Type
+              - Authorization
+              - X-Amz-Date
+              - X-Amz-Security-Token
+              - X-Requested-With
+            allowCredentials: false
+            methods:
+              - OPTIONS
+              - POST
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
