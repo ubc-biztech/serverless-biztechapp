@@ -119,13 +119,13 @@ functions:
     handler: handler.getProfilePicUploadUrl
     events:
       - http:
-          path: profiles/profile-picture-upload-url
+          path: profiles/profile-pic-upload-url
           method: post
           cors:
             origins:
               - http://localhost:3000
               - https://app.ubcbiztech.com
-              - https://dev.v2.ubcbiztech.com/
+              - https://dev.v2.ubcbiztech.com
             headers:
               - Content-Type
               - Authorization
