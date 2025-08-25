@@ -48,9 +48,9 @@ custom:
   domains: ${file(../../serverless.common.yml):custom.domains}
   customDomain: ${file(../../serverless.common.yml):custom.customDomain}
   environment: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
-  slackEnabled: ${self:custom.slackEnabledMap.${self:custom.environment}, false}
+  slackEnabled: ${self:custom.slackEnabledMap.${self:custom.environment}, true}
   slackEnabledMap:
-    PROD: true
+    PROD: false
 
 functions:
   discordInteractions:
@@ -79,7 +79,6 @@ functions:
 
   slackGithubReminder:
     handler: handlerSlack.slackGithubReminder
-    enabled: ${self:custom.slackEnabled}
     events:
       - http:
           path: slack/github
@@ -87,14 +86,13 @@ functions:
           cors: true
       - schedule:
           rate: cron(0 17 ? * 1 *)
-          enabled: true
+          enabled: ${self:custom.slackEnabled}
       - schedule:
           rate: cron(0 17 ? * 5 *)
-          enabled: true
+          enabled: ${self:custom.slackEnabled}
 
   slackShortcutEventHandler:
     handler: handlerSlack.shortcutHandler
-    enabled: ${self:custom.slackEnabled}
     events:
       - http:
           path: slack/shortcut/events
