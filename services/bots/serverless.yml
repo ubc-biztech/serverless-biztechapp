@@ -39,7 +39,18 @@ provider:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2025${self:provider.environment.ENVIRONMENT}"
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2026${self:provider.environment.ENVIRONMENT}"
 
-custom: ${file(../../serverless.common.yml):custom}
+custom:
+  prune: ${file(../../serverless.common.yml):custom.prune}
+  bundle: ${file(../../serverless.common.yml):custom.bundle}
+  serverless-offline: ${file(../../serverless.common.yml):custom.serverless-offline}
+  serverless-mocha-plugin: ${file(../../serverless.common.yml):custom.serverless-mocha-plugin}
+  stage: ${file(../../serverless.common.yml):custom.stage}
+  domains: ${file(../../serverless.common.yml):custom.domains}
+  customDomain: ${file(../../serverless.common.yml):custom.customDomain}
+  environment: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
+  slackEnabled: ${self:custom.slackEnabledMap.${self:custom.environment}, false}
+  slackEnabledMap:
+    PROD: true
 
 functions:
   discordInteractions:
@@ -68,6 +79,7 @@ functions:
 
   slackGithubReminder:
     handler: handlerSlack.slackGithubReminder
+    enabled: ${self:custom.slackEnabled}
     events:
       - http:
           path: slack/github
@@ -82,6 +94,7 @@ functions:
 
   slackShortcutEventHandler:
     handler: handlerSlack.shortcutHandler
+    enabled: ${self:custom.slackEnabled}
     events:
       - http:
           path: slack/shortcut/events
