@@ -66,4 +66,4 @@ resources:
       Value:
         Ref: CognitoAuthorizer
       Export:
-        Name: CognitoAuthorizer
+        Name: CognitoAuthorizer-${self:provider.stage}
