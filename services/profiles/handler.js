@@ -14,8 +14,12 @@ import {
   createProfile,
   filterPublicProfileFields
 } from "./helpers.js";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 const REGISTRATIONS_TABLE = "biztechRegistrations";
 const QRS_TABLE = "biztechQRs";
+const S3 = new S3Client({ region: "us-west-2" });
+const PROFILE_BUCKET = "biztech-profile-pictures";
 
 export const create = async (event, ctx, callback) => {
   try {
@@ -384,6 +388,74 @@ export const createCompanyProfile = async (event, ctx, callback) => {
   }
 };
 
+export const getProfilePicUploadUrl = async (event, ctx, callback) => {
+  try {
+    const claims = event.requestContext?.authorizer?.claims || {};
+    const userEmail = claims.email?.toLowerCase();
+    if (!userEmail) {
+      const res = helpers.createResponse(401, { message: "Unauthorized" });
+      callback?.(null, res);
+      return res;
+    }
+
+    let profileId = event.queryStringParameters?.profileId;
+    if (!profileId) {
+      const member = await db.getOne(userEmail, MEMBERS2026_TABLE);
+      profileId = member?.profileID;
+    }
+    if (!profileId) {
+      const res = helpers.createResponse(400, { message: "Missing profileId" });
+      callback?.(null, res);
+      return res;
+    }
+
+    const { fileType, fileName } = JSON.parse(event.body || "{}");
+    if (!fileType || !fileName) {
+      const res = helpers.createResponse(400, {
+        message: "Missing fileType or fileName"
+      });
+      callback?.(null, res);
+      return res;
+    }
+
+    if (!fileType.startsWith("image/")) {
+      const res = helpers.createResponse(400, {
+        message: "Only image uploads are allowed"
+      });
+      callback?.(null, res);
+      return res;
+    }
+
+    const safeExt = (fileName.split(".").pop() || "jpg")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+    const key = `profile-pictures/${profileId}/${Date.now()}.${
+      safeExt || "jpg"
+    }`;
+
+    const putCmd = new PutObjectCommand({
+      Bucket: PROFILE_BUCKET,
+      Key: key,
+      ContentType: fileType,
+      CacheControl: "public, max-age=31536000, immutable"
+    });
+
+    const uploadUrl = await getSignedUrl(S3, putCmd, { expiresIn: 60 });
+    const publicUrl = `https://${PROFILE_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+
+    const res = helpers.createResponse(200, { uploadUrl, key, publicUrl });
+    callback?.(null, res);
+    return res;
+  } catch (err) {
+    console.error("getProfilePicUploadUrl error", err);
+    const res = helpers.createResponse(500, {
+      message: "Failed to get upload URL"
+    });
+    callback?.(null, res);
+    return res;
+  }
+};
+
 export const linkPartnerToCompany = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
@@ -623,4 +695,18 @@ export const syncPartnerData = async (event, ctx, callback) => {
     callback(null, err);
     return null;
   }
+};
+
+export const corsOk = async () => {
+  return {
+    statusCode: 200,
+    headers: {
+      "Access-Control-Allow-Origin": "http://localhost:3000",
+      "Access-Control-Allow-Headers":
+        "Content-Type,Authorization,X-Amz-Date,X-Amz-Security-Token,X-Requested-With",
+      "Access-Control-Allow-Methods": "OPTIONS,POST",
+      Vary: "Origin"
+    },
+    body: ""
+  };
 };
