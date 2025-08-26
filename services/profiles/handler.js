@@ -409,7 +409,7 @@ export const getProfilePicUploadUrl = async (event, ctx, callback) => {
       return res;
     }
 
-    const { fileType, fileName } = JSON.parse(event.body || "{}");
+    const { fileType, fileName, prefix } = JSON.parse(event.body || "{}");
     if (!fileType || !fileName) {
       const res = helpers.createResponse(400, {
         message: "Missing fileType or fileName"
@@ -429,7 +429,11 @@ export const getProfilePicUploadUrl = async (event, ctx, callback) => {
     const safeExt = (fileName.split(".").pop() || "jpg")
       .toLowerCase()
       .replace(/[^a-z0-9]/g, "");
-    const key = `profile-pictures/${profileId}/${Date.now()}.${
+
+    const folder =
+      prefix === "original" || prefix === "optimized" ? prefix : "optimized";
+
+    const key = `profile-pictures/${profileId}/${folder}/${Date.now()}.${
       safeExt || "jpg"
     }`;
 
