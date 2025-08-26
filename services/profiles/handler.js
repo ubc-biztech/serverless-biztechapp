@@ -700,17 +700,3 @@ export const syncPartnerData = async (event, ctx, callback) => {
     return null;
   }
 };
-
-export const corsOk = async () => {
-  return {
-    statusCode: 200,
-    headers: {
-      "Access-Control-Allow-Origin": "http://localhost:3000",
-      "Access-Control-Allow-Headers":
-        "Content-Type,Authorization,X-Amz-Date,X-Amz-Security-Token,X-Requested-With",
-      "Access-Control-Allow-Methods": "OPTIONS,POST",
-      Vary: "Origin"
-    },
-    body: ""
-  };
-};
