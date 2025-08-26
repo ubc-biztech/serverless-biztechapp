@@ -125,7 +125,7 @@ functions:
             origins:
               - http://localhost:3000
               - https://app.ubcbiztech.com
-              - https://dev.v2.ubcbiztech.com
+              - https://dev.app.ubcbiztech.com
             headers:
               - Content-Type
               - Authorization

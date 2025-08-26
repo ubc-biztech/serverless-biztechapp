@@ -455,7 +455,7 @@ export const getProfilePicUploadUrl = async (event, ctx, callback) => {
     const res = helpers.createResponse(500, {
       message: "Failed to get upload URL"
     });
-    callback?.(null, res);
+    callback(null, res);
     return res;
   }
 };
