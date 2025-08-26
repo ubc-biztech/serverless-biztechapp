@@ -388,7 +388,7 @@ export const createCompanyProfile = async (event, ctx, callback) => {
   }
 };
 
-export const getProfilePicUploadUrl = async (event, ctx, callback) => {
+export const createProfilePicUploadUrl = async (event, ctx, callback) => {
   try {
     const claims = event.requestContext?.authorizer?.claims || {};
     const userEmail = claims.email?.toLowerCase();

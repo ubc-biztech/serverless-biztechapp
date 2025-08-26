@@ -115,8 +115,8 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
-  getProfilePicUploadUrl:
-    handler: handler.getProfilePicUploadUrl
+  createProfilePicUploadUrl:
+    handler: handler.createProfilePicUploadUrl
     events:
       - http:
           path: profiles/profile-pic-upload-url
