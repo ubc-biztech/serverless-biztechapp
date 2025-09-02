@@ -9,31 +9,34 @@ const GUILD_ID = "1388652277178302576";
 const command = {
   name: "verify",
   description: "Start the verification process",
-  type: 1,
+  type: 1
 };
 
 switch (setting) {
   case "LIST":
-    listCommands()
+    listCommands();
     break;
   case "LOCAL":
-    await fetch(`https://discord.com/api/v10/applications/${APP_ID}/guilds/${GUILD_ID}/commands`, {
-      method: "POST",
-      headers: {
+    fetch(
+      `https://discord.com/api/v10/applications/${APP_ID}/guilds/${GUILD_ID}/commands`,
+      {
+        method: "POST",
+        headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bot ${DISCORD_TOKEN}`,
-      },
-      body: JSON.stringify(command),
-    });
+          Authorization: `Bot ${DISCORD_TOKEN}`
+        },
+        body: JSON.stringify(command)
+      }
+    );
     break;
   case "GLOBAL":
-    await fetch(`https://discord.com/api/v10/applications/${APP_ID}/commands`, {
+    fetch(`https://discord.com/api/v10/applications/${APP_ID}/commands`, {
       method: "POST",
       headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bot ${DISCORD_TOKEN}`,
+        "Content-Type": "application/json",
+        Authorization: `Bot ${DISCORD_TOKEN}`
       },
-      body: JSON.stringify(command),
+      body: JSON.stringify(command)
     });
     break;
   default:
@@ -41,12 +44,15 @@ switch (setting) {
 }
 
 async function listCommands() {
-  const res = await fetch(`https://discord.com/api/v10/applications/${APP_ID}/commands`, {
-    method: "GET",
-    headers: {
-      "Authorization": `Bot ${DISCORD_TOKEN}`
+  const res = await fetch(
+    `https://discord.com/api/v10/applications/${APP_ID}/commands`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bot ${DISCORD_TOKEN}`
+      }
     }
-  });
+  );
 
   const commands = await res.json();
   console.log("Registered commands:");

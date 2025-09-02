@@ -1,13 +1,13 @@
 import db from "../../lib/db.js";
 import handlerHelpers from "../../lib/handlerHelpers.js";
-import { 
-  InteractionResponseType, 
-  InteractionType 
+import {
+  InteractionResponseType,
+  InteractionType
 } from "discord-interactions";
-import { 
-  DiscordRequest, 
-  verifyRequestSignature, 
-  applicationCommandRouter 
+import {
+  DiscordRequest,
+  verifyRequestSignature,
+  applicationCommandRouter
 } from "./helpersDiscord.js";
 import {
   MEMBERS2026_TABLE
@@ -21,7 +21,9 @@ export const interactions = (event, ctx, callback) => {
     console.error("Invalid request signature");
     return callback(null, {
       statusCode: 401,
-      body: JSON.stringify({ error: "Invalid request signature" })
+      body: JSON.stringify({
+        error: "Invalid request signature"
+      })
     });
   }
 
@@ -38,14 +40,18 @@ export const interactions = (event, ctx, callback) => {
     }
   });
 
-  const { type, data } = body;
+  const {
+    type, data
+  } = body;
 
   // ping-pong interaction for verification
   if (type === InteractionType.PING) {
     console.log("Received PING interaction");
     return callback(null, {
       statusCode: 200,
-      body: JSON.stringify({ type: InteractionResponseType.PONG })
+      body: JSON.stringify({
+        type: InteractionResponseType.PONG
+      })
     });
   }
 
@@ -75,10 +81,12 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
     }
   });
 
-  const { email, discordID: discordId } = data;
+  const {
+    email, discordID: discordId
+  } = data;
 
   if (!email || !discordId) {
-    return callback(null, 
+    return callback(null,
       handlerHelpers.createResponse(400, {
         message: "Missing email or discordId",
       })
@@ -90,16 +98,16 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
     const exists = await db.getOne(email, MEMBERS2026_TABLE);
 
     if (!exists) {
-      return callback(null, 
+      return callback(null,
         handlerHelpers.createResponse(404, {
           message: "Membership not found",
         })
-      )
+      );
     }
 
     // guard to prevent overwriting existing ids, should require manual unlinking if neccesary
     if (exists.discordId) {
-      return callback(null, 
+      return callback(null,
         handlerHelpers.createResponse(409, {
           message: "Discord account has already been linked to this membership",
         })
@@ -107,11 +115,13 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
     }
 
     // update with new field
-    await db.updateDB(email, { discordId }, MEMBERS2026_TABLE);
+    await db.updateDB(email, {
+      discordId
+    }, MEMBERS2026_TABLE);
 
     // TODO: call role assignment API here
 
-    return callback(null,         
+    return callback(null,
       handlerHelpers.createResponse(200, {
         message: "Successfully mapped Discord account to membership",
       })

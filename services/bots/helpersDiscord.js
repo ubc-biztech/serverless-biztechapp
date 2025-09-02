@@ -1,7 +1,7 @@
 import nacl from "tweetnacl";
 import fetch from "node-fetch";
-import { 
-  InteractionResponseType, 
+import {
+  InteractionResponseType
 } from "discord-interactions";
 
 export async function DiscordRequest(endpoint, options) {
@@ -34,7 +34,7 @@ export function verifyRequestSignature(req) {
 
   if (!signature || !timestamp) {
     console.error("Missing signature or timestamp in request headers");
-    return false
+    return false;
   }
 
   isValid = nacl.sign.detached.verify(
@@ -49,28 +49,30 @@ export function verifyRequestSignature(req) {
 // Handles application commands and routes them to the appropriate handler
 // handlers should return a response object with statusCode and body
 export function applicationCommandRouter(name, body) {
-  const { member } = body;
+  const {
+    member
+  } = body;
   switch (name) {
-    case "verify":
-      return handleVerifyCommand(member);
+  case "verify":
+    return handleVerifyCommand(member);
 
-    default:
-      return {
-        statusCode: 200,
-        body: JSON.stringify({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            content: `Unknown command: /${data.name}`,
-            flags: 64
-          }
-        })
-      };
+  default:
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: `Unknown command: /${body.name}`,
+          flags: 64
+        }
+      })
+    };
   }
 }
 
 // handles /verify slash command
 function handleVerifyCommand(member) {
-  const discordUserId = member?.user?.id
+  const discordUserId = member?.user?.id;
 
   console.log("User initiating verify:", discordUserId);
 

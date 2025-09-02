@@ -1,6 +1,8 @@
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
-import { isEmpty, isValidEmail } from "../../lib/utils";
+import {
+  isEmpty, isValidEmail
+} from "../../lib/utils";
 import {
   USERS_TABLE,
   EVENTS_TABLE,
