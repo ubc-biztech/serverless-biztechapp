@@ -13,34 +13,34 @@ const command = {
 };
 
 switch (setting) {
-  case "LIST":
-    listCommands();
-    break;
-  case "LOCAL":
-    fetch(
-      `https://discord.com/api/v10/applications/${APP_ID}/guilds/${GUILD_ID}/commands`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bot ${DISCORD_TOKEN}`
-        },
-        body: JSON.stringify(command)
-      }
-    );
-    break;
-  case "GLOBAL":
-    fetch(`https://discord.com/api/v10/applications/${APP_ID}/commands`, {
+case "LIST":
+  listCommands();
+  break;
+case "LOCAL":
+  fetch(
+    `https://discord.com/api/v10/applications/${APP_ID}/guilds/${GUILD_ID}/commands`,
+    {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bot ${DISCORD_TOKEN}`
       },
       body: JSON.stringify(command)
-    });
-    break;
-  default:
-    throw new Error("Invalid setting");
+    }
+  );
+  break;
+case "GLOBAL":
+  fetch(`https://discord.com/api/v10/applications/${APP_ID}/commands`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bot ${DISCORD_TOKEN}`
+    },
+    body: JSON.stringify(command)
+  });
+  break;
+default:
+  throw new Error("Invalid setting");
 }
 
 async function listCommands() {
