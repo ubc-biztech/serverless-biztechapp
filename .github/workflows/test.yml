@@ -5,7 +5,7 @@ on:
     branches: [dev, master]
 
 jobs:
-  deploy:
+  sls-package:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -61,7 +61,46 @@ jobs:
 
           for DIR in *; do
             cd "$DIR"
-            sls package --conceal --stage dev &
+            sls package --stage dev &
+            pid=$!
+            pids+=("$pid")
+            cd ..
+          done
+
+          for pid in "${pids[@]}"; do
+            wait "$pid" || exit 1
+          done
+
+      - name: "Run Serverless Deployable to Production Check"
+        if: github.ref == 'refs/heads/master'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          DISCORD_APPLICATION_ID: ${{ secrets.DISCORD_APPLICATION_ID }}
+          DISCORD_PUBLIC_KEY: ${{ secrets.DISCORD_PUBLIC_KEY }}
+          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+          GH_CLIENT_ID: ${{ secrets.GH_CLIENT_ID }}
+          GH_PRIVATE_KEY: ${{ secrets.GH_PRIVATE_KEY }}
+          GH_PROJECT_ACCESS_KEY: ${{ secrets.GH_PROJECT_ACCESS_KEY }}
+          SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
+          STRIPE_DEV_CANCEL: ${{ secrets.STRIPE_DEV_CANCEL }}
+          STRIPE_DEV_ENDPOINT: ${{ secrets.STRIPE_DEV_ENDPOINT }}
+          STRIPE_PROD_CANCEL: ${{ secrets.STRIPE_PROD_CANCEL }}
+          STRIPE_PROD_ENDPOINT: ${{ secrets.STRIPE_PROD_ENDPOINT }}
+          STRIPE_PROD_KEY: ${{ secrets.STRIPE_PROD_KEY}}
+          STRIPE_DEV_KEY: ${{ secrets.STRIPE_DEV_KEY}}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_SIGNING_SECRET: ${{ secrets.SLACK_SIGNING_SECRET }}
+          SLACK_APP_TOKEN: ${{ secrets.SLACK_APP_TOKEN }}
+          NODE_ENV: ${{ secrets.NODE_ENV }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          cd services
+          pids=()
+
+          for DIR in *; do
+            cd "$DIR"
+            sls package --stage prod &
             pid=$!
             pids+=("$pid")
             cd ..
