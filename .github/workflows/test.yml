@@ -1,5 +1,5 @@
-name: Deploy on merge
-"on":
+name: CI Test
+on:
   pull_request:
   push:
     branches: [dev, master]
