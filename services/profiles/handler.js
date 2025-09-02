@@ -1,9 +1,17 @@
 import db from "../../lib/db.js";
 import helpers from "../../lib/handlerHelpers.js";
-import { isEmpty } from "../../lib/utils.js";
-import { humanId } from "human-id";
-import { PROFILES_TABLE } from "../../constants/tables.js";
-import { MEMBERS2026_TABLE } from "../../constants/tables.js";
+import {
+  isEmpty
+} from "../../lib/utils.js";
+import {
+  humanId
+} from "human-id";
+import {
+  PROFILES_TABLE
+} from "../../constants/tables.js";
+import {
+  MEMBERS2026_TABLE
+} from "../../constants/tables.js";
 import {
   MUTABLE_PROFILE_ATTRIBUTES,
   PROFILE_TYPES,
@@ -14,11 +22,17 @@ import {
   createProfile,
   filterPublicProfileFields
 } from "./helpers.js";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import {
+  S3Client, PutObjectCommand
+} from "@aws-sdk/client-s3";
+import {
+  getSignedUrl
+} from "@aws-sdk/s3-request-presigner";
 const REGISTRATIONS_TABLE = "biztechRegistrations";
 const QRS_TABLE = "biztechQRs";
-const S3 = new S3Client({ region: "us-west-2" });
+const S3 = new S3Client({
+  region: "us-west-2"
+});
 const PROFILE_BUCKET = "biztech-profile-pictures";
 
 export const create = async (event, ctx, callback) => {
@@ -46,16 +60,46 @@ export const createPartialPartnerProfile = async (event, ctx, callback) => {
 
     // Validate input
     helpers.checkPayloadProps(data, {
-      email: { required: true, type: "string" },
-      eventID: { required: true, type: "string" },
-      year: { required: true, type: "number" },
-      fname: { required: true, type: "string" },
-      lname: { required: true, type: "string" },
-      company: { required: true, type: "string" },
-      role: { required: true, type: "string" },
-      linkedIn: { required: false, type: "string" },
-      profilePictureURL: { required: false, type: "string" },
-      pronouns: { required: false, type: "string" }
+      email: {
+        required: true,
+        type: "string"
+      },
+      eventID: {
+        required: true,
+        type: "string"
+      },
+      year: {
+        required: true,
+        type: "number"
+      },
+      fname: {
+        required: true,
+        type: "string"
+      },
+      lname: {
+        required: true,
+        type: "string"
+      },
+      company: {
+        required: true,
+        type: "string"
+      },
+      role: {
+        required: true,
+        type: "string"
+      },
+      linkedIn: {
+        required: false,
+        type: "string"
+      },
+      profilePictureURL: {
+        required: false,
+        type: "string"
+      },
+      pronouns: {
+        required: false,
+        type: "string"
+      }
     });
 
     const {
@@ -142,7 +186,9 @@ export const updatePublicProfile = async (event, ctx, callback) => {
         required: true
       }
     });
-    const { viewableMap } = body;
+    const {
+      viewableMap
+    } = body;
 
     if (
       !viewableMap ||
@@ -152,7 +198,10 @@ export const updatePublicProfile = async (event, ctx, callback) => {
     }
 
     const member = await db.getOne(userID, MEMBERS2026_TABLE);
-    const { profileID = null } = member || {};
+    const {
+      profileID = null
+    } = member || {
+    };
 
     if (!profileID) {
       throw helpers.notFoundResponse("Profile", userID);
@@ -182,7 +231,7 @@ export const updatePublicProfile = async (event, ctx, callback) => {
     Object.keys(viewableMap).forEach((key) => {
       if (
         Object.hasOwn(MUTABLE_PROFILE_ATTRIBUTES, key) &&
-        typeof viewableMap[key] == "boolean"
+        typeof viewableMap[key] === "boolean"
       ) {
         profile.viewableMap[key] = viewableMap[key];
       }
@@ -190,11 +239,12 @@ export const updatePublicProfile = async (event, ctx, callback) => {
 
     delete body["viewableMap"];
 
-    const updateBody = {};
+    const updateBody = {
+    };
     Object.keys(body).forEach((key) => {
       if (
         Object.hasOwn(MUTABLE_PROFILE_ATTRIBUTES, key) &&
-        typeof body[key] == "string"
+        typeof body[key] === "string"
       ) {
         updateBody[key] = body[key];
       }
@@ -228,7 +278,9 @@ export const getPublicProfile = async (event, ctx, callback) => {
       throw helpers.missingPathParamResponse("profileID");
     }
 
-    const { profileID } = event.pathParameters;
+    const {
+      profileID
+    } = event.pathParameters;
 
     // Query using the GSI
     const result = await db.getOneCustom({
@@ -261,7 +313,10 @@ export const getUserProfile = async (event, ctx, callback) => {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
 
     const member = await db.getOne(userID, MEMBERS2026_TABLE);
-    const { profileID = null } = member || {};
+    const {
+      profileID = null
+    } = member || {
+    };
 
     if (!profileID) {
       throw helpers.notFoundResponse("Profile", userID);
@@ -296,11 +351,26 @@ export const createCompanyProfile = async (event, ctx, callback) => {
 
     // Validate input
     helpers.checkPayloadProps(data, {
-      name: { required: true, type: "string" },
-      description: { required: true, type: "string" },
-      profilePictureURL: { required: true, type: "string" },
-      eventID: { required: true, type: "string" },
-      year: { required: true, type: "number" }
+      name: {
+        required: true,
+        type: "string"
+      },
+      description: {
+        required: true,
+        type: "string"
+      },
+      profilePictureURL: {
+        required: true,
+        type: "string"
+      },
+      eventID: {
+        required: true,
+        type: "string"
+      },
+      year: {
+        required: true,
+        type: "number"
+      }
     });
 
     // Additional validation for arrays
@@ -390,10 +460,13 @@ export const createCompanyProfile = async (event, ctx, callback) => {
 
 export const createProfilePicUploadUrl = async (event, ctx, callback) => {
   try {
-    const claims = event.requestContext?.authorizer?.claims || {};
+    const claims = event.requestContext?.authorizer?.claims || {
+    };
     const userEmail = claims.email?.toLowerCase();
     if (!userEmail) {
-      const res = helpers.createResponse(401, { message: "Unauthorized" });
+      const res = helpers.createResponse(401, {
+        message: "Unauthorized"
+      });
       callback?.(null, res);
       return res;
     }
@@ -404,12 +477,16 @@ export const createProfilePicUploadUrl = async (event, ctx, callback) => {
       profileId = member?.profileID;
     }
     if (!profileId) {
-      const res = helpers.createResponse(400, { message: "Missing profileId" });
+      const res = helpers.createResponse(400, {
+        message: "Missing profileId"
+      });
       callback?.(null, res);
       return res;
     }
 
-    const { fileType, fileName, prefix } = JSON.parse(event.body || "{}");
+    const {
+      fileType, fileName, prefix
+    } = JSON.parse(event.body || "{}");
     if (!fileType || !fileName) {
       const res = helpers.createResponse(400, {
         message: "Missing fileType or fileName"
@@ -444,10 +521,16 @@ export const createProfilePicUploadUrl = async (event, ctx, callback) => {
       CacheControl: "public, max-age=31536000, immutable"
     });
 
-    const uploadUrl = await getSignedUrl(S3, putCmd, { expiresIn: 60 });
+    const uploadUrl = await getSignedUrl(S3, putCmd, {
+      expiresIn: 60
+    });
     const publicUrl = `https://${PROFILE_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
 
-    const res = helpers.createResponse(200, { uploadUrl, key, publicUrl });
+    const res = helpers.createResponse(200, {
+      uploadUrl,
+      key,
+      publicUrl
+    });
     callback?.(null, res);
     return res;
   } catch (err) {
@@ -466,13 +549,27 @@ export const linkPartnerToCompany = async (event, ctx, callback) => {
 
     // Validate input
     helpers.checkPayloadProps(data, {
-      partnerProfileID: { required: true, type: "string" },
-      companyProfileID: { required: true, type: "string" },
-      eventID: { required: true, type: "string" },
-      year: { required: true, type: "number" }
+      partnerProfileID: {
+        required: true,
+        type: "string"
+      },
+      companyProfileID: {
+        required: true,
+        type: "string"
+      },
+      eventID: {
+        required: true,
+        type: "string"
+      },
+      year: {
+        required: true,
+        type: "number"
+      }
     });
 
-    const { partnerProfileID, companyProfileID, eventID, year } = data;
+    const {
+      partnerProfileID, companyProfileID, eventID, year
+    } = data;
     const eventIDAndYear = `${eventID};${year}`;
 
     // Get company profile
@@ -617,7 +714,8 @@ export const syncPartnerData = async (event, ctx, callback) => {
             registrationStatus: "registered",
             createdAt: timestamp,
             updatedAt: timestamp,
-            dynamicResponses: {} // Ensure this exists even if empty
+            dynamicResponses: {
+            } // Ensure this exists even if empty
           };
 
           await db.create(registrationData, REGISTRATIONS_TABLE);
@@ -628,7 +726,8 @@ export const syncPartnerData = async (event, ctx, callback) => {
           };
         } else {
           // Safely get dynamic responses with fallbacks
-          const dynamicResponses = registration.dynamicResponses || {};
+          const dynamicResponses = registration.dynamicResponses || {
+          };
 
           // Update profile with registration data
           const updateParams = {

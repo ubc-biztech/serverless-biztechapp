@@ -1,17 +1,27 @@
 import helpers from "../../lib/handlerHelpers";
-import { isValidEmail } from "../../lib/utils";
-import { updateHelper } from "../registrations/handler";
+import {
+  isValidEmail
+} from "../../lib/utils";
+import {
+  updateHelper
+} from "../registrations/handler";
 import db from "../../lib/db";
-import { CognitoIdentityProvider } from "@aws-sdk/client-cognito-identity-provider";
+import {
+  CognitoIdentityProvider
+} from "@aws-sdk/client-cognito-identity-provider";
 
 import {
-  USERS_TABLE,
-  MEMBERS2026_TABLE,
-  USER_REGISTRATIONS_TABLE
+  USERS_TABLE, MEMBERS2026_TABLE
 } from "../../constants/tables";
-import { createProfile } from "../profiles/helpers";
-import { PROFILE_TYPES } from "../profiles/constants";
-import { MEMBERSHIP_PRICE } from "./constants";
+import {
+  createProfile
+} from "../profiles/helpers";
+import {
+  PROFILE_TYPES
+} from "../profiles/constants";
+import {
+  MEMBERSHIP_PRICE
+} from "./constants";
 
 const stripe = require("stripe")(
   process.env.ENVIRONMENT === "PROD"
@@ -312,22 +322,22 @@ export const webhook = async (event, ctx, callback) => {
     }
 
     switch (data.paymentType) {
-      case "UserMember":
-        await userMemberSignup(data);
-        break;
-      case "OAuthMember":
-        await OAuthMemberSignup(data);
-        break;
-      case "Member":
-        await memberSignup(data);
-        break;
-      case "Event":
-        await eventRegistration(data);
-        break;
-      default:
-        return helpers.createResponse(400, {
-          message: "Webhook Error: unidentified payment type"
-        });
+    case "UserMember":
+      await userMemberSignup(data);
+      break;
+    case "OAuthMember":
+      await OAuthMemberSignup(data);
+      break;
+    case "Member":
+      await memberSignup(data);
+      break;
+    case "Event":
+      await eventRegistration(data);
+      break;
+    default:
+      return helpers.createResponse(400, {
+        message: "Webhook Error: unidentified payment type"
+      });
     }
   }
 };
@@ -338,7 +348,11 @@ export const payment = async (event, ctx, callback) => {
     if (data.email) {
       data.email = data.email.toLowerCase();
     }
-    const { paymentImages } = data;
+
+    const isUBCStudent = data.education === "UBC";
+    const {
+      paymentImages
+    } = data;
     delete data.paymentImages;
 
     const session = await stripe.checkout.sessions.create({
@@ -354,7 +368,9 @@ export const payment = async (event, ctx, callback) => {
             unit_amount:
               data.paymentType === "Event"
                 ? data.paymentPrice
-                : MEMBERSHIP_PRICE
+                : isUBCStudent
+                  ? MEMBERSHIP_PRICE - 300
+                  : MEMBERSHIP_PRICE
           },
           quantity: 1
         }
@@ -396,7 +412,9 @@ export const cancel = async (event, ctx, callback) => {
   );
   const data = eventData.data.object.metadata;
   const email = data.email ? data.email.toLowerCase() : data.email;
-  const { eventID, year, paymentType } = data;
+  const {
+    eventID, year, paymentType
+  } = data;
   if (paymentType === "Event") {
     try {
       // const eventIDAndYear = eventID + ";" + year;
@@ -407,7 +425,8 @@ export const cancel = async (event, ctx, callback) => {
 
       const response = helpers.createResponse(200, {
         message: "Cancel webhook disabled",
-        response: {}
+        response: {
+        }
       });
 
       callback(null, response);

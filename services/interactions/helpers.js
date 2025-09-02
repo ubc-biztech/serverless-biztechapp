@@ -1,4 +1,6 @@
-import { PutCommand, QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  PutCommand, QueryCommand, UpdateCommand
+} from "@aws-sdk/lib-dynamodb";
 import {
   QRS_TABLE,
   CONNECTIONS_TABLE,
@@ -31,7 +33,9 @@ import {
   QUEST_WORKSHOP_TWO_PARTICIPANT,
   QUEST_TOTAL_CONNECTIONS
 } from "./constants";
-import { PROFILE_TYPES, TYPES } from "../profiles/constants";
+import {
+  PROFILE_TYPES, TYPES
+} from "../profiles/constants";
 
 export const handleConnection = async (userID, connProfileID, timestamp) => {
   let memberData = await db.getOne(userID, MEMBERS2026_TABLE);
@@ -96,24 +100,28 @@ export const handleConnection = async (userID, connProfileID, timestamp) => {
     pronouns: connProfile.pronouns,
     ...(connProfile.major
       ? {
-          major: connProfile.major
-        }
-      : {}),
+        major: connProfile.major
+      }
+      : {
+      }),
     ...(connProfile.year
       ? {
-          year: connProfile.year
-        }
-      : {}),
+        year: connProfile.year
+      }
+      : {
+      }),
     ...(connProfile.company
       ? {
-          company: connProfile.company
-        }
-      : {}),
+        company: connProfile.company
+      }
+      : {
+      }),
     ...(connProfile.title
       ? {
-          title: connProfile.title
-        }
-      : {})
+        title: connProfile.title
+      }
+      : {
+      })
   };
 
   const connPut = {
@@ -125,56 +133,60 @@ export const handleConnection = async (userID, connProfileID, timestamp) => {
     pronouns: userProfile.pronouns,
     ...(userProfile.major
       ? {
-          major: userProfile.major
-        }
-      : {}),
+        major: userProfile.major
+      }
+      : {
+      }),
     ...(userProfile.year
       ? {
-          year: userProfile.year
-        }
-      : {}),
+        year: userProfile.year
+      }
+      : {
+      }),
     ...(userProfile.company
       ? {
-          company: userProfile.company
-        }
-      : {}),
+        company: userProfile.company
+      }
+      : {
+      }),
     ...(userProfile.title
       ? {
-          title: userProfile.title
-        }
-      : {})
+        title: userProfile.title
+      }
+      : {
+      })
   };
 
   const promises = [];
   switch (connProfile.profileType) {
-    // exec cases temporarily will be paused as we decide how to handle other interactions
-    case PROFILE_TYPES.EXEC + PROFILE_TYPES.EXEC:
+  // exec cases temporarily will be paused as we decide how to handle other interactions
+  case PROFILE_TYPES.EXEC + PROFILE_TYPES.EXEC:
     // promises.push(
     //   incrementQuestProgress(userProfileID, QUEST_CONNECT_EXEC_H)
     // );
 
-    case PROFILE_TYPES.EXEC:
+  case PROFILE_TYPES.EXEC:
     // promises.push(
     //   incrementQuestProgress(connProfileID, QUEST_CONNECT_EXEC_H)
     // );
 
     // case ATTENDEE:
-    default:
-      try {
-        await db.putMultiple(
-          [connPut, userPut],
-          [PROFILES_TABLE, PROFILES_TABLE],
-          true
-        );
-      } catch (error) {
-        console.error(error);
-        return handlerHelpers.createResponse(500, {
-          message: "Internal server error"
-        });
-      }
-      // incrementQuestProgress(userProfile.id, QUEST_TOTAL_CONNECTIONS),
-      // incrementQuestProgress(connProfile.id, QUEST_TOTAL_CONNECTIONS)
-      break;
+  default:
+    try {
+      await db.putMultiple(
+        [connPut, userPut],
+        [PROFILES_TABLE, PROFILES_TABLE],
+        true
+      );
+    } catch (error) {
+      console.error(error);
+      return handlerHelpers.createResponse(500, {
+        message: "Internal server error"
+      });
+    }
+    // incrementQuestProgress(userProfile.id, QUEST_TOTAL_CONNECTIONS),
+    // incrementQuestProgress(connProfile.id, QUEST_TOTAL_CONNECTIONS)
+    break;
   }
 
   return handlerHelpers.createResponse(200, {
@@ -203,22 +215,22 @@ const isDuplicateRequest = async (userID, connID) => {
 export const handleWorkshop = async (profileID, workshopID, timestamp) => {
   try {
     switch (workshopID) {
-      case WORKSHOP_TWO:
-        await incrementQuestProgress(profileID, QUEST_WORKSHOP);
-        return handlerHelpers.createResponse(200, {
-          message: "Completed Workshop Two Challenge"
-        });
+    case WORKSHOP_TWO:
+      await incrementQuestProgress(profileID, QUEST_WORKSHOP);
+      return handlerHelpers.createResponse(200, {
+        message: "Completed Workshop Two Challenge"
+      });
 
-      case WORKSHOP_TWO_PARTICIPANT:
-        await incrementQuestProgress(profileID, QUEST_WORKSHOP_TWO_PARTICIPANT);
-        return handlerHelpers.createResponse(200, {
-          message: "Braved 1-on-1 onstage interview"
-        });
+    case WORKSHOP_TWO_PARTICIPANT:
+      await incrementQuestProgress(profileID, QUEST_WORKSHOP_TWO_PARTICIPANT);
+      return handlerHelpers.createResponse(200, {
+        message: "Braved 1-on-1 onstage interview"
+      });
 
-      default:
-        return handlerHelpers.createResponse(200, {
-          message: "Unknown workshop"
-        });
+    default:
+      return handlerHelpers.createResponse(200, {
+        message: "Unknown workshop"
+      });
     }
   } catch (error) {
     console.error(error);

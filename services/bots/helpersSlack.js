@@ -136,7 +136,9 @@ export async function submitPingShortcut(body) {
 }
 
 export async function summarizeRecentMessages(opts) {
-  const { channel_id, thread_ts, response_url } = opts;
+  const {
+    channel_id, thread_ts, response_url
+  } = opts;
   const BOT_USER_ID = process.env.BOT_USER_ID;
 
   const messages = thread_ts
@@ -406,8 +408,12 @@ function processIssues(projectBoard) {
         daysUntilDue: diffDays,
         assignees: it.content.assignees.nodes.map((assignee) => ({
           login: assignee.login,
-          ...(assignee.name && { name: assignee.name }),
-          ...(assignee.email && { email: assignee.email })
+          ...(assignee.name && {
+            name: assignee.name
+          }),
+          ...(assignee.email && {
+            email: assignee.email
+          })
         })),
         labels: it.content.labels.nodes.map((label) => {
           return label.name;

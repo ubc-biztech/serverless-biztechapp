@@ -9,10 +9,18 @@ import db from "../../lib/db";
 import docClient from "../../lib/docClient";
 import handlerHelpers from "../../lib/handlerHelpers";
 import helpers from "../../lib/handlerHelpers";
-import { TYPES } from "../profiles/constants";
-import { CURRENT_EVENT } from "./constants";
-import { handleBooth, handleConnection, handleWorkshop } from "./helpers";
-import { QueryCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  TYPES
+} from "../profiles/constants";
+import {
+  CURRENT_EVENT
+} from "./constants";
+import {
+  handleBooth, handleConnection, handleWorkshop
+} from "./helpers";
+import {
+  QueryCommand
+} from "@aws-sdk/lib-dynamodb";
 
 const CONNECTION = "CONNECTION";
 const WORK = "WORKSHOP";
@@ -38,27 +46,29 @@ export const postInteraction = async (event, ctx, callback) => {
     }
 
     const timestamp = new Date().getTime();
-    const { eventType, eventParam } = data;
+    const {
+      eventType, eventParam
+    } = data;
 
     let response;
 
     switch (eventType) {
-      case CONNECTION:
-        response = await handleConnection(userID, eventParam, timestamp);
-        break;
+    case CONNECTION:
+      response = await handleConnection(userID, eventParam, timestamp);
+      break;
 
-      case WORK:
-        response = await handleWorkshop(userID, eventParam, timestamp);
-        break;
+    case WORK:
+      response = await handleWorkshop(userID, eventParam, timestamp);
+      break;
 
-      case BOOTH:
-        response = await handleBooth(userID, eventParam, timestamp);
-        break;
+    case BOOTH:
+      response = await handleBooth(userID, eventParam, timestamp);
+      break;
 
-      default:
-        throw handlerHelpers.createResponse(400, {
-          message: "interactionType argument does not match known case"
-        });
+    default:
+      throw handlerHelpers.createResponse(400, {
+        message: "interactionType argument does not match known case"
+      });
     }
 
     callback(null, response);
@@ -90,7 +100,9 @@ export const checkConnection = async (event, ctx, callback) => {
         connected: false
       });
 
-    const { profileID } = memberData;
+    const {
+      profileID
+    } = memberData;
 
     if (connectionID == profileID)
       return helpers.createResponse(400, {
@@ -123,7 +135,9 @@ export const getAllConnections = async (event, ctx, callback) => {
 
     const memberData = await db.getOne(userID, MEMBERS2026_TABLE);
 
-    const { profileID } = memberData;
+    const {
+      profileID
+    } = memberData;
 
     const result = await db.query(PROFILES_TABLE, null, {
       expression:

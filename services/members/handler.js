@@ -1,8 +1,12 @@
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
-import { isEmpty, isValidEmail } from "../../lib/utils";
+import {
+  isEmpty, isValidEmail
+} from "../../lib/utils";
 import docClient from "../../lib/docClient";
-import { MEMBERS2026_TABLE } from "../../constants/tables";
+import {
+  MEMBERS2026_TABLE
+} from "../../constants/tables";
 
 export const create = async (event, ctx, callback) => {
   const userID = event.requestContext.authorizer.claims.email.toLowerCase();
@@ -100,7 +104,8 @@ export const getAll = async (event, ctx, callback) => {
     const members = await db.scan(MEMBERS2026_TABLE);
 
     // re-organize the response
-    let response = {};
+    let response = {
+    };
     if (members !== null) response = helpers.createResponse(200, members);
 
     // return the response object

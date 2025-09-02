@@ -1,8 +1,12 @@
 import humanId from "human-id";
-import { MEMBERS2026_TABLE, PROFILES_TABLE } from "../../constants/tables";
+import {
+  MEMBERS2026_TABLE, PROFILES_TABLE
+} from "../../constants/tables";
 import db from "../../lib/db";
 import helpers from "../../lib/handlerHelpers";
-import { MUTABLE_PROFILE_ATTRIBUTES, TYPES } from "./constants";
+import {
+  MUTABLE_PROFILE_ATTRIBUTES, TYPES
+} from "./constants";
 
 export async function createProfile(email, profileType) {
   const memberData = await db.getOne(email, MEMBERS2026_TABLE);
@@ -88,7 +92,8 @@ export async function createProfile(email, profileType) {
 }
 
 export function filterPublicProfileFields(profile) {
-  const publicFields = {};
+  const publicFields = {
+  };
   const map = profile.viewableMap;
 
   for (const key in profile) {
@@ -111,14 +116,17 @@ export function filterPublicProfileFields(profile) {
  */
 export const buildProfileUpdateParams = (
   compositeID,
-  updateData = {},
+  updateData = {
+  },
   viewableMap,
   tableName,
   timestamp
 ) => {
   const updateExpressions = [];
-  const expressionAttributeValues = {};
-  const expressionAttributeNames = {};
+  const expressionAttributeValues = {
+  };
+  const expressionAttributeNames = {
+  };
 
   // Add timestamp to updates
   updateExpressions.push("#updatedAt = :updatedAt");
