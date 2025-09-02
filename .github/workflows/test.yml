@@ -1,39 +1,26 @@
-name: Deploy on merge
+name: CI Test
 on:
+  pull_request:
   push:
     branches: [dev, master]
 
 jobs:
-  deploy:
+  sls-package:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
+          cache: "npm"
           node-version: "20.7"
-
-      # https://help.github.com/en/actions/configuring-and-managing-workflows/caching-dependencies-to-speed-up-workflows
-      - name: Cache node modules
-        uses: actions/cache@v4
-        env:
-          cache-name: cache-node-modules
-        with:
-          # npm cache files are stored in `~/.npm` on Linux/macOS
-          path: ~/.npm
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
 
       - name: Install Serverless CLI and dependencies
         run: |
           sudo npm i -g serverless@3 --legacy-peer-deps
           npm ci --legacy-peer-deps
 
-      - name: "Deploy Dev"
-        if: github.ref == 'refs/heads/dev'
+      - name: "Run Serverless Package Deployable Check"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -61,7 +48,7 @@ jobs:
 
           for DIR in *; do
             cd "$DIR"
-            sls deploy --conceal --stage dev &
+            sls package --stage dev &
             pid=$!
             pids+=("$pid")
             cd ..
@@ -71,8 +58,8 @@ jobs:
             wait "$pid" || exit 1
           done
 
-      - name: "Deploy Prod"
-        if: github.ref == 'refs/heads/master'
+      - name: "Run Serverless Deployable to Production Check"
+        if: github.base_ref == 'refs/heads/master'
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -100,7 +87,7 @@ jobs:
 
           for DIR in *; do
             cd "$DIR"
-            sls deploy --conceal --stage prod &
+            sls package --stage prod &
             pid=$!
             pids+=("$pid")
             cd ..
