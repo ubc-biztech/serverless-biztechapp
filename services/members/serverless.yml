@@ -82,10 +82,10 @@ functions:
           request:
             path:
               email: true
-            cors: true
-            authorizer:
-              type: COGNITO_USER_POOLS
-              authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   memberDelete:
     handler: handler.del
     events:
