@@ -2,7 +2,7 @@ import eventHelpers from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
 import {
-  alphabeticalComparer, isEmpty
+  alphabeticalComparer, dateComparer, isEmpty
 } from "../../lib/utils";
 import {
   MAX_BATCH_ITEM_COUNT
@@ -412,7 +412,7 @@ export const getActiveEvent = async (event, ctx, callback) => {
 
     let events = await db.scan(EVENTS_TABLE, filters, "event-overview");
 
-    events.sort(alphabeticalComparer("startDate"));
+    events.sort(dateComparer("startDate"));
     const activeEvent = events.length > 0 ? events[0] : null;
 
     const response = helpers.createResponse(
