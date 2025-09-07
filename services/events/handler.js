@@ -420,13 +420,8 @@ export const getActiveEvent = async (event, ctx, callback) => {
     const response = helpers.createResponse(
       200,
       activeEvent
-        ?{
-          eventID: activeEvent.id,
-          startDate: activeEvent.startDate,
-          endDate: activeEvent.endDate
-        }
-        : null
     );
+
     callback(null, response);
     return null;
   } catch (err) {
