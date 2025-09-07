@@ -430,7 +430,7 @@ export const getActiveEvent = async (event, ctx, callback) => {
         ?{
           eventID: activeEvent.id,
           startDate: activeEvent.startDate,
-          endDate: activeEvent.endDate 
+          endDate: activeEvent.endDate
         }
         : null
     );
