@@ -396,3 +396,42 @@ export const get = async (event, ctx, callback) => {
     return null;
   }
 };
+
+// GET events/getActiveEvent
+export const getActiveEvent = async (event, ctx, callback) => {
+  try {
+    ctx.callbackWaitsForEmptyEventLoop = false;
+
+    const now = Date.now();
+    const nowISO = new Date(now).toISOString();
+
+    const filters = {
+      FilterExpression: "startDate <= :now AND endDate >= :now",
+      ExpressionAttributeValues: {
+        ":now": nowISO
+      }
+    };
+
+    let events = await db.scan(EVENTS_TABLE, filters, "event-overview");
+
+    events.sort(alphabeticalComparer("startDate"));
+    const activeEvent = events.length > 0 ? events[0] : null;
+
+    const response = helpers.createResponse(
+      200,
+      activeEvent
+        ?{
+          eventID: activeEvent.id,
+          startDate: activeEvent.startDate,
+          endDate: activeEvent.endDate
+        }
+        : null
+    );
+    callback(null, response);
+    return null;
+  } catch (err) {
+    console.error(err);
+    callback(null, err);
+    return null;
+  }
+};
