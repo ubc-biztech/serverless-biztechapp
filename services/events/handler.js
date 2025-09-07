@@ -396,3 +396,41 @@ export const get = async (event, ctx, callback) => {
     return null;
   }
 };
+
+// GET events/isCheckinWindow
+export const isCheckinWindow = async (event, ctx, callback) => {
+  try {
+    ctx.callbackWaitsForEmptyEventLoop = false;
+
+    let events = await db.scan(EVENTS_TABLE, {}, "event-overview");
+
+    events.sort(alphabeticalComparer("startDate"));
+
+    const now = Date.now();
+
+    const activeEvent = events.find((ev) => {
+      if (!ev || !ev.startDate || !ev.endDate) return false;
+      const start = new Date(ev.startDate).getTime();
+      const end = new Date(ev.endDate).getTime();
+      if (isNaN(start) || isNaN(end)) return false;
+
+      return start <= now && now <= end;
+    });
+
+    const response = helpers.createResponse(
+      200,
+      activeEvent
+        ? {
+          eventID: activeEvent.id,
+          endDate: activeEvent.endDate
+        }
+        : false
+    );
+    callback(null, response);
+    return null;
+  } catch (err) {
+    console.error(err);
+    callback(null, err);
+    return null;
+  }
+};

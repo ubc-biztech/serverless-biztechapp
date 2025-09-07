@@ -115,3 +115,11 @@ functions:
                 count: false
                 users: false
           cors: true
+
+  isCheckinWindow:
+    handler: handler.isCheckinWindow
+    events:
+      - http:
+          path: events/isCheckinWindow/
+          method: get
+          cors: true
