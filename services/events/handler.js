@@ -405,7 +405,6 @@ export const get = async (event, ctx, callback) => {
 };
 
 // GET events/getActiveEvent
-// returns the first event which is currenlty happening or null
 export const getActiveEvent = async (event, ctx, callback) => {
   try {
     ctx.callbackWaitsForEmptyEventLoop = false;
