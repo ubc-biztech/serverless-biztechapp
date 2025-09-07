@@ -140,19 +140,26 @@ export const getAll = async (event, ctx, callback) => {
     // Set context callbackWaitsForEmptyEventLoop to false to prevent Lambda from waiting
     ctx.callbackWaitsForEmptyEventLoop = false;
 
-    // scan using the GSI
-    let events = await db.scan(EVENTS_TABLE, {
-    }, "event-overview");
+    let events;
 
-    // Filter by ID if provided
+    // Use query with filters instead of scanning entire table
     if (
       event &&
       event.queryStringParameters &&
       event.queryStringParameters.hasOwnProperty("id")
     ) {
-      events = events.filter(
-        (eventItem) => eventItem.id === event.queryStringParameters.id
-      );
+      // Query for specific event ID using the GSI
+      const keyCondition = {
+        expression: "id = :id",
+        expressionValues: {
+          ":id": event.queryStringParameters.id
+        }
+      };
+      events = await db.query(EVENTS_TABLE, "event-overview", keyCondition);
+    } else {
+      // If no ID filter, we still need to scan but can add other filters
+      // For now, keep the scan but this could be optimized further with additional GSIs
+      events = await db.scan(EVENTS_TABLE, {}, "event-overview");
     }
 
     // sort by startDate
@@ -402,26 +409,27 @@ export const isCheckinWindow = async (event, ctx, callback) => {
   try {
     ctx.callbackWaitsForEmptyEventLoop = false;
 
-    let events = await db.scan(EVENTS_TABLE, {}, "event-overview");
+    const now = Date.now();
+    const nowISO = new Date(now).toISOString();
+
+    const filters = {
+      FilterExpression: "startDate <= :now AND endDate >= :now",
+      ExpressionAttributeValues: {
+        ":now": nowISO
+      }
+    };
+
+    let events = await db.scan(EVENTS_TABLE, filters, "event-overview");
 
     events.sort(alphabeticalComparer("startDate"));
-
-    const now = Date.now();
-
-    const activeEvent = events.find((ev) => {
-      if (!ev || !ev.startDate || !ev.endDate) return false;
-      const start = new Date(ev.startDate).getTime();
-      const end = new Date(ev.endDate).getTime();
-      if (isNaN(start) || isNaN(end)) return false;
-
-      return start <= now && now <= end;
-    });
+    const activeEvent = events.length > 0 ? events[0] : null;
 
     const response = helpers.createResponse(
       200,
       activeEvent
         ? {
           eventID: activeEvent.id,
+          startDate: activeEvent.startDate,
           endDate: activeEvent.endDate
         }
         : false
