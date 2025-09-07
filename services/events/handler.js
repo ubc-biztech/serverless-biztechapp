@@ -404,8 +404,8 @@ export const get = async (event, ctx, callback) => {
   }
 };
 
-// GET events/isCheckinWindow
-export const isCheckinWindow = async (event, ctx, callback) => {
+// GET events/getActiveEvent
+export const getActiveEvent = async (event, ctx, callback) => {
   try {
     ctx.callbackWaitsForEmptyEventLoop = false;
 
@@ -427,12 +427,12 @@ export const isCheckinWindow = async (event, ctx, callback) => {
     const response = helpers.createResponse(
       200,
       activeEvent
-        ? {
+        ?{
           eventID: activeEvent.id,
           startDate: activeEvent.startDate,
-          endDate: activeEvent.endDate
+          endDate: activeEvent.endDate 
         }
-        : false
+        : null
     );
     callback(null, response);
     return null;

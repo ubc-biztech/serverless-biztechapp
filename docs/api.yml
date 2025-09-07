@@ -206,15 +206,15 @@ paths:
           schema:
             type: integer
             format: int64
-  /events/isCheckinWindow:
+  /events/getActiveEvent:
     get:
-      summary: Check if there's currently an active event for check-in
-      operationId: isCheckinWindow
+      summary: Get the currently active event
+      operationId: getActiveEvent
       tags:
         - Events
       responses:
         "200":
-          description: "Returns active event info or false if no active event"
+          description: "Returns active event info or null if no active event"
           content:
             application/json:
               schema:
@@ -225,14 +225,19 @@ paths:
                         type: string
                         description: "The ID of the currently active event"
                         example: "hackathon2024"
+                      startDate:
+                        type: string
+                        format: date-time
+                        description: "The start date of the currently active event"
+                        example: "2024-01-14T09:00:00Z"
                       endDate:
                         type: string
                         format: date-time
                         description: "The end date of the currently active event"
                         example: "2024-01-15T23:59:59Z"
-                  - type: boolean
-                    description: "False if no event is currently active"
-                    example: false
+                  - type: "null"
+                    description: "Null if no event is currently active"
+                    example: null
         "502":
           description: "Internal Server Error"
   /users:
