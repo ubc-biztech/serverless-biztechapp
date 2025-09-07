@@ -400,8 +400,6 @@ export const get = async (event, ctx, callback) => {
 // GET events/getActiveEvent
 export const getActiveEvent = async (event, ctx, callback) => {
   try {
-    ctx.callbackWaitsForEmptyEventLoop = false;
-
     const now = Date.now();
     const nowISO = new Date(now).toISOString();
 
@@ -421,7 +419,6 @@ export const getActiveEvent = async (event, ctx, callback) => {
       200,
       activeEvent
     );
-
     callback(null, response);
     return null;
   } catch (err) {
