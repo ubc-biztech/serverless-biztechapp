@@ -4,7 +4,9 @@ import {
   UpdateCommand,
   DeleteCommand
 } from "@aws-sdk/lib-dynamodb";
-import { ApiGatewayManagementApi } from "@aws-sdk/client-apigatewaymanagementapi";
+import {
+  ApiGatewayManagementApi
+} from "@aws-sdk/client-apigatewaymanagementapi";
 import {
   QUESTS_TABLE,
   PROFILES_TABLE,
@@ -28,8 +30,12 @@ import {
   WORKSHOP_TWO_PARTICIPANT,
   QUEST_WORKSHOP_TWO_PARTICIPANT
 } from "./constants";
-import { PROFILE_TYPES, TYPES } from "../profiles/constants";
-import { randomUUID } from "crypto";
+import {
+  PROFILE_TYPES, TYPES
+} from "../profiles/constants";
+import {
+  randomUUID
+} from "crypto";
 
 const WS_TABLE = `bizWallSockets${process.env.ENVIRONMENT || ""}`;
 const LIVE_TABLE = `bizLiveConnections${process.env.ENVIRONMENT || ""}`;
@@ -98,24 +104,28 @@ export const handleConnection = async (userID, connProfileID, timestamp) => {
     pronouns: connProfile.pronouns,
     ...(connProfile.major
       ? {
-          major: connProfile.major
-        }
-      : {}),
+        major: connProfile.major
+      }
+      : {
+      }),
     ...(connProfile.year
       ? {
-          year: connProfile.year
-        }
-      : {}),
+        year: connProfile.year
+      }
+      : {
+      }),
     ...(connProfile.company
       ? {
-          company: connProfile.company
-        }
-      : {}),
+        company: connProfile.company
+      }
+      : {
+      }),
     ...(connProfile.title
       ? {
-          title: connProfile.title
-        }
-      : {})
+        title: connProfile.title
+      }
+      : {
+      })
   };
 
   const connPut = {
@@ -127,126 +137,134 @@ export const handleConnection = async (userID, connProfileID, timestamp) => {
     pronouns: userProfile.pronouns,
     ...(userProfile.major
       ? {
-          major: userProfile.major
-        }
-      : {}),
+        major: userProfile.major
+      }
+      : {
+      }),
     ...(userProfile.year
       ? {
-          year: userProfile.year
-        }
-      : {}),
+        year: userProfile.year
+      }
+      : {
+      }),
     ...(userProfile.company
       ? {
-          company: userProfile.company
-        }
-      : {}),
+        company: userProfile.company
+      }
+      : {
+      }),
     ...(userProfile.title
       ? {
-          title: userProfile.title
-        }
-      : {})
+        title: userProfile.title
+      }
+      : {
+      })
   };
 
   const promises = [];
   switch (connProfile.profileType) {
-    // exec cases temporarily will be paused as we decide how to handle other interactions
-    case PROFILE_TYPES.EXEC + PROFILE_TYPES.EXEC:
+  // exec cases temporarily will be paused as we decide how to handle other interactions
+  case PROFILE_TYPES.EXEC + PROFILE_TYPES.EXEC:
     // promises.push(
     //   incrementQuestProgress(userProfileID, QUEST_CONNECT_EXEC_H)
     // );
 
-    case PROFILE_TYPES.EXEC:
+  case PROFILE_TYPES.EXEC:
     // promises.push(
     //   incrementQuestProgress(connProfileID, QUEST_CONNECT_EXEC_H)
     // );
 
     // case ATTENDEE:
-    default:
+  default:
+    try {
+      await db.putMultiple(
+        [connPut, userPut],
+        [PROFILES_TABLE, PROFILES_TABLE],
+        true
+      );
+    } catch (error) {
+      console.error(error);
+      return handlerHelpers.createResponse(500, {
+        message: "Internal server error"
+      });
+    }
+
+    {
+      const eventId = CURRENT_EVENT || "DEFAULT";
+
+      const fromNode = {
+        id: swap ? connProfileID : userProfileID,
+        name: swap
+          ? `${connProfile.fname} ${connProfile.lname}`
+          : `${userProfile.fname} ${userProfile.lname}`,
+        avatar: swap
+          ? connProfile.profilePictureURL
+          : userProfile.profilePictureURL,
+        major: swap ? connProfile.major : userProfile.major,
+        year: swap ? connProfile.year : userProfile.year
+      };
+
+      const toNode = {
+        id: swap ? userProfileID : connProfileID,
+        name: swap
+          ? `${userProfile.fname} ${userProfile.lname}`
+          : `${connProfile.fname} ${connProfile.lname}`,
+        avatar: swap
+          ? userProfile.profilePictureURL
+          : connProfile.profilePictureURL,
+        major: swap ? userProfile.major : connProfile.major,
+        year: swap ? userProfile.year : connProfile.year
+      };
+
+      console.log("[WALL] new connection", {
+        eventId,
+        from: fromNode,
+        to: toNode
+      });
+
       try {
-        await db.putMultiple(
-          [connPut, userPut],
-          [PROFILES_TABLE, PROFILES_TABLE],
-          true
-        );
-      } catch (error) {
-        console.error(error);
-        return handlerHelpers.createResponse(500, {
-          message: "Internal server error"
-        });
-      }
+        const subs = await listConnectionsByEvent(eventId);
 
-      {
-        const eventId = CURRENT_EVENT || "DEFAULT";
-
-        const fromNode = {
-          id: swap ? connProfileID : userProfileID,
-          name: swap
-            ? `${connProfile.fname} ${connProfile.lname}`
-            : `${userProfile.fname} ${userProfile.lname}`,
-          avatar: swap
-            ? connProfile.profilePictureURL
-            : userProfile.profilePictureURL,
-          major: swap ? connProfile.major : userProfile.major,
-          year: swap ? connProfile.year : userProfile.year
-        };
-
-        const toNode = {
-          id: swap ? userProfileID : connProfileID,
-          name: swap
-            ? `${userProfile.fname} ${userProfile.lname}`
-            : `${connProfile.fname} ${connProfile.lname}`,
-          avatar: swap
-            ? userProfile.profilePictureURL
-            : connProfile.profilePictureURL,
-          major: swap ? userProfile.major : connProfile.major,
-          year: swap ? userProfile.year : connProfile.year
-        };
-
-        console.log("[WALL] new connection", {
-          eventId,
+        const payload = {
+          type: "connection",
+          createdAt: Date.now(),
           from: fromNode,
           to: toNode
-        });
-
-        try {
-          const subs = await listConnectionsByEvent(eventId);
-
-          const payload = {
-            type: "connection",
-            createdAt: Date.now(),
-            from: fromNode,
-            to: toNode
-          };
-          await Promise.all(
-            subs.map((s) => postToConnection(s.connectionId, payload))
-          );
-        } catch (e) {
-          console.error("broadcast error", e);
-        }
-
-        // Persist to live log (for initial hydration / replay)
-        await logLiveConnection({ eventId, from: fromNode, to: toNode });
-
-        console.log("[WALL] logged live connection");
-
-        try {
-          const subs = await listConnectionsByEvent(eventId);
-          const payload = {
-            type: "edge",
-            createdAt: Date.now(),
-            from: fromNode,
-            to: toNode
-          };
-          await Promise.all(
-            subs.map((s) => postToConnection(s.connectionId, payload))
-          );
-        } catch (e) {
-          console.error("broadcast error", e);
-        }
+        };
+        await Promise.all(
+          subs.map((s) => postToConnection(s.connectionId, payload))
+        );
+      } catch (e) {
+        console.error("broadcast error", e);
       }
-      // incrementQuestProgress(userProfile.id, QUEST_TOTAL_CONNECTIONS),
-      // incrementQuestProgress(connProfile.id, QUEST_TOTAL_CONNECTIONS)
-      break;
+
+      // Persist to live log (for initial hydration / replay)
+      await logLiveConnection({
+        eventId,
+        from: fromNode,
+        to: toNode
+      });
+
+      console.log("[WALL] logged live connection");
+
+      try {
+        const subs = await listConnectionsByEvent(eventId);
+        const payload = {
+          type: "edge",
+          createdAt: Date.now(),
+          from: fromNode,
+          to: toNode
+        };
+        await Promise.all(
+          subs.map((s) => postToConnection(s.connectionId, payload))
+        );
+      } catch (e) {
+        console.error("broadcast error", e);
+      }
+    }
+    // incrementQuestProgress(userProfile.id, QUEST_TOTAL_CONNECTIONS),
+    // incrementQuestProgress(connProfile.id, QUEST_TOTAL_CONNECTIONS)
+    break;
   }
 
   return handlerHelpers.createResponse(200, {
@@ -275,22 +293,22 @@ const isDuplicateRequest = async (userID, connID) => {
 export const handleWorkshop = async (profileID, workshopID) => {
   try {
     switch (workshopID) {
-      case WORKSHOP_TWO:
-        await incrementQuestProgress(profileID, QUEST_WORKSHOP);
-        return handlerHelpers.createResponse(200, {
-          message: "Completed Workshop Two Challenge"
-        });
+    case WORKSHOP_TWO:
+      await incrementQuestProgress(profileID, QUEST_WORKSHOP);
+      return handlerHelpers.createResponse(200, {
+        message: "Completed Workshop Two Challenge"
+      });
 
-      case WORKSHOP_TWO_PARTICIPANT:
-        await incrementQuestProgress(profileID, QUEST_WORKSHOP_TWO_PARTICIPANT);
-        return handlerHelpers.createResponse(200, {
-          message: "Braved 1-on-1 onstage interview"
-        });
+    case WORKSHOP_TWO_PARTICIPANT:
+      await incrementQuestProgress(profileID, QUEST_WORKSHOP_TWO_PARTICIPANT);
+      return handlerHelpers.createResponse(200, {
+        message: "Braved 1-on-1 onstage interview"
+      });
 
-      default:
-        return handlerHelpers.createResponse(200, {
-          message: "Unknown workshop"
-        });
+    default:
+      return handlerHelpers.createResponse(200, {
+        message: "Unknown workshop"
+      });
     }
   } catch (error) {
     console.error(error);
@@ -374,19 +392,34 @@ const incrementQuestProgress = async (userID, questID) => {
   return await docClient.send(command);
 };
 
-export async function saveSocketConnection({ connectionId, eventId, userId }) {
-  console.log("[WS] saveSocketConnection", { connectionId, eventId, userId });
+export async function saveSocketConnection({
+  connectionId, eventId, userId
+}) {
+  console.log("[WS] saveSocketConnection", {
+    connectionId,
+    eventId,
+    userId
+  });
   const cmd = new PutCommand({
     TableName: WS_TABLE,
-    Item: { connectionId, eventId, userId, connectedAt: Date.now() }
+    Item: {
+      connectionId,
+      eventId,
+      userId,
+      connectedAt: Date.now()
+    }
   });
   await docClient.send(cmd);
 }
 
-export async function removeSocketConnection({ connectionId }) {
+export async function removeSocketConnection({
+  connectionId
+}) {
   const cmd = new DeleteCommand({
     TableName: WS_TABLE,
-    Key: { connectionId }
+    Key: {
+      connectionId
+    }
   });
   await docClient.send(cmd);
 }
@@ -397,7 +430,9 @@ export async function listConnectionsByEvent(eventId) {
     TableName: WS_TABLE,
     IndexName: "byEvent",
     KeyConditionExpression: "eventId = :e",
-    ExpressionAttributeValues: { ":e": eventId }
+    ExpressionAttributeValues: {
+      ":e": eventId
+    }
   });
   const res = await docClient.send(cmd);
   console.log(
@@ -409,7 +444,9 @@ export async function listConnectionsByEvent(eventId) {
 
 export function wsClient() {
   // note: endpoint must include stage path
-  return new ApiGatewayManagementApi({ endpoint: WS_ENDPOINT });
+  return new ApiGatewayManagementApi({
+    endpoint: WS_ENDPOINT
+  });
 }
 
 export async function postToConnection(connectionId, payload) {
@@ -428,12 +465,16 @@ export async function postToConnection(connectionId, payload) {
   } catch (err) {
     console.error("[WS] postToConnection error", err);
     if (err.statusCode === 410) {
-      await removeSocketConnection({ connectionId });
+      await removeSocketConnection({
+        connectionId
+      });
     }
   }
 }
 
-export async function logLiveConnection({ eventId, from, to }) {
+export async function logLiveConnection({
+  eventId, from, to
+}) {
   const createdAt = Date.now();
   const sk = `ts#${createdAt}#${randomUUID()}`;
   const cmd = new PutCommand({
@@ -460,7 +501,10 @@ export async function fetchRecentConnections({
     TableName: LIVE_TABLE,
     IndexName: "recent",
     KeyConditionExpression: "eventId = :e AND createdAt >= :t",
-    ExpressionAttributeValues: { ":e": eventId, ":t": threshold },
+    ExpressionAttributeValues: {
+      ":e": eventId,
+      ":t": threshold
+    },
     ScanIndexForward: true
   });
   const res = await docClient.send(cmd);
