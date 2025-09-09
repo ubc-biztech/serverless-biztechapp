@@ -1,4 +1,4 @@
-export const CURRENT_EVENT = "blueprint;2025";
+export const CURRENT_EVENT = "mis-2025";
 
 export const PARTNER = "Partner";
 
