@@ -1,0 +1,7 @@
+const VERIFIED_MEMBERSHIP = "1054932021304115280";
+
+export const MEMBERSHIP_ROLES = {
+    verified: [
+        VERIFIED_MEMBERSHIP
+    ],
+};
