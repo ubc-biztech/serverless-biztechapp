@@ -16,7 +16,12 @@ import {
   CURRENT_EVENT
 } from "./constants";
 import {
-  handleBooth, handleConnection, handleWorkshop
+  handleBooth,
+  handleConnection,
+  handleWorkshop,
+  saveSocketConnection,
+  removeSocketConnection,
+  fetchRecentConnections
 } from "./helpers";
 import {
   QueryCommand
@@ -198,4 +203,139 @@ export const getAllQuests = async (event, ctx, callback) => {
   }
 
   return null;
+};
+
+export const getWallSnapshot = async (event) => {
+  try {
+    const qs = event.queryStringParameters || {
+    };
+    console.log("[WALL] snapshot request", qs);
+
+    const eventId = qs.eventId || "DEFAULT";
+    const sinceSec = Number(qs.sinceSec || "300");
+
+    const items = await fetchRecentConnections({
+      eventId,
+      sinceMs: sinceSec * 1000
+    });
+
+    const nodeMap = new Map();
+    const links = [];
+
+    for (const it of items) {
+      const {
+        from, to, createdAt
+      } = it;
+
+      if (from?.id)
+        nodeMap.set(from.id, {
+          id: from.id,
+          name: from.name ?? "",
+          avatar: from.avatar
+        });
+      if (to?.id)
+        nodeMap.set(to.id, {
+          id: to.id,
+          name: to.name ?? "",
+          avatar: to.avatar
+        });
+
+      if (from?.id && to?.id) {
+        links.push({
+          source: from.id,
+          target: to.id,
+          createdAt
+        });
+      }
+    }
+
+    const nodes = Array.from(nodeMap.values());
+    console.log("[WALL] snapshot response", {
+      nodes: nodes.length,
+      links: links.length
+    });
+
+    return helpers.createResponse(200, {
+      nodes,
+      links
+    });
+  } catch (err) {
+    console.error(err);
+    return helpers.createResponse(500, {
+      message: "wall snapshot error"
+    });
+  }
+};
+
+// WebSocket connect
+export const wsConnect = async (event) => {
+  try {
+    console.log("[WS] $connect", event.requestContext?.connectionId);
+    const connectionId = event.requestContext.connectionId;
+
+    await saveSocketConnection({
+      connectionId,
+      eventId: "__unset__",
+      userId: "__anon__"
+    });
+    return {
+      statusCode: 200,
+      body: "connected"
+    };
+  } catch (err) {
+    console.error(err);
+    return {
+      statusCode: 500,
+      body: "connect failed"
+    };
+  }
+};
+
+// WebSocket disconnect
+export const wsDisconnect = async (event) => {
+  try {
+    const connectionId = event.requestContext.connectionId;
+    await removeSocketConnection({
+      connectionId
+    });
+    return {
+      statusCode: 200,
+      body: "disconnected"
+    };
+  } catch (err) {
+    console.error(err);
+    return {
+      statusCode: 500,
+      body: "disconnect failed"
+    };
+  }
+};
+
+export const wsSubscribe = async (event) => {
+  try {
+    const connectionId = event.requestContext.connectionId;
+    const body = JSON.parse(event.body || "{}");
+    console.log("[WS] subscribe", {
+      connectionId,
+      body
+    });
+    const eventId = body.eventId || "DEFAULT";
+    const userId = body.userId || "__anon__";
+
+    await saveSocketConnection({
+      connectionId,
+      eventId,
+      userId
+    });
+    return {
+      statusCode: 200,
+      body: "subscribed"
+    };
+  } catch (err) {
+    console.error(err);
+    return {
+      statusCode: 500,
+      body: "subscribe failed"
+    };
+  }
 };

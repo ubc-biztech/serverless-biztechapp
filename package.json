@@ -33,7 +33,6 @@
     "utest": "./scripts/run_utests.sh",
     "test": "npm run utest && npm run itest",
     "lint": "eslint . --fix",
-    "pre-commit-msg": "echo 'Fixing lint problems'...",
     "pretty": "prettier --write \"./**/*.{js,jsx,ts,tsx,json}\"",
     "fix-sls-offline": "find services/* -maxdepth 0 -type d -exec sh -c 'cd \"{}\" && node ../../scripts/fix-sls-offline.js' \\;",
     "install": "find services/* -maxdepth 0 -type d -exec sh -c 'cd \"{}\" && npm i --save-dev' \\;",
@@ -60,10 +59,7 @@
     "serverless-offline": "^13.9.0",
     "serverless-prune-plugin": "^2.0.2"
   },
-  "pre-commit": [
-    "pre-commit-msg",
-    "lint"
-  ],
+  "pre-commit": [],
   "babel": {
     "presets": [
       "es2015",

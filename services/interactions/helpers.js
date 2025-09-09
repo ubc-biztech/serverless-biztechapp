@@ -1,9 +1,13 @@
 import {
-  PutCommand, QueryCommand, UpdateCommand
+  PutCommand,
+  QueryCommand,
+  UpdateCommand,
+  DeleteCommand
 } from "@aws-sdk/lib-dynamodb";
 import {
-  QRS_TABLE,
-  CONNECTIONS_TABLE,
+  ApiGatewayManagementApi
+} from "@aws-sdk/client-apigatewaymanagementapi";
+import {
   QUESTS_TABLE,
   PROFILES_TABLE,
   NFC_SCANS_TABLE,
@@ -13,29 +17,29 @@ import db from "../../lib/db";
 import handlerHelpers from "../../lib/handlerHelpers";
 import docClient from "../../lib/docClient";
 import {
-  ATTENDEE,
   BIGTECH,
   CURRENT_EVENT,
   EXEC,
-  PARTNER,
   QUEST_BIGTECH,
   QUEST_STARTUP,
-  QUEST_CONNECT_FOUR,
-  QUEST_CONNECT_ONE,
-  QUEST_CONNECT_TEN_H,
   QUEST_WORKSHOP,
   STARTUPS,
   WORKSHOP_TWO,
   PHOTOBOOTH,
   QUEST_PHOTOBOOTH,
-  QUEST_CONNECT_EXEC_H,
   WORKSHOP_TWO_PARTICIPANT,
-  QUEST_WORKSHOP_TWO_PARTICIPANT,
-  QUEST_TOTAL_CONNECTIONS
+  QUEST_WORKSHOP_TWO_PARTICIPANT
 } from "./constants";
 import {
   PROFILE_TYPES, TYPES
 } from "../profiles/constants";
+import {
+  randomUUID
+} from "crypto";
+
+const WS_TABLE = `bizWallSockets${process.env.ENVIRONMENT || ""}`;
+const LIVE_TABLE = `bizLiveConnections${process.env.ENVIRONMENT || ""}`;
+const WS_ENDPOINT = process.env.WS_API_ENDPOINT;
 
 export const handleConnection = async (userID, connProfileID, timestamp) => {
   let memberData = await db.getOne(userID, MEMBERS2026_TABLE);
@@ -184,6 +188,80 @@ export const handleConnection = async (userID, connProfileID, timestamp) => {
         message: "Internal server error"
       });
     }
+
+    {
+      const eventId = CURRENT_EVENT || "DEFAULT";
+
+      const fromNode = {
+        id: swap ? connProfileID : userProfileID,
+        name: swap
+          ? `${connProfile.fname} ${connProfile.lname}`
+          : `${userProfile.fname} ${userProfile.lname}`,
+        avatar: swap
+          ? connProfile.profilePictureURL
+          : userProfile.profilePictureURL,
+        major: swap ? connProfile.major : userProfile.major,
+        year: swap ? connProfile.year : userProfile.year
+      };
+
+      const toNode = {
+        id: swap ? userProfileID : connProfileID,
+        name: swap
+          ? `${userProfile.fname} ${userProfile.lname}`
+          : `${connProfile.fname} ${connProfile.lname}`,
+        avatar: swap
+          ? userProfile.profilePictureURL
+          : connProfile.profilePictureURL,
+        major: swap ? userProfile.major : connProfile.major,
+        year: swap ? userProfile.year : connProfile.year
+      };
+
+      console.log("[WALL] new connection", {
+        eventId,
+        from: fromNode,
+        to: toNode
+      });
+
+      try {
+        const subs = await listConnectionsByEvent(eventId);
+
+        const payload = {
+          type: "connection",
+          createdAt: Date.now(),
+          from: fromNode,
+          to: toNode
+        };
+        await Promise.all(
+          subs.map((s) => postToConnection(s.connectionId, payload))
+        );
+      } catch (e) {
+        console.error("broadcast error", e);
+      }
+
+      // Persist to live log (for initial hydration / replay)
+      await logLiveConnection({
+        eventId,
+        from: fromNode,
+        to: toNode
+      });
+
+      console.log("[WALL] logged live connection");
+
+      try {
+        const subs = await listConnectionsByEvent(eventId);
+        const payload = {
+          type: "edge",
+          createdAt: Date.now(),
+          from: fromNode,
+          to: toNode
+        };
+        await Promise.all(
+          subs.map((s) => postToConnection(s.connectionId, payload))
+        );
+      } catch (e) {
+        console.error("broadcast error", e);
+      }
+    }
     // incrementQuestProgress(userProfile.id, QUEST_TOTAL_CONNECTIONS),
     // incrementQuestProgress(connProfile.id, QUEST_TOTAL_CONNECTIONS)
     break;
@@ -212,7 +290,7 @@ const isDuplicateRequest = async (userID, connID) => {
   return Boolean(result);
 };
 
-export const handleWorkshop = async (profileID, workshopID, timestamp) => {
+export const handleWorkshop = async (profileID, workshopID) => {
   try {
     switch (workshopID) {
     case WORKSHOP_TWO:
@@ -313,3 +391,122 @@ const incrementQuestProgress = async (userID, questID) => {
 
   return await docClient.send(command);
 };
+
+export async function saveSocketConnection({
+  connectionId, eventId, userId
+}) {
+  console.log("[WS] saveSocketConnection", {
+    connectionId,
+    eventId,
+    userId
+  });
+  const cmd = new PutCommand({
+    TableName: WS_TABLE,
+    Item: {
+      connectionId,
+      eventId,
+      userId,
+      connectedAt: Date.now()
+    }
+  });
+  await docClient.send(cmd);
+}
+
+export async function removeSocketConnection({
+  connectionId
+}) {
+  const cmd = new DeleteCommand({
+    TableName: WS_TABLE,
+    Key: {
+      connectionId
+    }
+  });
+  await docClient.send(cmd);
+}
+
+export async function listConnectionsByEvent(eventId) {
+  console.log("[WS] listConnectionsByEvent ->", eventId);
+  const cmd = new QueryCommand({
+    TableName: WS_TABLE,
+    IndexName: "byEvent",
+    KeyConditionExpression: "eventId = :e",
+    ExpressionAttributeValues: {
+      ":e": eventId
+    }
+  });
+  const res = await docClient.send(cmd);
+  console.log(
+    "[WS] listConnectionsByEvent result count:",
+    res?.Items?.length || 0
+  );
+  return res.Items || [];
+}
+
+export function wsClient() {
+  // note: endpoint must include stage path
+  return new ApiGatewayManagementApi({
+    endpoint: WS_ENDPOINT
+  });
+}
+
+export async function postToConnection(connectionId, payload) {
+  const api = wsClient();
+  try {
+    console.log(
+      "[WS] postToConnection ->",
+      process.env.WS_API_ENDPOINT,
+      connectionId,
+      payload?.type
+    );
+    await api.postToConnection({
+      ConnectionId: connectionId,
+      Data: Buffer.from(JSON.stringify(payload))
+    });
+  } catch (err) {
+    console.error("[WS] postToConnection error", err);
+    if (err.statusCode === 410) {
+      await removeSocketConnection({
+        connectionId
+      });
+    }
+  }
+}
+
+export async function logLiveConnection({
+  eventId, from, to
+}) {
+  const createdAt = Date.now();
+  const sk = `ts#${createdAt}#${randomUUID()}`;
+  const cmd = new PutCommand({
+    TableName: LIVE_TABLE,
+    Item: {
+      eventId,
+      sk,
+      createdAt,
+      from,
+      to
+    }
+  });
+  await docClient.send(cmd);
+}
+
+export async function fetchRecentConnections({
+  eventId,
+  sinceMs = 60 * 60 * 1000
+}) {
+  const now = Date.now();
+  const threshold = now - sinceMs;
+
+  const cmd = new QueryCommand({
+    TableName: LIVE_TABLE,
+    IndexName: "recent",
+    KeyConditionExpression: "eventId = :e AND createdAt >= :t",
+    ExpressionAttributeValues: {
+      ":e": eventId,
+      ":t": threshold
+    },
+    ScanIndexForward: true
+  });
+  const res = await docClient.send(cmd);
+  return res.Items || [];
+}

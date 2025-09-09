@@ -2,6 +2,10 @@
   "name": "biztechapi-interactions",
   "version": "1.0.0",
   "devDependencies": {
+    "serverless-dynamodb-local": "^0.2.40",
     "serverless-offline": "^14.3.2"
+  },
+  "dependencies": {
+    "@aws-sdk/client-apigatewaymanagementapi": "^3.883.0"
   }
 }
