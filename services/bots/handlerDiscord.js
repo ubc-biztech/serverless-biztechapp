@@ -1,14 +1,7 @@
 import db from "../../lib/db.js";
 import handlerHelpers from "../../lib/handlerHelpers.js";
-import { 
-  InteractionResponseType, 
-  InteractionType 
-} from "discord-interactions";
-import { 
-  DiscordRequest, 
-  verifyRequestSignature, 
-  applicationCommandRouter 
-} from "./helpersDiscord.js";
+import { InteractionResponseType, InteractionType } from "discord-interactions";
+import { DiscordRequest, verifyRequestSignature,applicationCommandRouter } from "./helpersDiscord.js";
 import {
   MEMBERS2026_TABLE
 } from "../../constants/tables.js";
@@ -122,7 +115,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
     // TODO: Assign event-specific roles
     try {
       await assignUserRoles(email, 'verified');
-      console.log(`Successfully assigned ${membershipTier} role to ${email}`);
+      console.log(`Successfully verified ${email}`);
     } catch (roleError) {
       console.warn(`Failed to assign roles to ${email}:`, roleError.message);
     }

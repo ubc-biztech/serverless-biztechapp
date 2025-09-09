@@ -5,7 +5,8 @@ import {
 } from "discord-interactions";
 import db from "../../lib/db.js";
 import { MEMBERS2026_TABLE } from "../../constants/tables.js";
-import { MEMBERSHIP_ROLES } from "../../constants/roles.js";
+import { DISCORD_GUILD_ID, MEMBERSHIP_ROLES } from "./constants.js";
+
 
 export async function DiscordRequest(endpoint, options) {
   const url = "https://discord.com/api/v10/" + endpoint;
@@ -148,7 +149,7 @@ export async function assignUserRoles(userID, membershipTier, eventID = null) {
   const results = [];
   for (const roleID of rolesToAdd) {
     try {
-      await DiscordRequest(`guilds/${process.env.DISCORD_GUILD_ID}/members/${user.discordId}/roles/${roleID}`, {
+      await DiscordRequest(`guilds/${DISCORD_GUILD_ID}/members/${user.discordId}/roles/${roleID}`, {
         method: "PUT"
       });
       results.push({ roleID, status: 'assigned' });
@@ -192,7 +193,7 @@ export async function removeUserRoles(userID, membershipTier, eventID = null) {
   const results = [];
   for (const roleID of rolesToRemove) {
     try {
-      await DiscordRequest(`guilds/${process.env.DISCORD_GUILD_ID}/members/${user.discordId}/roles/${roleID}`, {
+      await DiscordRequest(`guilds/${DISCORD_GUILD_ID}/members/${user.discordId}/roles/${roleID}`, {
         method: "DELETE"
       });
       results.push({ roleID, status: 'removed' });
