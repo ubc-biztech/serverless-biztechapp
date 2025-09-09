@@ -135,3 +135,13 @@ export const btDevs = Object.freeze({
   auroraxcheng: "aurora",
   "alex-gour": "alexg"
 });
+
+// Discord Role ID's
+export const DISCORD_GUILD_ID = "1048448989307093054";
+const VERIFIED_MEMBERSHIP = "1054932021304115280";
+
+export const MEMBERSHIP_ROLES = {
+    verified: [
+        VERIFIED_MEMBERSHIP
+    ],
+};
