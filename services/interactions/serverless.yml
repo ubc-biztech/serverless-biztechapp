@@ -18,7 +18,7 @@ provider:
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
-    WS_API_ENDPOINT: ${opt:wsEndpoint, 'http://localhost:3002'}
+    WS_API_ENDPOINT: https://bwiujsprij.execute-api.us-west-2.amazonaws.com/dev
   timeout: 15 # in seconds
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
@@ -80,6 +80,11 @@ provider:
       Resource:
         - arn:aws:dynamodb:us-west-2:432714361962:table/bizLiveConnections${self:provider.environment.ENVIRONMENT}
         - arn:aws:dynamodb:us-west-2:432714361962:table/bizLiveConnections${self:provider.environment.ENVIRONMENT}/index/recent
+    - Effect: Allow
+      Action:
+        - execute-api:ManageConnections
+      Resource:
+        - arn:aws:execute-api:${self:provider.region}:${aws:accountId}:bwiujsprij/*/@connections/*
 
 custom:
   prune:
