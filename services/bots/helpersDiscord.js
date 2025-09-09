@@ -5,11 +5,7 @@ import {
 } from "discord-interactions";
 import db from "../../lib/db.js";
 import { MEMBERS2026_TABLE } from "../../constants/tables.js";
-
-const MEMBERSHIP_ROLES = {
-  basic: process.env.BASIC_MEMBER_ROLE_ID,
-  executive: process.env.EXECUTIVE_ROLE_ID
-};
+import { MEMBERSHIP_ROLES } from "../../constants/roles.js";
 
 export async function DiscordRequest(endpoint, options) {
   const url = "https://discord.com/api/v10/" + endpoint;
@@ -17,9 +13,7 @@ export async function DiscordRequest(endpoint, options) {
   const res = await fetch(url, {
     headers: {
       Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
-      "Content-Type": "application/json; charset=UTF-8",
-      "User-Agent":
-        "DiscordBot (https://github.com/discord/discord-example-app, 1.0.0)"
+      "Content-Type": "application/json; charset=UTF-8"
     },
     ...options
   });
@@ -54,7 +48,7 @@ export function verifyRequestSignature(req) {
 }
 
 // Handles application commands and routes them to the appropriate handler
-// handlers should return a response object with statusCode and body
+// * handlers should return a response object with statusCode and body
 export function applicationCommandRouter(name, body) {
   const { member } = body;
   switch (name) {
@@ -90,7 +84,7 @@ function handleVerifyCommand(member) {
       body: JSON.stringify({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
-          content: "❌ This command can only be used in a server.",
+          content: "❌ This command can only be used in the UBC Biztech server.",
           flags: 64
         }
       })
@@ -140,7 +134,7 @@ export async function assignUserRoles(userID, membershipTier, eventID = null) {
   const rolesToAdd = [];
   
   if (membershipTier && MEMBERSHIP_ROLES[membershipTier]) {
-    rolesToAdd.push(MEMBERSHIP_ROLES[membershipTier]);
+    rolesToAdd.push(...MEMBERSHIP_ROLES[membershipTier]);
   }
   
   // TODO: add event role logic here when needed

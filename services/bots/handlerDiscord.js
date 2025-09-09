@@ -7,7 +7,6 @@ import {
 } from "../../constants/tables.js";
 import { assignUserRoles, removeUserRoles, backfillUserRoles } from "./helpersDiscord.js";
 
-
 export const interactions = (event, ctx, callback) => {
   const body = JSON.parse(event.body);
 
@@ -110,14 +109,13 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
     // update with new field
     await db.updateDB(email, { discordId }, MEMBERS2026_TABLE);
 
-    // Assign initial roles based on membership tier
+    // assign verfied role based on membership tier
+    // TODO: Assign event-specific roles
     try {
-      const membershipTier = exists.membershipTier || 'basic';
-      await assignUserRoles(email, membershipTier);
+      await assignUserRoles(email, 'verified');
       console.log(`Successfully assigned ${membershipTier} role to ${email}`);
     } catch (roleError) {
       console.warn(`Failed to assign roles to ${email}:`, roleError.message);
-      // Don't fail the mapping if role assignment fails
     }
 
     return callback(null,
