@@ -63,6 +63,20 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  memberGetEmail:
+    handler: handler.getEmailFromProfile
+    events:
+      - http:
+          path: members/profile/{profileID}
+          method: get
+          request:
+            parameters:
+              path:
+                profileID: true
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   memberGetAll:
     handler: handler.getAll
     events:
