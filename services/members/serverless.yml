@@ -67,7 +67,7 @@ functions:
     handler: handler.getEmailFromProfile
     events:
       - http:
-          path: members/profile/{profileID}
+          path: members/email/{profileID}
           method: get
           request:
             parameters:
