@@ -11,7 +11,7 @@
         "SharedArrayBuffer": "readonly"
     },
     "parserOptions": {
-        "ecmaVersion": 2020,
+        "ecmaVersion": 2018,
         "sourceType": "module"
     },
     "rules": {
@@ -32,7 +32,7 @@
         "semi": ["warn", "always"],
         "space-in-parens": ["warn", "never"],
         "object-property-newline": ["warn", {}],
-        "object-curly-newline": ["warn", { "multiline": true, "consistent": true }],
+        "object-curly-newline": ["warn", "always"],
         "eqeqeq": ["warn", "always"]
     },
     "overrides": [{

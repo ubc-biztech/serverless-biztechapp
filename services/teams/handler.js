@@ -12,7 +12,9 @@ import {
 } from "../../constants/tables";
 import db from "../../lib/db.js";
 import handlerHelpers from "../../lib/handlerHelpers";
-import { WEIGHTS, ROUND } from "./constants.js";
+import {
+  WEIGHTS, ROUND
+} from "./constants.js";
 
 /*
   Team Table Schema from DynamoDB:
@@ -192,7 +194,9 @@ export const get = async (event, ctx, callback) => {
     !event.pathParameters.year
   )
     throw helpers.missingPathParamResponse("event", "year");
-  const { eventID, year } = event.pathParameters;
+  const {
+    eventID, year
+  } = event.pathParameters;
 
   try {
     const eventIDYear = eventID + ";" + year;
@@ -359,7 +363,7 @@ export const addQRScan = async (event, ctx, callback) => {
 
 export const addMultipleQuestions = async (event, ctx, callback) => {
   /*
-    !!!! NOTE: This is specifically for Dataverse, where we are using the
+    !!!! NOTE: This is specifically for Dataverse, where we are using the 
     scannedQRs field to store correctly answered questions.
 
     Requires: user_id, answered_questions (array), eventID, year
@@ -504,8 +508,10 @@ export const getNormalizedRoundScores = async (event, ctx, callback) => {
   }
 
   // step 1: format data by team
-  let teamRawFeedback = {};
-  let scoreByJudgeID = {};
+  let teamRawFeedback = {
+  };
+  let scoreByJudgeID = {
+  };
   for (let i = 0; i < scores.length; i++) {
     if (!teamRawFeedback[scores[i]["teamID;round"]]) {
       teamRawFeedback[scores[i]["teamID;round"]] = [
@@ -551,7 +557,8 @@ export const getNormalizedRoundScores = async (event, ctx, callback) => {
   });
 
   // step 3: rehash by team
-  let scoresByTeamID = {};
+  let scoresByTeamID = {
+  };
   for (let i = 0; i < scoresNormalized.length; i++) {
     if (!scoresByTeamID[scoresNormalized[i].team]) {
       scoresByTeamID[scoresNormalized[i].team] = [scoresNormalized[i]];
@@ -704,13 +711,15 @@ export const createJudgeSubmissions = async (event, ctx, callback) => {
 
     const newFeedback = {
       "teamID;round": teamID_round,
-      "id": data.judgeID,
-      "judgeName": judgeReg.fname,
-      "teamName": teamName,
-      "teamID": data.teamID,
-      "scores": data.scores || {},
-      "feedback": data.feedback || {},
-      "createdAt": new Date().toISOString()
+      id: data.judgeID,
+      judgeName: judgeReg.fname,
+      teamName: teamName,
+      teamID: data.teamID,
+      scores: data.scores || {
+      },
+      feedback: data.feedback || {
+      },
+      createdAt: new Date().toISOString()
     };
 
     try {
@@ -746,7 +755,9 @@ export const createJudgeSubmissions = async (event, ctx, callback) => {
 
 export const getJudgeSubmissions = async (event, ctx, callback) => {
   try {
-    const { judgeID } = event.pathParameters;
+    const {
+      judgeID
+    } = event.pathParameters;
 
     if (!judgeID) {
       throw helpers.createResponse(400, {
@@ -793,7 +804,8 @@ export const getJudgeSubmissions = async (event, ctx, callback) => {
       }
       acc[item.round].push(item);
       return acc;
-    }, {});
+    }, {
+    });
 
     const response = helpers.createResponse(200, {
       message: "Scores retrieved successfully",
@@ -811,7 +823,9 @@ export const getJudgeSubmissions = async (event, ctx, callback) => {
 
 export const getJudgeCurrentTeam = async (event, ctx, callback) => {
   try {
-    const { judgeID } = event.pathParameters;
+    const {
+      judgeID
+    } = event.pathParameters;
 
     if (!judgeID) {
       throw helpers.createResponse(400, {
@@ -869,7 +883,9 @@ export const getCurrentRound = async (event, ctx, callback) => {
 
 export const setCurrentRound = async (event, ctx, callback) => {
   try {
-    const { round } = event.pathParameters;
+    const {
+      round
+    } = event.pathParameters;
 
     if (!round) {
       return helpers.createResponse(400, {
@@ -901,7 +917,9 @@ export const setCurrentRound = async (event, ctx, callback) => {
 
 export const getTeamFeedbackScore = async (event, ctx, callback) => {
   try {
-    const { teamID } = event.pathParameters;
+    const {
+      teamID
+    } = event.pathParameters;
     if (!teamID) {
       throw helpers.createResponse(400, {
         message: "teamID is required"
@@ -940,7 +958,8 @@ export const getTeamFeedbackScore = async (event, ctx, callback) => {
       });
 
       return acc;
-    }, {});
+    }, {
+    });
 
     const response = helpers.createResponse(200, {
       message: "Scores retrieved successfully",
@@ -999,21 +1018,20 @@ export const updateJudgeSubmission = async (event, ctx, callback) => {
 
     const updatedFeedback = {
       "teamID;round": teamID_round,
-      "id": data.judgeID,
-      "scores":
-        data.scores || (existingFeedback ? existingFeedback.scores : {}),
-      "feedback":
+      id: data.judgeID,
+      scores: data.scores || (existingFeedback ? existingFeedback.scores : {
+      }),
+      feedback:
         data.feedback || (existingFeedback ? existingFeedback.feedback : ""),
-      "teamID":
-        data.teamID || (existingFeedback ? existingFeedback.teamID : ""),
-      "teamName":
+      teamID: data.teamID || (existingFeedback ? existingFeedback.teamID : ""),
+      teamName:
         data.teamName || (existingFeedback ? existingFeedback.teamName : ""),
-      "createdAt":
+      createdAt:
         data.createdAt ||
         (existingFeedback
           ? existingFeedback.createdAt
           : new Date().toISOString()),
-      "judgeName":
+      judgeName:
         data.judgeName || (existingFeedback ? existingFeedback.judgeName : "")
     };
 
@@ -1057,7 +1075,9 @@ export const updateCurrentTeamForJudge = async (event, ctx, callback) => {
       return null;
     }
 
-    const { judgeIDs } = data;
+    const {
+      judgeIDs
+    } = data;
     const teamID = event.pathParameters.teamID;
 
     let round = await db.getOne(ROUND, JUDGING_TABLE);

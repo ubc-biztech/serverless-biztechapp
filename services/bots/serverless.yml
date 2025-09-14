@@ -37,20 +37,8 @@ provider:
         - dynamodb:UpdateItem
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2025${self:provider.environment.ENVIRONMENT}"
-        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2026${self:provider.environment.ENVIRONMENT}"
 
-custom:
-  prune: ${file(../../serverless.common.yml):custom.prune}
-  bundle: ${file(../../serverless.common.yml):custom.bundle}
-  serverless-offline: ${file(../../serverless.common.yml):custom.serverless-offline}
-  serverless-mocha-plugin: ${file(../../serverless.common.yml):custom.serverless-mocha-plugin}
-  stage: ${file(../../serverless.common.yml):custom.stage}
-  domains: ${file(../../serverless.common.yml):custom.domains}
-  customDomain: ${file(../../serverless.common.yml):custom.customDomain}
-  environment: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
-  slackEnabled: ${self:custom.slackEnabledMap.${self:custom.environment}, true}
-  slackEnabledMap:
-    PROD: false
+custom: ${file(../../serverless.common.yml):custom}
 
 functions:
   discordInteractions:
@@ -60,7 +48,7 @@ functions:
           path: discord/interactions
           method: post
           cors: true
-
+  
   discordAccountMapping:
     handler: handlerDiscord.mapDiscordAccountToMembership
     events:
@@ -110,10 +98,10 @@ functions:
           cors: true
       - schedule:
           rate: cron(0 17 ? * 1 *)
-          enabled: ${self:custom.slackEnabled}
+          enabled: true
       - schedule:
           rate: cron(0 17 ? * 5 *)
-          enabled: ${self:custom.slackEnabled}
+          enabled: true
 
   slackShortcutEventHandler:
     handler: handlerSlack.shortcutHandler

@@ -64,8 +64,9 @@ functions:
           method: get
           cors: true
           authorizer:
+            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
-            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
   qrGetOne:
     handler: handler.getOne
     events:
@@ -98,20 +99,24 @@ functions:
               year: true
           cors: true
           authorizer:
+            name: ${self:service}-authorizer
             type: COGNITO_USER_POOLS
-            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
 qrDelete:
-  handler: handler.del
-  events:
-    - http:
-        path: qr/{id}/{eventID}/{year}
-        method: delete
-        request:
-          path:
-            id: true
-            eventID: true
-            year: true
-        cors: true
-        authorizer:
-          type: COGNITO_USER_POOLS
-          authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+    handler: handler.del
+    events:
+      - http:
+          path: qr/{id}/{eventID}/{year}
+          method: delete
+          request:
+            path:
+              id: true
+              eventID: true
+              year: true
+          cors: true
+          authorizer:
+            name: ${self:service}-authorizer
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:us-west-2:432714361962:userpool/us-west-2_w0R176hhp
+
+

@@ -1,8 +1,9 @@
-export const CURRENT_EVENT = "mis-2025";
+export const CURRENT_EVENT = "blueprint;2025";
 
+export const ATTENDEE = "NFC_ATTENDEE";
+export const EXEC = "NFC_EXEC"; // subject to change
 export const PARTNER = "Partner";
 
-export const QUEST_TOTAL_CONNECTIONS = "QUEST_TOTAL_CONNECTIONS";
 export const QUEST_CONNECT_ONE = "QUEST_CONNECT_ONE";
 export const QUEST_SNACK = "QUEST_SNACK";
 export const QUEST_STARTUP = "QUEST_STARTUP";

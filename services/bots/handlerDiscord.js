@@ -1,7 +1,13 @@
 import db from "../../lib/db.js";
 import handlerHelpers from "../../lib/handlerHelpers.js";
-import { InteractionResponseType, InteractionType } from "discord-interactions";
-import { DiscordRequest, verifyRequestSignature,applicationCommandRouter } from "./helpersDiscord.js";
+import {
+  InteractionResponseType,
+  InteractionType
+} from "discord-interactions";
+import { 
+  verifyRequestSignature,
+  applicationCommandRouter 
+} from "./helpersDiscord.js";
 import {
   MEMBERS2026_TABLE
 } from "../../constants/tables.js";
@@ -107,9 +113,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
     }
 
     // update with new field
-    await db.updateDB(email, {
-      discordId
-    }, MEMBERS2026_TABLE);
+    await db.updateDB(email, { discordId }, MEMBERS2026_TABLE);
 
     // assign verfied role based on membership tier
     // TODO: Assign event-specific roles

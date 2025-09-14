@@ -7,9 +7,7 @@ import {
   summarizeRecentMessages
 } from "./helpersSlack.js";
 
-import {
-  ack
-} from "./constants.js";
+import { ack } from "./constants.js";
 
 const processedEventIds = new Set();
 

@@ -49,9 +49,6 @@ provider:
     - Effect: Allow
       Action:
         - dynamodb:GetItem
-        - dynamodb:Query
-        - dynamodb:PutItem
-        - dynamodb:TransactWriteItems
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechProfiles${self:provider.environment.ENVIRONMENT}"
     - Effect: Allow
@@ -86,48 +83,7 @@ provider:
       Resource:
         - arn:aws:execute-api:${self:provider.region}:${aws:accountId}:${self:custom.wsApiIds.${self:provider.stage}}/*/@connections/*
 
-custom:
-  prune:
-    automatic: true
-    number: 3
-
-  bundle:
-    sourcemaps: false
-
-  serverless-mocha-plugin:
-    testTemplate: ../../lib/testTemplate.ejs
-
-  stage: ${opt:stage, self:provider.stage}
-  domains:
-    prod: api.ubcbiztech.com
-    staging: api-staging.ubcbiztech.com
-    dev: api-dev.ubcbiztech.com
-
-  customDomain:
-    domainName: ${self:custom.domains.${self:custom.stage}}
-    basePath: ""
-    stage: ${self:custom.stage}
-    certificateName: ${self:custom.domains.${self:custom.stage}}
-    createRoute53Record: true
-    endpointType: edge
-    apiType: rest
-    autoDomain: false
-
-  serverless-offline:
-    httpPort: 4010
-    lambdaPort: 5010
-    websocketPort: 3002
-
-  dynamodb:
-    start:
-      port: 8000
-      inMemory: true
-      migrate: true
-      heapInitial: 200m
-      heapMax: 1g
-      convertEmptyValues: true
-    stages:
-      - dev
+custom: ${file(../../serverless.common.yml):custom}
 
   wsApiIds:
     dev: bwiujsprij
@@ -141,122 +97,25 @@ functions:
           path: interactions/
           method: post
           cors: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
-
-  checkConnection:
-    handler: handler.checkConnection
+  interactionJournalGetAll:
+    handler: handler.getAllConnections
     events:
       - http:
           path: interactions/journal/{id}
           method: get
           request:
             parameters:
-              paths:
+              path:
                 id: true
           cors: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
-
-  interactionJournalGetAll:
-    handler: handler.getAllConnections
-    events:
-      - http:
-          path: interactions/journal/
-          method: get
-          cors: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
-
   interactionQuestsGetAll:
     handler: handler.getAllQuests
     events:
       - http:
-          path: interactions/quests/
+          path: interactions/quests/{id}
           method: get
+          request:
+            parameters:
+              path:
+                id: true
           cors: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
-
-  wallSnapshot:
-    handler: handler.getWallSnapshot
-    events:
-      - http:
-          path: interactions/wall
-          method: get
-          cors: true
-          # authorizer:
-          #   type: COGNITO_USER_POOLS
-          #   authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
-
-  wsConnect:
-    handler: handler.wsConnect
-    events:
-      - websocket:
-          route: $connect
-
-  wsDisconnect:
-    handler: handler.wsDisconnect
-    events:
-      - websocket:
-          route: $disconnect
-
-  wsSubscribe:
-    handler: handler.wsSubscribe
-    events:
-      - websocket:
-          route: subscribe
-
-resources:
-  Resources:
-    BizWallSocketsTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: bizWallSockets${self:provider.environment.ENVIRONMENT}
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: connectionId
-            AttributeType: S
-          - AttributeName: eventId
-            AttributeType: S
-        KeySchema:
-          - AttributeName: connectionId
-            KeyType: HASH
-        GlobalSecondaryIndexes:
-          - IndexName: byEvent
-            KeySchema:
-              - AttributeName: eventId
-                KeyType: HASH
-            Projection:
-              ProjectionType: ALL
-
-    BizLiveConnectionsTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: bizLiveConnections${self:provider.environment.ENVIRONMENT}
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: eventId
-            AttributeType: S
-          - AttributeName: sk
-            AttributeType: S
-          - AttributeName: createdAt
-            AttributeType: N
-        KeySchema:
-          - AttributeName: eventId
-            KeyType: HASH
-          - AttributeName: sk
-            KeyType: RANGE
-        GlobalSecondaryIndexes:
-          - IndexName: recent
-            KeySchema:
-              - AttributeName: eventId
-                KeyType: HASH
-              - AttributeName: createdAt
-                KeyType: RANGE
-            Projection:
-              ProjectionType: ALL
