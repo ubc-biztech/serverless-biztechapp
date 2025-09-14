@@ -1,15 +1,12 @@
-# Ticket(s):
+🎟️ **Ticket(s):**
 Closes #
 
-## **Changes:**
+👷 **Changes:**
 A brief summary of what changes were introduced.
 
-## **Notes:**
+💭 **Notes:**
 Any additional things to take into consideration.
 
-## **Testing:**
-Testing done to verify functionality of code
-
-## **Wait! Before you merge, have you checked the following:**
-- [ ] I have self-reviewed my code
+**Wait! Before you merge, have you checked the following:**
+- [ ] Serverless tests are passing (Check travis build logs, CI is currently broken)
 - [ ] PR is has approving review(s)

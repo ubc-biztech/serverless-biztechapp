@@ -1,10 +1,11 @@
+
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
-import { isEmpty, isValidEmail } from "../../lib/utils";
 import {
-  USERS_TABLE,
-  EVENTS_TABLE,
-  IMMUTABLE_USER_PROPS
+  isEmpty, isValidEmail
+} from "../../lib/utils";
+import {
+  USERS_TABLE, EVENTS_TABLE, IMMUTABLE_USER_PROPS
 } from "../../constants/tables";
 import docClient from "../../lib/docClient";
 
@@ -134,7 +135,10 @@ export const create = async (event, ctx, callback) => {
         "User could not be created because email already exists"
       );
     } else {
-      response = helpers.createResponse(502, "Internal Server Error occurred");
+      response = helpers.createResponse(
+        502,
+        "Internal Server Error occurred"
+      );
     }
     callback(null, response);
   }
@@ -175,16 +179,9 @@ export const checkUserMembership = async (event, ctx, callback) => {
 
 export const get = async (event, ctx, callback) => {
   try {
-    let email = event.requestContext.authorizer.claims.email.toLowerCase();
-
-    if (
-      email.endsWith("@ubcbiztech.com") &&
-      event.pathParameters &&
-      event.pathParameters.email &&
-      isValidEmail(event.pathParameters.email)
-    )
-      email = event.pathParameters.email;
-
+    if (!event.pathParameters || !event.pathParameters.email)
+      throw helpers.missingIdQueryResponse("email");
+    const email = event.pathParameters.email;
     if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
     const user = await db.getOne(email, USERS_TABLE);
     if (isEmpty(user)) throw helpers.notFoundResponse("user", email);
@@ -212,11 +209,8 @@ export const update = async (event, ctx, callback) => {
 
     const data = JSON.parse(event.body);
 
-    const invalidUpdates = Object.keys(data).filter((prop) =>
-      IMMUTABLE_USER_PROPS.includes(prop)
-    );
-    if (invalidUpdates.length > 0)
-      throw helpers.inputError(`Cannot update ${invalidUpdates.join(", ")}`);
+    const invalidUpdates = Object.keys(data).filter((prop) => IMMUTABLE_USER_PROPS.includes(prop));
+    if (invalidUpdates.length > 0) throw helpers.inputError(`Cannot update ${invalidUpdates.join(", ")}`);
 
     const res = await db.updateDB(email, data, USERS_TABLE);
     const response = helpers.createResponse(200, {
@@ -269,7 +263,9 @@ export const favouriteEvent = async (event, ctx, callback) => {
       }
     });
 
-    const { eventID, year, isFavourite } = data;
+    const {
+      eventID, year, isFavourite
+    } = data;
     const eventIDAndYear = eventID + ";" + year;
 
     const email = event.pathParameters.email;
@@ -317,7 +313,8 @@ export const favouriteEvent = async (event, ctx, callback) => {
         null,
         helpers.createResponse(200, {
           message: successMsg,
-          response: {}
+          response: {
+          }
         })
       );
       return null;

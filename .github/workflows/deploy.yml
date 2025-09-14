@@ -1,5 +1,5 @@
 name: Deploy on merge
-on:
+"on":
   push:
     branches: [dev, master]
 

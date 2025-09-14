@@ -9,7 +9,6 @@ jspm_packages
 .env
 .vscode
 .idea
-.dynamodb
 
 # Ignore generated room files
 scripts/data/*_judges.txt
