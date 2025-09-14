@@ -1,0 +1,26 @@
+name: autofix.ci
+
+on:
+  pull_request:
+  push:
+    branches: ["master", "dev"]
+
+permissions: {}
+
+jobs:
+  eslint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.7"
+          cache: "npm"
+
+      - run: npm ci
+      - run: npx eslint . --fix
+
+      - uses: autofix-ci/action@551dded8c6cc8a1054039c8bc0b8b48c51dfc6ef
+        with:
+          commit-message: "Formatting with eslint"

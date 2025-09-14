@@ -6,15 +6,23 @@ import {
   updateHelper
 } from "../registrations/handler";
 import db from "../../lib/db";
-import docClient from "../../lib/docClient";
-const {
+import {
   CognitoIdentityProvider
-} = require("@aws-sdk/client-cognito-identity-provider");
-const {
-  USERS_TABLE,
-  MEMBERS2025_TABLE,
-  USER_REGISTRATIONS_TABLE
-} = require("../../constants/tables");
+} from "@aws-sdk/client-cognito-identity-provider";
+
+import {
+  USERS_TABLE, MEMBERS2026_TABLE
+} from "../../constants/tables";
+import {
+  createProfile
+} from "../profiles/helpers";
+import {
+  PROFILE_TYPES
+} from "../profiles/constants";
+import {
+  MEMBERSHIP_PRICE
+} from "./constants";
+
 const stripe = require("stripe")(
   process.env.ENVIRONMENT === "PROD"
     ? process.env.STRIPE_PROD_KEY
@@ -105,7 +113,13 @@ export const webhook = async (event, ctx, callback) => {
     }
 
     try {
-      await db.put(memberParams, MEMBERS2025_TABLE, true);
+      await db.put(memberParams, MEMBERS2026_TABLE, true);
+      await createProfile(
+        email,
+        email.endsWith("@ubcbiztech.com")
+          ? PROFILE_TYPES.EXEC
+          : PROFILE_TYPES.ATTENDEE
+      );
     } catch (error) {
       let response;
       console.log(error);
@@ -217,7 +231,7 @@ export const webhook = async (event, ctx, callback) => {
     // but if we change the bt web payment body for oauth users from usermember to memebr,
     // we will neesd a check here to see if user is first time oauth
     // if yes, we want a db.post instead of db.update
-    await db.updateDB(email, userParams, USERS_TABLE).catch(error => {
+    await db.updateDB(email, userParams, USERS_TABLE).catch((error) => {
       let response;
 
       response = helpers.createResponse(
@@ -228,22 +242,38 @@ export const webhook = async (event, ctx, callback) => {
       callback(null, response);
     });
 
-    await db.put(memberParams, MEMBERS2025_TABLE, true)
-      .catch(error => {
-        let response;
-        if (error.code === "ConditionalCheckFailedException") {
-          response = helpers.createResponse(
-            409,
-            "Member could not be created because email already exists"
-          );
-        } else {
-          response = helpers.createResponse(
-            502,
-            "Internal Server Error occurred"
-          );
-        }
-        callback(null, response);
-      });
+    await db.put(memberParams, MEMBERS2026_TABLE, true).catch((error) => {
+      let response;
+      if (error.code === "ConditionalCheckFailedException") {
+        response = helpers.createResponse(
+          409,
+          "Member could not be created because email already exists"
+        );
+      } else {
+        response = helpers.createResponse(
+          502,
+          "Internal Server Error occurred"
+        );
+      }
+      callback(null, response);
+    });
+    await createProfile(
+      email,
+      email.endsWith("@ubcbiztech.com")
+        ? PROFILE_TYPES.EXEC
+        : PROFILE_TYPES.ATTENDEE
+    ).catch((error) => {
+      console.error(error);
+
+      let response;
+
+      response = helpers.createResponse(
+        207,
+        `Profile for ${email} was not created, but member created and updated user!`
+      );
+
+      callback(null, response);
+    });
 
     const response = helpers.createResponse(201, {
       message: "Created member and updated user!"
@@ -318,6 +348,8 @@ export const payment = async (event, ctx, callback) => {
     if (data.email) {
       data.email = data.email.toLowerCase();
     }
+
+    const isUBCStudent = data.education === "UBC";
     const {
       paymentImages
     } = data;
@@ -333,7 +365,12 @@ export const payment = async (event, ctx, callback) => {
               name: data.paymentName,
               images: paymentImages
             },
-            unit_amount: data.paymentPrice
+            unit_amount:
+              data.paymentType === "Event"
+                ? data.paymentPrice
+                : isUBCStudent
+                  ? MEMBERSHIP_PRICE - 300
+                  : MEMBERSHIP_PRICE
           },
           quantity: 1
         }

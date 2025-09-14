@@ -1,8 +1,8 @@
 import db from "../../lib/db.js";
 import handlerHelpers from "../../lib/handlerHelpers.js";
-import { 
-  InteractionResponseType, 
-  InteractionType 
+import {
+  InteractionResponseType,
+  InteractionType
 } from "discord-interactions";
 import { 
   verifyRequestSignature,
@@ -43,12 +43,18 @@ export const interactions = (event, ctx, callback) => {
   const {
     type, data
   } = body;
+  const {
+    type, data
+  } = body;
 
   // ping-pong interaction for verification
   if (type === InteractionType.PING) {
     console.log("Received PING interaction");
     return callback(null, {
       statusCode: 200,
+      body: JSON.stringify({
+        type: InteractionResponseType.PONG
+      })
       body: JSON.stringify({
         type: InteractionResponseType.PONG
       })
@@ -85,6 +91,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
 
   if (!email || !discordId) {
     return callback(null,
+    return callback(null,
       handlerHelpers.createResponse(400, {
         message: "Missing email or discordId",
       })
@@ -97,6 +104,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
 
     if (!exists) {
       return callback(null,
+      return callback(null,
         handlerHelpers.createResponse(404, {
           message: "Membership not found",
         })
@@ -106,6 +114,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
     // guard to prevent overwriting existing ids, should require manual unlinking if necessary
     if (exists.discordId) {
       return callback(null,
+      return callback(null,
         handlerHelpers.createResponse(409, {
           message: "Discord account has already been linked to this membership",
         })
@@ -113,7 +122,9 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
     }
 
     // update with new field
-    await db.updateDB(email, { discordId }, MEMBERS2026_TABLE);
+    await db.updateDB(email, {
+      discordId
+    }, MEMBERS2026_TABLE);
 
     // assign verfied role based on membership tier
     // TODO: Assign event-specific roles
@@ -124,6 +135,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
       console.warn(`Failed to assign roles to ${email}:`, roleError.message);
     }
 
+    return callback(null,
     return callback(null,
       handlerHelpers.createResponse(200, {
         message: "Successfully mapped Discord account to membership",
