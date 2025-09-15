@@ -1,7 +1,7 @@
 import nacl from "tweetnacl";
 import fetch from "node-fetch";
-import { 
-  InteractionResponseType, 
+import {
+  InteractionResponseType,
 } from "discord-interactions";
 import db from "../../lib/db.js";
 import { MEMBERS2026_TABLE } from "../../constants/tables.js";
@@ -36,7 +36,7 @@ export function verifyRequestSignature(req) {
 
   if (!signature || !timestamp) {
     console.error("Missing signature or timestamp in request headers");
-    return false
+    return false;
   }
 
   isValid = nacl.sign.detached.verify(
@@ -53,26 +53,26 @@ export function verifyRequestSignature(req) {
 export function applicationCommandRouter(name, body) {
   const { member } = body;
   switch (name) {
-    case "verify":
-      return handleVerifyCommand(member);
+  case "verify":
+    return handleVerifyCommand(member);
 
-    default:
-      return {
-        statusCode: 200,
-        body: JSON.stringify({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            content: `Unknown command: /${body.name}`,
-            flags: 64
-          }
-        })
-      };
+  default:
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: `Unknown command: /${body.name}`,
+          flags: 64
+        }
+      })
+    };
   }
 }
 
 // handles /verify slash command
 function handleVerifyCommand(member) {
-  const discordUserId = member?.user?.id
+  const discordUserId = member?.user?.id;
 
   console.log("User initiating verify:", discordUserId);
 
@@ -123,7 +123,7 @@ export async function assignUserRoles(userID, membershipTier, eventID = null) {
   if (!user) {
     throw new Error(`User ${userID} not found in database`);
   }
-  
+
   if (!user.discordId) {
     throw new Error(`No Discord ID found for user ${userID}`);
   }
@@ -133,13 +133,13 @@ export async function assignUserRoles(userID, membershipTier, eventID = null) {
   }
 
   const rolesToAdd = [];
-  
+
   if (membershipTier && MEMBERSHIP_ROLES[membershipTier]) {
     rolesToAdd.push(...MEMBERSHIP_ROLES[membershipTier]);
   }
-  
+
   // TODO: add event role logic here when needed
-  
+
   if (rolesToAdd.length === 0) {
     throw new Error("No valid roles to assign");
   }
@@ -150,10 +150,17 @@ export async function assignUserRoles(userID, membershipTier, eventID = null) {
       await DiscordRequest(`guilds/${DISCORD_GUILD_ID}/members/${user.discordId}/roles/${roleID}`, {
         method: "PUT"
       });
-      results.push({ roleID, status: 'assigned' });
+      results.push({
+        roleID,
+        status: "assigned"
+      });
     } catch (error) {
       console.error(`Failed to assign role ${roleID} to user ${userID}:`, error.message);
-      results.push({ roleID, status: 'failed', error: error.message });
+      results.push({
+        roleID,
+        status: "failed",
+        error: error.message
+      });
     }
   }
 
@@ -171,19 +178,19 @@ export async function removeUserRoles(userID, membershipTier, eventID = null) {
   if (!user) {
     throw new Error(`User ${userID} not found in database`);
   }
-  
+
   if (!user.discordId) {
     throw new Error(`No Discord ID found for user ${userID}`);
   }
 
   const rolesToRemove = [];
-  
+
   if (membershipTier && MEMBERSHIP_ROLES[membershipTier]) {
     rolesToRemove.push(MEMBERSHIP_ROLES[membershipTier]);
   }
-  
+
   // TODO: Add event role logic here when needed
-  
+
   if (rolesToRemove.length === 0) {
     throw new Error("No valid roles to remove");
   }
@@ -194,10 +201,17 @@ export async function removeUserRoles(userID, membershipTier, eventID = null) {
       await DiscordRequest(`guilds/${DISCORD_GUILD_ID}/members/${user.discordId}/roles/${roleID}`, {
         method: "DELETE"
       });
-      results.push({ roleID, status: 'removed' });
+      results.push({
+        roleID,
+        status: "removed"
+      });
     } catch (error) {
       console.error(`Failed to remove role ${roleID} from user ${userID}:`, error.message);
-      results.push({ roleID, status: 'failed', error: error.message });
+      results.push({
+        roleID,
+        status: "failed",
+        error: error.message
+      });
     }
   }
 
@@ -215,13 +229,13 @@ export async function backfillUserRoles(userID) {
   if (!user) {
     throw new Error(`User ${userID} not found in database`);
   }
-  
+
   if (!user.discordId) {
     throw new Error(`No Discord ID found for user ${userID}`);
   }
 
   // Get their current membership tier and assign appropriate role
-  const membershipTier = user.membershipTier || 'basic';
-  
+  const membershipTier = user.membershipTier || "basic";
+
   return await assignUserRoles(userID, membershipTier);
 }

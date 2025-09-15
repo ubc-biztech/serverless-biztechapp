@@ -1,12 +1,12 @@
 import db from "../../lib/db.js";
 import handlerHelpers from "../../lib/handlerHelpers.js";
-import { 
-  InteractionResponseType, 
-  InteractionType 
+import {
+  InteractionResponseType,
+  InteractionType
 } from "discord-interactions";
-import { 
+import {
   verifyRequestSignature,
-  applicationCommandRouter 
+  applicationCommandRouter
 } from "./helpersDiscord.js";
 import {
   MEMBERS2026_TABLE
@@ -118,7 +118,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
     // assign verfied role based on membership tier
     // TODO: Assign event-specific roles
     try {
-      await assignUserRoles(email, 'verified');
+      await assignUserRoles(email, "verified");
       console.log(`Successfully verified ${email}`);
     } catch (roleError) {
       console.warn(`Failed to assign roles to ${email}:`, roleError.message);
@@ -144,7 +144,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
 export const assignRoles = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
-    
+
     handlerHelpers.checkPayloadProps(data, {
       userID: {
         required: true,
@@ -161,7 +161,7 @@ export const assignRoles = async (event, ctx, callback) => {
     });
 
     const { userID, membershipTier, eventID } = data;
-    
+
     if (!membershipTier && !eventID) {
       return callback(null, handlerHelpers.createResponse(400, {
         message: "Either membershipTier or eventID is required"
@@ -169,12 +169,11 @@ export const assignRoles = async (event, ctx, callback) => {
     }
 
     const result = await assignUserRoles(userID, membershipTier, eventID);
-    
+
     callback(null, handlerHelpers.createResponse(200, {
       message: "Roles assigned successfully",
       result
     }));
-    
   } catch (error) {
     console.error("Role assignment failed:", error);
     callback(null, handlerHelpers.createResponse(500, {
@@ -187,7 +186,7 @@ export const assignRoles = async (event, ctx, callback) => {
 export const removeRoles = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
-    
+
     handlerHelpers.checkPayloadProps(data, {
       userID: {
         required: true,
@@ -204,7 +203,7 @@ export const removeRoles = async (event, ctx, callback) => {
     });
 
     const { userID, membershipTier, eventID } = data;
-    
+
     if (!membershipTier && !eventID) {
       return callback(null, handlerHelpers.createResponse(400, {
         message: "Either membershipTier or eventID is required"
@@ -212,12 +211,11 @@ export const removeRoles = async (event, ctx, callback) => {
     }
 
     const result = await removeUserRoles(userID, membershipTier, eventID);
-    
+
     callback(null, handlerHelpers.createResponse(200, {
-      message: "Roles removed successfully", 
+      message: "Roles removed successfully",
       result
     }));
-    
   } catch (error) {
     console.error("Role removal failed:", error);
     callback(null, handlerHelpers.createResponse(500, {
@@ -236,12 +234,11 @@ export const backfillRoles = async (event, ctx, callback) => {
 
     const { userID } = event.pathParameters;
     const result = await backfillUserRoles(userID);
-    
+
     callback(null, handlerHelpers.createResponse(200, {
       message: "User roles backfilled successfully",
       result
     }));
-    
   } catch (error) {
     console.error("Backfill failed:", error);
     callback(null, error);
