@@ -62,7 +62,7 @@ export function applicationCommandRouter(name, body) {
         body: JSON.stringify({
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
           data: {
-            content: `Unknown command: /${data.name}`,
+            content: `Unknown command: /${body.name}`,
             flags: 64
           }
         })
