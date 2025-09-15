@@ -1,17 +1,17 @@
 import db from "../../lib/db.js";
 import handlerHelpers from "../../lib/handlerHelpers.js";
-import {
-  InteractionResponseType,
-  InteractionType
+import { 
+  InteractionResponseType, 
+  InteractionType 
 } from "discord-interactions";
-import {
-  DiscordRequest,
+import { 
   verifyRequestSignature,
-  applicationCommandRouter
+  applicationCommandRouter 
 } from "./helpersDiscord.js";
 import {
   MEMBERS2026_TABLE
 } from "../../constants/tables.js";
+import { assignUserRoles, removeUserRoles, backfillUserRoles } from "./helpersDiscord.js";
 
 export const interactions = (event, ctx, callback) => {
   const body = JSON.parse(event.body);
@@ -81,9 +81,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
     }
   });
 
-  const {
-    email, discordID: discordId
-  } = data;
+  const { email, discordId } = data;
 
   if (!email || !discordId) {
     return callback(null,
@@ -105,7 +103,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
       );
     }
 
-    // guard to prevent overwriting existing ids, should require manual unlinking if neccesary
+    // guard to prevent overwriting existing ids, should require manual unlinking if necessary
     if (exists.discordId) {
       return callback(null,
         handlerHelpers.createResponse(409, {
@@ -115,11 +113,16 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
     }
 
     // update with new field
-    await db.updateDB(email, {
-      discordId
-    }, MEMBERS2026_TABLE);
+    await db.updateDB(email, { discordId }, MEMBERS2026_TABLE);
 
-    // TODO: call role assignment API here
+    // assign verfied role based on membership tier
+    // TODO: Assign event-specific roles
+    try {
+      await assignUserRoles(email, 'verified');
+      console.log(`Successfully verified ${email}`);
+    } catch (roleError) {
+      console.warn(`Failed to assign roles to ${email}:`, roleError.message);
+    }
 
     return callback(null,
       handlerHelpers.createResponse(200, {
@@ -127,12 +130,120 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
       })
     );
   } catch (err) {
-    console.error(db.dynamoErrorResponse(err)); // better error logging
+    console.error(db.dynamoErrorResponse(err));
     callback(
       null,
       handlerHelpers.createResponse(500, {
         message: "Internal server error"
       })
     );
+  }
+};
+
+
+export const assignRoles = async (event, ctx, callback) => {
+  try {
+    const data = JSON.parse(event.body);
+    
+    handlerHelpers.checkPayloadProps(data, {
+      userID: {
+        required: true,
+        type: "string"
+      },
+      membershipTier: {
+        required: false,
+        type: "string"
+      },
+      eventID: {
+        required: false,
+        type: "string"
+      }
+    });
+
+    const { userID, membershipTier, eventID } = data;
+    
+    if (!membershipTier && !eventID) {
+      return callback(null, handlerHelpers.createResponse(400, {
+        message: "Either membershipTier or eventID is required"
+      }));
+    }
+
+    const result = await assignUserRoles(userID, membershipTier, eventID);
+    
+    callback(null, handlerHelpers.createResponse(200, {
+      message: "Roles assigned successfully",
+      result
+    }));
+    
+  } catch (error) {
+    console.error("Role assignment failed:", error);
+    callback(null, handlerHelpers.createResponse(500, {
+      message: "Failed to assign roles",
+      error: error.message
+    }));
+  }
+};
+
+export const removeRoles = async (event, ctx, callback) => {
+  try {
+    const data = JSON.parse(event.body);
+    
+    handlerHelpers.checkPayloadProps(data, {
+      userID: {
+        required: true,
+        type: "string"
+      },
+      membershipTier: {
+        required: false,
+        type: "string"
+      },
+      eventID: {
+        required: false,
+        type: "string"
+      }
+    });
+
+    const { userID, membershipTier, eventID } = data;
+    
+    if (!membershipTier && !eventID) {
+      return callback(null, handlerHelpers.createResponse(400, {
+        message: "Either membershipTier or eventID is required"
+      }));
+    }
+
+    const result = await removeUserRoles(userID, membershipTier, eventID);
+    
+    callback(null, handlerHelpers.createResponse(200, {
+      message: "Roles removed successfully", 
+      result
+    }));
+    
+  } catch (error) {
+    console.error("Role removal failed:", error);
+    callback(null, handlerHelpers.createResponse(500, {
+      message: "Failed to remove roles",
+      error: error.message
+    }));
+  }
+};
+
+
+export const backfillRoles = async (event, ctx, callback) => {
+  try {
+    if (!event.pathParameters || !event.pathParameters.userID) {
+      throw handlerHelpers.missingPathParamResponse("user", "userID");
+    }
+
+    const { userID } = event.pathParameters;
+    const result = await backfillUserRoles(userID);
+    
+    callback(null, handlerHelpers.createResponse(200, {
+      message: "User roles backfilled successfully",
+      result
+    }));
+    
+  } catch (error) {
+    console.error("Backfill failed:", error);
+    callback(null, error);
   }
 };
