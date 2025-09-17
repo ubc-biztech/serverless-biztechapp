@@ -81,7 +81,8 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
     }
   });
 
-  const { email, discordId } = data;
+  const email = event.requestContext.authorizer.claims.email.toLowerCase();
+  const { discordId } = data;
 
   if (!email || !discordId) {
     return callback(null,
@@ -116,7 +117,6 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
     await db.updateDB(email, { discordId }, MEMBERS2026_TABLE);
 
     // assign verfied role based on membership tier
-    // TODO: Assign event-specific roles
     try {
       await assignUserRoles(email, "verified");
       console.log(`Successfully verified ${email}`);
