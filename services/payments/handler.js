@@ -419,7 +419,7 @@ export const payment = async (event, ctx, callback) => {
 
     let response = helpers.createResponse(200, session.url);
     callback(null, response);
-    return session.url;
+    return null;
   } catch (err) {
     console.log(err);
     callback(null, err);
