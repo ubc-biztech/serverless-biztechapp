@@ -68,6 +68,9 @@ functions:
           path: discord/account/mapping
           method: post
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
 
   discordWebhook:
     handler: handlerDiscord.webhook

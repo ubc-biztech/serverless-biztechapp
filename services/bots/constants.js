@@ -126,12 +126,23 @@ export const btFields = Object.freeze({
 
 export const btDevs = Object.freeze({
   "ethan-t-hansen": "ethan",
-  kevinxiao27: "kevin",
-  Kevmister331: "kevinh",
-  ahosseini06: "ali",
-  jaypark25: "jay",
-  bennypc: "benny",
-  liuisaac: "isaac",
-  auroraxcheng: "aurora",
-  "alex-gour": "alexg"
+  "kevinxiao27": "kevin",
+  "ahosseini06": "ali",
+  "jaypark25": "jay",
+  "bennypc": "benny",
+  "liuisaac": "isaac",
+  "auroraxcheng": "aurora",
+  "alex-gour": "alexg",
+  "briannval": "brian",
+  "elijahzhao24": "elijah"
 });
+
+// discord constants (hardcoded to the server)
+export const DISCORD_GUILD_ID = "1048448989307093054";
+const VERIFIED_MEMBERSHIP = "1054932021304115280";
+
+export const MEMBERSHIP_ROLES = {
+  verified: [
+    VERIFIED_MEMBERSHIP
+  ],
+};
