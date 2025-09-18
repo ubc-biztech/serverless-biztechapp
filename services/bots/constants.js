@@ -126,14 +126,15 @@ export const btFields = Object.freeze({
 
 export const btDevs = Object.freeze({
   "ethan-t-hansen": "ethan",
-  kevinxiao27: "kevin",
-  Kevmister331: "kevinh",
-  ahosseini06: "ali",
-  jaypark25: "jay",
-  bennypc: "benny",
-  liuisaac: "isaac",
-  auroraxcheng: "aurora",
-  "alex-gour": "alexg"
+  "kevinxiao27": "kevin",
+  "ahosseini06": "ali",
+  "jaypark25": "jay",
+  "bennypc": "benny",
+  "liuisaac": "isaac",
+  "auroraxcheng": "aurora",
+  "alex-gour": "alexg",
+  "briannval": "brian",
+  "elijahzhao24": "elijah"
 });
 
 // discord constants (hardcoded to the server)
