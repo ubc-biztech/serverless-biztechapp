@@ -1,19 +1,16 @@
 import nacl from "tweetnacl";
 import fetch from "node-fetch";
-import {
-  InteractionResponseType,
-} from "discord-interactions";
-import db from "../../lib/db.js";
-import { MEMBERS2026_TABLE } from "../../constants/tables.js";
+import { InteractionResponseType } from "discord-interactions";
+import db from "../../lib/db";
+import { MEMBERS2026_TABLE } from "../../constants/tables";
 import { DISCORD_GUILD_ID, MEMBERSHIP_ROLES } from "./constants.js";
-
 
 export async function DiscordRequest(endpoint, options) {
   const url = "https://discord.com/api/v10/" + endpoint;
   if (options.body) options.body = JSON.stringify(options.body);
   const res = await fetch(url, {
     headers: {
-      Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+      "Authorization": `Bot ${process.env.DISCORD_TOKEN}`,
       "Content-Type": "application/json; charset=UTF-8"
     },
     ...options
@@ -53,20 +50,20 @@ export function verifyRequestSignature(req) {
 export function applicationCommandRouter(name, body) {
   const { member } = body;
   switch (name) {
-  case "verify":
-    return handleVerifyCommand(member);
+    case "verify":
+      return handleVerifyCommand(member);
 
-  default:
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: `Unknown command: /${body.name}`,
-          flags: 64
-        }
-      })
-    };
+    default:
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: `Unknown command: /${body.name}`,
+            flags: 64
+          }
+        })
+      };
   }
 }
 
@@ -85,7 +82,8 @@ function handleVerifyCommand(member) {
       body: JSON.stringify({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
-          content: "❌ This command can only be used in the UBC Biztech server.",
+          content:
+            "❌ This command can only be used in the UBC Biztech server.",
           flags: 64
         }
       })
@@ -117,7 +115,6 @@ function handleVerifyCommand(member) {
   };
 }
 
-
 export async function assignUserRoles(userID, membershipTier, eventID = null) {
   const user = await db.getOne(userID, MEMBERS2026_TABLE);
   if (!user) {
@@ -129,7 +126,9 @@ export async function assignUserRoles(userID, membershipTier, eventID = null) {
   }
 
   if (!/^\d{17,19}$/.test(user.discordId)) {
-    throw new Error(`Invalid Discord ID format: "${user.discordId}". Should be a numeric snowflake`);
+    throw new Error(
+      `Invalid Discord ID format: "${user.discordId}". Should be a numeric snowflake`
+    );
   }
 
   const rolesToAdd = [];
@@ -147,15 +146,21 @@ export async function assignUserRoles(userID, membershipTier, eventID = null) {
   const results = [];
   for (const roleID of rolesToAdd) {
     try {
-      await DiscordRequest(`guilds/${DISCORD_GUILD_ID}/members/${user.discordId}/roles/${roleID}`, {
-        method: "PUT"
-      });
+      await DiscordRequest(
+        `guilds/${DISCORD_GUILD_ID}/members/${user.discordId}/roles/${roleID}`,
+        {
+          method: "PUT"
+        }
+      );
       results.push({
         roleID,
         status: "assigned"
       });
     } catch (error) {
-      console.error(`Failed to assign role ${roleID} to user ${userID}:`, error.message);
+      console.error(
+        `Failed to assign role ${roleID} to user ${userID}:`,
+        error.message
+      );
       results.push({
         roleID,
         status: "failed",
@@ -171,7 +176,6 @@ export async function assignUserRoles(userID, membershipTier, eventID = null) {
     results
   };
 }
-
 
 export async function removeUserRoles(userID, membershipTier, eventID = null) {
   const user = await db.getOne(userID, MEMBERS2026_TABLE);
@@ -198,15 +202,21 @@ export async function removeUserRoles(userID, membershipTier, eventID = null) {
   const results = [];
   for (const roleID of rolesToRemove) {
     try {
-      await DiscordRequest(`guilds/${DISCORD_GUILD_ID}/members/${user.discordId}/roles/${roleID}`, {
-        method: "DELETE"
-      });
+      await DiscordRequest(
+        `guilds/${DISCORD_GUILD_ID}/members/${user.discordId}/roles/${roleID}`,
+        {
+          method: "DELETE"
+        }
+      );
       results.push({
         roleID,
         status: "removed"
       });
     } catch (error) {
-      console.error(`Failed to remove role ${roleID} from user ${userID}:`, error.message);
+      console.error(
+        `Failed to remove role ${roleID} from user ${userID}:`,
+        error.message
+      );
       results.push({
         roleID,
         status: "failed",
@@ -222,7 +232,6 @@ export async function removeUserRoles(userID, membershipTier, eventID = null) {
     results
   };
 }
-
 
 export async function backfillUserRoles(userID) {
   const user = await db.getOne(userID, MEMBERS2026_TABLE);
