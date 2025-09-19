@@ -2,11 +2,11 @@
   "name": "biztechapi-registrations",
   "version": "1.0.0",
   "dependencies": {
-    "@aws-sdk/client-sns": "^3.637.0",
-    "@sendgrid/mail": "^7.4.0",
-    "ics": "^2.40.0",
-    "nodemailer": "^6.9.7",
-    "qrcode": "^1.5.3"
+    "@aws-sdk/client-sns": "^3.891.0",
+    "@sendgrid/mail": "^7.7.0",
+    "ics": "^2.44.0",
+    "nodemailer": "^6.10.1",
+    "qrcode": "^1.5.4"
   },
   "scripts": {
     "itest": "npm run itest registrations --prefix ../../",
