@@ -48,6 +48,7 @@ jobs:
             if [ -d "$DIR" ]; then
               echo "Packaging service in $DIR..."
               cd "$DIR"
+              npm ci --legacy-peer-deps
               sls package --stage dev || exit 1
               cd ..
             fi
