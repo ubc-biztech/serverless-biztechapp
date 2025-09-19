@@ -53,6 +53,9 @@ custom:
   slackEnabled: ${self:custom.slackEnabledMap.${self:custom.environment}, true}
   slackEnabledMap:
     PROD: false
+  
+build:
+  esbuild: false
 
 functions:
   discordInteractions:

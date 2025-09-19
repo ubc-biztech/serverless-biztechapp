@@ -55,6 +55,8 @@ provider:
       Resource:
         - "arn:aws:sns:us-west-2:432714361962:slackbot"
 custom: ${file(../../serverless.common.yml):custom}
+build:
+  esbuild: false
 functions:
   registrationPost:
     handler: handler.post
