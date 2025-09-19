@@ -30,16 +30,6 @@ jobs:
         run: |
           sudo npm i -g serverless@3 --legacy-peer-deps
           npm ci --legacy-peer-deps
-          # Install dependencies for all services
-          cd services
-          for DIR in *; do
-            if [ -f "$DIR/package.json" ]; then
-              echo "Installing dependencies for $DIR"
-              cd "$DIR"
-              npm ci --legacy-peer-deps
-              cd ..
-            fi
-          done
 
       - name: "Run Serverless Package Deployable Check"
         env:
