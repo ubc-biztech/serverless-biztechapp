@@ -357,12 +357,12 @@ export const payment = async (event, ctx, callback) => {
     if (isEvent) {
       // determine price for event based on Biztech membership status
       const [event, user] = await Promise.all([
-        db.getOne(data.eventId, EVENTS_TABLE, { year: data.year }),
+        db.getOne(data.eventID, EVENTS_TABLE, { year: Number(data.year) }),
         db.getOne(data.email, USERS_TABLE)
       ]);
 
       if (isEmpty(event)) {
-        throw helpers.notFoundResponse("event", data.eventId);
+        throw helpers.notFoundResponse("event", data.eventID);
       }
 
       const isMember = !isEmpty(user) && user.isMember;
@@ -408,7 +408,7 @@ export const payment = async (event, ctx, callback) => {
       allow_promotion_codes: true
     });
 
-    if (data.paymentType === "Event") {
+    if (isEvent) {
       const body = {
         eventID: data.eventID,
         year: Number(data.year),
