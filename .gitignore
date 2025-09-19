@@ -13,3 +13,4 @@ jspm_packages
 
 # Ignore generated room files
 scripts/data/*_judges.txt
+.DS_Store
