@@ -18,7 +18,6 @@ jobs:
       - name: Install Serverless CLI and dependencies
         run: |
           sudo npm i -g serverless --legacy-peer-deps
-          npm ci --legacy-peer-deps
 
       - name: "Run Serverless Package Deployable Check"
         env:
