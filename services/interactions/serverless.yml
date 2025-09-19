@@ -129,6 +129,9 @@ custom:
     stages:
       - dev
 
+build:
+  esbuild: false
+
 functions:
   interactionCreate:
     handler: handler.postInteraction

@@ -96,6 +96,9 @@ provider:
 
 custom: ${file(../../serverless.common.yml):custom}
 
+build:
+  esbuild: false
+
 functions:
   payment:
     handler: handler.payment
