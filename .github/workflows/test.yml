@@ -9,16 +9,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Use Node.js 20.7
         uses: actions/setup-node@v4
         with:
-          cache: "npm"
           node-version: "20.7"
+
+      - name: Cache node modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            node_modules
+            */node_modules
+            services/*/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
 
       - name: Install Serverless CLI and dependencies
         run: |
           sudo npm i -g serverless@3 --legacy-peer-deps
           npm ci --legacy-peer-deps
+          # Install dependencies for all services
+          cd services
+          for DIR in *; do
+            if [ -f "$DIR/package.json" ]; then
+              echo "Installing dependencies for $DIR"
+              cd "$DIR"
+              npm ci --legacy-peer-deps
+              cd ..
+            fi
+          done
 
       - name: "Run Serverless Package Deployable Check"
         env:
