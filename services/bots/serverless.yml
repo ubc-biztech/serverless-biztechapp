@@ -6,6 +6,7 @@ plugins:
   - serverless-dynamodb
   - serverless-offline
   - serverless-domain-manager
+  - serverless-bundle
   - serverless-prune-plugin
   - serverless-mocha-plugin
 
