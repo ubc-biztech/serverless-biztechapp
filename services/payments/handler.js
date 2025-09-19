@@ -345,7 +345,6 @@ export const webhook = async (event, ctx, callback) => {
 };
 
 export const payment = async (event, ctx, callback) => {
-  // handles payment for event or membership
   try {
     let data = JSON.parse(event.body);
     if (data.email) {
