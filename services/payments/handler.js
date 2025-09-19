@@ -1,5 +1,6 @@
 import helpers from "../../lib/handlerHelpers";
 import {
+  isEmpty,
   isValidEmail
 } from "../../lib/utils";
 import {
@@ -11,7 +12,8 @@ import {
 } from "@aws-sdk/client-cognito-identity-provider";
 
 import {
-  USERS_TABLE, MEMBERS2026_TABLE
+  USERS_TABLE, MEMBERS2026_TABLE,
+  EVENTS_TABLE
 } from "../../constants/tables";
 import {
   createProfile
@@ -344,16 +346,44 @@ export const webhook = async (event, ctx, callback) => {
 
 export const payment = async (event, ctx, callback) => {
   try {
-    const data = JSON.parse(event.body);
+    let data = JSON.parse(event.body);
     if (data.email) {
       data.email = data.email.toLowerCase();
     }
 
-    const isUBCStudent = data.education === "UBC";
+    const isEvent = data.paymentType === "Event";
+
+    let unit_amount;
+    if (isEvent) {
+      // determine price for event based on Biztech membership status
+      const [event, user] = await Promise.all([
+        db.getOne(data.eventID, EVENTS_TABLE, { year: Number(data.year) }),
+        db.getOne(data.email, USERS_TABLE)
+      ]);
+
+      if (isEmpty(event)) {
+        throw helpers.notFoundResponse("event", data.eventID);
+      }
+
+      const isMember = !isEmpty(user) && user.isMember;
+      const samePricing = event.pricing.members === event.pricing.nonMembers;
+      unit_amount = (isMember ? event.pricing.members : event.pricing.nonMembers) * 100;
+
+      data = {
+        ...data,
+        paymentName: `${event.ename} ${isMember || samePricing ? "" : "(Non-member)"}`,
+        paymentImages: [event.imageUrl]
+      };
+    } else {
+      // determine price for membership based on UBC student status
+      const isUBCStudent = data.education === "UBC";
+      unit_amount = isUBCStudent ? MEMBERSHIP_PRICE - 300 : MEMBERSHIP_PRICE;
+    }
+
     const {
       paymentImages
     } = data;
-    delete data.paymentImages;
+    delete data.paymentImages; // remove from metadata
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
@@ -365,12 +395,7 @@ export const payment = async (event, ctx, callback) => {
               name: data.paymentName,
               images: paymentImages
             },
-            unit_amount:
-              data.paymentType === "Event"
-                ? data.paymentPrice
-                : isUBCStudent
-                  ? MEMBERSHIP_PRICE - 300
-                  : MEMBERSHIP_PRICE
+            unit_amount
           },
           quantity: 1
         }
@@ -383,7 +408,7 @@ export const payment = async (event, ctx, callback) => {
       allow_promotion_codes: true
     });
 
-    if (data.paymentType === "Event") {
+    if (isEvent) {
       const body = {
         eventID: data.eventID,
         year: Number(data.year),
