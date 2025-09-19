@@ -1,7 +1,6 @@
 {
   "name": "biztechapi-bots",
   "version": "1.0.0",
-  "type": "module",
   "scripts": {
     "itest": "npm run itest events --prefix ../../",
     "utest": "npm run utest events --prefix ../../",

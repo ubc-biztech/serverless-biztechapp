@@ -25,7 +25,8 @@ provider:
     GH_PRIVATE_KEY: ${env:GH_PRIVATE_KEY,""}
     OPENAI_API_KEY: ${env:OPENAI_API_KEY,""}
     SLACK_BOT_TOKEN: ${env:SLACK_BOT_TOKEN,""}
-  timeout: 30 # in seconds
+  timeout: 15 # in seconds
+
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
     restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
