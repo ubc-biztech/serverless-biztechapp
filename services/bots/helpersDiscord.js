@@ -27,8 +27,8 @@ export async function DiscordRequest(endpoint, options) {
 
 export function verifyRequestSignature(req) {
   let isValid = false;
-  const signature = req.headers["X-Signature-Ed25519"];
-  const timestamp = req.headers["X-Signature-Timestamp"];
+  const signature = req.headers["x-signature-ed25519"];
+  const timestamp = req.headers["x-signature-timestamp"];
   const body = req.body;
 
   if (!signature || !timestamp) {
