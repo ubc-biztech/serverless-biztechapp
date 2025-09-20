@@ -129,9 +129,15 @@ getAcceptedRegistrations("hello-hacks", "2024")
   .then((registrations) => console.table(registrations));
 getEventPricing("hellohacks", "2025")
   .then((pricing) => console.log(pricing));
-getUsersMembershipMap(["eunji1120@outlook.com", "gemwang206@gmail.com", "abcdef13wae@gmail.com", "andrewfeng2014@gmail.com"])
-  .then((users) => console.log(users));
 */
 
-findAcceptedRegistrations("produhacks", "2024")
-  .then((registrations) => console.table(registrations));  
+const [,, eventID, year] = process.argv;
+
+if (!eventID || !year) {
+  console.error("Usage: node scripts/yourScript.js <eventID> <year>");
+  process.exit(1);
+}
+
+findAcceptedRegistrations(eventID, year)
+  .then((registrations) => console.table(registrations))
+  .catch((err) => console.error(err));
