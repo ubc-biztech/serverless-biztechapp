@@ -64,6 +64,91 @@ export const webhook = (event, ctx, callback) => {
   //stub
 };
 
+export const updateDiscordAccountToMembership = async (event, ctx, callback) => {
+  const data = JSON.parse(event.body);
+
+  handlerHelpers.checkPayloadProps(data, {
+    email: {
+      required: true,
+      type: "string"
+    },
+    discordId: {
+      required: true,
+      type: "string"
+    }
+  });
+
+  const email = event.requestContext.authorizer.claims.email.toLowerCase();
+  const { discordId } = data;
+
+  if (!email || !discordId) {
+    return callback(
+      null,
+      handlerHelpers.createResponse(400, {
+        message: "Missing email or new discordId"
+      })
+    );
+  }
+  try {
+    console.log(`Attempting to update Discord ID ${discordId} to email ${email}`);
+    const exists = await db.getOne(email, MEMBERS2026_TABLE);
+
+    if (!exists) {
+      return callback(
+        null,
+        handlerHelpers.createResponse(404, {
+          message: "Membership not found"
+        })
+      );
+    }
+
+    // an old discord ID should exist first
+    if (!exists.discordId) {
+      return callback(
+        null,
+        handlerHelpers.createResponse(409, {
+          message: "Membership does not already have an existing Discord ID"
+        })
+      );
+    }
+
+    if (exists.discordId === discordId) {
+      return callback(
+        null,
+        handlerHelpers.createResponse(409, {
+          message: "Membership already has this Discord ID"
+        })
+      );
+    }
+
+    // update with new field
+    await db.updateDB(email, { discordId }, MEMBERS2026_TABLE);
+
+    // assign verfied role based on membership tier
+    try {
+      await assignUserRoles(email, "verified");
+      console.log(`Successfully verified ${email}`);
+    } catch (roleError) {
+      console.warn(`Failed to assign roles to ${email}:`, roleError.message);
+    }
+
+    return callback(
+      null,
+      handlerHelpers.createResponse(200, {
+        message: "Successfully updated Discord account to membership"
+      })
+    );
+  } catch (err) {
+    console.error(db.dynamoErrorResponse(err));
+    callback(
+      null,
+      handlerHelpers.createResponse(500, {
+        message: "Internal server error"
+      })
+    );
+  }
+}
+
 export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
   const data = JSON.parse(event.body);
 
