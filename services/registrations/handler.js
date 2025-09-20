@@ -643,7 +643,7 @@ export const delMany = async (event, ctx, callback) => {
 
     const lowercaseEmails = data.ids.map(email => email.toLowerCase());
 
-    if (lowercaseEmails.some(email => !isValidEmail(email))) throw helpers.inputError("One or more emails are invalid", email);
+    if (lowercaseEmails.some(email => !isValidEmail(email))) throw helpers.inputError("One or more emails are invalid", lowercaseEmails);
 
     const eventIDAndYear = data.eventID + ";" + data.year;
 
