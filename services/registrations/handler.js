@@ -620,6 +620,51 @@ export const del = async (event, ctx, callback) => {
   }
 };
 
+export const delMany = async (event, ctx, callback) => {
+  try {
+    const data = JSON.parse(event.body);
+
+    helpers.checkPayloadProps(data, {
+      emails: {
+        required: true,
+        type: "array"
+      },
+      eventID: {
+        required: true,
+        type: "string"
+      },
+      year: {
+        required: true,
+        type: "number"
+      }
+    });
+
+    const lowercaseEmails = data.emails.map(email => email.toLowerCase());
+
+    if (lowercaseEmails.some(email => !isValidEmail(email))) throw helpers.inputError("One or more emails are invalid", email);
+
+    const eventIDAndYear = data.eventID + ";" + data.year;
+
+    const itemsToDelete = lowercaseEmails.map((email) => ({
+      id: email, // partition key
+      ["eventID;year"]: `${eventIDAndYear}` // sort key
+    }));
+    
+    const res = await db.batchDelete(itemsToDelete, USER_REGISTRATIONS_TABLE);
+
+    const response = helpers.createResponse(200, {
+      message: "Registration entry Deleted!",
+      response: res
+    });
+
+    callback(null, response);
+    return null;
+  } catch (err) {
+    callback(null, err);
+    return null;
+  }
+};
+
 export const leaderboard = async (event, ctx, callback) => {
   try {
     const queryString = event.queryStringParameters;
