@@ -625,9 +625,9 @@ export const delMany = async (event, ctx, callback) => {
     const data = JSON.parse(event.body);
 
     helpers.checkPayloadProps(data, {
-      emails: {
+      ids: {
         required: true,
-        type: "array"
+        type: "object"
       },
       eventID: {
         required: true,
@@ -639,7 +639,9 @@ export const delMany = async (event, ctx, callback) => {
       }
     });
 
-    const lowercaseEmails = data.emails.map(email => email.toLowerCase());
+    if (!Array.isArray(data.ids)) throw helpers.inputError("Ids must be an array", data.ids);
+
+    const lowercaseEmails = data.ids.map(email => email.toLowerCase());
 
     if (lowercaseEmails.some(email => !isValidEmail(email))) throw helpers.inputError("One or more emails are invalid", email);
 
