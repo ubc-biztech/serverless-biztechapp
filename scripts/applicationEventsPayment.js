@@ -45,55 +45,93 @@ const getEventPricing = async (eventID, year) => {
 
   const event = eventResult.Item || {};
   return {
-    memberPrice: event?.pricing?.members,
-    nonMemberPrice: event?.pricing?.nonMembers
+    memberPrice: event?.pricing?.members === undefined ? 0 : event?.pricing?.members,
+    nonMemberPrice: event?.pricing?.nonMembers === undefined ? 0 : event?.pricing?.nonMembers,
   };
 };
 
-const getUsersMap = async (userIDs) => {
+const getUsersMembershipMap = async (userIDs) => {
+  userIDs = [...new Set(userIDs)]; // avoid duplicates
   if (!userIDs.length) return {};
-  const keys = userIDs.map((id) => ({ id }));
-  const batchResult = await docClient.send(new BatchGetCommand({
-    RequestItems: {
-      users: {
-        Keys: keys
+
+  const userMap = {};
+
+  // process in batches of 100 to avoid dynamodb limits
+  while (userIDs.length) {
+    const batchIDs = userIDs.splice(0, 100);
+    const keys = batchIDs.map((id) => ({ id }));
+
+    const batchResult = await docClient.send(new BatchGetCommand({
+      RequestItems: {
+        biztechUsersPROD: {
+          Keys: keys
+        }
+      }
+    }));
+
+    const users = (batchResult.Responses && batchResult.Responses.biztechUsersPROD) || [];
+
+    // map the existent users to whether they are members or not
+    for (const user of users) {
+      userMap[user.id] = user.isMember;
+    }
+
+    // missing users should be set to false -> indicate non-membership by default
+    for (const userID of batchIDs) {
+      if (!(userID in userMap)) {
+        userMap[userID] = false;
       }
     }
-  }));
-
-  const users = (batchResult.Responses && batchResult.Responses.users) || [];
-  const userMap = {};
-  for (const user of users) {
-    userMap[user.id] = user;
   }
+
   return userMap;
 };
+
 
 const findAcceptedRegistrations = async (eventID, year) => {
   const acceptedRegistrations = await getAcceptedRegistrations(eventID, year);
   if (!acceptedRegistrations.length) return [];
 
-  const userIDs = acceptedRegistrations.map((reg) => reg.userID);
+  const userIDs = acceptedRegistrations.map((reg) => reg.id);
   const [pricing, userMap] = await Promise.all([
     getEventPricing(eventID, year),
-    getUsersMap(userIDs)
+    getUsersMembershipMap(userIDs)
   ]);
 
   const { memberPrice, nonMemberPrice } = pricing;
-  const registrationsWithPrice = acceptedRegistrations.map((reg) => {
-    const user = userMap[reg.userID];
-    const price = (!user || !user.isMember) ? nonMemberPrice : memberPrice;
-    return {
-      ...reg,
-      price
-    };
+  const res = [];
+  acceptedRegistrations.forEach((reg) => {
+    const id = reg.id;
+    const isMember = userMap[id];
+    const price = isMember ? memberPrice : nonMemberPrice;
+    if (price === 0) return;
+    res.push({
+      userID: id,
+      price,
+      isMember,
+    });
   });
 
-  return registrationsWithPrice;
+  return res;
 };
 
+/*
 findAcceptedRegistrations("hello-hacks", "2024")
   .then((registrations) => registrations)
   .then((registrations) => {
     console.log(registrations);
   });
+*/
+
+// TESTING
+/* 
+getAcceptedRegistrations("hello-hacks", "2024")
+  .then((registrations) => console.table(registrations));
+getEventPricing("hellohacks", "2025")
+  .then((pricing) => console.log(pricing));
+getUsersMembershipMap(["eunji1120@outlook.com", "gemwang206@gmail.com", "abcdef13wae@gmail.com", "andrewfeng2014@gmail.com"])
+  .then((users) => console.log(users));
+*/
+
+findAcceptedRegistrations("produhacks", "2024")
+  .then((registrations) => console.table(registrations));  
