@@ -622,6 +622,13 @@ export const del = async (event, ctx, callback) => {
 
 export const delMany = async (event, ctx, callback) => {
   try {
+    const email = event.requestContext.authorizer.claims.email.toLowerCase();
+    if (!email.endsWith("@ubcbiztech.com")) {
+      return helpers.createResponse(403, {
+        message: "Unauthorized"
+      });
+    }
+
     const data = JSON.parse(event.body);
 
     helpers.checkPayloadProps(data, {
@@ -641,9 +648,7 @@ export const delMany = async (event, ctx, callback) => {
 
     if (!Array.isArray(data.ids)) throw helpers.inputError("Ids must be an array", data.ids);
 
-    const lowercaseEmails = data.ids.map(email => email.toLowerCase());
-
-    if (lowercaseEmails.some(email => !isValidEmail(email))) throw helpers.inputError("One or more emails are invalid", lowercaseEmails);
+    const lowercaseEmails = data.ids.map(email => email.toLowerCase()).filter(isValidEmail);
 
     const eventIDAndYear = data.eventID + ";" + data.year;
 
