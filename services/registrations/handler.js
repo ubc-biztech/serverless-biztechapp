@@ -656,7 +656,7 @@ export const delMany = async (event, ctx, callback) => {
       id: email, // partition key
       ["eventID;year"]: `${eventIDAndYear}` // sort key
     }));
-    
+
     const res = await db.batchDelete(itemsToDelete, USER_REGISTRATIONS_TABLE);
 
     const response = helpers.createResponse(200, {
