@@ -73,7 +73,7 @@ function handleVerifyCommand(member) {
 
   console.log("User initiating verify:", discordUserId);
 
-  const idpLoginUrl = `https://app.ubcbiztech.com/login?discordId=${discordUserId}`;
+  const idpLoginUrl = `https://dev.app.ubcbiztech.com/login?redirect=/discord/verify/${discordUserId}`;
 
   // guard against use outside of a server
   if (!discordUserId) {
