@@ -620,6 +620,58 @@ export const del = async (event, ctx, callback) => {
   }
 };
 
+export const delMany = async (event, ctx, callback) => {
+  try {
+    const email = event.requestContext.authorizer.claims.email.toLowerCase();
+    if (!email.endsWith("@ubcbiztech.com")) {
+      return helpers.createResponse(403, {
+        message: "Unauthorized"
+      });
+    }
+
+    const data = JSON.parse(event.body);
+
+    helpers.checkPayloadProps(data, {
+      ids: {
+        required: true,
+        type: "object"
+      },
+      eventID: {
+        required: true,
+        type: "string"
+      },
+      year: {
+        required: true,
+        type: "number"
+      }
+    });
+
+    if (!Array.isArray(data.ids)) throw helpers.inputError("Ids must be an array", data.ids);
+
+    const lowercaseEmails = data.ids.map(email => email.toLowerCase()).filter(isValidEmail);
+
+    const eventIDAndYear = data.eventID + ";" + data.year;
+
+    const itemsToDelete = lowercaseEmails.map((email) => ({
+      id: email, // partition key
+      ["eventID;year"]: `${eventIDAndYear}` // sort key
+    }));
+
+    const res = await db.batchDelete(itemsToDelete, USER_REGISTRATIONS_TABLE);
+
+    const response = helpers.createResponse(200, {
+      message: "Registration entry Deleted!",
+      response: res
+    });
+
+    callback(null, response);
+    return null;
+  } catch (err) {
+    callback(null, err);
+    return null;
+  }
+};
+
 export const leaderboard = async (event, ctx, callback) => {
   try {
     const queryString = event.queryStringParameters;

@@ -1,5 +1,5 @@
 export const groups = {
-  "@leads": [
+  "leads": [
     "grace",
     "pauline",
     "ethanx",
@@ -10,8 +10,8 @@ export const groups = {
     "lillian",
     "lucas"
   ],
-  "@internal": ["mikayla", "erping", "ashley"],
-  "@experiences": [
+  "internal": ["mikayla", "erping", "ashley"],
+  "experiences": [
     "pauline",
     "angela",
     "gautham",
@@ -21,7 +21,7 @@ export const groups = {
     "danielt",
     "chris"
   ],
-  "@partnerships": [
+  "partnerships": [
     "john",
     "rohan",
     "darius",
@@ -30,9 +30,10 @@ export const groups = {
     "karens",
     "angelaf"
   ],
-  "@mmd": [
+  "mmd": [
+    "emma",
+    "keira",
     "dhrishty",
-    "riana",
     "emilyl",
     "stephanie",
     "ali",
@@ -41,20 +42,23 @@ export const groups = {
     "chelsea",
     "julianna"
   ],
-  "@devs": [
+  "devs": [
     "kevin",
     "ali",
     "jay",
     "ethan",
+    "elijah",
+    "brian",
     "benny",
     "kevinh",
     "isaac",
     "aurora",
     "alexg"
   ],
-  "@data": ["ethanx", "hiro", "elena", "janaye"],
-  "@bizbot": ["alexg", "kevinh", "isaac", "jay", "kevin"],
-  "@bt-web-v2": ["benny", "ethan", "aurora", "ali", "jay", "kevin"]
+  "fyr": ["michele", "sophia", "jade"],
+  "data": ["ethanx", "hiro", "elena", "janaye"],
+  "bizbot": ["alexg", "kevinh", "isaac", "jay", "kevin"],
+  "bt-web-v2": ["benny", "ethan", "aurora", "ali", "jay", "kevin"]
 };
 
 export const projects = [

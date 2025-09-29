@@ -101,6 +101,16 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  registrationDeleteMany:
+    handler: handler.delMany
+    events:
+      - http:
+          path: registrations
+          method: delete
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   leaderboardGet:
     handler: handler.leaderboard
     events:
