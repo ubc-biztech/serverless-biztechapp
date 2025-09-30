@@ -20,7 +20,9 @@ provider:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
     DISCORD_PUBLIC_KEY: ${env:DISCORD_PUBLIC_KEY,""}
+    DISCORD_PUBLIC_KEY_PROD: ${env:DISCORD_PUBLIC_KEY_PROD,""}
     DISCORD_TOKEN: ${env:DISCORD_TOKEN,""}
+    DISCORD_TOKEN_PROD: ${env:DISCORD_TOKEN_PROD,""}
     GH_CLIENT_ID: ${env:GH_CLIENT_ID,""}
     GH_PRIVATE_KEY: ${env:GH_PRIVATE_KEY,""}
     OPENAI_API_KEY: ${env:OPENAI_API_KEY,""}
