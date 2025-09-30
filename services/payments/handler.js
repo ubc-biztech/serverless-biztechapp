@@ -13,7 +13,8 @@ import {
 
 import {
   USERS_TABLE, MEMBERS2026_TABLE,
-  EVENTS_TABLE
+  EVENTS_TABLE,
+  USER_REGISTRATIONS_TABLE
 } from "../../constants/tables";
 import {
   createProfile
