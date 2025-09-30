@@ -61,18 +61,6 @@ export const create = async (event, ctx, callback) => {
   }
 };
 
-// table, indexName, keyCondition, filters = {
-// }) {
-//   try {
-//     const params = {
-//       TableName: table + (process.env.ENVIRONMENT || ""),
-//       KeyConditionExpression: keyCondition.expression,
-//       ExpressionAttributeValues: {
-//         ...keyCondition.expressionValues,
-//         ...(filters.ExpressionAttributeValues || {
-//         })
-//       }
-//     };
 export const getEmailFromProfile = async (event, ctx, callback) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
