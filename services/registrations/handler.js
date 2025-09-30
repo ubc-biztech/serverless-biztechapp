@@ -445,12 +445,12 @@ export const put = async (event, ctx, callback) => {
       if (isMember) {
         const memberPricing = eventExists.pricing.members;
         if (!memberPricing || memberPricing === 0) {
-          data.registrationStatus = "acceptedComplete"; 
+          data.registrationStatus = "acceptedComplete";
         }
       } else {
         const nonMemberPricing = eventExists.pricing.nonMembers;
         if (!nonMemberPricing || nonMemberPricing === 0) {
-          data.registrationStatus = "acceptedComplete"; 
+          data.registrationStatus = "acceptedComplete";
         }
       }
     }
