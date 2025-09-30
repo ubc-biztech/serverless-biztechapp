@@ -9,7 +9,8 @@ import {
   isEmpty, isValidEmail
 } from "../../lib/utils";
 import {
-  EVENTS_TABLE, USER_REGISTRATIONS_TABLE
+  EVENTS_TABLE, USER_REGISTRATIONS_TABLE,
+  USERS_TABLE
 } from "../../constants/tables";
 import SESEmailService from "./EmailService/SESEmailService";
 import awsConfig from "../../lib/config";
@@ -426,13 +427,32 @@ export const put = async (event, ctx, callback) => {
 
     // Check if event exists first
     const eventExists = await db.getOne(data.eventID, EVENTS_TABLE, {
-      year: data.year
+      year: Number(data.year)
     });
 
     if (!eventExists) {
       return helpers.createResponse(404, {
         message: `Event with id '${data.eventID}' and year '${data.year}' could not be found.`
       });
+    }
+
+    // application based events
+    const isAccepted = data.registrationStatus === "accepted";
+
+    if (isAccepted) {
+      const user = await db.getOne(email, USERS_TABLE);
+      const isMember = user?.isMember;
+      if (isMember) {
+        const memberPricing = eventExists.pricing.members;
+        if (!memberPricing || memberPricing === 0) {
+          data.registrationStatus = "acceptedComplete"; 
+        }
+      } else {
+        const nonMemberPricing = eventExists.pricing.nonMembers;
+        if (!nonMemberPricing || nonMemberPricing === 0) {
+          data.registrationStatus = "acceptedComplete"; 
+        }
+      }
     }
 
     const response = await updateHelper(
