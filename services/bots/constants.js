@@ -143,10 +143,11 @@ export const btDevs = Object.freeze({
 
 // discord constants (hardcoded to the server)
 export const DISCORD_GUILD_ID = "1388652277178302576";
+export const DISCORD_GUILD_ID_PROD = "1404646266725732492";
 const VERIFIED_MEMBERSHIP = "1422059115273785434";
+const MEMBERSHIP_PROD = "1422425069946273823";
 
 export const MEMBERSHIP_ROLES = {
-  verified: [
-    VERIFIED_MEMBERSHIP
-  ],
+  verified: [VERIFIED_MEMBERSHIP],
+  verifiedPROD: [MEMBERSHIP_PROD]
 };

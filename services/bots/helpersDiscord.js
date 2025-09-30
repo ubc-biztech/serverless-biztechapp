@@ -3,14 +3,22 @@ import fetch from "node-fetch";
 import { InteractionResponseType } from "discord-interactions";
 import db from "../../lib/db";
 import { MEMBERS2026_TABLE } from "../../constants/tables";
-import { DISCORD_GUILD_ID, MEMBERSHIP_ROLES } from "./constants.js";
+import {
+  DISCORD_GUILD_ID,
+  DISCORD_GUILD_ID_PROD,
+  MEMBERSHIP_ROLES
+} from "./constants.js";
 
 export async function DiscordRequest(endpoint, options) {
   const url = "https://discord.com/api/v10/" + endpoint;
   if (options.body) options.body = JSON.stringify(options.body);
   const res = await fetch(url, {
     headers: {
-      "Authorization": `Bot ${process.env.DISCORD_TOKEN}`,
+      "Authorization": `Bot ${
+        process.env.ENVIRONMENT === "PROD"
+          ? process.env.DISCORD_TOKEN_PROD
+          : process.env.DISCORD_TOKEN
+      }`,
       "Content-Type": "application/json; charset=UTF-8"
     },
     ...options
@@ -27,8 +35,11 @@ export async function DiscordRequest(endpoint, options) {
 
 export function verifyRequestSignature(req) {
   let isValid = false;
-  const signature = req.headers["x-signature-ed25519"] || req.headers["X-Signature-Ed25519"];
-  const timestamp = req.headers["x-signature-timestamp"] || req.headers["X-Signature-Timestamp"];
+  const signature =
+    req.headers["x-signature-ed25519"] || req.headers["X-Signature-Ed25519"];
+  const timestamp =
+    req.headers["x-signature-timestamp"] ||
+    req.headers["X-Signature-Timestamp"];
   const body = req.body;
 
   if (!signature || !timestamp) {
@@ -39,7 +50,12 @@ export function verifyRequestSignature(req) {
   isValid = nacl.sign.detached.verify(
     Buffer.from(timestamp + body),
     Buffer.from(signature, "hex"),
-    Buffer.from(process.env.DISCORD_PUBLIC_KEY, "hex")
+    Buffer.from(
+      process.env.ENVIRONMENT === "PROD"
+        ? process.env.DISCORD_PUBLIC_KEY_PROD
+        : process.env.DISCORD_PUBLIC_KEY,
+      "hex"
+    )
   );
 
   return isValid;
@@ -50,20 +66,20 @@ export function verifyRequestSignature(req) {
 export function applicationCommandRouter(name, body) {
   const { member } = body;
   switch (name) {
-  case "verify":
-    return handleVerifyCommand(member);
+    case "verify":
+      return handleVerifyCommand(member);
 
-  default:
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: `Unknown command: /${body.name}`,
-          flags: 64
-        }
-      })
-    };
+    default:
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: `Unknown command: /${body.name}`,
+            flags: 64
+          }
+        })
+      };
   }
 }
 
@@ -73,7 +89,9 @@ function handleVerifyCommand(member) {
 
   console.log("User initiating verify:", discordUserId);
 
-  const idpLoginUrl = `https://dev.app.ubcbiztech.com/login?redirect=/discord/verify/${discordUserId}`;
+  const idpLoginUrl = `https://${
+    process.env.ENVIRONMENT === "PROD" ? "" : "dev."
+  }app.ubcbiztech.com/login?redirect=/discord/verify/${discordUserId}`;
 
   // guard against use outside of a server
   if (!discordUserId) {
@@ -203,7 +221,11 @@ export async function removeUserRoles(userID, membershipTier, eventID = null) {
   for (const roleID of rolesToRemove) {
     try {
       await DiscordRequest(
-        `guilds/${DISCORD_GUILD_ID}/members/${user.discordId}/roles/${roleID}`,
+        `guilds/${
+          process.env.ENVIRONMENT === "PROD"
+            ? DISCORD_GUILD_ID_PROD
+            : DISCORD_GUILD_ID
+        }/members/${user.discordId}/roles/${roleID}`,
         {
           method: "DELETE"
         }
@@ -245,6 +267,5 @@ export async function backfillUserRoles(userID) {
 
   // Get their current membership tier and assign appropriate role
   const membershipTier = user.membershipTier || "basic";
-
   return await assignUserRoles(userID, membershipTier);
 }

@@ -118,7 +118,10 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
 
     // assign verfied role based on membership tier
     try {
-      await assignUserRoles(email, "verified");
+      await assignUserRoles(
+        email,
+        "verified" + ("" || process.env.ENVIORNMENT)
+      );
       console.log(`Successfully verified ${email}`);
     } catch (roleError) {
       console.warn(`Failed to assign roles to ${email}:`, roleError.message);
