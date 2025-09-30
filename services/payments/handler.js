@@ -293,7 +293,7 @@ export const webhook = async (event, ctx, callback) => {
       const keyCondition = {
         expression: "id = :id",
         expressionValues: {
-          ":id": data.email 
+          ":id": data.email
         }
       };
 
