@@ -80,6 +80,8 @@ jobs:
           DISCORD_APPLICATION_ID: ${{ secrets.DISCORD_APPLICATION_ID }}
           DISCORD_PUBLIC_KEY: ${{ secrets.DISCORD_PUBLIC_KEY }}
           DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+          DISCORD_PUBLIC_KEY_PROD: ${{ secrets.DISCORD_PUBLIC_KEY_PROD }}
+          DISCORD_TOKEN_PROD: ${{ secrets.DISCORD_TOKEN_PROD }}
           GH_CLIENT_ID: ${{ secrets.GH_CLIENT_ID }}
           GH_PRIVATE_KEY: ${{ secrets.GH_PRIVATE_KEY }}
           GH_PROJECT_ACCESS_KEY: ${{ secrets.GH_PROJECT_ACCESS_KEY }}
