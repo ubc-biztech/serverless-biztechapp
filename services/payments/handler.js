@@ -279,27 +279,26 @@ export const webhook = async (event, ctx, callback) => {
       const eventIDAndYear = data.eventID + ";" + data.year;
 
       const keyCondition = {
-        expression: "id = :id",
+        expression: "id = :id AND #eventIDYear = :eventIDYear",
+        expressionNames: {
+          "#eventIDYear": "eventID;year"
+        },
         expressionValues: {
-          ":id": data.email
+          ":id": data.email,
+          ":eventIDYear": eventIDAndYear
         }
       };
 
-      let registrations = await db.query(
+      const result = await db.query(
         USER_REGISTRATIONS_TABLE,
-        null,
+        "event-query",
         keyCondition
       );
-
-      registrations = registrations.filter(
-        (reg) => reg["eventID;year"] === eventIDAndYear
-      );
+      console.log(JSON.stringify(result, null, 2));
 
       if (
-        registrations &&
-        registrations.length === 1 &&
-        (registrations[0].registrationStatus === "accepted" ||
-          registrations[0].registrationStatus === "acceptedPending")
+        result[0].registrationStatus === "accepted" ||
+        result[0].registrationStatus === "acceptedPending"
       ) {
         updatedRegistrationStatus = "acceptedComplete"; // ad hoc case for application based events
       }
