@@ -1,30 +1,18 @@
 import helpers from "../../lib/handlerHelpers";
-import {
-  isEmpty,
-  isValidEmail
-} from "../../lib/utils";
-import {
-  updateHelper
-} from "../registrations/handler";
+import { isEmpty, isValidEmail } from "../../lib/utils";
+import { updateHelper } from "../registrations/handler";
 import db from "../../lib/db";
-import {
-  CognitoIdentityProvider
-} from "@aws-sdk/client-cognito-identity-provider";
+import { CognitoIdentityProvider } from "@aws-sdk/client-cognito-identity-provider";
 
 import {
-  USERS_TABLE, MEMBERS2026_TABLE,
+  USERS_TABLE,
+  MEMBERS2026_TABLE,
   EVENTS_TABLE,
   USER_REGISTRATIONS_TABLE
 } from "../../constants/tables";
-import {
-  createProfile
-} from "../profiles/helpers";
-import {
-  PROFILE_TYPES
-} from "../profiles/constants";
-import {
-  MEMBERSHIP_PRICE
-} from "./constants";
+import { createProfile } from "../profiles/helpers";
+import { PROFILE_TYPES } from "../profiles/constants";
+import { MEMBERSHIP_PRICE } from "./constants";
 
 const stripe = require("stripe")(
   process.env.ENVIRONMENT === "PROD"
@@ -297,13 +285,21 @@ export const webhook = async (event, ctx, callback) => {
         }
       };
 
-      let registrations = await db.query(USER_REGISTRATIONS_TABLE, null, keyCondition);
-
-      registrations = registrations.filter(reg =>
-        reg["eventID;year"] === eventIDAndYear
+      let registrations = await db.query(
+        USER_REGISTRATIONS_TABLE,
+        null,
+        keyCondition
       );
 
-      if (registrations && registrations.length === 1 && registrations[0].registrationStatus === "accepted") {
+      registrations = registrations.filter(
+        (reg) => reg["eventID;year"] === eventIDAndYear
+      );
+
+      if (
+        registrations &&
+        registrations.length === 1 &&
+        registrations[0].registrationStatus === "accepted"
+      ) {
         updatedRegistrationStatus = "acceptedComplete"; // ad hoc case for application based events
       }
 
@@ -312,7 +308,7 @@ export const webhook = async (event, ctx, callback) => {
         year: Number(data.year),
         registrationStatus: updatedRegistrationStatus
       };
-      await updateHelper(body, false, data.email, data.fname);
+      await updateHelper(body, false, data.email, data.fname, true);
       const response = helpers.createResponse(200, {
         message: "Registered user after successful payment"
       });
@@ -344,22 +340,22 @@ export const webhook = async (event, ctx, callback) => {
     }
 
     switch (data.paymentType) {
-    case "UserMember":
-      await userMemberSignup(data);
-      break;
-    case "OAuthMember":
-      await OAuthMemberSignup(data);
-      break;
-    case "Member":
-      await memberSignup(data);
-      break;
-    case "Event":
-      await eventRegistration(data);
-      break;
-    default:
-      return helpers.createResponse(400, {
-        message: "Webhook Error: unidentified payment type"
-      });
+      case "UserMember":
+        await userMemberSignup(data);
+        break;
+      case "OAuthMember":
+        await OAuthMemberSignup(data);
+        break;
+      case "Member":
+        await memberSignup(data);
+        break;
+      case "Event":
+        await eventRegistration(data);
+        break;
+      default:
+        return helpers.createResponse(400, {
+          message: "Webhook Error: unidentified payment type"
+        });
     }
   }
 };
@@ -387,11 +383,14 @@ export const payment = async (event, ctx, callback) => {
 
       const isMember = !isEmpty(user) && user.isMember;
       const samePricing = event.pricing.members === event.pricing.nonMembers;
-      unit_amount = (isMember ? event.pricing.members : event.pricing.nonMembers) * 100;
+      unit_amount =
+        (isMember ? event.pricing.members : event.pricing.nonMembers) * 100;
 
       data = {
         ...data,
-        paymentName: `${event.ename} ${isMember || samePricing ? "" : "(Non-member)"}`,
+        paymentName: `${event.ename} ${
+          isMember || samePricing ? "" : "(Non-member)"
+        }`,
         paymentImages: [event.imageUrl]
       };
     } else {
@@ -400,9 +399,7 @@ export const payment = async (event, ctx, callback) => {
       unit_amount = isUBCStudent ? MEMBERSHIP_PRICE - 300 : MEMBERSHIP_PRICE;
     }
 
-    const {
-      paymentImages
-    } = data;
+    const { paymentImages } = data;
     delete data.paymentImages; // remove from metadata
 
     const session = await stripe.checkout.sessions.create({
@@ -457,9 +454,7 @@ export const cancel = async (event, ctx, callback) => {
   );
   const data = eventData.data.object.metadata;
   const email = data.email ? data.email.toLowerCase() : data.email;
-  const {
-    eventID, year, paymentType
-  } = data;
+  const { eventID, year, paymentType } = data;
   if (paymentType === "Event") {
     try {
       // const eventIDAndYear = eventID + ";" + year;
@@ -470,8 +465,7 @@ export const cancel = async (event, ctx, callback) => {
 
       const response = helpers.createResponse(200, {
         message: "Cancel webhook disabled",
-        response: {
-        }
+        response: {}
       });
 
       callback(null, response);

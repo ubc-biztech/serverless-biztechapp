@@ -21,7 +21,13 @@ import awsConfig from "../../lib/config";
    sends an email to the user if registration status is included in data, and
      if they are registered, waitlisted, or cancelled, but not if checkedIn
 */
-export async function updateHelper(data, createNew, email, fname) {
+export async function updateHelper(
+  data,
+  createNew,
+  email,
+  fname,
+  isAcceptancePayment = false
+) {
   const {
     eventID,
     year,
@@ -76,7 +82,7 @@ export async function updateHelper(data, createNew, email, fname) {
   // always check application status first, if not null then we send a application status email, else send regular
   if (applicationStatus) {
     try {
-      if (!data.isPartner) {
+      if (!data.isPartner && !isAcceptancePayment) {
         await sendEmail(
           user,
           existingEvent,
