@@ -67,9 +67,13 @@ provider:
         - dynamodb:PutItem
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
-        - dynamodb:Query
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechRegistrations${self:provider.environment.ENVIRONMENT}"
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechRegistrations${self:provider.environment.ENVIRONMENT}/index/event-query"
     - Effect: Allow
       Action:
         - dynamodb:GetItem
