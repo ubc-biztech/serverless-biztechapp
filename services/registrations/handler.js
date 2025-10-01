@@ -1,15 +1,13 @@
 import docClient from "../../lib/docClient";
 import registrationHelpers from "./helpers";
 import helpers from "../../lib/handlerHelpers";
-import {
-  sendSNSNotification
-} from "../../lib/snsHelper";
+import { sendSNSNotification } from "../../lib/snsHelper";
 import db from "../../lib/db";
+import { isEmpty, isValidEmail } from "../../lib/utils";
 import {
-  isEmpty, isValidEmail
-} from "../../lib/utils";
-import {
-  EVENTS_TABLE, USER_REGISTRATIONS_TABLE
+  EVENTS_TABLE,
+  USER_REGISTRATIONS_TABLE,
+  USERS_TABLE
 } from "../../constants/tables";
 import SESEmailService from "./EmailService/SESEmailService";
 import awsConfig from "../../lib/config";
@@ -158,7 +156,10 @@ export async function updateHelper(data, createNew, email, fname) {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error("Failed to send SNS notification for registration update:", error);
+    console.error(
+      "Failed to send SNS notification for registration update:",
+      error
+    );
   }
 
   return response;
@@ -189,7 +190,7 @@ async function createRegistration(
       ...formResponse
     };
 
-    if(createNew) {
+    if (createNew) {
       updateObject["createdAt"] = new Date().getTime();
     }
 
@@ -248,7 +249,10 @@ async function createRegistration(
     const errBody = JSON.parse(errorResponse.body);
 
     // customize the error messsage if it is caused by the 'ConditionExpression' check
-    if (errBody.statusCode === 502 || errBody.code === "ConditionalCheckFailedException") {
+    if (
+      errBody.statusCode === 502 ||
+      errBody.code === "ConditionalCheckFailedException"
+    ) {
       errorResponse.statusCode = 409;
       errBody.statusCode = 409;
       if (createNew)
@@ -426,13 +430,32 @@ export const put = async (event, ctx, callback) => {
 
     // Check if event exists first
     const eventExists = await db.getOne(data.eventID, EVENTS_TABLE, {
-      year: data.year
+      year: Number(data.year)
     });
 
     if (!eventExists) {
       return helpers.createResponse(404, {
         message: `Event with id '${data.eventID}' and year '${data.year}' could not be found.`
       });
+    }
+
+    // application based events
+    const isAccepted = data.registrationStatus === "accepted";
+
+    if (isAccepted) {
+      const user = await db.getOne(email, USERS_TABLE);
+      const isMember = user?.isMember;
+
+      // for type safety, but event pricing not existing for nonMember
+      // with a nonMember registration is an illegal state
+      const pricing = isMember
+        ? eventExists.pricing?.members ?? 0
+        : eventExists.pricing?.nonMembers ?? 0;
+
+      // Set status to complete if pricing is free or zero
+      if (pricing === 0) {
+        data.registrationStatus = "acceptedPending";
+      }
     }
 
     const response = await updateHelper(
@@ -454,9 +477,7 @@ export const put = async (event, ctx, callback) => {
 // Updates a batch of registration statuses
 export async function massUpdate(event, ctx, callback) {
   try {
-    const {
-      eventID, eventYear, updates
-    } = JSON.parse(event.body);
+    const { eventID, eventYear, updates } = JSON.parse(event.body);
 
     if (!eventID || !eventYear || !Array.isArray(updates)) {
       return helpers.createResponse(400, {
@@ -517,7 +538,10 @@ export async function massUpdate(event, ctx, callback) {
 export const get = async (event, ctx, callback) => {
   try {
     const queryString = event.queryStringParameters;
-    if (!queryString || (!queryString.eventID && !queryString.year && !queryString.email))
+    if (
+      !queryString ||
+      (!queryString.eventID && !queryString.year && !queryString.email)
+    )
       throw helpers.missingIdQueryResponse("eventID/year/user ");
 
     let registrations = [];
@@ -532,13 +556,17 @@ export const get = async (event, ctx, callback) => {
           ":id": normalizedEmail
         }
       };
-      registrations = await db.query(USER_REGISTRATIONS_TABLE, null, keyCondition);
+      registrations = await db.query(
+        USER_REGISTRATIONS_TABLE,
+        null,
+        keyCondition
+      );
 
       // If eventID and year are provided, filter results
       if (queryString.eventID && queryString.year) {
         const eventIDYear = `${queryString.eventID};${queryString.year}`;
-        registrations = registrations.filter(reg =>
-          reg["eventID;year"] === eventIDYear
+        registrations = registrations.filter(
+          (reg) => reg["eventID;year"] === eventIDYear
         );
       }
     } else if (queryString.eventID && queryString.year) {
@@ -554,7 +582,11 @@ export const get = async (event, ctx, callback) => {
         }
       };
 
-      registrations = await db.query(USER_REGISTRATIONS_TABLE, "event-query", keyCondition);
+      registrations = await db.query(
+        USER_REGISTRATIONS_TABLE,
+        "event-query",
+        keyCondition
+      );
     }
 
     // filter by timestamp, if given
@@ -646,9 +678,12 @@ export const delMany = async (event, ctx, callback) => {
       }
     });
 
-    if (!Array.isArray(data.ids)) throw helpers.inputError("Ids must be an array", data.ids);
+    if (!Array.isArray(data.ids))
+      throw helpers.inputError("Ids must be an array", data.ids);
 
-    const lowercaseEmails = data.ids.map(email => email.toLowerCase()).filter(isValidEmail);
+    const lowercaseEmails = data.ids
+      .map((email) => email.toLowerCase())
+      .filter(isValidEmail);
 
     const eventIDAndYear = data.eventID + ";" + data.year;
 
@@ -679,7 +714,10 @@ export const leaderboard = async (event, ctx, callback) => {
       throw helpers.missingIdQueryResponse("eventID/year");
     }
 
-    if (queryString.hasOwnProperty("eventID") && queryString.hasOwnProperty("year")) {
+    if (
+      queryString.hasOwnProperty("eventID") &&
+      queryString.hasOwnProperty("year")
+    ) {
       const eventIDAndYear = queryString.eventID + ";" + queryString.year;
       const keyCondition = {
         expression: "#eventIDYear = :query",
@@ -691,7 +729,11 @@ export const leaderboard = async (event, ctx, callback) => {
         }
       };
 
-      let registrations = await db.query(USER_REGISTRATIONS_TABLE, "event-query", keyCondition);
+      let registrations = await db.query(
+        USER_REGISTRATIONS_TABLE,
+        "event-query",
+        keyCondition
+      );
       registrations = registrations
         .filter((user) => {
           if (user.points !== undefined) {

@@ -13,7 +13,8 @@ import {
 
 import {
   USERS_TABLE, MEMBERS2026_TABLE,
-  EVENTS_TABLE
+  EVENTS_TABLE,
+  USER_REGISTRATIONS_TABLE
 } from "../../constants/tables";
 import {
   createProfile
@@ -285,12 +286,31 @@ export const webhook = async (event, ctx, callback) => {
 
   const eventRegistration = async (data) => {
     try {
+      let updatedRegistrationStatus = "registered";
+
       const eventIDAndYear = data.eventID + ";" + data.year;
+
+      const keyCondition = {
+        expression: "id = :id",
+        expressionValues: {
+          ":id": data.email
+        }
+      };
+
+      let registrations = await db.query(USER_REGISTRATIONS_TABLE, null, keyCondition);
+
+      registrations = registrations.filter(reg =>
+        reg["eventID;year"] === eventIDAndYear
+      );
+
+      if (registrations && registrations.length === 1 && registrations[0].registrationStatus === "accepted") {
+        updatedRegistrationStatus = "acceptedComplete"; // ad hoc case for application based events
+      }
 
       const body = {
         eventID: data.eventID,
         year: Number(data.year),
-        registrationStatus: "registered"
+        registrationStatus: updatedRegistrationStatus
       };
       await updateHelper(body, false, data.email, data.fname);
       const response = helpers.createResponse(200, {
