@@ -298,7 +298,8 @@ export const webhook = async (event, ctx, callback) => {
       if (
         registrations &&
         registrations.length === 1 &&
-        registrations[0].registrationStatus === "accepted"
+        (registrations[0].registrationStatus === "accepted" ||
+          registrations[0].registrationStatus === "acceptedPending")
       ) {
         updatedRegistrationStatus = "acceptedComplete"; // ad hoc case for application based events
       }
