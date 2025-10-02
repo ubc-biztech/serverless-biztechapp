@@ -165,7 +165,11 @@ export async function assignUserRoles(userID, membershipTier, eventID = null) {
   for (const roleID of rolesToAdd) {
     try {
       await DiscordRequest(
-        `guilds/${DISCORD_GUILD_ID}/members/${user.discordId}/roles/${roleID}`,
+        `guilds/${
+          process.env.ENVIRONMENT === "PROD"
+            ? DISCORD_GUILD_ID_PROD
+            : DISCORD_GUILD_ID
+        }/members/${user.discordId}/roles/${roleID}`,
         {
           method: "PUT"
         }
