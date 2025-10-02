@@ -120,7 +120,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
     try {
       await assignUserRoles(
         email,
-        "verified" + ("" || process.env.ENVIORNMENT)
+        "verified" + ("" || process.env.ENVIRONMENT)
       );
       console.log(`Successfully verified ${email}`);
     } catch (roleError) {
