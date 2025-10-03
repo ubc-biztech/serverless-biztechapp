@@ -18,7 +18,7 @@ provider:
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
-    WS_API_ENDPOINT: https://bwiujsprij.execute-api.us-west-2.amazonaws.com/dev
+    WS_API_ENDPOINT: https://bn27jq3bal.execute-api.us-west-2.amazonaws.com/prod
   timeout: 15 # in seconds
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
@@ -84,7 +84,7 @@ provider:
       Action:
         - execute-api:ManageConnections
       Resource:
-        - arn:aws:execute-api:${self:provider.region}:${aws:accountId}:bwiujsprij/*/@connections/*
+        - arn:aws:execute-api:${self:provider.region}:${aws:accountId}:bn27jq3bal/*/@connections/*
 
 custom:
   prune:
