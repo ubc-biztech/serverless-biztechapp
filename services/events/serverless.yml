@@ -115,3 +115,10 @@ functions:
                 count: false
                 users: false
           cors: true
+  eventGetActiveEvent:
+    handler: handler.getActiveEvent
+    events:
+      - http:
+          path: events/getActiveEvent
+          method: get
+          cors: true
