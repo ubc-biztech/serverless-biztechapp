@@ -1,0 +1,26 @@
+service: biztech-audit
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-west-2
+  stage: ${opt:stage, 'dev'}
+  environment:
+    ENVIRONMENT: ${self:provider.stage}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Scan
+          Resource: "*"
+
+functions:
+  getAuditLogs:
+    handler: handler.getAuditLogs
+    events:
+      - http:
+          path: audit
+          method: get
+          cors: true
+          authorizer: aws_iam

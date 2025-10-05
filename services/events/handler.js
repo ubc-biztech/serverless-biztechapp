@@ -15,6 +15,8 @@ import {
 
 export const create = async (event, ctx, callback) => {
   try {
+    const email = event.requestContext.authorizer.claims.email.toLowerCase();
+
     const timestamp = new Date().getTime();
     const data = JSON.parse(event.body);
 
@@ -79,7 +81,7 @@ export const create = async (event, ctx, callback) => {
         );
     }
 
-    const res = await db.create(item, EVENTS_TABLE);
+    const res = await db.create(item, EVENTS_TABLE, email);
 
     const response = helpers.createResponse(201, {
       message: `Created event with id ${data.id} for the year ${data.year}!`,
