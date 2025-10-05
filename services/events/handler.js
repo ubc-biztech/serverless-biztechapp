@@ -173,6 +173,8 @@ export const getAll = async (event, ctx, callback) => {
 // PATCH events/{id}/{year}
 export const update = async (event, ctx, callback) => {
   try {
+    const email = event.requestContext.authorizer.claims.email.toLowerCase();
+
     if (!event.pathParameters || !event.pathParameters.id)
       throw helpers.missingIdQueryResponse("event");
     const id = event.pathParameters.id;
@@ -213,6 +215,10 @@ export const update = async (event, ctx, callback) => {
         }
       }
     }
+
+    const before = existingEvent;
+    const after = data;
+
     const {
       updateExpression,
       expressionAttributeValues,
@@ -237,7 +243,7 @@ export const update = async (event, ctx, callback) => {
       ConditionExpression: "attribute_exists(id) and attribute_exists(#vyear)"
     };
 
-    const res = await db.updateDBCustom(params);
+    const res = await db.updateDBCustom(params, before, after, email);
 
     const response = helpers.createResponse(200, {
       message: `Updated event with id ${id} and year ${year}!`,
