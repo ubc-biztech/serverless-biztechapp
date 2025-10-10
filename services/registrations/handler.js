@@ -698,7 +698,7 @@ export const delMany = async (event, ctx, callback) => {
       ["eventID;year"]: `${eventIDAndYear}` // sort key
     }));
 
-    const res = await db.batchDelete(itemsToDelete, USER_REGISTRATIONS_TABLE);
+    const res = await db.batchDelete(itemsToDelete, USER_REGISTRATIONS_TABLE, email);
 
     const response = helpers.createResponse(200, {
       message: "Registration entry Deleted!",
