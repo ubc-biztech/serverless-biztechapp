@@ -192,9 +192,17 @@ async function createRegistration(
   try {
     const formResponse = removeDefaultKeys(data);
 
-    const updateObject = {
+    let updateObject = {
       ...formResponse
     };
+
+    // HARDCODED FOR DEMO PURPOSES
+    if (eventIDAndYear === "kickstart;2025") {
+      updateObject = {
+        ...updateObject,
+        balance: 1000 // Modify initial balance later
+      }
+    }
 
     if (createNew) {
       updateObject["createdAt"] = new Date().getTime();

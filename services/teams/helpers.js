@@ -152,7 +152,7 @@ export default {
         });
     }
 
-    const params = {
+    let params = {
       id: uuidv4(),
       teamName: team_name,
       "eventID;year": eventID + ";" + year,
@@ -166,6 +166,14 @@ export default {
       metadata: {
       }
     };
+
+    // HARDCODED FOR DEMO PURPOSES
+    if (eventID === "kickstart" && year === 2025) {
+      params = {
+        ...params,
+        funding: 0, // Modify initial funding later
+      }
+    }
 
     try {
       // Create the new team=
