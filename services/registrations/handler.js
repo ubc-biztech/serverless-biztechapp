@@ -201,7 +201,7 @@ async function createRegistration(
       updateObject = {
         ...updateObject,
         balance: 1000 // Modify initial balance later
-      }
+      };
     }
 
     if (createNew) {

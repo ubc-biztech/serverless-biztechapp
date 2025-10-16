@@ -172,7 +172,7 @@ export default {
       params = {
         ...params,
         funding: 0, // Modify initial funding later
-      }
+      };
     }
 
     try {
