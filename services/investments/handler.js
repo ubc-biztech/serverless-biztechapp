@@ -67,7 +67,7 @@ export const invest = async (event, ctx, callback) => {
     const updateTeamPromise = db.updateOne(data.teamId, TEAMS_TABLE, {
         "eventID;year": "kickstart;2025" // hardcoded
     }, {
-        balance: team.funding + data.amount
+        funding: team.funding + data.amount
     });
 
     const updateTransactionPromise = db.create({
