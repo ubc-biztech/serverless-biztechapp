@@ -89,20 +89,101 @@ export const invest = async (event, ctx, callback) => {
 
 }
 
-// TODO
+// WIP
 export const userStatus = async (event, ctx, callback) => {
     /*
     Responsible for:
     - Fetching user current balance
     - Fetching user's stake in other teams
     */
+
+    const data = JSON.parse(event.body);
+
+    helpers.checkPayloadProps(data, {
+        userId: {
+            required: true,
+            type: "string"
+        }
+    });
+
+    const user = await db.getOne(data.userId, USER_REGISTRATIONS_TABLE, {
+        "eventID;year": "kickstart;2025"
+    });
+
+    if (!user) {
+        return helpers.createResponse(400, {
+            message: "User not found or not registered for event"
+        });
+    }
+
+    const userInvestments = await db.scan(INVESTMENTS_TABLE, {
+        FilterExpression: "#investorId = :investorId",
+        ExpressionAttributeNames: {
+            "#investorId": "investorId"
+        },
+        ExpressionAttributeValues: {
+            ":investorId": data.userId
+        }
+    });
+
+    // Aggregate user's stakes per team
+    const stakes = userInvestments.reduce((accumulatedStakes, investment) => {
+        if (!accumulatedStakes[investment.teamId]) {
+            accumulatedStakes[investment.teamId] = 0;
+        }
+
+        // Add the investment amount to the team's stake
+        accumulatedStakes[investment.teamId] += investment.amount;
+        return accumulatedStakes;
+    }, {});
+
+    return helpers.createResponse(200, {
+        balance: user.balance,
+        stakes
+    });
 }
 
-// TODO
+// WIP
 export const teamStatus = async (event, ctx, callback) => {
     /*
     Responsible for:
     - Fetching team's current funding
+    - Fetching all individual investments with comments
     */
-} 
+
+    const data = JSON.parse(event.body);
+
+    helpers.checkPayloadProps(data, {
+        teamId: {
+            required: true,
+            type: "string"
+        }
+    });
+
+    const team = await db.getOne(data.teamId, TEAMS_TABLE, {
+        "eventID;year": "kickstart;2025"
+    });
+
+    if (!team) {
+        return helpers.createResponse(400, {
+            message: "Team not found for event"
+        });
+    }
+
+    // Scan all investments made into this team
+    const teamInvestments = await db.scan(INVESTMENTS_TABLE, {
+        FilterExpression: "#teamId = :teamId",
+        ExpressionAttributeNames: {
+            "#teamId": "teamId"
+        },
+        ExpressionAttributeValues: {
+            ":teamId": data.teamId
+        }
+    });
+
+    return helpers.createResponse(200, {
+        funding: team.funding,
+        investments: teamInvestments // each entry includes comment, investorId, investorName, amount
+    });
+}
     
