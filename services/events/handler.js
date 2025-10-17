@@ -15,6 +15,8 @@ import {
 
 export const create = async (event, ctx, callback) => {
   try {
+    const email = event.requestContext.authorizer.claims.email.toLowerCase();
+
     const timestamp = new Date().getTime();
     const data = JSON.parse(event.body);
 
@@ -79,7 +81,7 @@ export const create = async (event, ctx, callback) => {
         );
     }
 
-    const res = await db.create(item, EVENTS_TABLE);
+    const res = await db.create(item, EVENTS_TABLE, email);
 
     const response = helpers.createResponse(201, {
       message: `Created event with id ${data.id} for the year ${data.year}!`,
@@ -171,6 +173,8 @@ export const getAll = async (event, ctx, callback) => {
 // PATCH events/{id}/{year}
 export const update = async (event, ctx, callback) => {
   try {
+    const email = event.requestContext.authorizer.claims.email.toLowerCase();
+
     if (!event.pathParameters || !event.pathParameters.id)
       throw helpers.missingIdQueryResponse("event");
     const id = event.pathParameters.id;
@@ -211,6 +215,10 @@ export const update = async (event, ctx, callback) => {
         }
       }
     }
+
+    const before = existingEvent;
+    const after = data;
+
     const {
       updateExpression,
       expressionAttributeValues,
@@ -235,7 +243,7 @@ export const update = async (event, ctx, callback) => {
       ConditionExpression: "attribute_exists(id) and attribute_exists(#vyear)"
     };
 
-    const res = await db.updateDBCustom(params);
+    const res = await db.updateDBCustom(params, before, after, email);
 
     const response = helpers.createResponse(200, {
       message: `Updated event with id ${id} and year ${year}!`,
