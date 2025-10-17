@@ -1,6 +1,7 @@
-import { USER_REGISTRATIONS_TABLE, INVESTMENTS_TABLE } from "../../constants/tables";
+import { USER_REGISTRATIONS_TABLE, INVESTMENTS_TABLE, TEAMS_TABLE } from "../../constants/tables";
 import db from "../../lib/db";
 import helpers from "../../lib/handlerHelpers";
+import { v4 as uuidv4 } from 'uuid';
 
 // WIP
 export const invest = async (event, ctx, callback) => {
