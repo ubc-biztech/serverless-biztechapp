@@ -69,7 +69,7 @@ export const invest = async (event, ctx, callback) => {
         ExpressionAttributeValues: {
           ":newBalance": investor.balance - data.amount,
         },
-        ConditionExpression: "attribute_exists(id)",
+        ConditionExpression: "attribute_exists(id) and attribute_exists(eventID;year)",
         ReturnValues: "UPDATED_NEW",
       });
 
@@ -83,7 +83,7 @@ export const invest = async (event, ctx, callback) => {
         ExpressionAttributeValues: {
           ":newFunding": team.funding + data.amount,
         },
-        ConditionExpression: "attribute_exists(id)",
+        ConditionExpression: "attribute_exists(id) and attribute_exists(eventID;year)",
         ReturnValues: "UPDATED_NEW",
       });
 
