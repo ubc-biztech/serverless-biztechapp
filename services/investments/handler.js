@@ -59,9 +59,33 @@ export const invest = async (event, ctx, callback) => {
         });
     }
 
-    const updateInvestorPromise = db.updateDB(data.investorId, { balance: investor.balance - data.amount }, USER_REGISTRATIONS_TABLE);
+    const updateInvestorPromise = db.updateDBCustom({
+        TableName: USER_REGISTRATIONS_TABLE + (process.env.ENVIRONMENT || ""),
+        Key: {
+          id: data.investorId,
+          "eventID;year": "kickstart;2025"
+        },
+        UpdateExpression: "SET balance = :newBalance",
+        ExpressionAttributeValues: {
+          ":newBalance": investor.balance - data.amount,
+        },
+        ConditionExpression: "attribute_exists(id)",
+        ReturnValues: "UPDATED_NEW",
+      });
 
-    const updateTeamPromise = db.updateDB(data.teamId, { funding: team.funding + data.amount }, TEAMS_TABLE);
+    const updateTeamPromise = db.updateDBCustom({
+        TableName: TEAMS_TABLE + (process.env.ENVIRONMENT || ""),
+        Key: {
+          id: data.teamId,
+          "eventID;year": "kickstart;2025"
+        },
+        UpdateExpression: "SET funding = :newFunding",
+        ExpressionAttributeValues: {
+          ":newFunding": team.funding + data.amount,
+        },
+        ConditionExpression: "attribute_exists(id)",
+        ReturnValues: "UPDATED_NEW",
+      });
 
     const createInvestmentPromise = db.create({
         id: uuidv4(), // partition key (?)
