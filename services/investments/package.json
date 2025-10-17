@@ -1,0 +1,12 @@
+{
+    "name": "biztechapi-audit",
+    "version": "1.0.0",
+    "scripts": {
+      "itest": "npm run itest audit --prefix ../../",
+      "utest": "npm run utest audit --prefix ../../",
+      "test": "npm run utest audit --prefix ../../ && npm run itest audit --prefix ../../"
+    },
+    "devDependencies": {
+      "serverless-offline": "^14.3.2"
+    }
+}
