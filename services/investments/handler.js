@@ -59,19 +59,11 @@ export const invest = async (event, ctx, callback) => {
         });
     }
 
-    const updateInvestorPromise = db.updateOne(data.investorId, USER_REGISTRATIONS_TABLE, {
-        "eventID;year": "kickstart;2025" // hardcoded
-    }, {
-        balance: investor.balance - data.amount
-    });
+    const updateInvestorPromise = db.updateDB(data.investorId, { balance: investor.balance - data.amount }, USER_REGISTRATIONS_TABLE);
 
-    const updateTeamPromise = db.updateOne(data.teamId, TEAMS_TABLE, {
-        "eventID;year": "kickstart;2025" // hardcoded
-    }, {
-        funding: team.funding + data.amount
-    });
+    const updateTeamPromise = db.updateDB(data.teamId, { funding: team.funding + data.amount }, TEAMS_TABLE);
 
-    const updateTransactionPromise = db.create({
+    const createInvestmentPromise = db.create({
         id: uuidv4(), // partition key (?)
         ["investor#team"]: `${data.investorId}#${data.teamId}`, // sort key (?)
         investorId: data.investorId,
@@ -82,7 +74,7 @@ export const invest = async (event, ctx, callback) => {
         ["eventID;year"]: "kickstart;2025",
     }, INVESTMENTS_TABLE);
 
-    await Promise.all([updateInvestorPromise, updateTeamPromise, updateTransactionPromise]);
+    await Promise.all([updateInvestorPromise, updateTeamPromise, createInvestmentPromise]);
 
     return helpers.createResponse(200, {
         message: "Investment successful"
