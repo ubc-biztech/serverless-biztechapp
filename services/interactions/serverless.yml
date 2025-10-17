@@ -84,7 +84,7 @@ provider:
       Action:
         - execute-api:ManageConnections
       Resource:
-        - arn:aws:execute-api:${self:provider.region}:${aws:accountId}:bn27jq3bal/*/@connections/*
+        - arn:aws:execute-api:${self:provider.region}:${aws:accountId}:bwiujsprij/*/@connections/*
 
 custom:
   prune:
