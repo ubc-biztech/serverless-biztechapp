@@ -159,7 +159,7 @@ const processStatusLogic = async (data, existingEvent, email, createNew) => {
   }
 
   // Handle admin acceptance logic (for PUT requests)
-  if (finalApplicationStatus === "ACCEPTED") {
+  if (finalApplicationStatus === "ACCEPTED" && finalRegistrationStatus === "REVIEWING") {
     const user = await db.getOne(email, USERS_TABLE);
     const isMember = user?.isMember;
     const pricing = isMember 
@@ -485,6 +485,20 @@ export const put = async (event, ctx, callback) => {
       }
     });
 
+    // Load existing registration
+    const existingReg = await db.getOne(email, USER_REGISTRATIONS_TABLE, {
+      "eventID;year": `${data.eventID};${Number(data.year)}`
+    });
+    
+    // If admin has accepted an application under review, set next step by pricing
+    if (data.applicationStatus === "ACCEPTED" && existingReg?.registrationStatus === "REVIEWING") {
+      const user = await db.getOne(email, USERS_TABLE);
+      const isMember = user?.isMember;
+      const pricing = isMember ? (event.pricing?.members ?? 0)
+                               : (event.pricing?.nonMembers ?? 0);
+      data.registrationStatus = pricing === 0 ? "PENDING" : "PAYMENTPENDING";
+    }
+
     // Check if event exists first
     const eventExists = await db.getOne(data.eventID, EVENTS_TABLE, {
       year: Number(data.year)
@@ -494,25 +508,6 @@ export const put = async (event, ctx, callback) => {
       return helpers.createResponse(404, {
         message: `Event with id '${data.eventID}' and year '${data.year}' could not be found.`
       });
-    }
-
-    // application based events
-    const isAccepted = data.registrationStatus === "accepted";
-
-    if (isAccepted) {
-      const user = await db.getOne(email, USERS_TABLE);
-      const isMember = user?.isMember;
-
-      // for type safety, but event pricing not existing for nonMember
-      // with a nonMember registration is an illegal state
-      const pricing = isMember
-        ? eventExists.pricing?.members ?? 0
-        : eventExists.pricing?.nonMembers ?? 0;
-
-      // Set status to complete if pricing is free or zero
-      if (pricing === 0) {
-        data.registrationStatus = "acceptedPending";
-      }
     }
 
     const response = await updateHelper(
