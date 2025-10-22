@@ -76,7 +76,8 @@ export async function updateHelper(
     fname
   };
 
-   // NEW: Handle status logic with backward compatibility
+   // Handle status logic
+   // supports legacy statuses
    const { finalApplicationStatus, finalRegistrationStatus } = await processStatusLogic(
     data,
     existingEvent,
@@ -540,11 +541,16 @@ export async function massUpdate(event, ctx, callback) {
     const results = await Promise.all(
       updates.map(async (update) => {
         try {
+          const currentReg = await db.getOne(update.email, USER_REGISTRATIONS_TABLE, {
+            "eventID;year": `${eventID};${eventYear}`
+          });
+
           const updateData = {
             eventID,
             year: eventYear,
             email: update.email,
-            applicationStatus: update.applicationStatus
+            applicationStatus: update.applicationStatus,
+            registrationStatus: currentReg?.registrationStatus
           };
 
           const fname = update.fname;
