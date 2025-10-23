@@ -44,7 +44,6 @@ export async function updateHelper(
   console.log(data);
   console.log("CloudWatch debugging purposes");
 
-  // for the QR code, we pass this to SendGrid
   const id = `${normalizedEmail};${eventIDAndYear};${fname}`;
 
   //Check if eventID exists and is string. Check if year exists and is number.
@@ -486,20 +485,6 @@ export const put = async (event, ctx, callback) => {
       }
     });
 
-    // Load existing registration
-    const existingReg = await db.getOne(email, USER_REGISTRATIONS_TABLE, {
-      "eventID;year": `${data.eventID};${Number(data.year)}`
-    });
-    
-    // If admin has accepted an application under review, set next step by pricing
-    if (data.applicationStatus === "ACCEPTED" && existingReg?.registrationStatus === "REVIEWING") {
-      const user = await db.getOne(email, USERS_TABLE);
-      const isMember = user?.isMember;
-      const pricing = isMember ? (event.pricing?.members ?? 0)
-                               : (event.pricing?.nonMembers ?? 0);
-      data.registrationStatus = pricing === 0 ? "PENDING" : "PAYMENTPENDING";
-    }
-
     // Check if event exists first
     const eventExists = await db.getOne(data.eventID, EVENTS_TABLE, {
       year: Number(data.year)
@@ -509,6 +494,16 @@ export const put = async (event, ctx, callback) => {
       return helpers.createResponse(404, {
         message: `Event with id '${data.eventID}' and year '${data.year}' could not be found.`
       });
+    }
+
+    // Load existing registration
+    const existingReg = await db.getOne(email, USER_REGISTRATIONS_TABLE, {
+      "eventID;year": `${data.eventID};${Number(data.year)}`
+    });
+    
+
+    if (existingReg && !data.registrationStatus) {
+      data.registrationStatus = existingReg.registrationStatus;
     }
 
     const response = await updateHelper(
