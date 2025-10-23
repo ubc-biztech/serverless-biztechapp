@@ -299,18 +299,18 @@ export const webhook = async (event, ctx, callback) => {
       let updatedRegistrationStatus;
 
       if (currentReg.registrationStatus === "PAYMENTPENDING") {
-        updatedApplicationStatus = "REGISTERED";
+        updatedApplicationStatus = "ACCEPTED";
         updatedRegistrationStatus = "COMPLETE";
       } 
       // HANDLE LEGACY STATUSES
       else if (currentReg.registrationStatus === "accepted" || 
                currentReg.registrationStatus === "acceptedPending") {
-        updatedApplicationStatus = "REGISTERED";
+        updatedApplicationStatus = "ACCEPTED";
         updatedRegistrationStatus = "COMPLETE";
       }
       // fallback case
       else {
-        updatedApplicationStatus = "REGISTERED";
+        updatedApplicationStatus = "ACCEPTED";
         updatedRegistrationStatus = "COMPLETE";
       }
 
