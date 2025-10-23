@@ -1,15 +1,15 @@
-import fs from 'fs';
-import csv from 'csv-parser';
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, PutCommand, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
-import { humanId } from 'human-id';
-import dotenv from 'dotenv';
+import fs from "fs";
+import csv from "csv-parser";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, PutCommand, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
+import { humanId } from "human-id";
+import dotenv from "dotenv";
 
 dotenv.config();
 
 // Configure AWS SDK v3
 const awsConfig = {
-  region: process.env.AWS_REGION || 'us-west-2',
+  region: process.env.AWS_REGION || "us-west-2",
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
@@ -19,12 +19,12 @@ const awsConfig = {
 const client = new DynamoDBClient(awsConfig);
 const docClient = DynamoDBDocumentClient.from(client);
 
-const USERS_TABLE = 'biztechUsers';
-const PROFILES_TABLE = 'biztechProfiles';
-const MEMBERS2026_TABLE = 'biztechMembers2026';
+const USERS_TABLE = "biztechUsers";
+const PROFILES_TABLE = "biztechProfiles";
+const MEMBERS2026_TABLE = "biztechMembers2026";
 
 // hardcoded for kickstart purposes
-const EVENT_ID = 'kickstart';
+const EVENT_ID = "kickstart";
 const YEAR = 2025;
 
 async function updateTables(user) {
@@ -45,7 +45,7 @@ async function updateTables(user) {
             createdAt: timestamp,
             updatedAt: timestamp,
           },
-          ConditionExpression: 'attribute_not_exists(id)'
+          ConditionExpression: "attribute_not_exists(id)"
         }
       },
       {
@@ -59,7 +59,7 @@ async function updateTables(user) {
             createdAt: timestamp,
             updatedAt: timestamp,
           },
-          ConditionExpression: 'attribute_not_exists(id)'
+          ConditionExpression: "attribute_not_exists(id)"
         }
       },
       {
@@ -90,7 +90,7 @@ async function updateTables(user) {
               description: false
             }
           },
-          ConditionExpression: 'attribute_not_exists(id)'
+          ConditionExpression: "attribute_not_exists(id)"
         }
       }
     ]
@@ -102,11 +102,11 @@ async function updateTables(user) {
     console.log(`Successfully created user, registration, and profile for ${user.email}`);
     return true;
   } catch (error) {
-    if (error.name === 'ConditionalCheckFailedException') {
+    if (error.name === "ConditionalCheckFailedException") {
       console.log(`Entry already exists for ${user.email}`);
     } else {
       console.error(`Error processing ${user.email}:`, error.message);
-      console.error('Error details:', error);
+      console.error("Error details:", error);
     }
     return false;
   }
@@ -133,10 +133,10 @@ async function processCSV(filePath) {
   return new Promise((resolve, reject) => {
     fs.createReadStream(filePath)
       .pipe(csv())
-      .on('data', (data) => results.push(data))
-      .on('end', async () => {
+      .on("data", (data) => results.push(data))
+      .on("end", async () => {
         console.log(`Found ${results.length} records to process`);
-        
+
         // Process each record
         for (const [index, row] of results.entries()) {
           try {
@@ -170,22 +170,26 @@ async function processCSV(filePath) {
         }
 
         // Print summary
-        console.log('\nImport Summary:');
+        console.log("\nImport Summary:");
         console.log(`Successfully processed: ${successCount} records`);
         console.log(`Failed to process: ${errorCount} records`);
-        
+
         if (errors.length > 0) {
-          console.log('\nErrors encountered:');
+          console.log("\nErrors encountered:");
           errors.forEach((err, idx) => {
             console.log(`\nRow ${err.row}: ${err.error}`);
-            console.log('Data:', JSON.stringify(err.data, null, 2));
+            console.log("Data:", JSON.stringify(err.data, null, 2));
           });
         }
 
-        resolve({ successCount, errorCount, errors });
+        resolve({
+          successCount,
+          errorCount,
+          errors
+        });
       })
-      .on('error', (error) => {
-        console.error('Error reading CSV file:', error);
+      .on("error", (error) => {
+        console.error("Error reading CSV file:", error);
         reject(error);
       });
   });
@@ -194,23 +198,23 @@ async function processCSV(filePath) {
 // Main execution
 async function main() {
   const args = process.argv.slice(2);
-  
+
   if (args.length === 0) {
-    console.log('Usage: node scripts/ingestPartnerRegistrations.js <path-to-csv>');
-    console.log('Example: node scripts/ingestPartnerRegistrations.js ./partner-registrations.csv');
+    console.log("Usage: node scripts/ingestPartnerRegistrations.js <path-to-csv>");
+    console.log("Example: node scripts/ingestPartnerRegistrations.js ./partner-registrations.csv");
     process.exit(1);
   }
 
   const csvFilePath = args[0];
-  
+
   try {
-    console.log('Starting CSV processing...');
+    console.log("Starting CSV processing...");
     await processCSV(csvFilePath);
-    console.log('CSV processing completed successfully!');
+    console.log("CSV processing completed successfully!");
   } catch (error) {
-    console.error('Fatal error:', error);
+    console.error("Fatal error:", error);
     if (error.stack) {
-      console.error('Stack trace:', error.stack);
+      console.error("Stack trace:", error.stack);
     }
     process.exit(1);
   }
