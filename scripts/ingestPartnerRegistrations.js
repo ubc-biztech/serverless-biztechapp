@@ -1,9 +1,11 @@
-const fs = require('fs');
-const csv = require('csv-parser');
-const { v4: uuidv4 } = require('uuid');
-const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, PutCommand } = require('@aws-sdk/lib-dynamodb');
-require('dotenv').config();
+import fs from 'fs';
+import csv from 'csv-parser';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, PutCommand, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
+import { humanId } from 'human-id';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 // Configure AWS SDK v3
 const awsConfig = {
@@ -17,19 +19,19 @@ const awsConfig = {
 const client = new DynamoDBClient(awsConfig);
 const docClient = DynamoDBDocumentClient.from(client);
 
-const REGISTRATIONS_TABLE = 'biztechRegistrations';
 const USERS_TABLE = 'biztechUsers';
 const PROFILES_TABLE = 'biztechProfiles';
+const MEMBERS2026_TABLE = 'biztechMembers2026';
 
 // hardcoded for kickstart purposes
 const EVENT_ID = 'kickstart';
 const YEAR = 2025;
 
-async function updateTables(user, registrationStatus = 'Registered') {
+async function updateTables(user) {
   const timestamp = new Date().toISOString();
-  const registrationId = `${user.email};${EVENT_ID};${YEAR}`;
-  const profileId = uuidv4();
+  const profileID = humanId();
 
+  // we just want to give them cards
   const transactParams = {
     TransactItems: [
       {
@@ -37,35 +39,25 @@ async function updateTables(user, registrationStatus = 'Registered') {
           TableName: USERS_TABLE,
           Item: {
             id: user.email.toLowerCase(),
-            email: user.email.toLowerCase(),
-            firstName: user.firstName,
-            lastName: user.lastName || '',
-            isMember: user.isMember || false,
+            fname: user.fname,
+            lname: user.lname,
+            isMember: true,
             createdAt: timestamp,
             updatedAt: timestamp,
-            ...(user.phone && { phone: user.phone }),
-            ...(user.faculty && { faculty: user.faculty }),
-            ...(user.year && { yearOfStudy: user.year })
           },
           ConditionExpression: 'attribute_not_exists(id)'
         }
       },
       {
         Put: {
-          TableName: REGISTRATIONS_TABLE,
+          TableName: MEMBERS2026_TABLE,
           Item: {
-            id: registrationId,
-            email: user.email.toLowerCase(),
-            fname: user.firstName,
-            lname: user.lastName || '',
-            eventID: EVENT_ID,
-            year: YEAR,
-            registrationStatus,
+            id: user.email.toLowerCase(),
+            profileID,
+            firstName: user.fname,
+            lastName: user.lname,
             createdAt: timestamp,
             updatedAt: timestamp,
-            ...(user.phone && { phone: user.phone }),
-            ...(user.faculty && { faculty: user.faculty }),
-            ...(user.year && { yearOfStudy: user.year })
           },
           ConditionExpression: 'attribute_not_exists(id)'
         }
@@ -74,16 +66,29 @@ async function updateTables(user, registrationStatus = 'Registered') {
         Put: {
           TableName: PROFILES_TABLE,
           Item: {
-            id: user.email.toLowerCase(),
-            profileId,
-            email: user.email.toLowerCase(),
-            firstName: user.firstName,
-            lastName: user.lastName || '',
-            type: 'PARTNER',
+            fname: user.fname,
+            lname: user.lname,
+            type: "PROFILE",
+            compositeID: `PROFILE#${profileID}`,
             createdAt: timestamp,
             updatedAt: timestamp,
-            ...(user.phone && { phone: user.phone }),
-            ...(user.faculty && { faculty: user.faculty })
+            profileType: "Partner",
+            viewableMap: {
+              fname: true,
+              lname: true,
+              pronouns: true,
+              major: true,
+              year: true,
+              profileType: true,
+              hobby1: false,
+              hobby2: false,
+              funQuestion1: false,
+              funQuestion2: false,
+              linkedIn: false,
+              profilePictureURL: false,
+              additionalLink: false,
+              description: false
+            }
           },
           ConditionExpression: 'attribute_not_exists(id)'
         }
@@ -92,7 +97,8 @@ async function updateTables(user, registrationStatus = 'Registered') {
   };
 
   try {
-    await docClient.transactWrite(transactParams);
+    const command = new TransactWriteCommand(transactParams);
+    await docClient.send(command);
     console.log(`Successfully created user, registration, and profile for ${user.email}`);
     return true;
   } catch (error) {
@@ -136,12 +142,9 @@ async function processCSV(filePath) {
           try {
             // ADJUST BASED ON CSV
             const user = {
-              email: row.email || row.Email || row.EMAIL,
-              firstName: row.firstName || row['First Name'] || row['First-Name'] || row.first_name,
-              lastName: row.lastName || row['Last Name'] || row['Last-Name'] || row.last_name,
-              phone: row.phone || row.Phone || row.PHONE,
-              faculty: row.faculty || row.Faculty || row.faculty_name,
-              year: row.year || row.Year || row.year_of_study
+              email: row["Email Address"],
+              fname: row["First Name"],
+              lname: row["Last Name"],
             };
 
             const success = await updateTables(user);
@@ -214,6 +217,4 @@ async function main() {
 }
 
 // Run the script
-if (require.main === module) {
-  main();
-}
+main();
