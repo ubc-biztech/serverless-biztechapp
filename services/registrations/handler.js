@@ -75,9 +75,9 @@ export async function updateHelper(
     fname
   };
 
-   // Handle status logic
-   // supports legacy statuses
-   const { finalApplicationStatus, finalRegistrationStatus } = await processStatusLogic(
+  // Handle status logic
+  // supports legacy statuses
+  const { finalApplicationStatus, finalRegistrationStatus } = await processStatusLogic(
     data,
     existingEvent,
     normalizedEmail,
@@ -87,7 +87,7 @@ export async function updateHelper(
   data.applicationStatus = finalApplicationStatus;
   data.registrationStatus = finalRegistrationStatus;
 
-try {
+  try {
     if (!data.isPartner) {
       await sendEmailNew(
         user,
@@ -162,20 +162,23 @@ const processStatusLogic = async (data, existingEvent, email, createNew) => {
   if (finalApplicationStatus === "ACCEPTED" && finalRegistrationStatus === "REVIEWING") {
     const user = await db.getOne(email, USERS_TABLE);
     const isMember = user?.isMember;
-    const pricing = isMember 
-      ? existingEvent.pricing?.members ?? 0 
+    const pricing = isMember
+      ? existingEvent.pricing?.members ?? 0
       : existingEvent.pricing?.nonMembers ?? 0;
 
     if (pricing === 0) {
       // Free event
-      finalRegistrationStatus = "PENDING"; 
+      finalRegistrationStatus = "PENDING";
     } else {
       // Paid event
-      finalRegistrationStatus = "PAYMENTPENDING"; 
+      finalRegistrationStatus = "PAYMENTPENDING";
     }
   }
 
-  return { finalApplicationStatus, finalRegistrationStatus };
+  return {
+    finalApplicationStatus,
+    finalRegistrationStatus
+  };
 };
 
 function removeDefaultKeys(data) {
@@ -282,7 +285,7 @@ async function createRegistration(
 
 const sendEmailNew = async (user, existingEvent, applicationStatus, registrationStatus, isAcceptancePayment) => {
   // Skip for certain status combinations
-  if (applicationStatus === "REJECTED" || 
+  if (applicationStatus === "REJECTED" ||
       (applicationStatus === "REGISTERED" && registrationStatus === "REVIEWING")) {
     return;
   }
@@ -301,7 +304,7 @@ const sendEmailNew = async (user, existingEvent, applicationStatus, registration
   }
 
   const EmailService = new SESEmailService(awsConfig);
-  
+
   // Determine email type based on status combination
   let emailType = "registration";
   if (applicationStatus === "REGISTERED" && registrationStatus === "REVIEWING") {
@@ -319,7 +322,7 @@ const sendEmailNew = async (user, existingEvent, applicationStatus, registration
   );
 
   // Send calendar invite for completed registrations
-  if (registrationStatus === "COMPLETE" || 
+  if (registrationStatus === "COMPLETE" ||
       (applicationStatus === "ACCEPTED" && registrationStatus === "PENDING")) {
     await EmailService.sendCalendarInvite(existingEvent, user);
   }
@@ -336,10 +339,10 @@ const setInitialStatuses = async (data, eventExists) => {
     // Non-application events
     const user = await db.getOne(data.email, USERS_TABLE);
     const isMember = user?.isMember;
-    const pricing = isMember 
-      ? eventExists.pricing?.members ?? 0 
+    const pricing = isMember
+      ? eventExists.pricing?.members ?? 0
       : eventExists.pricing?.nonMembers ?? 0;
-    
+
     if (pricing > 0) {
       // Paid event
       data.applicationStatus = "INCOMPLETE";
@@ -400,7 +403,7 @@ export const post = async (event, ctx, callback) => {
 
     if (existingReg) {
       // Check for both legacy and new incomplete statuses
-      if (existingReg.registrationStatus === "incomplete" || 
+      if (existingReg.registrationStatus === "incomplete" ||
           existingReg.applicationStatus === "INCOMPLETE" ||
           (existingReg.applicationStatus === "INCOMPLETE" && existingReg.registrationStatus === "PAYMENTPENDING")) {
         await updateHelper(data, false, data.email, data.fname);
@@ -484,6 +487,20 @@ export const put = async (event, ctx, callback) => {
         type: "string"
       }
     });
+
+    // Load existing registration
+    const existingReg = await db.getOne(email, USER_REGISTRATIONS_TABLE, {
+      "eventID;year": `${data.eventID};${Number(data.year)}`
+    });
+
+    // If admin has accepted an application under review, set next step by pricing
+    if (data.applicationStatus === "ACCEPTED" && existingReg?.registrationStatus === "REVIEWING") {
+      const user = await db.getOne(email, USERS_TABLE);
+      const isMember = user?.isMember;
+      const pricing = isMember ? (event.pricing?.members ?? 0)
+        : (event.pricing?.nonMembers ?? 0);
+      data.registrationStatus = pricing === 0 ? "PENDING" : "PAYMENTPENDING";
+    }
 
     // Check if event exists first
     const eventExists = await db.getOne(data.eventID, EVENTS_TABLE, {

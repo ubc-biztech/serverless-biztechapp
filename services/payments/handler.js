@@ -301,9 +301,9 @@ export const webhook = async (event, ctx, callback) => {
       if (currentReg.registrationStatus === "PAYMENTPENDING") {
         updatedApplicationStatus = "ACCEPTED";
         updatedRegistrationStatus = "COMPLETE";
-      } 
+      }
       // HANDLE LEGACY STATUSES
-      else if (currentReg.registrationStatus === "accepted" || 
+      else if (currentReg.registrationStatus === "accepted" ||
                currentReg.registrationStatus === "acceptedPending") {
         updatedApplicationStatus = "ACCEPTED";
         updatedRegistrationStatus = "COMPLETE";
