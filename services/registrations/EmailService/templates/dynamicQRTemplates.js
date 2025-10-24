@@ -35,7 +35,7 @@ export const getDefaultApplicationTemplate = (emailParams) => {
   } = emailParams;
 
   if (registrationStatus === "PENDING" || registrationStatus === "PAYMENTPENDING") {
-    return( `<div style="font-size: 15px; text-align: left;">
+    return(`<div style="font-size: 15px; text-align: left;">
         <div>
             <p>Hello ${fname},</p>
             <p>Your application status for UBC BizTech's ${ename} event is: <b>${applicationStatus}</b></p>
@@ -62,7 +62,7 @@ export const getDefaultApplicationTemplate = (emailParams) => {
         </div>
         </div>`);
   } else {
-    return( `<div style="font-size: 15px; text-align: left;">
+    return(`<div style="font-size: 15px; text-align: left;">
         <div>
             <p>Hello ${fname},</p>
             <p>Your application status for UBC BizTech's ${ename} event is: <b>${applicationStatus}</b>. You can check your application status in your
@@ -88,7 +88,6 @@ export const getDefaultApplicationTemplate = (emailParams) => {
         </div>
         </div>`);
   }
-  
 };
 
 export const getRegisteredQRTemplate = (emailParams) => {

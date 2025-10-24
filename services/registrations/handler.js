@@ -501,7 +501,7 @@ export const put = async (event, ctx, callback) => {
     const existingReg = await db.getOne(email, USER_REGISTRATIONS_TABLE, {
       "eventID;year": `${data.eventID};${Number(data.year)}`
     });
-    
+
 
     if (existingReg && !data.registrationStatus) {
       data.registrationStatus = existingReg.registrationStatus;
