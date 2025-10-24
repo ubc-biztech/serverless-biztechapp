@@ -41,8 +41,8 @@ export async function updateHelper(
   // Normalize email to lowercase
   const normalizedEmail = email.toLowerCase();
 
-  console.log(data);
-  console.log("CloudWatch debugging purposes");
+  // console.log(data);
+  // console.log("CloudWatch debugging purposes");
 
   const id = `${normalizedEmail};${eventIDAndYear};${fname}`;
 
@@ -285,10 +285,6 @@ async function createRegistration(
 
 const sendEmailNew = async (user, existingEvent, applicationStatus, registrationStatus, isAcceptancePayment) => {
   // Skip for certain status combinations
-  if (applicationStatus === "REJECTED" ||
-      (applicationStatus === "REGISTERED" && registrationStatus === "REVIEWING")) {
-    return;
-  }
 
   const userEmail = user.id;
   if (!userEmail) {
@@ -317,6 +313,7 @@ const sendEmailNew = async (user, existingEvent, applicationStatus, registration
   await EmailService.sendDynamicQR(
     existingEvent,
     user,
+    applicationStatus,
     registrationStatus,
     emailType
   );
@@ -345,7 +342,7 @@ const setInitialStatuses = async (data, eventExists) => {
 
     if (pricing > 0) {
       // Paid event
-      data.applicationStatus = "INCOMPLETE";
+      data.applicationStatus = "ACCEPTED";
       data.registrationStatus = "PAYMENTPENDING";
     } else {
       // Free event
@@ -488,19 +485,6 @@ export const put = async (event, ctx, callback) => {
       }
     });
 
-    // Load existing registration
-    const existingReg = await db.getOne(email, USER_REGISTRATIONS_TABLE, {
-      "eventID;year": `${data.eventID};${Number(data.year)}`
-    });
-
-    // If admin has accepted an application under review, set next step by pricing
-    if (data.applicationStatus === "ACCEPTED" && existingReg?.registrationStatus === "REVIEWING") {
-      const user = await db.getOne(email, USERS_TABLE);
-      const isMember = user?.isMember;
-      const pricing = isMember ? (event.pricing?.members ?? 0)
-        : (event.pricing?.nonMembers ?? 0);
-      data.registrationStatus = pricing === 0 ? "PENDING" : "PAYMENTPENDING";
-    }
 
     // Check if event exists first
     const eventExists = await db.getOne(data.eventID, EVENTS_TABLE, {
@@ -521,6 +505,15 @@ export const put = async (event, ctx, callback) => {
 
     if (existingReg && !data.registrationStatus) {
       data.registrationStatus = existingReg.registrationStatus;
+    }
+
+    // If admin has accepted an application under review, set next step by pricing
+    if (data.applicationStatus === "ACCEPTED" && existingReg?.registrationStatus === "REVIEWING") {
+      const user = await db.getOne(email, USERS_TABLE);
+      const isMember = user?.isMember;
+      const pricing = isMember ? (eventExists.pricing?.members ?? 0)
+        : (eventExists.pricing?.nonMembers ?? 0);
+      data.registrationStatus = pricing === 0 ? "PENDING" : "PAYMENTPENDING";
     }
 
     const response = await updateHelper(
