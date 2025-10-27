@@ -1,7 +1,7 @@
 import fs from "fs";
 import csv from "csv-parser";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
 import { humanId } from "human-id";
 import dotenv from "dotenv";
 
@@ -22,10 +22,6 @@ const docClient = DynamoDBDocumentClient.from(client);
 const USERS_TABLE = "biztechUsers";
 const PROFILES_TABLE = "biztechProfiles";
 const MEMBERS2026_TABLE = "biztechMembers2026";
-
-// hardcoded for kickstart purposes
-const EVENT_ID = "kickstart";
-const YEAR = 2025;
 
 async function updateTables(user) {
   const timestamp = new Date().toISOString();
@@ -142,7 +138,7 @@ async function processCSV(filePath) {
           try {
             // ADJUST BASED ON CSV
             const user = {
-              email: row["Email Address"],
+              email: row["Email Address"]?.trim().toLowerCase() || "", // sanitize compendium emails
               fname: row["First Name"],
               lname: row["Last Name"],
             };
