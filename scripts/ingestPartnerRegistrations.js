@@ -69,18 +69,20 @@ async function updateTables(user) {
             createdAt: timestamp,
             updatedAt: timestamp,
             profileType: "Partner",
+            linkedIn: user.linkedin,
             viewableMap: {
+              // only set to true what should be SEEN when scanning NFC
               fname: true,
               lname: true,
-              pronouns: true,
-              major: true,
-              year: true,
-              profileType: true,
+              pronouns: false,
+              major: false,
+              year: false,
+              profileType: false,
               hobby1: false,
               hobby2: false,
               funQuestion1: false,
               funQuestion2: false,
-              linkedIn: false,
+              linkedIn: true, // a way for participants to network
               profilePictureURL: false,
               additionalLink: false,
               description: false
@@ -141,6 +143,7 @@ async function processCSV(filePath) {
               email: row["Email Address"]?.trim().toLowerCase() || "", // sanitize compendium emails
               fname: row["First Name"],
               lname: row["Last Name"],
+              linkedin: row["LinkedIn"] // wait for actual partnerships CSV
             };
 
             const success = await updateTables(user);
