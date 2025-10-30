@@ -32,6 +32,7 @@ provider:
         - dynamodb:PutItem
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
+        - dynamodb:Query
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2025${self:provider.environment.ENVIRONMENT}"
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2026${self:provider.environment.ENVIRONMENT}"
