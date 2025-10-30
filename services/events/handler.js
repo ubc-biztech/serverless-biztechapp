@@ -400,8 +400,8 @@ export const get = async (event, ctx, callback) => {
 // GET events/getActiveEvent
 export const getActiveEvent = async (event, ctx, callback) => {
   try {
-    const now = Date.now();
-    const nowISO = new Date(now).toISOString();
+    // already now by default
+    const nowISO = new Date().toISOString();
 
     const filters = {
       FilterExpression: "startDate <= :now AND endDate >= :now",
