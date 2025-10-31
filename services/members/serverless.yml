@@ -32,9 +32,11 @@ provider:
         - dynamodb:PutItem
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
+        - dynamodb:Query
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2025${self:provider.environment.ENVIRONMENT}"
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2026${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2026${self:provider.environment.ENVIRONMENT}/index/profile-query"
 
 custom: ${file(../../serverless.common.yml):custom}
 
@@ -59,6 +61,20 @@ functions:
             parameters:
               path:
                 email: true
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  memberGetEmail:
+    handler: handler.getEmailFromProfile
+    events:
+      - http:
+          path: members/email/{profileID}
+          method: get
+          request:
+            parameters:
+              path:
+                profileID: true
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS

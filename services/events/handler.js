@@ -2,7 +2,7 @@ import eventHelpers from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
 import {
-  alphabeticalComparer, isEmpty
+  alphabeticalComparer, dateComparer, isEmpty
 } from "../../lib/utils";
 import {
   MAX_BATCH_ITEM_COUNT
@@ -392,6 +392,37 @@ export const get = async (event, ctx, callback) => {
     if (!response || !response.statusCode || !response.headers)
       response = helpers.createResponse(502);
 
+    callback(null, err);
+    return null;
+  }
+};
+
+// GET events/getActiveEvent
+export const getActiveEvent = async (event, ctx, callback) => {
+  try {
+    // already now by default
+    const nowISO = new Date().toISOString();
+
+    const filters = {
+      FilterExpression: "startDate <= :now AND endDate >= :now",
+      ExpressionAttributeValues: {
+        ":now": nowISO
+      }
+    };
+
+    let events = await db.scan(EVENTS_TABLE, filters, "event-overview");
+
+    events.sort(dateComparer("startDate"));
+    const activeEvent = events.length > 0 ? events[0] : null;
+
+    const response = helpers.createResponse(
+      200,
+      activeEvent
+    );
+    callback(null, response);
+    return null;
+  } catch (err) {
+    console.error(err);
     callback(null, err);
     return null;
   }
