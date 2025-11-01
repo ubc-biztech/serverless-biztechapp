@@ -1,12 +1,8 @@
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
-import {
-  isEmpty, isValidEmail
-} from "../../lib/utils";
+import { isEmpty, isValidEmail } from "../../lib/utils";
 import docClient from "../../lib/docClient";
-import {
-  MEMBERS2026_TABLE
-} from "../../constants/tables";
+import { MEMBERS2026_TABLE } from "../../constants/tables";
 
 export const create = async (event, ctx, callback) => {
   const userID = event.requestContext.authorizer.claims.email.toLowerCase();
@@ -65,6 +61,45 @@ export const create = async (event, ctx, callback) => {
   }
 };
 
+export const getEmailFromProfile = async (event, ctx, callback) => {
+  try {
+    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+
+    if (!userID.endsWith("@ubcbiztech.com"))
+      throw helpers.createResponse(403, {
+        message: "unauthorized for this action"
+      });
+
+    if (!event.pathParameters || !event.pathParameters.profileID)
+      throw helpers.missingIdQueryResponse("profileID");
+
+    const profileID = event.pathParameters.profileID;
+
+    const member = await db.query(MEMBERS2026_TABLE, "profile-query", {
+      expression: "#profileID = :profileID",
+      expressionNames: {
+        "#profileID": "profileID"
+      },
+      expressionValues: {
+        ":profileID": `${profileID}`
+      }
+    });
+
+    if (isEmpty(member[0])) throw helpers.notFoundResponse("member", profileID);
+    console.log(member);
+
+    const { id } = member[0];
+
+    const response = helpers.createResponse(200, { email: id });
+    callback(null, response);
+    return null;
+  } catch (err) {
+    console.log(err);
+    callback(null, err);
+    return null;
+  }
+};
+
 export const get = async (event, ctx, callback) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
@@ -104,8 +139,7 @@ export const getAll = async (event, ctx, callback) => {
     const members = await db.scan(MEMBERS2026_TABLE);
 
     // re-organize the response
-    let response = {
-    };
+    let response = {};
     if (members !== null) response = helpers.createResponse(200, members);
 
     // return the response object
