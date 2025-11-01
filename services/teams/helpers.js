@@ -174,7 +174,10 @@ export default {
 
     await db.updateDBCustom(updateParams);
 
-    return { success: true, message: `User ${memberID} has left the team.` };
+    return {
+      success: true,
+      message: `User ${memberID} has left the team.`
+    };
   },
 
 
@@ -250,7 +253,10 @@ export default {
 
     await db.updateDBCustom(updateParams);
 
-    return { success: true, message: `User ${memberID} joined team ${team.teamName}` };
+    return {
+      success: true,
+      message: `User ${memberID} joined team ${team.teamName}`
+    };
   },
 
 
@@ -280,7 +286,7 @@ export default {
               403
             );
           }
-          
+
           // hardcoded for kickstart 2025
           if (res.registrationStatus !== "acceptedComplete") {
             throw helpers.inputError(

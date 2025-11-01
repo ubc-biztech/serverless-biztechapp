@@ -66,20 +66,20 @@ export function verifyRequestSignature(req) {
 export function applicationCommandRouter(name, body) {
   const { member } = body;
   switch (name) {
-    case "verify":
-      return handleVerifyCommand(member);
+  case "verify":
+    return handleVerifyCommand(member);
 
-    default:
-      return {
-        statusCode: 200,
-        body: JSON.stringify({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            content: `Unknown command: /${body.name}`,
-            flags: 64
-          }
-        })
-      };
+  default:
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: `Unknown command: /${body.name}`,
+          flags: 64
+        }
+      })
+    };
   }
 }
 

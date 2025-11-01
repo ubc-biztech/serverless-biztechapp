@@ -122,7 +122,7 @@ export const leaveTeam = async (event, ctx, callback) => {
     callback(null, errorResponse);
     return errorResponse;
   }
-}
+};
 
 export const joinTeam = async (event, ctx, callback) => {
   try {
@@ -165,7 +165,7 @@ export const joinTeam = async (event, ctx, callback) => {
     callback(null, errorResponse);
     return errorResponse;
   }
-}
+};
 
 export const makeTeam = async (event, ctx, callback) => {
   try {
