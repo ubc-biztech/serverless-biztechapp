@@ -86,6 +86,20 @@ functions:
           path: team/addQuestions
           method: put
           cors: true
+  joinTeam:
+    handler: handler.joinTeam
+    events:
+      - http:
+          path: team/join
+          method: post
+          cors: true
+  leaveTeam:
+    handler: handler.leaveTeam
+    events:
+      - http:
+          path: team/leave
+          method: post
+          cors: true
   makeTeam:
     handler: handler.makeTeam
     events:
