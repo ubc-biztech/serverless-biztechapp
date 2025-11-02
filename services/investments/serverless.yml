@@ -44,4 +44,6 @@ functions:
           path: investments/invest
           method: post
           cors: true
-          authorizer: aws_iam
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
