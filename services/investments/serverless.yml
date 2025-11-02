@@ -34,6 +34,9 @@ provider:
         - dynamodb:DeleteItem
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechInvestments${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechTeams${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechRegistrations${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechInvestments${self:provider.environment.ENVIRONMENT}/index/team-investments"
 
 custom: ${file(../../serverless.common.yml):custom}
 
@@ -48,3 +51,17 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  teamStatus:
+    handler: handler.teamStatus
+    events:
+      - http:
+          path: investments/teamStatus/{teamId}
+          method: get
+          request:
+            path:
+              teamId: true
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+

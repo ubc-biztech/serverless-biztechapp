@@ -117,3 +117,43 @@ export const invest = async (event, ctx, callback) => {
   });
 };
 
+export const teamStatus = async (event, ctx, callback) => {
+  /*
+    Responsible for:
+    - Fetching team's current funding
+    - Fetching all individual investments with comments
+    */
+
+    if (!event.pathParameters || !event.pathParameters.teamId) {
+      return helpers.missingIdQueryResponse("teamId");
+    }
+
+    const teamId = event.pathParameters.teamId;
+
+    const team = await db.getOne(teamId, TEAMS_TABLE, {
+        "eventID;year": "kickstart;2025"
+    });
+
+    if (!team) {
+        return helpers.createResponse(400, {
+            message: "Team not found for event"
+        });
+    }
+
+    // Scan all investments made into this team
+    // Utilize GSI
+    const teamInvestments = await db.query(INVESTMENTS_TABLE, "team-investments", {
+        expression: "#teamId = :teamId",
+        expressionNames: {
+        "#teamId": "teamId"
+        },
+        expressionValues: {
+        ":teamId": `${teamId}`
+        }
+    });
+
+    return helpers.createResponse(200, {
+        funding: team.funding,
+        investments: teamInvestments // each entry includes comment, investorId, investorName, amount
+    });
+};
