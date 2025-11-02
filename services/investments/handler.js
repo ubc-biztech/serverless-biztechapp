@@ -41,24 +41,35 @@ export const invest = async (event, ctx, callback) => {
     "eventID;year": "kickstart;2025" // hardcoded
   });
 
+  // only allow valid investors
   if (!investor) {
     return helpers.createResponse(400, {
       message: "Investor not found or not registered for event"
     });
   }
 
+  // only allow valid teams
   if (!team) {
     return helpers.createResponse(400, {
       message: "Team not found for event"
     });
   }
 
+  // investor cannot invest in their own team
+  if (investor.teamId === team.id) {
+    return helpers.createResponse(400, {
+      message: "Investor cannot invest in their own team"
+    });
+  }
+
+  // investor cannot invest more than their remaining balance
   if (data.amount > investor.balance) {
     return helpers.createResponse(400, {
       message: "Investor does not have enough balance"
     });
   }
 
+  // 1. update investor balance
   const updateInvestorPromise = db.updateDBCustom({
     TableName: USER_REGISTRATIONS_TABLE + (process.env.ENVIRONMENT || ""),
     Key: {
@@ -73,6 +84,7 @@ export const invest = async (event, ctx, callback) => {
     ReturnValues: "UPDATED_NEW",
   });
 
+  // 2. update team funding
   const updateTeamPromise = db.updateDBCustom({
     TableName: TEAMS_TABLE + (process.env.ENVIRONMENT || ""),
     Key: {
@@ -87,15 +99,15 @@ export const invest = async (event, ctx, callback) => {
     ReturnValues: "UPDATED_NEW",
   });
 
+  // 3. create investment
   const createInvestmentPromise = db.create({
-    id: uuidv4(), // partition key (?)
-    ["investor#team"]: `${data.investorId}#${data.teamId}`, // sort key (?)
+    id: uuidv4(), // partition key
+    ["eventID;year"]: "kickstart;2025", // sort key
     investorId: data.investorId,
     investorName: investor.fname,
     teamId: data.teamId,
     amount: data.amount,
     comment: data.comment,
-    ["eventID;year"]: "kickstart;2025",
   }, INVESTMENTS_TABLE);
 
   await Promise.all([updateInvestorPromise, updateTeamPromise, createInvestmentPromise]);

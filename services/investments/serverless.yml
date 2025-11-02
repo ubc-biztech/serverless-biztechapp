@@ -1,4 +1,4 @@
-service: biztech-audit
+service: biztechApi-investments
 tenant: ianmh
 app: biztechapp
 
@@ -6,6 +6,7 @@ plugins:
   - serverless-dynamodb
   - serverless-offline
   - serverless-domain-manager
+  - serverless-bundle
   - serverless-prune-plugin
   - serverless-mocha-plugin
 
@@ -42,7 +43,23 @@ functions:
     handler: handler.invest
     events:
       - http:
-          path: invest
+          path: investments/invest
+          method: post
+          cors: true
+          authorizer: aws_iam
+  teamStatus:
+    handler: handler.teamStatus
+    events:
+      - http:
+          path: investments/teamStatus
+          method: post
+          cors: true
+          authorizer: aws_iam
+  userStatus:
+    handler: handler.userStatus
+    events:
+      - http:
+          path: investments/userStatus
           method: post
           cors: true
           authorizer: aws_iam
