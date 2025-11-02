@@ -24,6 +24,8 @@ provider:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
     restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
 
+custom: ${file(../../serverless.common.yml):custom}
+
   iamRoleStatements:
     - Effect: Allow
       Action:
