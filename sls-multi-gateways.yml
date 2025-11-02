@@ -49,3 +49,6 @@ services:
   - srvName: bots
     srvPath: bots
     srvSource: services/bots
+  - srvName: audit
+    srvPath: audit
+    srvSource: services/audit 
