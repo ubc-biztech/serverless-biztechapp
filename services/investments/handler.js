@@ -1,7 +1,7 @@
 import helpers from "../../lib/handlerHelpers.js";
 import db from "../../lib/db.js";
-import { v4 as uuidv4 } from "uuid";
 import { TEAMS_TABLE, USER_REGISTRATIONS_TABLE, INVESTMENTS_TABLE } from "../../constants/tables.js";
+import crypto from "crypto";
 
 export const invest = async (event, ctx, callback) => {
   /*
@@ -100,7 +100,7 @@ export const invest = async (event, ctx, callback) => {
 
   // 3. create investment
   const createInvestmentPromise = db.create({
-    id: uuidv4(), // partition key
+    id: crypto.randomUUID(), // partition key
     ["eventID;year"]: "kickstart;2025", // sort key
     investorId: data.investorId,
     investorName: investor.fname,
