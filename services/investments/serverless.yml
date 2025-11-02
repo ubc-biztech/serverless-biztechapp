@@ -5,6 +5,7 @@ app: biztechapp
 plugins:
   - serverless-dynamodb
   - serverless-offline
+  - serverless-bundle
   - serverless-domain-manager
   - serverless-prune-plugin
   - serverless-mocha-plugin
