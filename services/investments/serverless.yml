@@ -23,9 +23,6 @@ provider:
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
     restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
-
-custom: ${file(../../serverless.common.yml):custom}
-
   iamRoleStatements:
     - Effect: Allow
       Action:
@@ -37,6 +34,8 @@ custom: ${file(../../serverless.common.yml):custom}
         - dynamodb:DeleteItem
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechInvestments${self:provider.environment.ENVIRONMENT}"
+
+custom: ${file(../../serverless.common.yml):custom}
 
 functions:
   invest:
