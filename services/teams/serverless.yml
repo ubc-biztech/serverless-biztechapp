@@ -86,6 +86,26 @@ functions:
           path: team/addQuestions
           method: put
           cors: true
+  joinTeam:
+    handler: handler.joinTeam
+    events:
+      - http:
+          path: team/join
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  leaveTeam:
+    handler: handler.leaveTeam
+    events:
+      - http:
+          path: team/leave
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   makeTeam:
     handler: handler.makeTeam
     events:
@@ -93,6 +113,9 @@ functions:
           path: team/make
           method: post
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   getTeamFromUserID:
     handler: handler.getTeamFromUserID
     events:

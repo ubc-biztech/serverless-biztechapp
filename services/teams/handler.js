@@ -85,6 +85,88 @@ export const updateTeamPoints = async (event, ctx, callback) => {
   }
 };
 
+export const leaveTeam = async (event, ctx, callback) => {
+  try {
+    const data = JSON.parse(event.body);
+
+    helpers.checkPayloadProps(data, {
+      memberID: {
+        required: true,
+        type: "string"
+      },
+      eventID: {
+        required: true,
+        type: "string"
+      },
+      year: {
+        required: true,
+        type: "number"
+      }
+    });
+
+    await teamHelpers.leaveTeam(data.memberID, data.eventID, data.year, data.teamID);
+
+    const response = helpers.createResponse(200, {
+      message: "Successfully left team.",
+      response: data
+    });
+    callback(null, response);
+    return response;
+  } catch (error) {
+    console.error("Error leaving team:", error);
+
+    const errorResponse = helpers.createResponse(500, {
+      message: "Failed to leave team",
+      error: error.message
+    });
+    callback(null, errorResponse);
+    return errorResponse;
+  }
+};
+
+export const joinTeam = async (event, ctx, callback) => {
+  try {
+    const data = JSON.parse(event.body);
+
+    helpers.checkPayloadProps(data, {
+      memberID: {
+        required: true,
+        type: "string"
+      },
+      eventID: {
+        required: true,
+        type: "string"
+      },
+      year: {
+        required: true,
+        type: "number"
+      },
+      teamID: {
+        required: true,
+        type: "string"
+      }
+    });
+
+    await teamHelpers.joinTeam(data.memberID, data.eventID, data.year, data.teamID);
+
+    const response = helpers.createResponse(200, {
+      message: "Successfully joined team.",
+      response: data
+    });
+    callback(null, response);
+    return response;
+  } catch (error) {
+    console.error("Error joining team:", error);
+
+    const errorResponse = helpers.createResponse(500, {
+      message: "Failed to join team",
+      error: error.message
+    });
+    callback(null, errorResponse);
+    return errorResponse;
+  }
+};
+
 export const makeTeam = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
