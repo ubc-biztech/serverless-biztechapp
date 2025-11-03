@@ -322,6 +322,11 @@ export default {
       }
     };
 
+    // HARDCODED FOR KICKSTART PURPOSES
+    if (eventID === "kickstart" && year === 2025) {
+      params.funding = 0;
+    }
+
     try {
       // Create the new team=
       await db.put(params, TEAMS_TABLE, true);
