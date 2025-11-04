@@ -22,6 +22,7 @@ const docClient = DynamoDBDocumentClient.from(client);
 const USERS_TABLE = "biztechUsers";
 const PROFILES_TABLE = "biztechProfiles";
 const MEMBERS2026_TABLE = "biztechMembers2026";
+const USER_REGISTRATIONS_TABLE = "biztechRegistrations";
 
 // NOTE: Usage of this is mainly for kickstart;2025 event
 async function updateTables(user) {
