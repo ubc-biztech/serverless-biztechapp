@@ -98,6 +98,7 @@ export const handleConnection = async (userID, connProfileID, timestamp) => {
     compositeID: `${TYPES.PROFILE}#${userProfileID}`,
     type: `${TYPES.CONNECTION}#${connProfileID}`,
     connectionID: connProfileID,
+    connectionProfileType: connProfile.profileType, // connProfile is the target here
     createdAt: timestamp,
     fname: connProfile.fname,
     lname: connProfile.lname,
@@ -131,6 +132,8 @@ export const handleConnection = async (userID, connProfileID, timestamp) => {
   const connPut = {
     compositeID: `${TYPES.PROFILE}#${connProfileID}`,
     type: `${TYPES.CONNECTION}#${userProfileID}`,
+    connectionID: userProfileID,
+    connectionProfileType: userProfile.profileType, // userProfile is the target here
     createdAt: timestamp,
     fname: userProfile.fname,
     lname: userProfile.lname,
