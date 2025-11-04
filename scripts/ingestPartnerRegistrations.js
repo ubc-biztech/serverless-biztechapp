@@ -23,6 +23,7 @@ const USERS_TABLE = "biztechUsers";
 const PROFILES_TABLE = "biztechProfiles";
 const MEMBERS2026_TABLE = "biztechMembers2026";
 
+// NOTE: Usage of this is mainly for kickstart;2025 event
 async function updateTables(user) {
   const timestamp = new Date().toISOString();
   const profileID = humanId();
@@ -30,6 +31,7 @@ async function updateTables(user) {
   // we just want to give them cards
   const transactParams = {
     TransactItems: [
+      // 1. Add them to users so they can log in
       {
         Put: {
           TableName: USERS_TABLE,
@@ -44,6 +46,7 @@ async function updateTables(user) {
           ConditionExpression: "attribute_not_exists(id)"
         }
       },
+      // 2. Give them memberships for NFC cards
       {
         Put: {
           TableName: MEMBERS2026_TABLE,
@@ -58,6 +61,7 @@ async function updateTables(user) {
           ConditionExpression: "attribute_not_exists(id)"
         }
       },
+      // 3. Create a profile for them
       {
         Put: {
           TableName: PROFILES_TABLE,
@@ -68,23 +72,40 @@ async function updateTables(user) {
             compositeID: `PROFILE#${profileID}`,
             createdAt: timestamp,
             updatedAt: timestamp,
-            profileType: "Partner",
+            profileType: "PARTNER",
+            linkedIn: user.linkedin,
             viewableMap: {
               fname: true,
               lname: true,
-              pronouns: true,
-              major: true,
-              year: true,
-              profileType: true,
+              pronouns: false,
+              major: false,
+              year: false,
+              profileType: true, // for attendees to see if it's a partner
               hobby1: false,
               hobby2: false,
               funQuestion1: false,
               funQuestion2: false,
-              linkedIn: false,
+              linkedIn: true, // for attendees to see partner's linkedin
               profilePictureURL: false,
               additionalLink: false,
               description: false
             }
+          },
+          ConditionExpression: "attribute_not_exists(id)"
+        }
+      },
+      // 4. Create a registration for kickstart so they can invest (partner-flagged investment)
+      {
+        Put: {
+          TableName: USER_REGISTRATIONS_TABLE,
+          Item: {
+            id: user.email.toLowerCase(),
+            ["eventID;year"]: "kickstart;2025",
+            registrationStatus: "acceptedComplete",
+            isPartner: true, // flag as partner investment
+            fname: user.fname,
+            createdAt: timestamp,
+            updatedAt: timestamp,
           },
           ConditionExpression: "attribute_not_exists(id)"
         }
@@ -141,6 +162,7 @@ async function processCSV(filePath) {
               email: row["Email Address"]?.trim().toLowerCase() || "", // sanitize compendium emails
               fname: row["First Name"],
               lname: row["Last Name"],
+              linkedin: row["LinkedIn"]
             };
 
             const success = await updateTables(user);
