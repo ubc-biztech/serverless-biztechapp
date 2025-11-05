@@ -75,10 +75,13 @@ async function updateTables(user) {
             updatedAt: timestamp,
             profileType: "PARTNER",
             linkedIn: user.linkedin,
+            pronouns: user.pronouns,
+            company: user.company,
+            position: user.position,
             viewableMap: {
               fname: true,
               lname: true,
-              pronouns: false,
+              pronouns: true,
               major: false,
               year: false,
               profileType: true, // for attendees to see if it's a partner
@@ -89,7 +92,9 @@ async function updateTables(user) {
               linkedIn: true, // for attendees to see partner's linkedin
               profilePictureURL: false,
               additionalLink: false,
-              description: false
+              description: false,
+              company: true,
+              position: true
             }
           },
           ConditionExpression: "attribute_not_exists(id)"
@@ -118,6 +123,7 @@ async function updateTables(user) {
     const command = new TransactWriteCommand(transactParams);
     await docClient.send(command);
     console.log(`Successfully created user, registration, and profile for ${user.email}`);
+    console.log(`Profile ID: ${profileID}`)
     return true;
   } catch (error) {
     if (error.name === "ConditionalCheckFailedException") {
@@ -163,7 +169,10 @@ async function processCSV(filePath) {
               email: row["Email Address"]?.trim().toLowerCase() || "", // sanitize compendium emails
               fname: row["First Name"],
               lname: row["Last Name"],
-              linkedin: row["LinkedIn"]
+              pronouns: row["Pronouns"],
+              linkedin: row["LinkedIn"],
+              company: row["What organization will you be representing?"], // adjust
+              position: row["What is your current role?"] // adjust
             };
 
             const success = await updateTables(user);
