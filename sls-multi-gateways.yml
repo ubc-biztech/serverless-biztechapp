@@ -49,3 +49,6 @@ services:
   - srvName: bots
     srvPath: bots
     srvSource: services/bots
+  - srvName: investments
+    srvPath: investments
+    srvSource: services/investments

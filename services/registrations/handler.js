@@ -200,6 +200,11 @@ async function createRegistration(
       updateObject["createdAt"] = new Date().getTime();
     }
 
+    // HARCODED FOR KICKSTART 2025
+    if (eventIDAndYear === "kickstart;2025") {
+      updateObject["balance"] = 10000; // discuss w Gautham
+    }
+
     let conditionExpression =
       "attribute_exists(id) and attribute_exists(#eventIDYear)";
     // if we are creating a new object, the condition expression needs to be different
