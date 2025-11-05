@@ -123,7 +123,7 @@ async function updateTables(user) {
     const command = new TransactWriteCommand(transactParams);
     await docClient.send(command);
     console.log(`Successfully created user, registration, and profile for ${user.email}`);
-    console.log(`Profile ID: ${profileID}`)
+    console.log(`Profile ID: ${profileID}`);
     return true;
   } catch (error) {
     if (error.name === "ConditionalCheckFailedException") {
