@@ -108,6 +108,7 @@ export const invest = async (event, ctx, callback) => {
     amount: data.amount,
     comment: data.comment,
     isPartner: investor.isPartner ?? false, // differentiate for judging
+    createdAt: new Date().getTime(),
   }, INVESTMENTS_TABLE);
 
   await Promise.all([updateInvestorPromise, updateTeamPromise, createInvestmentPromise]);
