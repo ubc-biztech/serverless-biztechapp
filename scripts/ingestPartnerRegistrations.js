@@ -26,7 +26,7 @@ const USER_REGISTRATIONS_TABLE = "biztechRegistrations";
 
 // NOTE: Usage of this is mainly for kickstart;2025 event
 async function updateTables(user) {
-  const timestamp = new Date().toISOString();
+  const timestamp = new Date().getTime();
   const profileID = humanId();
 
   // we just want to give them cards
