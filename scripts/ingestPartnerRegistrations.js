@@ -19,10 +19,10 @@ const awsConfig = {
 const client = new DynamoDBClient(awsConfig);
 const docClient = DynamoDBDocumentClient.from(client);
 
-const USERS_TABLE = "biztechUsers";
-const PROFILES_TABLE = "biztechProfiles";
-const MEMBERS2026_TABLE = "biztechMembers2026";
-const USER_REGISTRATIONS_TABLE = "biztechRegistrations";
+const USERS_TABLE = "biztechUsers" + (process.env.ENVIRONMENT || "");
+const PROFILES_TABLE = "biztechProfiles" + (process.env.ENVIRONMENT || "");
+const MEMBERS2026_TABLE = "biztechMembers2026" + (process.env.ENVIRONMENT || "");
+const USER_REGISTRATIONS_TABLE = "biztechRegistrations" + (process.env.ENVIRONMENT || "");
 
 // NOTE: Usage of this is mainly for kickstart;2025 event
 async function updateTables(user) {
