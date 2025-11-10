@@ -105,6 +105,7 @@ export const invest = async (event, ctx, callback) => {
     investorId: data.investorId,
     investorName: investor.fname,
     teamId: data.teamId,
+    teamName: team.teamName,
     amount: data.amount,
     comment: data.comment,
     isPartner: investor.isPartner ?? false, // differentiate for judging
