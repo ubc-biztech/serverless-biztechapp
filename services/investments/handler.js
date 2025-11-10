@@ -158,3 +158,32 @@ export const teamStatus = async (event, ctx, callback) => {
     investments: teamInvestments // each entry includes comment, investorId, investorName, amount
   });
 };
+
+export const investments = async (event, ctx, callback) => {
+  /*
+  Responsible for:
+  - Fetching investments with optional limit, sorted by most recent first
+  - Can limit based on query param (e.g. ?limit=4)
+  */
+
+  try {
+    const investments = await db.scan(INVESTMENTS_TABLE);
+
+    const limit = event.queryStringParameters?.limit ? parseInt(event.queryStringParameters.limit) : undefined;
+
+    const data = investments.sort((a, b) => {
+      return b.createdAt - a.createdAt;
+    });
+
+    if (!limit || isNaN(limit) || limit < 0) {
+      // default to returning all
+      return helpers.createResponse(200, data);
+    }
+
+    return helpers.createResponse(200, data.slice(0, limit));
+  } catch (error) {
+    return helpers.createResponse(500, {
+      message: "Internal Server Error"
+    });
+  }
+};
