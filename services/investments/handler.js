@@ -179,11 +179,11 @@ export const investments = async (event, ctx, callback) => {
       // default to returning all
       return helpers.createResponse(200, data);
     }
-    
+
     return helpers.createResponse(200, data.slice(0, limit));
   } catch (error) {
     return helpers.createResponse(500, {
       message: "Internal Server Error"
     });
   }
-}
+};
