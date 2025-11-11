@@ -37,6 +37,7 @@ provider:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechTeams${self:provider.environment.ENVIRONMENT}"
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechRegistrations${self:provider.environment.ENVIRONMENT}"
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechInvestments${self:provider.environment.ENVIRONMENT}/index/team-investments"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechInvestments${self:provider.environment.ENVIRONMENT}/index/individual-investments"
 
 custom: ${file(../../serverless.common.yml):custom}
 
@@ -60,6 +61,19 @@ functions:
           request:
             path:
               teamId: true
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  investorStatus:
+    handler: handler.investorStatus
+    events:
+      - http:
+          path: investments/investorStatus/{investorId}
+          method: get
+          request:
+            path:
+              investorId: true
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS

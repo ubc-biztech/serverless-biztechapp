@@ -188,3 +188,43 @@ export const investments = async (event, ctx, callback) => {
     });
   }
 };
+
+export const investorStatus = async (event, ctx, callback) => {
+  /*
+  Responsible for:
+  - Fetching individual's balance left
+  - Fetching all investments made by individual
+  */
+
+  if (!event.pathParameters || !event.pathParameters.investorId) {
+    return helpers.missingIdQueryResponse("investorId");
+  }
+
+  const investorId = event.pathParameters.investorId;
+
+  const investor = await db.getOne(investorId, USER_REGISTRATIONS_TABLE, {
+    "eventID;year": "kickstart;2025"
+  });
+
+  if (!investor) {
+    return helpers.createResponse(400, {
+      message: "Investor not found for event"
+    });
+  }
+
+  // scan all investments made by this investor, utilize GSI
+  const investorInvestments = await db.query(INVESTMENTS_TABLE, "individual-investments", {
+    expression: "#investorId = :investorId",
+    expressionNames: {
+      "#investorId": "investorId"
+    },
+    expressionValues: {
+      ":investorId": `${investorId}`
+    }
+  });
+
+  return helpers.createResponse(200, {
+    balance: investor.balance,
+    investments: investorInvestments // each entry includes comment, teamId, teamName, amount
+  });
+};
