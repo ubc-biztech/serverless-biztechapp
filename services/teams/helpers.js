@@ -195,6 +195,7 @@ export default {
       );
     }
 
+    // TODO: confirm whether creating team before checking in is allowed
     if (registration.registrationStatus !== "acceptedComplete" && registration.checkedIn !== "checkedIn") {
       throw helpers.inputError(
         `User ${memberID} has not confirmed their spot or has not checked in for event ${eventID_year}`,
@@ -287,12 +288,13 @@ export default {
             );
           }
 
+          // TODO: confirm whether creating team before checking in is allowed
           // hardcoded for kickstart 2025
-          if (res.registrationStatus !== "acceptedComplete") {
+          if (res.registrationStatus !== "acceptedComplete" && res.registrationStatus !== "checkedIn") {
             throw helpers.inputError(
               "User " +
                 memberID +
-                " is not has not confirmed their spot for event " +
+                " is not has not confirmed their spot or checked in for event " +
                 eventID_year,
               403
             );
