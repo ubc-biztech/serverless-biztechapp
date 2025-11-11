@@ -213,7 +213,7 @@ export const investorStatus = async (event, ctx, callback) => {
   }
 
   // scan all investments made by this investor, utilize GSI
-  const investorInvestments = await db.query(INVESTMENTS_TABLE, "individual-investments", {
+  const investorInvestments = await db.query(INVESTMENTS_TABLE, "investor-investments", {
     expression: "#investorId = :investorId",
     expressionNames: {
       "#investorId": "investorId"
