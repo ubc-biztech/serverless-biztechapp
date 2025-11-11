@@ -195,9 +195,9 @@ export default {
       );
     }
 
-    if (registration.registrationStatus !== "acceptedComplete") {
+    if (registration.registrationStatus !== "acceptedComplete" && registration.checkedIn !== "checkedIn") {
       throw helpers.inputError(
-        `User ${memberID} has not confirmed their spot for event ${eventID_year}`,
+        `User ${memberID} has not confirmed their spot or has not checked in for event ${eventID_year}`,
         403
       );
     }
