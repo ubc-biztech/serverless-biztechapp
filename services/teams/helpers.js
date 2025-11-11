@@ -196,7 +196,7 @@ export default {
     }
 
     // TODO: confirm whether creating team before checking in is allowed
-    if (registration.registrationStatus !== "acceptedComplete" && registration.checkedIn !== "checkedIn") {
+    if (registration.registrationStatus !== "acceptedComplete" && registration.registrationStatus !== "checkedIn") {
       throw helpers.inputError(
         `User ${memberID} has not confirmed their spot or has not checked in for event ${eventID_year}`,
         403
