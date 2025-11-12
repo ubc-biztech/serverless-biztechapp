@@ -104,7 +104,7 @@ export const leaveTeam = async (event, ctx, callback) => {
       }
     });
 
-    await teamHelpers.leaveTeam(data.memberID, data.eventID, data.year, data.teamID);
+    await teamHelpers.leaveTeam(data.memberID, data.eventID, data.year);
 
     const response = helpers.createResponse(200, {
       message: "Successfully left team.",
