@@ -142,8 +142,13 @@ export default {
     // Remove member from the team
     team.memberIDs = team.memberIDs.filter((id) => id !== memberID);
 
-    // TODO: delete team if empty ?
-    await this._putTeam(team, false);
+    if (team.memberIDs.length === 0) {
+      await db.deleteOne(team.id, TEAMS_TABLE, {
+        "eventID;year": eventID_year
+      });
+    } else {
+      await this._putTeam(team, false);
+    }
 
     // Remove teamID from user registration
     registration.teamID = "";
@@ -342,17 +347,7 @@ export default {
           "eventID;year": eventID_year
         });
 
-        if (res.teamID) {
-          // If user is already on a team, remove them from that team on the Teams table
-          const team = await this._getTeamFromUserRegistration(
-            memberID,
-            eventID,
-            year
-          );
-          team.memberIDs = team.memberIDs.filter((id) => id !== memberID);
-          await this._putTeam(team, false);
-        }
-
+        // at this point, they are guaranteed to not be in a team, due to the above check
         res.teamID = params.id;
 
         let conditionExpression =
