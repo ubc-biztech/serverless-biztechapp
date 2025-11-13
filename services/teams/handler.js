@@ -147,11 +147,13 @@ export const joinTeam = async (event, ctx, callback) => {
       }
     });
 
-    await teamHelpers.joinTeam(data.memberID, data.eventID, data.year, data.teamID);
+    const { memberIDs, teamName } = await teamHelpers.joinTeam(data.memberID, data.eventID, data.year, data.teamID);
 
     const response = helpers.createResponse(200, {
       message: "Successfully joined team.",
-      response: data
+      response: data,
+      memberIDs,
+      teamName
     });
     callback(null, response);
     return response;
