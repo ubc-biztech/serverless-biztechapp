@@ -32,20 +32,28 @@ export const invest = async (event, ctx, callback) => {
     }
   });
 
-  const investor = await db.getOne(data.investorId, USER_REGISTRATIONS_TABLE, {
+  let investor = await db.getOne(data.investorId, USER_REGISTRATIONS_TABLE, {
     "eventID;year": "kickstart;2025" // hardcoded
   });
 
-  const team = await db.getOne(data.teamId, TEAMS_TABLE, {
-    "eventID;year": "kickstart;2025" // hardcoded
-  });
-
-  // only allow valid investors
   if (!investor) {
+    // if not an attendee, check if they are part of audience, as they can invest too
+    investor = await db.getOne(data.investorId, USER_REGISTRATIONS_TABLE, {
+      "eventID;year": "kickstart-showcase;2025" // hardcoded
+    });
+  }
+
+  if (!investor) {
+    // if still not found, return error
     return helpers.createResponse(400, {
       message: "Investor not found or not registered for event"
     });
   }
+
+  // teams can only be created by attendees
+  const team = await db.getOne(data.teamId, TEAMS_TABLE, {
+    "eventID;year": "kickstart;2025" // hardcoded
+  });
 
   // only allow valid teams
   if (!team) {
@@ -102,6 +110,8 @@ export const invest = async (event, ctx, callback) => {
   const createInvestmentPromise = db.create({
     id: crypto.randomUUID(), // partition key
     ["eventID;year"]: "kickstart;2025", // sort key
+    // regardless of kickstart or showcase, the investment itself is still part of kickstart
+    // the only differentiation is the ability to create or join a team (which is restricted to attendee)
     investorId: data.investorId,
     investorName: investor.fname,
     teamId: data.teamId,
@@ -132,6 +142,7 @@ export const teamStatus = async (event, ctx, callback) => {
 
   const teamId = event.pathParameters.teamId;
 
+  // teams can only be created by attendees
   const team = await db.getOne(teamId, TEAMS_TABLE, {
     "eventID;year": "kickstart;2025"
   });
@@ -202,11 +213,19 @@ export const investorStatus = async (event, ctx, callback) => {
 
   const investorId = event.pathParameters.investorId;
 
-  const investor = await db.getOne(investorId, USER_REGISTRATIONS_TABLE, {
+  let investor = await db.getOne(investorId, USER_REGISTRATIONS_TABLE, {
     "eventID;year": "kickstart;2025"
   });
 
   if (!investor) {
+    // if not an attendee, check if they are part of audience, as they can invest too
+    investor = await db.getOne(investorId, USER_REGISTRATIONS_TABLE, {
+      "eventID;year": "kickstart-showcase;2025"
+    });
+  }
+
+  if (!investor) {
+    // if still not found, return error
     return helpers.createResponse(400, {
       message: "Investor not found for event"
     });
