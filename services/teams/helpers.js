@@ -219,11 +219,15 @@ export default {
       throw helpers.inputError(`Team ${teamID} does not exist`, 404);
     }
 
-    // Add the member to the team
-    if (!team.memberIDs.includes(memberID)) {
-      team.memberIDs.push(memberID);
-      await this._putTeam(team, false);
+    // Short circuit if user is already in the team
+    if (team.memberIDs.includes(memberID)) {
+      throw helpers.inputError(`User ${memberID} is already in team ${teamID}`, 400);
     }
+
+    // Add the member to the team
+    team.memberIDs.push(memberID);
+    const memberIDs = team.memberIDs;
+    await this._putTeam(team, false);
 
     // Update the user's registration
     registration.teamID = teamID;
@@ -256,7 +260,9 @@ export default {
 
     return {
       success: true,
-      message: `User ${memberID} joined team ${team.teamName}`
+      message: `User ${memberID} joined team ${team.teamName}`,
+      memberIDs, // return list of members in the team
+      teamName: team.teamName // return team name
     };
   },
 
