@@ -136,6 +136,9 @@ functions:
               year: true
           method: get
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   changeTeamName:
     handler: handler.changeTeamName
     events:
