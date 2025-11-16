@@ -38,7 +38,7 @@ export default {
       const res = await db.getOne(userID, USER_REGISTRATIONS_TABLE, {
         "eventID;year": eventID_year,
       });
-      
+
       if (!res) {
         return null;
       }
