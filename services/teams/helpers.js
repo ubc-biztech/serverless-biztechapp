@@ -72,9 +72,7 @@ export default {
       team.memberIDs = teamMemberEmails;
       team.memberNames = teamMemberNames;
 
-      return {
-        team,
-      };
+      return team;
     } catch (err) {
       console.error(err);
       throw err;
