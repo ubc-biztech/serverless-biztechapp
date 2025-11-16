@@ -299,7 +299,9 @@ export const get = async (event, ctx, callback) => {
 
     const teams = await db.scan(TEAMS_TABLE, filterExpression);
     if (obfuscateEmails) {
-      delete teams.memberIDs;
+      teams.forEach((team) => {
+        delete team.memberIDs;
+      });
     }
     const response = helpers.createResponse(200, teams);
     callback(null, response);
