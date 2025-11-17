@@ -43,7 +43,10 @@ async function updateBalances(eventID, year, balance) {
     const TransactItems = batch.map((r) => ({
       Update: {
         TableName: TABLE,
-        Key: { id: r.id, "eventID;year": r["eventID;year"] },
+        Key: {
+          id: r.id,
+          "eventID;year": r["eventID;year"]
+        },
         UpdateExpression: "SET #b = :val",
         ExpressionAttributeNames: { "#b": "balance" },
         ExpressionAttributeValues: { ":val": balance },
@@ -61,8 +64,14 @@ async function updateBalances(eventID, year, balance) {
 (async () => {
   const balance = 10000;
   const targets = [
-    { eventID: "kickstart", year: 2025 },
-    { eventID: "kickstart-showcase", year: 2025 },
+    {
+      eventID: "kickstart",
+      year: 2025
+    },
+    {
+      eventID: "kickstart-showcase",
+      year: 2025
+    },
   ];
   console.log(`Setting balance=${balance} for events: ${targets.map(t => t.eventID).join(", ")}`);
 
