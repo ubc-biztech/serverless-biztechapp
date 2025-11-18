@@ -270,6 +270,13 @@ export const getTeamFromUserID = async (event, ctx, callback) => {
 };
 
 export const get = async (event, ctx, callback) => {
+  let obfuscateEmails = true;
+
+  const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+  if (userID.endsWith("@ubcbiztech.com")) {
+    obfuscateEmails = false;
+  }
+
   if (
     !event.pathParameters ||
     !event.pathParameters.eventID ||
@@ -290,8 +297,13 @@ export const get = async (event, ctx, callback) => {
       }
     };
 
-    const qrs = await db.scan(TEAMS_TABLE, filterExpression);
-    const response = helpers.createResponse(200, qrs);
+    const teams = await db.scan(TEAMS_TABLE, filterExpression);
+    if (obfuscateEmails) {
+      teams.forEach((team) => {
+        delete team.memberIDs;
+      });
+    }
+    const response = helpers.createResponse(200, teams);
     callback(null, response);
     return response;
   } catch (err) {

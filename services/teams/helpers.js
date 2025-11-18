@@ -33,27 +33,52 @@ export default {
 
     const eventID_year = eventID + ";" + year;
 
-    return await db
-      .getOne(userID, USER_REGISTRATIONS_TABLE, {
-        "eventID;year": eventID_year
-      })
-      .then((res) => {
-        if (res) {
-          return res.teamID;
-        } else {
-          return null;
-        }
-      })
-      .then((teamID) => {
-        if (teamID) {
-          return db.getOne(teamID, TEAMS_TABLE, {
-            "eventID;year": eventID_year
-          });
-        } else {
-          return null;
-        }
+    try {
+      // Get the user registration for this event+year
+      const res = await db.getOne(userID, USER_REGISTRATIONS_TABLE, {
+        "eventID;year": eventID_year,
       });
+
+      if (!res) {
+        return null;
+      }
+
+      const teamID = res.teamID;
+      if (!teamID) {
+        return null;
+      }
+
+      // Fetch the team
+      const team = await db.getOne(teamID, TEAMS_TABLE, {
+        "eventID;year": eventID_year,
+      });
+
+      // List of member IDs
+      const teamMemberKeys = team.memberIDs.map((id) => {
+        return {
+          id,
+          "eventID;year": eventID_year,
+        };
+      });
+      // Fetch member registration objects
+      const teamMembers = (await db.batchGet(
+        teamMemberKeys,
+        USER_REGISTRATIONS_TABLE + (process.env.ENVIRONMENT || "")
+      )).Responses[USER_REGISTRATIONS_TABLE + (process.env.ENVIRONMENT || "")];
+
+      // Extract names
+      const teamMemberEmails = teamMembers.map((member) => member.id);
+      const teamMemberNames = teamMembers.map((member) => member.fname ?? "Participant");
+      team.memberIDs = teamMemberEmails;
+      team.memberNames = teamMemberNames;
+
+      return team;
+    } catch (err) {
+      console.error(err);
+      throw err;
+    }
   },
+
   async updateJudgeTeam(judgeIDs, teamID) {
     if (!Array.isArray(judgeIDs) || judgeIDs.length === 0) {
       throw new Error("judgeIDs must be a non-empty array");
@@ -161,7 +186,7 @@ export default {
       },
       TableName:
         USER_REGISTRATIONS_TABLE +
-        (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
+        (process.env.ENVIRONMENT || ""),
       ExpressionAttributeValues: expressionAttributeValues,
       ExpressionAttributeNames: {
         ...expressionAttributeNames,
