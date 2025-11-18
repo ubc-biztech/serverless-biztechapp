@@ -32,20 +32,30 @@ export const invest = async (event, ctx, callback) => {
     }
   });
 
-  const investor = await db.getOne(data.investorId, USER_REGISTRATIONS_TABLE, {
+  let investor = await db.getOne(data.investorId, USER_REGISTRATIONS_TABLE, {
     "eventID;year": "kickstart;2025" // hardcoded
   });
+  let eventUsed = "kickstart;2025";
 
-  const team = await db.getOne(data.teamId, TEAMS_TABLE, {
-    "eventID;year": "kickstart;2025" // hardcoded
-  });
-
-  // only allow valid investors
   if (!investor) {
+    // if not an attendee, check if they are part of audience, as they can invest too
+    investor = await db.getOne(data.investorId, USER_REGISTRATIONS_TABLE, {
+      "eventID;year": "kickstart-showcase;2025" // hardcoded
+    });
+    eventUsed = "kickstart-showcase;2025";
+  }
+
+  if (!investor) {
+    // if still not found, return error
     return helpers.createResponse(400, {
       message: "Investor not found or not registered for event"
     });
   }
+
+  // teams can only be created by attendees
+  const team = await db.getOne(data.teamId, TEAMS_TABLE, {
+    "eventID;year": "kickstart;2025" // hardcoded
+  });
 
   // only allow valid teams
   if (!team) {
@@ -73,7 +83,7 @@ export const invest = async (event, ctx, callback) => {
     TableName: USER_REGISTRATIONS_TABLE + (process.env.ENVIRONMENT || ""),
     Key: {
       id: data.investorId,
-      "eventID;year": "kickstart;2025"
+      "eventID;year": eventUsed // update for specific event (differentiate between showcase)
     },
     UpdateExpression: "SET balance = :newBalance",
     ExpressionAttributeValues: {
@@ -88,7 +98,7 @@ export const invest = async (event, ctx, callback) => {
     TableName: TEAMS_TABLE + (process.env.ENVIRONMENT || ""),
     Key: {
       id: data.teamId,
-      "eventID;year": "kickstart;2025"
+      "eventID;year": "kickstart;2025" // for teams, it will always be kickstart, since audience can't form teams
     },
     UpdateExpression: "SET funding = :newFunding",
     ExpressionAttributeValues: {
@@ -101,7 +111,7 @@ export const invest = async (event, ctx, callback) => {
   // 3. create investment
   const createInvestmentPromise = db.create({
     id: crypto.randomUUID(), // partition key
-    ["eventID;year"]: "kickstart;2025", // sort key
+    ["eventID;year"]: eventUsed, // sort key
     investorId: data.investorId,
     investorName: investor.fname,
     teamId: data.teamId,
@@ -132,6 +142,7 @@ export const teamStatus = async (event, ctx, callback) => {
 
   const teamId = event.pathParameters.teamId;
 
+  // teams can only be created by attendees
   const team = await db.getOne(teamId, TEAMS_TABLE, {
     "eventID;year": "kickstart;2025"
   });
@@ -144,6 +155,7 @@ export const teamStatus = async (event, ctx, callback) => {
 
   // Scan all investments made into this team
   // Utilize GSI
+  // Already considers both kickstart and showcase
   const teamInvestments = await db.query(INVESTMENTS_TABLE, "team-investments", {
     expression: "#teamId = :teamId",
     expressionNames: {
@@ -202,17 +214,26 @@ export const investorStatus = async (event, ctx, callback) => {
 
   const investorId = event.pathParameters.investorId;
 
-  const investor = await db.getOne(investorId, USER_REGISTRATIONS_TABLE, {
+  let investor = await db.getOne(investorId, USER_REGISTRATIONS_TABLE, {
     "eventID;year": "kickstart;2025"
   });
 
   if (!investor) {
+    // if not an attendee, check if they are part of audience, as they can invest too
+    investor = await db.getOne(investorId, USER_REGISTRATIONS_TABLE, {
+      "eventID;year": "kickstart-showcase;2025"
+    });
+  }
+
+  if (!investor) {
+    // if still not found, return error
     return helpers.createResponse(400, {
       message: "Investor not found for event"
     });
   }
 
   // scan all investments made by this investor, utilize GSI
+  // Already considers both kickstart and showcase
   const investorInvestments = await db.query(INVESTMENTS_TABLE, "investor-investments", {
     expression: "#investorId = :investorId",
     expressionNames: {

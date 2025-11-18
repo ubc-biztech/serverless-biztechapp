@@ -201,7 +201,7 @@ async function createRegistration(
     }
 
     // HARCODED FOR KICKSTART 2025
-    if (eventIDAndYear === "kickstart;2025") {
+    if (eventIDAndYear === "kickstart;2025" || eventIDAndYear === "kickstart-showcase;2025") {
       updateObject["balance"] = 10000; // discuss w Gautham
     }
 
