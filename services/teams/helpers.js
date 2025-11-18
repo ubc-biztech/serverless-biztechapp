@@ -68,7 +68,7 @@ export default {
 
       // Extract names
       const teamMemberEmails = teamMembers.map((member) => member.id);
-      const teamMemberNames = teamMembers.map((member) => member.fname);
+      const teamMemberNames = teamMembers.map((member) => member.fname ?? "Participant");
       team.memberIDs = teamMemberEmails;
       team.memberNames = teamMemberNames;
 
