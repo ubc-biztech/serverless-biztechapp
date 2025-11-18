@@ -35,12 +35,14 @@ export const invest = async (event, ctx, callback) => {
   let investor = await db.getOne(data.investorId, USER_REGISTRATIONS_TABLE, {
     "eventID;year": "kickstart;2025" // hardcoded
   });
+  let eventUsed = "kickstart;2025";
 
   if (!investor) {
     // if not an attendee, check if they are part of audience, as they can invest too
     investor = await db.getOne(data.investorId, USER_REGISTRATIONS_TABLE, {
       "eventID;year": "kickstart-showcase;2025" // hardcoded
     });
+    eventUsed = "kickstart-showcase;2025";
   }
 
   if (!investor) {
@@ -81,7 +83,7 @@ export const invest = async (event, ctx, callback) => {
     TableName: USER_REGISTRATIONS_TABLE + (process.env.ENVIRONMENT || ""),
     Key: {
       id: data.investorId,
-      "eventID;year": "kickstart;2025"
+      "eventID;year": eventUsed // update for specific event (differentiate between showcase)
     },
     UpdateExpression: "SET balance = :newBalance",
     ExpressionAttributeValues: {
@@ -96,7 +98,7 @@ export const invest = async (event, ctx, callback) => {
     TableName: TEAMS_TABLE + (process.env.ENVIRONMENT || ""),
     Key: {
       id: data.teamId,
-      "eventID;year": "kickstart;2025"
+      "eventID;year": "kickstart;2025" // for teams, it will always be kickstart, since audience can't form teams
     },
     UpdateExpression: "SET funding = :newFunding",
     ExpressionAttributeValues: {
@@ -109,9 +111,7 @@ export const invest = async (event, ctx, callback) => {
   // 3. create investment
   const createInvestmentPromise = db.create({
     id: crypto.randomUUID(), // partition key
-    ["eventID;year"]: "kickstart;2025", // sort key
-    // regardless of kickstart or showcase, the investment itself is still part of kickstart
-    // the only differentiation is the ability to create or join a team (which is restricted to attendee)
+    ["eventID;year"]: eventUsed, // sort key
     investorId: data.investorId,
     investorName: investor.fname,
     teamId: data.teamId,
@@ -155,6 +155,7 @@ export const teamStatus = async (event, ctx, callback) => {
 
   // Scan all investments made into this team
   // Utilize GSI
+  // Already considers both kickstart and showcase
   const teamInvestments = await db.query(INVESTMENTS_TABLE, "team-investments", {
     expression: "#teamId = :teamId",
     expressionNames: {
@@ -232,8 +233,9 @@ export const investorStatus = async (event, ctx, callback) => {
   }
 
   // scan all investments made by this investor, utilize GSI
+  // Already considers both kickstart and showcase
   const investorInvestments = await db.query(INVESTMENTS_TABLE, "investor-investments", {
-    expression: "#investorId = :investorId",
+    expression: "#investorId = :investorId", 
     expressionNames: {
       "#investorId": "investorId"
     },
