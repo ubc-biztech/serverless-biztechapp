@@ -235,7 +235,7 @@ export const investorStatus = async (event, ctx, callback) => {
   // scan all investments made by this investor, utilize GSI
   // Already considers both kickstart and showcase
   const investorInvestments = await db.query(INVESTMENTS_TABLE, "investor-investments", {
-    expression: "#investorId = :investorId", 
+    expression: "#investorId = :investorId",
     expressionNames: {
       "#investorId": "investorId"
     },
