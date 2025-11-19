@@ -52,3 +52,6 @@ services:
   - srvName: btx
     srvPath: btx
     srvSource: services/btx
+  - srvName: investments
+    srvPath: investments
+    srvSource: services/investments

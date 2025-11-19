@@ -33,27 +33,52 @@ export default {
 
     const eventID_year = eventID + ";" + year;
 
-    return await db
-      .getOne(userID, USER_REGISTRATIONS_TABLE, {
-        "eventID;year": eventID_year
-      })
-      .then((res) => {
-        if (res) {
-          return res.teamID;
-        } else {
-          return null;
-        }
-      })
-      .then((teamID) => {
-        if (teamID) {
-          return db.getOne(teamID, TEAMS_TABLE, {
-            "eventID;year": eventID_year
-          });
-        } else {
-          return null;
-        }
+    try {
+      // Get the user registration for this event+year
+      const res = await db.getOne(userID, USER_REGISTRATIONS_TABLE, {
+        "eventID;year": eventID_year,
       });
+
+      if (!res) {
+        return null;
+      }
+
+      const teamID = res.teamID;
+      if (!teamID) {
+        return null;
+      }
+
+      // Fetch the team
+      const team = await db.getOne(teamID, TEAMS_TABLE, {
+        "eventID;year": eventID_year,
+      });
+
+      // List of member IDs
+      const teamMemberKeys = team.memberIDs.map((id) => {
+        return {
+          id,
+          "eventID;year": eventID_year,
+        };
+      });
+      // Fetch member registration objects
+      const teamMembers = (await db.batchGet(
+        teamMemberKeys,
+        USER_REGISTRATIONS_TABLE + (process.env.ENVIRONMENT || "")
+      )).Responses[USER_REGISTRATIONS_TABLE + (process.env.ENVIRONMENT || "")];
+
+      // Extract names
+      const teamMemberEmails = teamMembers.map((member) => member.id);
+      const teamMemberNames = teamMembers.map((member) => member.fname ?? "Participant");
+      team.memberIDs = teamMemberEmails;
+      team.memberNames = teamMemberNames;
+
+      return team;
+    } catch (err) {
+      console.error(err);
+      throw err;
+    }
   },
+
   async updateJudgeTeam(judgeIDs, teamID) {
     if (!Array.isArray(judgeIDs) || judgeIDs.length === 0) {
       throw new Error("judgeIDs must be a non-empty array");
@@ -116,6 +141,156 @@ export default {
     return await db.put(team, TEAMS_TABLE, createNew);
   },
 
+  async leaveTeam(memberID, eventID, year) {
+    const eventID_year = eventID + ";" + year;
+
+    const registration = await db.getOne(memberID, USER_REGISTRATIONS_TABLE, {
+      "eventID;year": eventID_year
+    });
+
+    if (!registration) {
+      throw helpers.inputError(
+        `User ${memberID} is not registered for event ${eventID_year}`,
+        404
+      );
+    }
+
+    if (!registration.teamID) {
+      throw helpers.inputError(`User ${memberID} is not on any team`, 400);
+    }
+
+    const team = await this._getTeamFromUserRegistration(memberID, eventID, year);
+    if (!team) {
+      throw helpers.inputError(`Team not found for user ${memberID}`, 404);
+    }
+
+    // Remove member from the team
+    team.memberIDs = team.memberIDs.filter((id) => id !== memberID);
+
+    // TODO: delete team if empty ?
+    await this._putTeam(team, false);
+
+    // Remove teamID from user registration
+    registration.teamID = "";
+
+    const {
+      updateExpression,
+      expressionAttributeValues,
+      expressionAttributeNames
+    } = db.createUpdateExpression(registration);
+
+    const updateParams = {
+      Key: {
+        id: registration.id,
+        ["eventID;year"]: eventID_year
+      },
+      TableName:
+        USER_REGISTRATIONS_TABLE +
+        (process.env.ENVIRONMENT || ""),
+      ExpressionAttributeValues: expressionAttributeValues,
+      ExpressionAttributeNames: {
+        ...expressionAttributeNames,
+        "#eventIDYear": "eventID;year"
+      },
+      UpdateExpression: updateExpression,
+      ReturnValues: "UPDATED_NEW",
+      ConditionExpression: "attribute_exists(id) and attribute_exists(#eventIDYear)"
+    };
+
+    await db.updateDBCustom(updateParams);
+
+    return {
+      success: true,
+      message: `User ${memberID} has left the team.`
+    };
+  },
+
+
+  async joinTeam(memberID, eventID, year, teamID) {
+    const eventID_year = eventID + ";" + year;
+
+    const registration = await db.getOne(memberID, USER_REGISTRATIONS_TABLE, {
+      "eventID;year": eventID_year
+    });
+
+    if (!registration) {
+      throw helpers.inputError(
+        `User ${memberID} is not registered for event ${eventID_year}`,
+        403
+      );
+    }
+
+    if (registration.registrationStatus !== "checkedIn") {
+      throw helpers.inputError(
+        `User ${memberID} has not checked in for event ${eventID_year}`,
+        403
+      );
+    }
+
+    if (registration.teamID?.length > 0) {
+      throw helpers.inputError(
+        `User ${memberID} is already in another team`,
+        400
+      );
+    }
+
+    // Get the team
+    const team = await db.getOne(teamID, TEAMS_TABLE, {
+      "eventID;year": eventID_year
+    });
+
+    if (!team) {
+      throw helpers.inputError(`Team ${teamID} does not exist`, 404);
+    }
+
+    // Short circuit if user is already in the team
+    if (team.memberIDs.includes(memberID)) {
+      throw helpers.inputError(`User ${memberID} is already in team ${teamID}`, 400);
+    }
+
+    // Add the member to the team
+    team.memberIDs.push(memberID);
+    const memberIDs = team.memberIDs;
+    await this._putTeam(team, false);
+
+    // Update the user's registration
+    registration.teamID = teamID;
+
+    const {
+      updateExpression,
+      expressionAttributeValues,
+      expressionAttributeNames
+    } = db.createUpdateExpression(registration);
+
+    const updateParams = {
+      Key: {
+        id: registration.id,
+        ["eventID;year"]: eventID_year
+      },
+      TableName:
+        USER_REGISTRATIONS_TABLE +
+        (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
+      ExpressionAttributeValues: expressionAttributeValues,
+      ExpressionAttributeNames: {
+        ...expressionAttributeNames,
+        "#eventIDYear": "eventID;year"
+      },
+      UpdateExpression: updateExpression,
+      ReturnValues: "UPDATED_NEW",
+      ConditionExpression: "attribute_exists(id) and attribute_exists(#eventIDYear)"
+    };
+
+    await db.updateDBCustom(updateParams);
+
+    return {
+      success: true,
+      message: `User ${memberID} joined team ${team.teamName}`,
+      memberIDs, // return list of members in the team
+      teamName: team.teamName // return team name
+    };
+  },
+
+
   async makeTeam(team_name, eventID, year, memberIDs) {
     /*
       Creates a team in the Teams table according to the Table Schema.
@@ -138,6 +313,17 @@ export default {
               "User " +
                 memberID +
                 " is not registered for event " +
+                eventID_year,
+              403
+            );
+          }
+
+          // hardcoded for kickstart 2025
+          if (res.registrationStatus !== "checkedIn") {
+            throw helpers.inputError(
+              "User " +
+                memberID +
+                " is not checked in for event " +
                 eventID_year,
               403
             );
@@ -166,6 +352,11 @@ export default {
       metadata: {
       }
     };
+
+    // HARDCODED FOR KICKSTART PURPOSES
+    if (eventID === "kickstart" && year === 2025) {
+      params.funding = 0;
+    }
 
     try {
       // Create the new team=

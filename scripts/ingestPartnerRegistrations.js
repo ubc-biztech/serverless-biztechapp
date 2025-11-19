@@ -19,17 +19,20 @@ const awsConfig = {
 const client = new DynamoDBClient(awsConfig);
 const docClient = DynamoDBDocumentClient.from(client);
 
-const USERS_TABLE = "biztechUsers";
-const PROFILES_TABLE = "biztechProfiles";
-const MEMBERS2026_TABLE = "biztechMembers2026";
+const USERS_TABLE = "biztechUsers" + (process.env.ENVIRONMENT || "");
+const PROFILES_TABLE = "biztechProfiles" + (process.env.ENVIRONMENT || "");
+const MEMBERS2026_TABLE = "biztechMembers2026" + (process.env.ENVIRONMENT || "");
+const USER_REGISTRATIONS_TABLE = "biztechRegistrations" + (process.env.ENVIRONMENT || "");
 
+// NOTE: Usage of this is mainly for kickstart;2025 event
 async function updateTables(user) {
-  const timestamp = new Date().toISOString();
+  const timestamp = new Date().getTime();
   const profileID = humanId();
 
   // we just want to give them cards
   const transactParams = {
     TransactItems: [
+      // 1. Add them to users so they can log in
       {
         Put: {
           TableName: USERS_TABLE,
@@ -44,6 +47,7 @@ async function updateTables(user) {
           ConditionExpression: "attribute_not_exists(id)"
         }
       },
+      // 2. Give them memberships for NFC cards
       {
         Put: {
           TableName: MEMBERS2026_TABLE,
@@ -58,6 +62,7 @@ async function updateTables(user) {
           ConditionExpression: "attribute_not_exists(id)"
         }
       },
+      // 3. Create a profile for them
       {
         Put: {
           TableName: PROFILES_TABLE,
@@ -68,23 +73,45 @@ async function updateTables(user) {
             compositeID: `PROFILE#${profileID}`,
             createdAt: timestamp,
             updatedAt: timestamp,
-            profileType: "Partner",
+            profileType: "PARTNER",
+            linkedIn: user.linkedin,
+            pronouns: user.pronouns,
+            company: user.company,
+            position: user.position,
             viewableMap: {
               fname: true,
               lname: true,
               pronouns: true,
-              major: true,
-              year: true,
-              profileType: true,
+              major: false,
+              year: false,
+              profileType: true, // for attendees to see if it's a partner
               hobby1: false,
               hobby2: false,
               funQuestion1: false,
               funQuestion2: false,
-              linkedIn: false,
+              linkedIn: true, // for attendees to see partner's linkedin
               profilePictureURL: false,
               additionalLink: false,
-              description: false
+              description: false,
+              company: true,
+              position: true
             }
+          },
+          ConditionExpression: "attribute_not_exists(id)"
+        }
+      },
+      // 4. Create a registration for kickstart so they can invest (partner-flagged investment)
+      {
+        Put: {
+          TableName: USER_REGISTRATIONS_TABLE,
+          Item: {
+            id: user.email.toLowerCase(),
+            ["eventID;year"]: "kickstart;2025",
+            registrationStatus: "acceptedComplete",
+            isPartner: true, // flag as partner investment
+            fname: user.fname,
+            createdAt: timestamp,
+            updatedAt: timestamp,
           },
           ConditionExpression: "attribute_not_exists(id)"
         }
@@ -96,6 +123,7 @@ async function updateTables(user) {
     const command = new TransactWriteCommand(transactParams);
     await docClient.send(command);
     console.log(`Successfully created user, registration, and profile for ${user.email}`);
+    console.log(`Profile ID: ${profileID}`);
     return true;
   } catch (error) {
     if (error.name === "ConditionalCheckFailedException") {
@@ -141,6 +169,10 @@ async function processCSV(filePath) {
               email: row["Email Address"]?.trim().toLowerCase() || "", // sanitize compendium emails
               fname: row["First Name"],
               lname: row["Last Name"],
+              pronouns: row["Pronouns"],
+              linkedin: row["LinkedIn"],
+              company: row["What organization will you be representing?"], // adjust
+              position: row["What is your current role?"] // adjust
             };
 
             const success = await updateTables(user);
