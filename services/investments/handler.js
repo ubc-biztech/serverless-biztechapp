@@ -65,7 +65,7 @@ export const invest = async (event, ctx, callback) => {
   }
 
   // investor cannot invest in their own team
-  if (investor.teamId === team.id) {
+  if (investor.teamID === team.id) {
     return helpers.createResponse(400, {
       message: "Investor cannot invest in their own team"
     });
