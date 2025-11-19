@@ -62,6 +62,8 @@ provider:
         - arn:aws:execute-api:${self:provider.region}:${aws:accountId}:*/${self:provider.stage}/@connections/*
 
 custom:
+  <<: ${file(../../serverless.common.yml):custom}
+
   prune:
     automatic: true
     number: 3
