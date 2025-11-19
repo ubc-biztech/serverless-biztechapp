@@ -19,11 +19,9 @@ provider:
   timeout: 15
 
   environment:
-    # LOCAL TABLE SUFFIX (bizBtxProjects-dev, etc)
-    ENVIRONMENT: "-dev"
+    ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
-    WS_API_ENDPOINT: https://REPLACE_WITH_BTX_WS_ID.execute-api.${self:provider.region}.amazonaws.com/${self:provider.stage}
-    BTX_ADMIN_EMAILS: ${env:BTX_ADMIN_EMAILS, ""}
+    WS_API_ENDPOINT: https://bn27jq3bal.execute-api.us-west-2.amazonaws.com/prod
 
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
