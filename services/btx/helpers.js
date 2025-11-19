@@ -697,7 +697,12 @@ export async function executeTrade({ userId, projectId, side, shares }) {
   const transactItems = [
     { Update: projectUpdate },
     { Update: accountUpdate },
-    { Put: { TableName: BTX_TRADES_TABLE, Item: tradeItem } }
+    {
+      Put: {
+        TableName: BTX_TRADES_TABLE,
+        Item: tradeItem
+      }
+    }
   ];
 
   if (holdingPutOrUpdate) {
