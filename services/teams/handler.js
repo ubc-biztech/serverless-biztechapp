@@ -62,7 +62,10 @@ export const updateTeamPoints = async (event, ctx, callback) => {
     );
 
     if (!team) {
-      throw helpers.inputError("Team not found", 404);
+      const response = helpers.createResponse(404, {
+        message: "User not associated with a team",
+      });
+      callback(null, response);
     }
 
     team.points += data.change_points;
