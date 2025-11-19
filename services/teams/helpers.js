@@ -220,7 +220,7 @@ export default {
       );
     }
 
-    if (registration.registrationStatus.toLowerCase() !== "checkedIn") {
+    if (registration.registrationStatus.toLowerCase() !== "checkedin") {
       throw helpers.inputError(
         `User ${memberID} has not checked in for event ${eventID_year}`,
         403
@@ -319,7 +319,7 @@ export default {
           }
 
           // hardcoded for kickstart 2025
-          if (res.registrationStatus.toLowerCase() !== "checkedIn") {
+          if (res.registrationStatus.toLowerCase() !== "checkedin") {
             throw helpers.inputError(
               "User " +
                 memberID +
