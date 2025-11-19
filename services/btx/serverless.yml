@@ -22,7 +22,6 @@ provider:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
     WS_API_ENDPOINT: https://bn27jq3bal.execute-api.us-west-2.amazonaws.com/prod
-    BTX_ADMIN_EMAILS: ${env:BTX_ADMIN_EMAILS, ""}
 
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId

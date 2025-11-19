@@ -28,10 +28,6 @@ export const PHASE_BUMP_PRESETS = {
   DEMO_WINNER: 1.0
 };
 
-export const ADMIN_EMAILS =
-  process.env.BTX_ADMIN_EMAILS?.split(",").map((e) => e.trim().toLowerCase()) ||
-  [];
-
 export const DRIFT_ENABLED = "true";
 
 export const DRIFT_MAX_PCT_PER_TICK = 0.015;

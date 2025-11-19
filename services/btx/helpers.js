@@ -23,7 +23,6 @@ import {
   PRICE_SENSITIVITY_PER_SHARE,
   SEED_TO_PRICE_FACTOR,
   PHASE_BUMP_PRESETS,
-  ADMIN_EMAILS,
   DRIFT_ENABLED,
   DRIFT_MAX_PCT_PER_TICK,
   DRIFT_MEAN_REVERSION,
@@ -65,11 +64,6 @@ export function applyExecutionNoise(endPrice) {
   const noisy = endPrice * factor;
 
   return clampPrice(noisy);
-}
-
-export function isAdminUser(userId) {
-  if (!ADMIN_EMAILS || !ADMIN_EMAILS.length) return false;
-  return ADMIN_EMAILS.includes(userId.toLowerCase());
 }
 
 // WebSocket helpers

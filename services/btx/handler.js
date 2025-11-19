@@ -15,7 +15,6 @@ import {
   listProjectsForEvent,
   getPortfolioForUser,
   getRecentTrades,
-  isAdminUser,
   applyRandomDriftToProjects,
   getPriceHistoryForProject
 } from "./helpers";
@@ -288,7 +287,7 @@ export const postAdminProject = async (event, ctx, callback) => {
     if (!isOffline) {
       const claims = event.requestContext?.authorizer?.claims;
       userId = claims?.email?.toLowerCase();
-      if (!userId || !isAdminUser(userId)) {
+      if (!userId) {
         const resp = handlerHelpers.createResponse(403, {
           message: "Not authorized for BTX admin"
         });
