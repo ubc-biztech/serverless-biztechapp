@@ -53,8 +53,6 @@ export const updateTeamPoints = async (event, ctx, callback) => {
       } // Points to add/subtract
     });
 
-    const eventIDYear = `${data.eventID};${data.year}`;
-
     const team = await teamHelpers._getTeamFromUserRegistration(
       data.user_id,
       data.eventID,
@@ -259,6 +257,8 @@ export const getTeamFromUserID = async (event, ctx, callback) => {
 
         callback(null, response_success);
         return response_success;
+      } else {
+        callback(null, helpers.createResponse(404, { message: "Team not found" }));
       }
     })
     .catch((err) => {
