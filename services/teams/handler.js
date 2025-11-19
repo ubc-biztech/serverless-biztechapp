@@ -53,8 +53,6 @@ export const updateTeamPoints = async (event, ctx, callback) => {
       } // Points to add/subtract
     });
 
-    const eventIDYear = `${data.eventID};${data.year}`;
-
     const team = await teamHelpers._getTeamFromUserRegistration(
       data.user_id,
       data.eventID,
@@ -62,7 +60,10 @@ export const updateTeamPoints = async (event, ctx, callback) => {
     );
 
     if (!team) {
-      throw helpers.inputError("Team not found", 404);
+      const response = helpers.createResponse(404, {
+        message: "User not associated with a team",
+      });
+      callback(null, response);
     }
 
     team.points += data.change_points;
@@ -82,6 +83,90 @@ export const updateTeamPoints = async (event, ctx, callback) => {
       error: error.message
     });
     callback(null, errorResponse);
+  }
+};
+
+export const leaveTeam = async (event, ctx, callback) => {
+  try {
+    const data = JSON.parse(event.body);
+
+    helpers.checkPayloadProps(data, {
+      memberID: {
+        required: true,
+        type: "string"
+      },
+      eventID: {
+        required: true,
+        type: "string"
+      },
+      year: {
+        required: true,
+        type: "number"
+      }
+    });
+
+    await teamHelpers.leaveTeam(data.memberID, data.eventID, data.year, data.teamID);
+
+    const response = helpers.createResponse(200, {
+      message: "Successfully left team.",
+      response: data
+    });
+    callback(null, response);
+    return response;
+  } catch (error) {
+    console.error("Error leaving team:", error);
+
+    const errorResponse = helpers.createResponse(500, {
+      message: "Failed to leave team",
+      error: error.message
+    });
+    callback(null, errorResponse);
+    return errorResponse;
+  }
+};
+
+export const joinTeam = async (event, ctx, callback) => {
+  try {
+    const data = JSON.parse(event.body);
+
+    helpers.checkPayloadProps(data, {
+      memberID: {
+        required: true,
+        type: "string"
+      },
+      eventID: {
+        required: true,
+        type: "string"
+      },
+      year: {
+        required: true,
+        type: "number"
+      },
+      teamID: {
+        required: true,
+        type: "string"
+      }
+    });
+
+    const { memberIDs, teamName } = await teamHelpers.joinTeam(data.memberID, data.eventID, data.year, data.teamID);
+
+    const response = helpers.createResponse(200, {
+      message: "Successfully joined team.",
+      response: data,
+      memberIDs,
+      teamName
+    });
+    callback(null, response);
+    return response;
+  } catch (error) {
+    console.error("Error joining team:", error);
+
+    const errorResponse = helpers.createResponse(500, {
+      message: "Failed to join team",
+      error: error.message
+    });
+    callback(null, errorResponse);
+    return errorResponse;
   }
 };
 
@@ -172,6 +257,8 @@ export const getTeamFromUserID = async (event, ctx, callback) => {
 
         callback(null, response_success);
         return response_success;
+      } else {
+        callback(null, helpers.createResponse(404, { message: "Team not found" }));
       }
     })
     .catch((err) => {
@@ -186,6 +273,13 @@ export const getTeamFromUserID = async (event, ctx, callback) => {
 };
 
 export const get = async (event, ctx, callback) => {
+  let obfuscateEmails = true;
+
+  const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+  if (userID.endsWith("@ubcbiztech.com")) {
+    obfuscateEmails = false;
+  }
+
   if (
     !event.pathParameters ||
     !event.pathParameters.eventID ||
@@ -206,8 +300,13 @@ export const get = async (event, ctx, callback) => {
       }
     };
 
-    const qrs = await db.scan(TEAMS_TABLE, filterExpression);
-    const response = helpers.createResponse(200, qrs);
+    const teams = await db.scan(TEAMS_TABLE, filterExpression);
+    if (obfuscateEmails) {
+      teams.forEach((team) => {
+        delete team.memberIDs;
+      });
+    }
+    const response = helpers.createResponse(200, teams);
     callback(null, response);
     return response;
   } catch (err) {
