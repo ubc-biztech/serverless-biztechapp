@@ -11,7 +11,7 @@ const client = new DynamoDBClient({
 });
 const docClient = DynamoDBDocumentClient.from(client);
 
-const TABLE = "biztechRegistrations" + (process.env.ENVIRONMENT || "");
+const TABLE = "biztechRegistrationsPROD";
 const CHUNK_SIZE = 20;
 
 async function fetchRegistrations(eventID, year) {
@@ -37,7 +37,6 @@ async function fetchRegistrations(eventID, year) {
 async function updateBalances(eventID, year, balance) {
   const regs = await fetchRegistrations(eventID, year);
   console.log(`Found ${regs.length} registrations for ${eventID};${year}`);
-  console.log(`Registrations: ${JSON.stringify(regs, null, 2)}`);
 
   for (let i = 0; i < regs.length; i += CHUNK_SIZE) {
     const batch = regs.slice(i, i + CHUNK_SIZE);
