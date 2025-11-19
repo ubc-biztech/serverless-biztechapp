@@ -49,3 +49,6 @@ services:
   - srvName: bots
     srvPath: bots
     srvSource: services/bots
+  - srvName: btx
+    srvPath: btx
+    srvSource: services/btx
