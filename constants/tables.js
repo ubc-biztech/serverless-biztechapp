@@ -21,3 +21,9 @@ export const INVESTMENTS_TABLE = "biztechInvestments";
 export const PROFILES_TABLE = "biztechProfiles";
 
 export const IMMUTABLE_USER_PROPS = ["admin"]; // make sure you check all calls to /user's patch in the frontend if you add to this list
+
+export const BTX_PROJECTS_TABLE = "bizBtxProjects";
+export const BTX_ACCOUNTS_TABLE = "bizBtxAccounts";
+export const BTX_HOLDINGS_TABLE = "bizBtxHoldings";
+export const BTX_TRADES_TABLE = "bizBtxTrades";
+export const BTX_SOCKETS_TABLE = "bizBtxSockets";
