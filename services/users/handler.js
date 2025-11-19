@@ -185,9 +185,17 @@ export const get = async (event, ctx, callback) => {
     )
       email = event.pathParameters.email;
 
-    if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
+    if (!isValidEmail(email)) {
+      const response = helpers.inputError("Invalid email", email);
+      callback(null, response);
+      return null;
+    }
     const user = await db.getOne(email, USERS_TABLE);
-    if (isEmpty(user)) throw helpers.notFoundResponse("user", email);
+    if (isEmpty(user)) {
+      const response = helpers.notFoundResponse("user", email);
+      callback(null, response);
+      return null;
+    }
 
     const response = helpers.createResponse(200, user);
     callback(null, response);
