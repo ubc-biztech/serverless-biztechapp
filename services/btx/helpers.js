@@ -1031,6 +1031,111 @@ export async function getPortfolioForUser(userId, eventId) {
   };
 }
 
+export async function getTraderLeaderboard(
+  eventId,
+  { limitTop = 5, limitBottom = 5 } = {}
+) {
+  const ev = eventId || DEFAULT_EVENT_ID;
+
+  const projects = await listProjectsForEvent(ev);
+
+  const userStats = new Map();
+
+  for (const p of projects) {
+    const currentPrice = Number(
+      p.currentPrice || p.basePrice || DEFAULT_BASE_PRICE
+    );
+
+    if (!Number.isFinite(currentPrice) || currentPrice <= 0) continue;
+
+    const holdingsCmd = new QueryCommand({
+      TableName: BTX_HOLDINGS_TABLE,
+      IndexName: "byProject",
+      KeyConditionExpression: "projectId = :p",
+      ExpressionAttributeValues: {
+        ":p": p.projectId
+      }
+    });
+
+    const holdingsRes = await docClient.send(holdingsCmd);
+    const holdings = holdingsRes.Items || [];
+
+    for (const h of holdings) {
+      const userId = h.userId;
+      const shares = Number(h.shares || 0);
+      if (!shares) continue;
+
+      const avgPrice = Number(h.avgPrice || currentPrice);
+      const marketValue = shares * currentPrice;
+      const positionPnl = marketValue - shares * avgPrice;
+
+      let stats = userStats.get(userId);
+      if (!stats) {
+        stats = {
+          userId,
+          equityValue: 0,
+          totalPnl: 0,
+          positionsCount: 0
+        };
+        userStats.set(userId, stats);
+      }
+
+      stats.equityValue += marketValue;
+      stats.totalPnl += positionPnl;
+      stats.positionsCount += 1;
+    }
+  }
+
+  const userIds = Array.from(userStats.keys());
+
+  const accountResults = await Promise.all(
+    userIds.map(async (userId) => {
+      const res = await docClient.send(
+        new GetCommand({
+          TableName: BTX_ACCOUNTS_TABLE,
+          Key: { userId }
+        })
+      );
+      return { userId, account: res.Item };
+    })
+  );
+
+  for (const { userId, account } of accountResults) {
+    const stats = userStats.get(userId);
+    if (!stats || !account) continue;
+
+    const cashBalance = Number(account.cashBalance || 0);
+    const initialBalance = Number(
+      account.initialBalance || INITIAL_CASH_BALANCE
+    );
+    const totalValue = cashBalance + stats.equityValue;
+    const totalPnl = totalValue - initialBalance;
+    const returnPct =
+      initialBalance > 0 ? (totalPnl / initialBalance) * 100 : 0;
+
+    stats.cashBalance = cashBalance;
+    stats.initialBalance = initialBalance;
+    stats.totalValue = totalValue;
+    stats.totalPnl = totalPnl;
+    stats.returnPct = returnPct;
+  }
+
+  const all = Array.from(userStats.values()).filter(
+    (s) => Number.isFinite(s.totalValue) && s.initialBalance != null
+  );
+
+  all.sort((a, b) => b.totalPnl - a.totalPnl);
+
+  const top = all.slice(0, limitTop);
+  const bottom = [...all].reverse().slice(0, limitBottom);
+
+  return {
+    traders: all.length,
+    top,
+    bottom
+  };
+}
+
 // Recent trades for a project
 export async function getRecentTrades(projectId, limit = 20) {
   const cmd = new QueryCommand({
