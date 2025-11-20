@@ -167,6 +167,14 @@ functions:
           method: get
           cors: true
 
+  btxInvestmentImpact:
+    handler: handler.postInvestmentImpact
+    events:
+      - http:
+          path: btx/admin/investment-impact
+          method: post
+          cors: true
+
   btxAdminProject:
     handler: handler.postAdminProject
     events:

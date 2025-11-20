@@ -2,6 +2,7 @@
 
 import handlerHelpers from "../../lib/handlerHelpers";
 import helpersLib from "../../lib/handlerHelpers";
+import { INVESTMENT_TO_SEED_FACTOR } from "./constants";
 
 import { DEFAULT_EVENT_ID } from "./constants";
 
@@ -16,7 +17,8 @@ import {
   getPortfolioForUser,
   getRecentTrades,
   applyRandomDriftToProjects,
-  getPriceHistoryForProject
+  getPriceHistoryForProject,
+  getProject
 } from "./helpers";
 
 const helpers = helpersLib;
@@ -479,6 +481,54 @@ export const wsSubscribe = async (event) => {
       statusCode: 500,
       body: "subscribe failed"
     };
+  }
+};
+
+export const postInvestmentImpact = async (event) => {
+  try {
+    const body = JSON.parse(event.body || "{}");
+
+    const { teamId, amountDelta } = body;
+
+    if (!teamId || amountDelta === null) {
+      return handlerHelpers.createResponse(400, {
+        message: "Missing teamId or amountDelta"
+      });
+    }
+
+    const amount = Number(amountDelta);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return handlerHelpers.createResponse(400, {
+        message: "amountDelta must be a positive number"
+      });
+    }
+
+    // we assume BTX projectId === Kickstart team.id.
+    const projectId = teamId;
+
+    const project = await getProject(projectId);
+    if (!project) {
+      return handlerHelpers.createResponse(404, {
+        message: `BTX project not found for teamId ${teamId}`
+      });
+    }
+
+    const seedDelta = amount * INVESTMENT_TO_SEED_FACTOR;
+
+    const updated = await applySeedUpdate({
+      projectId,
+      seedDelta
+    });
+
+    return handlerHelpers.createResponse(200, {
+      message: "BTX price updated from investment",
+      data: updated
+    });
+  } catch (err) {
+    console.error("[BTX] postInvestmentImpact error", err);
+    return handlerHelpers.createResponse(500, {
+      message: "Internal server error (BTX investment impact)"
+    });
   }
 };
 
