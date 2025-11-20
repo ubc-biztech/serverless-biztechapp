@@ -18,7 +18,8 @@ import {
   getRecentTrades,
   applyRandomDriftToProjects,
   getPriceHistoryForProject,
-  getProject
+  getProject,
+  getTraderLeaderboard
 } from "./helpers";
 
 const helpers = helpersLib;
@@ -414,6 +415,30 @@ export const postAdminPhaseBump = async (event) => {
     console.error("[BTX] postAdminPhaseBump error", err);
     return handlerHelpers.createResponse(500, {
       message: "Internal server error (BTX phase bump)"
+    });
+  }
+};
+
+export const getLeaderboard = async (event) => {
+  try {
+    const qs = event.queryStringParameters || {};
+    const eventId = qs.eventId || DEFAULT_EVENT_ID;
+    const limitTop = qs.limitTop ? Number(qs.limitTop) : 5;
+    const limitBottom = qs.limitBottom ? Number(qs.limitBottom) : 5;
+
+    const data = await getTraderLeaderboard(eventId, {
+      limitTop,
+      limitBottom
+    });
+
+    return handlerHelpers.createResponse(200, {
+      message: `BTX trader leaderboard for ${eventId}`,
+      data
+    });
+  } catch (err) {
+    console.error("[BTX] getLeaderboard error", err);
+    return handlerHelpers.createResponse(500, {
+      message: "Internal server error (BTX leaderboard)"
     });
   }
 };

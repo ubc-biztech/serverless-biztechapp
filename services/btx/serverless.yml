@@ -167,6 +167,14 @@ functions:
           method: get
           cors: true
 
+  btxLeaderboard:
+    handler: handler.getLeaderboard
+    events:
+      - http:
+          path: btx/leaderboard
+          method: get
+          cors: true
+
   btxInvestmentImpact:
     handler: handler.postInvestmentImpact
     events:
