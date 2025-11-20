@@ -393,7 +393,14 @@ export function applyPriceFromNetShares(project, netSharesDelta) {
     project.currentPrice || project.basePrice || DEFAULT_BASE_PRICE
   );
 
-  const rawPrice = startPrice + netSharesDelta * PRICE_SENSITIVITY_PER_SHARE;
+  const clampedPriceForScale = Math.max(startPrice, DEFAULT_BASE_PRICE, 1);
+  const rawScale = DEFAULT_BASE_PRICE / clampedPriceForScale;
+
+  const scale = Math.max(rawScale, 0.2);
+
+  const effectiveSensitivity = PRICE_SENSITIVITY_PER_SHARE * scale;
+
+  const rawPrice = startPrice + netSharesDelta * effectiveSensitivity;
   const currentPrice = clampPrice(rawPrice);
 
   return {

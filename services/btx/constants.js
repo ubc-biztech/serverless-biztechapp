@@ -3,12 +3,13 @@
 export const DEFAULT_EVENT_ID = "kickstart";
 
 // intial virtual cash allocation for any user who touches BTX for the first time
-export const INITIAL_CASH_BALANCE = 1000;
+export const INITIAL_CASH_BALANCE = 2500;
 
 // price behaviour
 export const MIN_PRICE = 0.1;
 export const DEFAULT_BASE_PRICE = 1.0;
 export const PRICE_SENSITIVITY_PER_SHARE = 0.02; // how much price moves per net share
+
 export const TRANSACTION_FEE_BPS = 200;
 export const EQUILIBRIUM_SENSITIVITY_FACTOR = 0.7;
 export const EXECUTION_NOISE_MAX_PCT = 0.01;
