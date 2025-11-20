@@ -1039,14 +1039,61 @@ export async function getTraderLeaderboard(
 
   const projects = await listProjectsForEvent(ev);
 
+  if (!projects || !projects.length) {
+    return {
+      traders: 0,
+      top: [],
+      bottom: []
+    };
+  }
+
   const userStats = new Map();
 
+  const projectPrice = new Map();
   for (const p of projects) {
     const currentPrice = Number(
       p.currentPrice || p.basePrice || DEFAULT_BASE_PRICE
     );
-
     if (!Number.isFinite(currentPrice) || currentPrice <= 0) continue;
+    projectPrice.set(p.projectId, currentPrice);
+  }
+
+  const ensureStats = (userId) => {
+    let stats = userStats.get(userId);
+    if (!stats) {
+      stats = {
+        userId,
+        equityValue: 0,
+        totalPnl: 0,
+        positionsCount: 0
+      };
+      userStats.set(userId, stats);
+    }
+    return stats;
+  };
+
+  for (const p of projects) {
+    const tradesCmd = new QueryCommand({
+      TableName: BTX_TRADES_TABLE,
+      KeyConditionExpression: "projectId = :p",
+      ExpressionAttributeValues: {
+        ":p": p.projectId
+      }
+    });
+
+    const tradesRes = await docClient.send(tradesCmd);
+    const trades = tradesRes.Items || [];
+
+    for (const tr of trades) {
+      if (tr.eventId && tr.eventId !== ev) continue;
+      if (!tr.userId) continue;
+      ensureStats(tr.userId);
+    }
+  }
+
+  for (const p of projects) {
+    const currentPrice = projectPrice.get(p.projectId);
+    if (!currentPrice) continue;
 
     const holdingsCmd = new QueryCommand({
       TableName: BTX_HOLDINGS_TABLE,
@@ -1062,23 +1109,18 @@ export async function getTraderLeaderboard(
 
     for (const h of holdings) {
       const userId = h.userId;
+      if (!userId) continue;
+
+      const stats = ensureStats(userId);
+
       const shares = Number(h.shares || 0);
-      if (!shares) continue;
+      if (!Number.isFinite(shares) || shares <= 0) {
+        continue;
+      }
 
       const avgPrice = Number(h.avgPrice || currentPrice);
       const marketValue = shares * currentPrice;
       const positionPnl = marketValue - shares * avgPrice;
-
-      let stats = userStats.get(userId);
-      if (!stats) {
-        stats = {
-          userId,
-          equityValue: 0,
-          totalPnl: 0,
-          positionsCount: 0
-        };
-        userStats.set(userId, stats);
-      }
 
       stats.equityValue += marketValue;
       stats.totalPnl += positionPnl;
@@ -1087,6 +1129,14 @@ export async function getTraderLeaderboard(
   }
 
   const userIds = Array.from(userStats.keys());
+
+  if (!userIds.length) {
+    return {
+      traders: 0,
+      top: [],
+      bottom: []
+    };
+  }
 
   const accountResults = await Promise.all(
     userIds.map(async (userId) => {
@@ -1121,8 +1171,20 @@ export async function getTraderLeaderboard(
   }
 
   const all = Array.from(userStats.values()).filter(
-    (s) => Number.isFinite(s.totalValue) && s.initialBalance != null
+    (s) =>
+      s.initialBalance != null &&
+      Number.isFinite(s.totalValue) &&
+      Number.isFinite(s.totalPnl) &&
+      Number.isFinite(s.returnPct)
   );
+
+  if (!all.length) {
+    return {
+      traders: 0,
+      top: [],
+      bottom: []
+    };
+  }
 
   all.sort((a, b) => b.totalPnl - a.totalPnl);
 
