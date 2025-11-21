@@ -52,6 +52,7 @@ export function clampPrice(value) {
   return Math.max(MIN_PRICE, roundPrice(value));
 }
 
+// (Kept but not used in executeTrade; you can delete if you like)
 export function applyExecutionNoise(endPrice) {
   const maxPct = EXECUTION_NOISE_MAX_PCT || 0;
   if (!maxPct || maxPct <= 0) {
@@ -59,7 +60,6 @@ export function applyExecutionNoise(endPrice) {
   }
 
   const u = Math.random() * 2 - 1;
-
   const factor = 1 + u * maxPct;
   const noisy = endPrice * factor;
 
@@ -385,23 +385,17 @@ export function computeBasePriceFromSeed(seedAmount) {
   return clampPrice(base);
 }
 
+export function getPriceForNetShares(project, netShares) {
+  const basePrice = Number(project.basePrice || DEFAULT_BASE_PRICE);
+  const rawPrice = basePrice + netShares * PRICE_SENSITIVITY_PER_SHARE;
+  return clampPrice(rawPrice);
+}
+
 export function applyPriceFromNetShares(project, netSharesDelta) {
   const currentNetShares = Number(project.netShares || 0);
   const newNetShares = currentNetShares + netSharesDelta;
 
-  const startPrice = Number(
-    project.currentPrice || project.basePrice || DEFAULT_BASE_PRICE
-  );
-
-  const clampedPriceForScale = Math.max(startPrice, DEFAULT_BASE_PRICE, 1);
-  const rawScale = DEFAULT_BASE_PRICE / clampedPriceForScale;
-
-  const scale = Math.max(rawScale, 0.2);
-
-  const effectiveSensitivity = PRICE_SENSITIVITY_PER_SHARE * scale;
-
-  const rawPrice = startPrice + netSharesDelta * effectiveSensitivity;
-  const currentPrice = clampPrice(rawPrice);
+  const currentPrice = getPriceForNetShares(project, newNetShares);
 
   return {
     newNetShares,
@@ -501,10 +495,9 @@ export async function executeTrade({ userId, projectId, side, shares }) {
   ]);
   const holding = await getHolding(userId, projectId);
 
-  // Use *displayed* price as the starting point
-  const startPrice = Number(
-    project.currentPrice || project.basePrice || DEFAULT_BASE_PRICE
-  );
+  const startNetShares = Number(project.netShares || 0);
+
+  const startPrice = getPriceForNetShares(project, startNetShares);
   const cashBalance = Number(account.cashBalance || 0);
 
   if (!Number.isFinite(startPrice) || startPrice <= 0) {
@@ -516,19 +509,15 @@ export async function executeTrade({ userId, projectId, side, shares }) {
   //  Price impact + execution price
   const netSharesDelta = cleanSide === "BUY" ? sharesNum : -sharesNum;
 
-  // Linear bonding curve: end price relative to start price
-  const { currentPrice: deterministicEndPrice } = applyPriceFromNetShares(
+  const { newNetShares, currentPrice: endPrice } = applyPriceFromNetShares(
     project,
     netSharesDelta
   );
 
-  // newPriceRaw is already rounded + clamped via clampPrice
-  const endPrice = applyExecutionNoise(deterministicEndPrice);
-
   // Execute at average of before & after price
   const executionPrice = roundPrice((startPrice + endPrice) / 2);
 
-  // Transaction fee (fuck the audience)
+  // Transaction fee
   const feeFactor =
     TRANSACTION_FEE_BPS && TRANSACTION_FEE_BPS > 0
       ? TRANSACTION_FEE_BPS / 10000
@@ -554,7 +543,7 @@ export async function executeTrade({ userId, projectId, side, shares }) {
     buyDelta = sharesNum;
   } else {
     // SELL
-    const { newShares } = computeHoldingAfterSell(holding, sharesNum); // throws if broke ass
+    const { newShares } = computeHoldingAfterSell(holding, sharesNum); // throws if not enough shares
 
     // revenue = executionPrice * shares * (1 - fee)
     revenue = roundPrice(executionPrice * sharesNum * (1 - (feeFactor || 0)));
@@ -626,12 +615,12 @@ export async function executeTrade({ userId, projectId, side, shares }) {
     TableName: BTX_PROJECTS_TABLE,
     Key: { projectId },
     UpdateExpression:
-      "SET currentPrice = :cp, basePrice = if_not_exists(basePrice, :bp), netShares = if_not_exists(netShares, :zero) + :nsd, totalBuyShares = if_not_exists(totalBuyShares, :zero) + :bd, totalSellShares = if_not_exists(totalSellShares, :zero) + :sd, totalTrades = if_not_exists(totalTrades, :zero) + :one, totalVolume = if_not_exists(totalVolume, :zero) + :vol, updatedAt = :now",
+      "SET currentPrice = :cp, basePrice = if_not_exists(basePrice, :bp), netShares = :ns, totalBuyShares = if_not_exists(totalBuyShares, :zero) + :bd, totalSellShares = if_not_exists(totalSellShares, :zero) + :sd, totalTrades = if_not_exists(totalTrades, :zero) + :one, totalVolume = if_not_exists(totalVolume, :zero) + :vol, updatedAt = :now",
     ExpressionAttributeValues: {
       ":cp": endPrice,
       ":bp": project.basePrice || DEFAULT_BASE_PRICE,
+      ":ns": newNetShares,
       ":zero": 0,
-      ":nsd": netSharesDelta,
       ":bd": buyDelta,
       ":sd": sellDelta,
       ":one": 1,
@@ -762,29 +751,16 @@ export async function createOrUpdateProject({
   const seed = Number(seedAmount || 0);
 
   const basePrice = computeBasePriceFromSeed(seed);
-  const currentPrice = basePrice;
-
-  let finalName = name;
-  if (!finalName && projectId) {
-    try {
-      const teamItem = await db.getOne(projectId, TEAMS_TABLE);
-      if (teamItem && teamItem.teamName) {
-        finalName = teamItem.teamName;
-      }
-    } catch (err) {
-      console.warn("[BTX] unable to hydrate name from TEAMS", err);
-    }
-  }
 
   const item = {
     projectId,
     eventId: event,
     ticker,
-    name: finalName || ticker || projectId,
+    name: name || ticker || projectId,
     description: description || "",
     basePrice,
-    currentPrice,
     netShares: 0,
+    currentPrice: getPriceForNetShares({ basePrice }, 0),
     totalBuyShares: 0,
     totalSellShares: 0,
     totalTrades: 0,
@@ -807,7 +783,7 @@ export async function createOrUpdateProject({
     await recordPriceHistory({
       projectId,
       eventId: event,
-      price: currentPrice,
+      price: item.currentPrice,
       source: "PROJECT_CREATE"
     });
   } catch (err) {
@@ -829,9 +805,11 @@ export async function applySeedUpdate({ projectId, seedDelta, seedAbsolute }) {
       : currentSeed + Number(seedDelta || 0);
 
   const newBasePrice = computeBasePriceFromSeed(newSeed);
-  const newCurrentPrice = Math.max(
-    newBasePrice,
-    Number(project.currentPrice || newBasePrice)
+
+  const netShares = Number(project.netShares || 0);
+  const newCurrentPrice = getPriceForNetShares(
+    { basePrice: newBasePrice },
+    netShares
   );
 
   const cmd = new UpdateCommand({
@@ -852,7 +830,7 @@ export async function applySeedUpdate({ projectId, seedDelta, seedAbsolute }) {
   const updated = res.Attributes;
 
   broadcastPriceUpdate(updated, "SEED_UPDATE").catch((err) =>
-    console.error("[BTX] broadcast error", err)
+    console.error("[BTX] broadcast error (seed)", err)
   );
 
   return updated;
@@ -904,7 +882,7 @@ export async function applyPhaseBump({
   const updated = res.Attributes;
 
   broadcastPriceUpdate(updated, "PHASE_BUMP").catch((err) =>
-    console.error("[BTX] broadcast error", err)
+    console.error("[BTX] broadcast error (phase bump)", err)
   );
 
   return updated;
@@ -997,9 +975,10 @@ export async function getPortfolioForUser(userId, eventId) {
     .map((h) => {
       const project = projectMap.get(h.projectId);
       if (!project) return null;
-      const currentPrice = Number(
-        project.currentPrice || project.basePrice || DEFAULT_BASE_PRICE
-      );
+
+      const netShares = Number(project.netShares || 0);
+      const currentPrice = getPriceForNetShares(project, netShares);
+
       const shares = Number(h.shares || 0);
       const marketValue = roundPrice(currentPrice * shares);
       totalEquityValue += marketValue;
@@ -1051,9 +1030,8 @@ export async function getTraderLeaderboard(
 
   const projectPrice = new Map();
   for (const p of projects) {
-    const currentPrice = Number(
-      p.currentPrice || p.basePrice || DEFAULT_BASE_PRICE
-    );
+    const netShares = Number(p.netShares || 0);
+    const currentPrice = getPriceForNetShares(p, netShares);
     if (!Number.isFinite(currentPrice) || currentPrice <= 0) continue;
     projectPrice.set(p.projectId, currentPrice);
   }
