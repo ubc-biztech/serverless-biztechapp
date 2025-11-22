@@ -195,21 +195,29 @@ export async function getPriceHistoryForProject(
   let KeyConditionExpression = "projectId = :p";
   const ExpressionAttributeValues = { ":p": projectId };
 
-  if (sinceTs != null) {
+  if (sinceTs !== null) {
     KeyConditionExpression += " AND ts >= :since";
     ExpressionAttributeValues[":since"] = sinceTs;
   }
+
+  const fetchNewestFirst = sinceTs === null;
 
   const cmd = new QueryCommand({
     TableName: BTX_PRICES_TABLE,
     KeyConditionExpression,
     ExpressionAttributeValues,
-    ScanIndexForward: true, // oldest -> newest
+    ScanIndexForward: !fetchNewestFirst,
     Limit: limit
   });
 
   const res = await docClient.send(cmd);
-  return res.Items || [];
+  let items = res.Items || [];
+
+  if (fetchNewestFirst) {
+    items.reverse();
+  }
+
+  return items;
 }
 
 // Broadcast with price history
