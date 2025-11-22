@@ -200,16 +200,29 @@ export async function getPriceHistoryForProject(
     ExpressionAttributeValues[":since"] = sinceTs;
   }
 
+  const fetchNewestFirst = sinceTs == null;
+
   const cmd = new QueryCommand({
     TableName: BTX_PRICES_TABLE,
     KeyConditionExpression,
     ExpressionAttributeValues,
-    ScanIndexForward: true, // oldest -> newest
+    ScanIndexForward: !fetchNewestFirst,
     Limit: limit
   });
 
-  const res = await docClient.send(cmd);
-  return res.Items || [];
+  try {
+    const res = await docClient.send(cmd);
+    let items = res.Items || [];
+
+    if (fetchNewestFirst) {
+      items.reverse();
+    }
+
+    return items;
+  } catch (err) {
+    console.error("[BTX] getPriceHistoryForProject error", err);
+    return [];
+  }
 }
 
 // Broadcast with price history
