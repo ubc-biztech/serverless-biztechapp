@@ -319,17 +319,12 @@ export async function sendEmail(
 
 export const post = async (event, ctx, callback) => {
   try {
+    const email = event.requestContext.authorizer.claims.email.toLowerCase();
     const data = JSON.parse(event.body);
-    // Normalize email to lowercase
-    data.email = data.email.toLowerCase();
 
-    if (!isValidEmail(data.email))
-      throw helpers.inputError("Invalid email", data.email);
+    if (!isValidEmail(email))
+      throw helpers.inputError("Invalid email", email);
     helpers.checkPayloadProps(data, {
-      email: {
-        required: true,
-        type: "string"
-      },
       eventID: {
         required: true,
         type: "string"
@@ -355,12 +350,12 @@ export const post = async (event, ctx, callback) => {
       });
     }
 
-    const existingReg = await db.getOne(data.email, USER_REGISTRATIONS_TABLE, {
+    const existingReg = await db.getOne(email, USER_REGISTRATIONS_TABLE, {
       "eventID;year": `${data.eventID};${data.year}`
     });
     if (existingReg) {
       if (existingReg.registrationStatus === "incomplete") {
-        await updateHelper(data, false, data.email, data.fname);
+        await updateHelper(data, false, email, data.fname);
         const response = helpers.createResponse(200, {
           message: "Redirect to link",
           url: existingReg.checkoutLink
@@ -377,7 +372,7 @@ export const post = async (event, ctx, callback) => {
         return response;
       }
     } else {
-      const response = await updateHelper(data, true, data.email, data.fname);
+      const response = await updateHelper(data, true, email, data.fname);
       callback(null, response);
       return null;
     }
@@ -411,7 +406,7 @@ export const put = async (event, ctx, callback) => {
       throw helpers.missingIdQueryResponse("user");
 
     // Normalize email to lowercase
-    const email = event.pathParameters.email.toLowerCase();
+    const email = event.requestContext.authorizer.claims.email.toLowerCase();
 
     const data = JSON.parse(event.body);
     if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
