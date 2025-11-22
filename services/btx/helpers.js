@@ -195,12 +195,12 @@ export async function getPriceHistoryForProject(
   let KeyConditionExpression = "projectId = :p";
   const ExpressionAttributeValues = { ":p": projectId };
 
-  if (sinceTs !== null) {
+  if (sinceTs != null) {
     KeyConditionExpression += " AND ts >= :since";
     ExpressionAttributeValues[":since"] = sinceTs;
   }
 
-  const fetchNewestFirst = sinceTs === null;
+  const fetchNewestFirst = sinceTs == null;
 
   const cmd = new QueryCommand({
     TableName: BTX_PRICES_TABLE,
@@ -210,14 +210,19 @@ export async function getPriceHistoryForProject(
     Limit: limit
   });
 
-  const res = await docClient.send(cmd);
-  let items = res.Items || [];
+  try {
+    const res = await docClient.send(cmd);
+    let items = res.Items || [];
 
-  if (fetchNewestFirst) {
-    items.reverse();
+    if (fetchNewestFirst) {
+      items.reverse();
+    }
+
+    return items;
+  } catch (err) {
+    console.error("[BTX] getPriceHistoryForProject error", err);
+    return [];
   }
-
-  return items;
 }
 
 // Broadcast with price history
