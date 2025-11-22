@@ -1124,7 +1124,10 @@ export async function getTraderLeaderboard(
           Key: { userId }
         })
       );
-      return { userId, account: res.Item };
+      return {
+        userId,
+        account: res.Item
+      };
     })
   );
 

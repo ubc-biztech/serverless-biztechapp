@@ -323,8 +323,14 @@ export const post = async (event, ctx, callback) => {
     // Normalize email to lowercase
     data.email = data.email.toLowerCase();
 
-    if (!isValidEmail(data.email))
-      throw helpers.inputError("Invalid email", data.email);
+    const authorizerEmail = event.requestContext.authorizer.claims.email.toLowerCase();
+    let email = authorizerEmail;
+    if (authorizerEmail.endsWith("@ubcbiztech.com")) {
+      email = data.email; // only execs can act on behalf of other users
+    }
+
+    if (!isValidEmail(email))
+      throw helpers.inputError("Invalid email", email);
     helpers.checkPayloadProps(data, {
       email: {
         required: true,
@@ -355,12 +361,12 @@ export const post = async (event, ctx, callback) => {
       });
     }
 
-    const existingReg = await db.getOne(data.email, USER_REGISTRATIONS_TABLE, {
+    const existingReg = await db.getOne(email, USER_REGISTRATIONS_TABLE, {
       "eventID;year": `${data.eventID};${data.year}`
     });
     if (existingReg) {
       if (existingReg.registrationStatus === "incomplete") {
-        await updateHelper(data, false, data.email, data.fname);
+        await updateHelper(data, false, email, data.fname);
         const response = helpers.createResponse(200, {
           message: "Redirect to link",
           url: existingReg.checkoutLink
@@ -377,7 +383,7 @@ export const post = async (event, ctx, callback) => {
         return response;
       }
     } else {
-      const response = await updateHelper(data, true, data.email, data.fname);
+      const response = await updateHelper(data, true, email, data.fname);
       callback(null, response);
       return null;
     }
