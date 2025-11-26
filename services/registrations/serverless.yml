@@ -64,6 +64,9 @@ functions:
           path: registrations/
           method: post
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   registrationPut:
     handler: handler.put
     events:
@@ -75,6 +78,9 @@ functions:
               email: true
               fname: true
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   registrationGet:
     handler: handler.get
     events:
@@ -89,6 +95,9 @@ functions:
                 email: false
                 afterTimestamp: false
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   registrationDelete:
     handler: handler.del
     events:
@@ -124,6 +133,9 @@ functions:
                 eventID: false
                 year: false
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   massUpdateRegistration:
     handler: handler.massUpdate
     events:
@@ -131,3 +143,6 @@ functions:
           path: registrations/massUpdate
           method: put
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
