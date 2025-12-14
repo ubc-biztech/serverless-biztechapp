@@ -62,3 +62,21 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+resources:
+  Resources:
+    BiztechQuizzes:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: biztechQuizzes${self:provider.environment.ENVIRONMENT}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: quizID
+            AttributeType: S
+          - AttributeName: eventID;year
+            AttributeType: S
+        KeySchema:
+          - AttributeName: quizID
+            KeyType: HASH
+          - AttributeName: eventID;year
+            KeyType: RANGE
