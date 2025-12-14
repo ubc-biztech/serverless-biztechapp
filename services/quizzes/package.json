@@ -1,0 +1,12 @@
+{
+  "name": "biztechapi-quizzes",
+  "version": "1.0.0",
+  "scripts": {
+    "itest": "npm run itest quizzes --prefix ../../",
+    "utest": "npm run utest quizzes --prefix ../../",
+    "test": "npm run utest quizzes --prefix ../../ && npm run itest quizzes --prefix ../../"
+  },
+  "devDependencies": {
+    "serverless-offline": "^14.3.2"
+  }
+}
