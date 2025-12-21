@@ -53,11 +53,11 @@ functions:
     handler: handler.report
     events:
       - http:
-          path: quizzes/report/{profileId}
+          path: quizzes/report/{id}
           method: get
           request:
             path:
-              profileId: true
+              id: true
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS
@@ -71,12 +71,12 @@ resources:
         TableName: biztechQuizzes${self:provider.environment.ENVIRONMENT}
         BillingMode: PAY_PER_REQUEST
         AttributeDefinitions:
-          - AttributeName: quizID
+          - AttributeName: id
             AttributeType: S
           - AttributeName: eventID;year
             AttributeType: S
         KeySchema:
-          - AttributeName: quizID
+          - AttributeName: id 
             KeyType: HASH
           - AttributeName: eventID;year
             KeyType: RANGE

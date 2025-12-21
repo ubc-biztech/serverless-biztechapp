@@ -19,6 +19,7 @@ export const TEAMS_TABLE = "biztechTeams";
 export const QR_SCANS_RECORD = "biztechQRScans";
 export const INVESTMENTS_TABLE = "biztechInvestments";
 export const PROFILES_TABLE = "biztechProfiles";
+export const QUIZZES_TABLE = "biztechQuizzes";
 
 export const IMMUTABLE_USER_PROPS = ["admin"]; // make sure you check all calls to /user's patch in the frontend if you add to this list
 
