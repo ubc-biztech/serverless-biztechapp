@@ -35,7 +35,7 @@ export const upload = async (event, ctx, callback) => {
       required: true,
       type: "object"
     },
-  })
+  });
 
   const domainAvg = calculateAverage(data.domain);
   const modeAvg = calculateAverage(data.mode);
@@ -58,7 +58,7 @@ export const upload = async (event, ctx, callback) => {
     environmentAvg,
     focusAvg,
     mbti
-  }
+  };
 
   if (exists) {
     // if it already exists, update it
@@ -92,7 +92,7 @@ export const report = async (event, ctx, callback) => {
   if (!entry) {
     return helpers.createResponse(400, {
       message: "Quiz report not found"
-    })
+    });
   }
 
   return helpers.createResponse(200, {
