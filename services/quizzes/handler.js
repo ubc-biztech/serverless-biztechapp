@@ -60,13 +60,8 @@ export const upload = async (event, ctx, callback) => {
     mbti
   };
 
-  if (exists) {
-    // if it already exists, update it
-    await db.updateDB(data.id, dbEntry, QUIZZES_TABLE);
-  } else {
-    // if it doesn't exist, create a new one
-    await db.create(dbEntry, QUIZZES_TABLE);
-  }
+  // create new if doesn't exist anc vice versa
+  await db.put(dbEntry, QUIZZES_TABLE, !exists);
 
   return helpers.createResponse(200, {
     message: "Upload successful"
