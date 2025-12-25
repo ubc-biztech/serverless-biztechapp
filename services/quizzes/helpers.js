@@ -9,6 +9,15 @@ export default {
   },
 
   /**
+   * Validate question score
+   * @param {Array} scores 
+   * @returns {boolean}
+   */
+  validateQuestionScores: function (scores) {
+    return Array.isArray(scores) && scores.length > 0 && scores.every(score => typeof score === "number" && score >= 0 && score <= 10);  
+  },
+
+  /**
      * Generates BizTech MBTI type from average scores
      * @param {number} domainAvg       // Tech (0) -> Business (10)
      * @param {number} modeAvg         // Maker (0) -> Director (10)
