@@ -44,7 +44,7 @@ export const upload = async (event, ctx, callback) => {
 
   if(domainAvg === -1 || modeAvg === -1 || environmentAvg === -1 || focusAvg === -1) {
     return helpers.inputError("Invalid scores", data);
-  } 
+  }
 
   const mbti = generateMBTI(domainAvg, modeAvg, environmentAvg, focusAvg);
 

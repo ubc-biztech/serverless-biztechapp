@@ -14,7 +14,7 @@ export default {
    * @returns {boolean}
    */
   validateQuestionScores: function (scores) {
-    return Array.isArray(scores) && scores.length > 0 && scores.every(score => typeof score === "number" && score >= 0 && score <= 10);  
+    return Array.isArray(scores) && scores.length > 0 && scores.every(score => typeof score === "number" && score >= 0 && score <= 10);
   },
 
   /**
