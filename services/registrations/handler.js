@@ -11,6 +11,7 @@ import {
 } from "../../constants/tables";
 import SESEmailService from "./EmailService/SESEmailService";
 import awsConfig from "../../lib/config";
+import { isLegacyStatus, mapLegacyToNewStatus } from "./Legacy/legacyHelpers";
 
 // const CHECKIN_COUNT_SANITY_CHECK = 500;
 
@@ -40,10 +41,9 @@ export async function updateHelper(
   // Normalize email to lowercase
   const normalizedEmail = email.toLowerCase();
 
-  console.log(data);
-  console.log("CloudWatch debugging purposes");
+  // console.log(data);
+  // console.log("CloudWatch debugging purposes");
 
-  // for the QR code, we pass this to SendGrid
   const id = `${normalizedEmail};${eventIDAndYear};${fname}`;
 
   //Check if eventID exists and is string. Check if year exists and is number.
@@ -63,10 +63,6 @@ export async function updateHelper(
     data.isPartner = Boolean(data.isPartner);
   }
 
-  // Check if the user exists
-  // const existingUser = await db.getOne(email, USERS_TABLE);
-  // if(isEmpty(existingUser)) throw helpers.notFoundResponse('User', email);
-
   // Check if the event exists
   const existingEvent = await db.getOne(eventID, EVENTS_TABLE, {
     year
@@ -78,72 +74,40 @@ export async function updateHelper(
     id: normalizedEmail,
     fname
   };
-  let dynamicRegistrationStatus = registrationStatus;
-  // always check application status first, if not null then we send a application status email, else send regular
-  if (applicationStatus) {
-    try {
-      if (!data.isPartner && !isAcceptancePayment) {
-        await sendEmail(
-          user,
-          existingEvent,
-          applicationStatus,
-          id,
-          "application"
-        );
-      }
-    } catch (err) {
-      // if email sending failed, that user's email probably does not exist
-      throw helpers.createResponse(500, {
-        statusCode: 500,
-        code: "SES EMAIL SERVICE ERROR",
-        message: `Sending Email Error!: ${err.message}`
-      });
-    }
-  } else if (dynamicRegistrationStatus) {
-    // Check if the event is full
-    if (dynamicRegistrationStatus === "registered") {
-      const counts = await registrationHelpers.getEventCounts(eventID, year);
-      if (counts === null) {
-        throw db.dynamoErrorResponse({
-          code: "DYNAMODB ERROR",
-          time: new Date().getTime()
-        });
-      }
 
-      if (counts.registeredCount >= existingEvent.capac)
-        dynamicRegistrationStatus = "waitlist";
+  // Handle status logic
+  // supports legacy statuses
+  const { finalApplicationStatus, finalRegistrationStatus } = await processStatusLogic(
+    data,
+    existingEvent,
+    normalizedEmail,
+    createNew
+  );
 
-      // backend check if workshop is full. No longer needed for applicable.
-      // counts.dynamicCounts.forEach(count => {
-      //   const response = dynamicResponses[`${count.questionId}`];
-      //   const dynamicWorkshopCount = count.counts.find(questionChoice => questionChoice.label === response);
-      //   if (dynamicWorkshopCount.count && dynamicWorkshopCount.count.count === dynamicWorkshopCount.count.cap) {
-      //     throw helpers.createResponse(401, {
-      //       statusCode: 401,
-      //       code: "WORKSHOP ERROR",
-      //       message: `${response} is full!`
-      //     });
-      //   }
-      // });
+  data.applicationStatus = finalApplicationStatus;
+  data.registrationStatus = finalRegistrationStatus;
+
+  try {
+    if (!data.isPartner) {
+      await sendEmailNew(
+        user,
+        existingEvent,
+        finalApplicationStatus,
+        finalRegistrationStatus,
+        isAcceptancePayment
+      );
     }
-    // try to send the registration and calendar emails
-    try {
-      if (!data.isPartner) {
-        await sendEmail(user, existingEvent, dynamicRegistrationStatus);
-      }
-    } catch (err) {
-      // if email sending failed, that user's email probably does not exist
-      throw helpers.createResponse(500, {
-        statusCode: 500,
-        code: "SES ERROR",
-        message: `Sending Email Error!: ${err.message}`
-      });
-    }
+  } catch (err) {
+    throw helpers.createResponse(500, {
+      statusCode: 500,
+      code: "EMAIL SERVICE ERROR",
+      message: `Sending Email Error!: ${err.message}`
+    });
   }
 
   const response = await createRegistration(
-    dynamicRegistrationStatus,
-    applicationStatus,
+    finalRegistrationStatus,
+    finalApplicationStatus,
     data,
     normalizedEmail,
     eventIDAndYear,
@@ -157,8 +121,8 @@ export async function updateHelper(
       email: normalizedEmail,
       eventID,
       year,
-      registrationStatus: dynamicRegistrationStatus,
-      applicationStatus,
+      registrationStatus: finalRegistrationStatus,
+      applicationStatus: finalApplicationStatus,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
@@ -170,6 +134,52 @@ export async function updateHelper(
 
   return response;
 }
+
+//Process status logic
+const processStatusLogic = async (data, existingEvent, email, createNew) => {
+  let finalApplicationStatus = data.applicationStatus;
+  let finalRegistrationStatus = data.registrationStatus;
+
+  // Handle legacy statuses NOT TESTED YET!!!!
+  if (isLegacyStatus(data.registrationStatus)) {
+    const mapped = mapLegacyToNewStatus(data.registrationStatus);
+    if (mapped) {
+      finalApplicationStatus = mapped.applicationStatus;
+      finalRegistrationStatus = mapped.registrationStatus;
+    }
+  }
+
+  // Handle capacity checking for new registrations
+  if (createNew && finalApplicationStatus === "REGISTERED" && finalRegistrationStatus === "REVIEWING") {
+    const counts = await registrationHelpers.getEventCounts(data.eventID, data.year);
+    if (counts && counts.registeredCount >= existingEvent.capac) {
+      finalApplicationStatus = "WAITLISTED";
+      finalRegistrationStatus = "REVIEWING";
+    }
+  }
+
+  // Handle admin acceptance logic (for PUT requests)
+  if (finalApplicationStatus === "ACCEPTED" && finalRegistrationStatus === "REVIEWING") {
+    const user = await db.getOne(email, USERS_TABLE);
+    const isMember = user?.isMember;
+    const pricing = isMember
+      ? existingEvent.pricing?.members ?? 0
+      : existingEvent.pricing?.nonMembers ?? 0;
+
+    if (pricing === 0) {
+      // Free event
+      finalRegistrationStatus = "PENDING";
+    } else {
+      // Paid event
+      finalRegistrationStatus = "PAYMENTPENDING";
+    }
+  }
+
+  return {
+    finalApplicationStatus,
+    finalRegistrationStatus
+  };
+};
 
 function removeDefaultKeys(data) {
   const formResponse = data;
@@ -243,16 +253,18 @@ async function createRegistration(
     };
 
     const res = await db.updateDBCustom(params);
-    let message = `User with email ${email} successfully registered (through update) to status '${registrationStatus}'!`;
+
+    let message = `User with email ${email} successfully registered (through update) to status '${applicationStatus}' and '${registrationStatus}'!`;
     let statusCode = 200;
 
     // different status code if created new entry
     if (createNew) {
-      message = `User with email ${email} successfully registered (created) to status '${registrationStatus}'!`;
+      message = `User with email ${email} successfully registered (created) to status '${applicationStatus}' and '${registrationStatus}'!`;
       statusCode = 201;
     }
 
     const response = helpers.createResponse(statusCode, {
+      applicationStatus,
       registrationStatus,
       message,
       response: res
@@ -280,46 +292,74 @@ async function createRegistration(
   }
 }
 
-export async function sendEmail(
-  user,
-  existingEvent,
-  userStatus,
-  emailType = ""
-) {
-  if (
-    userStatus === "incomplete" ||
-    userStatus === "rejected" ||
-    userStatus === "accepted"
-  )
-    return;
-  if (userStatus !== "checkedIn") {
-    const userEmail = user.id;
+const sendEmailNew = async (user, existingEvent, applicationStatus, registrationStatus, isAcceptancePayment) => {
+  // Skip for certain status combinations
 
-    if (!userEmail) {
-      throw {
-        message: "User does not have an e-mail address!"
-      };
-    }
-
-    // TODO: make partner specific email, no emails sent to partners as of now.
-    const existingReg = await db.getOne(user.id, USER_REGISTRATIONS_TABLE, {
-      "eventID;year": `${existingEvent.id};${existingEvent.year}`
-    });
-    if (existingReg && existingReg.isPartner) {
-      return;
-    }
-
-    const EmailService = new SESEmailService(awsConfig);
-    await EmailService.sendDynamicQR(
-      existingEvent,
-      user,
-      userStatus,
-      emailType
-    );
-    if (userStatus === "registered")
-      await EmailService.sendCalendarInvite(existingEvent, user);
+  const userEmail = user.id;
+  if (!userEmail) {
+    throw { message: "User does not have an e-mail address!" };
   }
-}
+
+  // no emails sent to partners as of now
+  const existingReg = await db.getOne(user.id, USER_REGISTRATIONS_TABLE, {
+    "eventID;year": `${existingEvent.id};${existingEvent.year}`
+  });
+  if (existingReg && existingReg.isPartner) {
+    return;
+  }
+
+  const EmailService = new SESEmailService(awsConfig);
+
+  // Determine email type based on status combination
+  let emailType = "registration";
+  if (applicationStatus === "REGISTERED" && registrationStatus === "REVIEWING") {
+    emailType = "application";
+  } else if (applicationStatus === "ACCEPTED") {
+    emailType = "acceptance";    // TODO: Don't know if there is an acceptance email settings
+  }
+
+  // Send QR email
+  await EmailService.sendDynamicQR(
+    existingEvent,
+    user,
+    applicationStatus,
+    registrationStatus,
+    emailType
+  );
+
+  // Send calendar invite for completed registrations
+  if (registrationStatus === "COMPLETE" ||
+      (applicationStatus === "ACCEPTED" && registrationStatus === "PENDING")) {
+    await EmailService.sendCalendarInvite(existingEvent, user);
+  }
+};
+
+
+// Sets the initial statuses for a new registration
+const setInitialStatuses = async (data, eventExists) => {
+  if (eventExists.isApplicationBased) {
+    // Application-based events
+    data.applicationStatus = "REGISTERED";
+    data.registrationStatus = "REVIEWING";
+  } else {
+    // Non-application events
+    const user = await db.getOne(data.email, USERS_TABLE);
+    const isMember = user?.isMember;
+    const pricing = isMember
+      ? eventExists.pricing?.members ?? 0
+      : eventExists.pricing?.nonMembers ?? 0;
+
+    if (pricing > 0) {
+      // Paid event
+      data.applicationStatus = "ACCEPTED";
+      data.registrationStatus = "PAYMENTPENDING";
+    } else {
+      // Free event
+      data.applicationStatus = "ACCEPTED";
+      data.registrationStatus = "COMPLETE";
+    }
+  }
+};
 
 export const post = async (event, ctx, callback) => {
   try {
@@ -343,7 +383,11 @@ export const post = async (event, ctx, callback) => {
         type: "number"
       },
       registrationStatus: {
-        required: true,
+        required: false,
+        type: "string"
+      },
+      applicationStatus: {
+        required: false,
         type: "string"
       }
     });
@@ -362,8 +406,12 @@ export const post = async (event, ctx, callback) => {
     const existingReg = await db.getOne(data.email, USER_REGISTRATIONS_TABLE, {
       "eventID;year": `${data.eventID};${data.year}`
     });
+
     if (existingReg) {
-      if (existingReg.registrationStatus === "incomplete") {
+      // Check for both legacy and new incomplete statuses
+      if (existingReg.registrationStatus === "incomplete" ||
+          existingReg.applicationStatus === "INCOMPLETE" ||
+          (existingReg.applicationStatus === "INCOMPLETE" && existingReg.registrationStatus === "PAYMENTPENDING")) {
         await updateHelper(data, false, data.email, data.fname);
         const response = helpers.createResponse(200, {
           message: "Redirect to link",
@@ -381,6 +429,9 @@ export const post = async (event, ctx, callback) => {
         return response;
       }
     } else {
+      // NEW REGISTRATION
+      await setInitialStatuses(data, eventExists);
+
       const response = await updateHelper(data, true, data.email, data.fname);
       callback(null, response);
       return null;
@@ -443,6 +494,7 @@ export const put = async (event, ctx, callback) => {
       }
     });
 
+
     // Check if event exists first
     const eventExists = await db.getOne(data.eventID, EVENTS_TABLE, {
       year: Number(data.year)
@@ -454,23 +506,23 @@ export const put = async (event, ctx, callback) => {
       });
     }
 
-    // application based events
-    const isAccepted = data.registrationStatus === "accepted";
+    // Load existing registration
+    const existingReg = await db.getOne(email, USER_REGISTRATIONS_TABLE, {
+      "eventID;year": `${data.eventID};${Number(data.year)}`
+    });
 
-    if (isAccepted) {
+
+    if (existingReg && !data.registrationStatus) {
+      data.registrationStatus = existingReg.registrationStatus;
+    }
+
+    // If admin has accepted an application under review, set next step by pricing
+    if (data.applicationStatus === "ACCEPTED" && existingReg?.registrationStatus === "REVIEWING") {
       const user = await db.getOne(email, USERS_TABLE);
       const isMember = user?.isMember;
-
-      // for type safety, but event pricing not existing for nonMember
-      // with a nonMember registration is an illegal state
-      const pricing = isMember
-        ? eventExists.pricing?.members ?? 0
-        : eventExists.pricing?.nonMembers ?? 0;
-
-      // Set status to complete if pricing is free or zero
-      if (pricing === 0) {
-        data.registrationStatus = "acceptedPending";
-      }
+      const pricing = isMember ? (eventExists.pricing?.members ?? 0)
+        : (eventExists.pricing?.nonMembers ?? 0);
+      data.registrationStatus = pricing === 0 ? "PENDING" : "PAYMENTPENDING";
     }
 
     const response = await updateHelper(
@@ -503,11 +555,16 @@ export async function massUpdate(event, ctx, callback) {
     const results = await Promise.all(
       updates.map(async (update) => {
         try {
+          const currentReg = await db.getOne(update.email, USER_REGISTRATIONS_TABLE, {
+            "eventID;year": `${eventID};${eventYear}`
+          });
+
           const updateData = {
             eventID,
             year: eventYear,
             email: update.email,
-            applicationStatus: update.applicationStatus
+            applicationStatus: update.applicationStatus,
+            registrationStatus: currentReg?.registrationStatus
           };
 
           const fname = update.fname;
@@ -776,3 +833,47 @@ export const leaderboard = async (event, ctx, callback) => {
     };
   }
 };
+
+
+// OLD EMAIL SENDING FUNCTION FOR REFRENCENCE
+
+// export async function sendEmail(
+//   user,
+//   existingEvent,
+//   userStatus,
+//   emailType = ""
+// ) {
+//   if (
+//     userStatus === "incomplete" ||
+//     userStatus === "rejected" ||
+//     userStatus === "accepted"
+//   )
+//     return;
+//   if (userStatus !== "checkedIn") {
+//     const userEmail = user.id;
+
+//     if (!userEmail) {
+//       throw {
+//         message: "User does not have an e-mail address!"
+//       };
+//     }
+
+//     // TODO: make partner specific email, no emails sent to partners as of now.
+//     const existingReg = await db.getOne(user.id, USER_REGISTRATIONS_TABLE, {
+//       "eventID;year": `${existingEvent.id};${existingEvent.year}`
+//     });
+//     if (existingReg && existingReg.isPartner) {
+//       return;
+//     }
+
+//     const EmailService = new SESEmailService(awsConfig);
+//     await EmailService.sendDynamicQR(
+//       existingEvent,
+//       user,
+//       userStatus,
+//       emailType
+//     );
+//     if (userStatus === "registered")
+//       await EmailService.sendCalendarInvite(existingEvent, user);
+//   }
+// }
