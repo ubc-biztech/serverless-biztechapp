@@ -1,4 +1,4 @@
-import search from "../lib/search";
+import search from "../lib/search.js";
 
 const INDEX_NAME = "test-index";
 
