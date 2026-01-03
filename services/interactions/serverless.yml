@@ -130,6 +130,14 @@ custom:
       - dev
 
 functions:
+  recommend:
+    handler: handler.recommend
+    events:
+      - http:
+          path: interactions/recommend
+          method: post
+          cors: true
+
   interactionCreate:
     handler: handler.postInteraction
     events:

@@ -9,6 +9,7 @@ import db from "../../lib/db";
 import docClient from "../../lib/docClient";
 import handlerHelpers from "../../lib/handlerHelpers";
 import helpers from "../../lib/handlerHelpers";
+import search from "../../lib/search";
 import {
   TYPES
 } from "../profiles/constants";
@@ -30,6 +31,32 @@ import {
 const CONNECTION = "CONNECTION";
 const WORK = "WORKSHOP";
 const BOOTH = "BOOTH";
+
+export const recommend = async (event, ctx, callback) =>  {
+  try {
+    const data = JSON.parse(event.body);
+    helpers.checkPayloadProps(data, {
+      query: {
+        required: true,
+        type: "string"
+      },
+      topK: {
+        required: false,
+        type: "number"
+      }
+    });
+    const result = await search.retrieveTopK({
+      indexName: "test-index", // hardcoded for now
+      queryText: data.query,
+      topK: data.topK || 10,
+    });
+    return helpers.createResponse(200, result);
+  } catch (err) {
+    console.error(err);
+    callback(null, err);
+    return err;
+  }
+}
 
 export const postInteraction = async (event, ctx, callback) => {
   try {
