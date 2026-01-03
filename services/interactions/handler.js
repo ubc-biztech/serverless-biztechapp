@@ -56,7 +56,7 @@ export const recommend = async (event, ctx, callback) =>  {
     callback(null, err);
     return err;
   }
-}
+};
 
 export const postInteraction = async (event, ctx, callback) => {
   try {
