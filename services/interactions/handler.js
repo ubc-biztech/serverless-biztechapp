@@ -1,3 +1,4 @@
+import { BLUEPRINT_OPENSEARCH_TEST_INDEX } from "../../constants/indexes";
 import {
   CONNECTIONS_TABLE,
   MEMBERS2026_TABLE,
@@ -46,7 +47,7 @@ export const recommend = async (event, ctx, callback) =>  {
       }
     });
     const result = await search.retrieveTopK({
-      indexName: "test-index", // hardcoded for now
+      indexName: BLUEPRINT_OPENSEARCH_TEST_INDEX, // TODO: change to staging / prod  
       queryText: data.query,
       topK: data.topK || 10,
     });

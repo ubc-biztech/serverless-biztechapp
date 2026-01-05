@@ -1,6 +1,13 @@
 import search from "../lib/search.js";
+import {
+  BLUEPRINT_OPENSEARCH_TEST_INDEX,
+  BLUEPRINT_OPENSEARCH_STAGING_INDEX,
+  BLUEPRINT_OPENSEARCH_PROD_INDEX
+} from "../constants/indexes.js";
 
-const INDEX_NAME = "test-index";
+// Modify to staging / prod later
+// Also keep in mind another cluster should be used for production
+const INDEX_TO_USE = BLUEPRINT_OPENSEARCH_TEST_INDEX;
 
 /**
  * Index mappings
@@ -231,7 +238,7 @@ const profiles = [
 
 async function run() {
   const created = await search.createIndex({
-    indexName: INDEX_NAME,
+    indexName: INDEX_TO_USE,
     mappings,
     settings
   });
@@ -249,7 +256,7 @@ async function run() {
     `;
 
     await search.indexDocument({
-      indexName: INDEX_NAME,
+      indexName: INDEX_TO_USE,
       id: profile.id,
       document: {
         ...profile,
@@ -258,7 +265,7 @@ async function run() {
     });
   }
 
-  console.log("Seeded test-index with 20 profiles");
+  console.log(`Seeded ${INDEX_TO_USE} with 20 profiles`);
 }
 
 run().catch(console.error);
