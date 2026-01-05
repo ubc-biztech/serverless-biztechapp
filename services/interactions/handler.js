@@ -1,4 +1,7 @@
-import { BLUEPRINT_OPENSEARCH_TEST_INDEX } from "../../constants/indexes";
+import {
+  BLUEPRINT_OPENSEARCH_TEST_INDEX,
+  OPENSEARCH_INDEX_TOP_K
+} from "../../constants/indexes";
 import {
   CONNECTIONS_TABLE,
   MEMBERS2026_TABLE,
@@ -46,10 +49,12 @@ export const recommend = async (event, ctx, callback) =>  {
         type: "number"
       }
     });
+    // Uncomment below to use staging or prod index 
+    // const indexToUse = process.env.ENVIRONMENT === "STAGING" ? BLUEPRINT_OPENSEARCH_STAGING_INDEX : BLUEPRINT_OPENSEARCH_PROD_INDEX;  
     const result = await search.retrieveTopK({
-      indexName: BLUEPRINT_OPENSEARCH_TEST_INDEX, // TODO: change to staging / prod  
+      indexName: BLUEPRINT_OPENSEARCH_TEST_INDEX, // TODO: change to indexToUse later
       queryText: data.query,
-      topK: data.topK || 10,
+      topK: data.topK || OPENSEARCH_INDEX_TOP_K,
     });
     return helpers.createResponse(200, result);
   } catch (err) {
