@@ -53,9 +53,9 @@ export const recommend = async (event, ctx, callback) =>  {
     });
     return helpers.createResponse(200, result);
   } catch (err) {
-    console.error(err);
-    callback(null, err);
-    return err;
+    return helpers.createResponse(500, {
+      message: "Internal server error"
+    });
   }
 };
 
