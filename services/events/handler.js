@@ -265,8 +265,6 @@ export const update = async (event, ctx, callback) => {
 // POST events/event-thumbnail-upload-url/{id}/{year}
 export const createThumbnailPicUploadUrl = async (event, ctx, callback) => {
   try {
-
-
     const data = JSON.parse(event.body);
     helpers.checkPayloadProps(data, {
       fileType: {
