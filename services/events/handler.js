@@ -12,7 +12,7 @@ import {
   USERS_TABLE,
   USER_REGISTRATIONS_TABLE
 } from "../../constants/tables";
-import { 
+import {
   S3Client,
   PutObjectCommand
 } from "@aws-sdk/client-s3";
@@ -25,8 +25,6 @@ const S3 = new S3Client({
 const THUMBNAIL_BUCKET = "biztech-event-images";
 
 export const create = async (event, ctx, callback) => {
-  
-  
   try {
     const timestamp = new Date().getTime();
     const data = JSON.parse(event.body);
