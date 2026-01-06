@@ -265,30 +265,23 @@ export const update = async (event, ctx, callback) => {
 // POST events/event-thumbnail-upload-url/{id}/{year}
 export const createThumbnailPicUploadUrl = async (event, ctx, callback) => {
   try {
-    const claims = event.requestContext?.authorizer?.claims || {
-    };
-    // const userEmail = claims.email?.toLowerCase();
-    // if (!userEmail) {
-    //   const res = helpers.createResponse(401, {
-    //     message: "Unauthorized"
-    //   });
-    //   callback?.(null, res);
-    //   return res;
-    // }
 
-    // let profileId = event.queryStringParameters?.profileId;
-    // if (!profileId) {
-    //   const member = await db.getOne(userEmail, MEMBERS2026_TABLE);
-    //   profileId = member?.profileID;
-    // }
-    // if (!profileId) {
-    //   const res = helpers.createResponse(400, {
-    //     message: "Missing profileId"
-    //   });
-    //   callback?.(null, res);
-    //   return res;
-    // }
 
+    const data = JSON.parse(event.body);
+    helpers.checkPayloadProps(data, {
+      fileType: {
+        required: true
+      },
+      fileName: {
+        required: true
+      },
+      prefix: {
+        required: true
+      },
+      eventId: {
+        required: true
+      },
+    });
     const {
       fileType, fileName, prefix, eventId
     } = JSON.parse(event.body || "{}");
