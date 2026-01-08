@@ -130,9 +130,17 @@ export const all = async (event, ctx, callback) => {
       eventAndYear = event.pathParameters.event;
     }
 
-    const quizzes = await db.query(QUIZZES_TABLE, "event-query", {
-      "eventID;year": eventAndYear
-    });
+    const keyCondition = {
+      expression: "#eventIDYear = :query",
+      expressionNames: {
+        "#eventIDYear": "eventID;year"
+      },
+      expressionValues: {
+        ":query": eventAndYear
+      }
+    };
+
+    const quizzes = await db.query(QUIZZES_TABLE, "event-query", keyCondition);
 
     return helpers.createResponse(200, quizzes);
   } catch (error) {
@@ -156,9 +164,17 @@ export const aggregate = async (event, ctx, callback) => {
       eventAndYear = event.pathParameters.event;
     }
 
-    const quizzes = await db.query(QUIZZES_TABLE, "event-query", {
-      "eventID;year": eventAndYear
-    });
+    const keyCondition = {
+      expression: "#eventIDYear = :query",
+      expressionNames: {
+        "#eventIDYear": "eventID;year"
+      },
+      expressionValues: {
+        ":query": eventAndYear
+      }
+    };
+
+    const quizzes = await db.query(QUIZZES_TABLE, "event-query", keyCondition);
 
     if (!quizzes || quizzes.length === 0) {
       return helpers.createResponse(200, {
