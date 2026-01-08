@@ -62,8 +62,22 @@ functions:
     handler: handler.all
     events:
       - http:
-          path: quizzes/
+          path: quizzes/{event}
           method: get
+          request:
+            path:
+              event: true
+          cors: true
+  
+  aggregate:
+    handler: handler.aggregate
+    events:
+      - http:
+          path: quizzes/aggregate/{event}
+          method: get
+          request:
+            path:
+              event: true
           cors: true
 
 resources:
@@ -83,3 +97,12 @@ resources:
             KeyType: HASH
           - AttributeName: eventID;year
             KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: event-query
+            KeySchema:
+              - AttributeName: eventID;year
+                KeyType: HASH
+              - AttributeName: id
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL

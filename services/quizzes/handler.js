@@ -124,10 +124,90 @@ export const all = async (event, ctx, callback) => {
   */
 
   try {
-    const quizzes = await db.scan(QUIZZES_TABLE);
+    let eventAndYear = "blueprint;2026";
+
+    if (event.pathParameters && event.pathParameters.event) {
+      eventAndYear = event.pathParameters.event;
+    }
+
+    const quizzes = await db.query(QUIZZES_TABLE, "event-query", {
+      "eventID;year": eventAndYear
+    });
 
     return helpers.createResponse(200, quizzes);
   } catch (error) {
+    return helpers.createResponse(500, {
+      message: "Internal Server Error"
+    });
+  }
+};
+
+export const aggregate = async (event, ctx, callback) => {
+  /*
+    Responsible for:
+    - Aggregating average scores across all users
+    - Counting MBTI distribution
+  */
+
+  try {
+    let eventAndYear = "blueprint;2026";
+
+    if (event.pathParameters && event.pathParameters.event) {
+      eventAndYear = event.pathParameters.event;
+    }
+
+    const quizzes = await db.query(QUIZZES_TABLE, "event-query", {
+      "eventID;year": eventAndYear
+    });
+
+    if (!quizzes || quizzes.length === 0) {
+      return helpers.createResponse(200, {
+        message: "No quiz data found",
+        data: {
+          totalResponses: 0,
+          averages: null,
+          mbtiCount: {}
+        }
+      });
+    }
+
+    const count = quizzes.length;
+
+    let totals = {
+      domainAvg: 0,
+      modeAvg: 0,
+      environmentAvg: 0,
+      focusAvg: 0
+    };
+
+    const mbtiCount = {};
+
+    for (const quiz of quizzes) {
+      totals.domainAvg += quiz.domainAvg;
+      totals.modeAvg += quiz.modeAvg;
+      totals.environmentAvg += quiz.environmentAvg;
+      totals.focusAvg += quiz.focusAvg;
+
+      mbtiCount[quiz.mbti] = (mbtiCount[quiz.mbti] || 0) + 1;
+    }
+
+    const averages = {
+      domainAvg: totals.domainAvg / count,
+      modeAvg: totals.modeAvg / count,
+      environmentAvg: totals.environmentAvg / count,
+      focusAvg: totals.focusAvg / count
+    };
+
+    return helpers.createResponse(200, {
+      message: "Aggregate report generated",
+      data: {
+        totalResponses: count,
+        averages,
+        mbtiCount
+      }
+    });
+  } catch (error) {
+    console.error(error);
     return helpers.createResponse(500, {
       message: "Internal Server Error"
     });
