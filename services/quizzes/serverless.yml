@@ -46,9 +46,7 @@ functions:
           path: quizzes/upload
           method: post
           cors: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
   report:
     handler: handler.report
     events:
@@ -59,9 +57,6 @@ functions:
             path:
               id: true
           cors: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
 
 resources:
   Resources:
@@ -76,7 +71,7 @@ resources:
           - AttributeName: eventID;year
             AttributeType: S
         KeySchema:
-          - AttributeName: id 
+          - AttributeName: id
             KeyType: HASH
           - AttributeName: eventID;year
             KeyType: RANGE
