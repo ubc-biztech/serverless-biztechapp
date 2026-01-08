@@ -116,3 +116,20 @@ export const report = async (event, ctx, callback) => {
     data: entry
   });
 };
+
+export const all = async (event, ctx, callback) => {
+  /*
+    Responsible for:
+    - Getting all quiz reports 
+  */
+
+  try {
+    const quizzes = await db.scan(QUIZZES_TABLE);
+
+    return helpers.createResponse(200, quizzes);
+  } catch (error) {
+    return helpers.createResponse(500, {
+      message: "Internal Server Error"
+    });
+  }
+};

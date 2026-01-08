@@ -57,6 +57,14 @@ functions:
             path:
               id: true
           cors: true
+  
+  all:
+    handler: handler.all
+    events:
+      - http:
+          path: quizzes/
+          method: get
+          cors: true
 
 resources:
   Resources:
