@@ -1,7 +1,11 @@
 import { QUIZZES_TABLE } from "../../constants/tables.js";
 import db from "../../lib/db.js";
 import helpers from "../../lib/handlerHelpers.js";
-import { calculateAverage, generateMBTI, validateQuestionScores } from "./helpers";
+import {
+  calculateAverage,
+  generateMBTI,
+  validateQuestionScores
+} from "./helpers.js";
 
 export const upload = async (event, ctx, callback) => {
   /*
@@ -34,15 +38,28 @@ export const upload = async (event, ctx, callback) => {
     focus: {
       required: true,
       type: "object"
-    },
+    }
   });
 
-  const domainAvg = validateQuestionScores(data.domain) ? calculateAverage(data.domain) : -1;
-  const modeAvg = validateQuestionScores(data.mode) ? calculateAverage(data.mode) : -1;
-  const environmentAvg = validateQuestionScores(data.environment) ? calculateAverage(data.environment) : -1;
-  const focusAvg = validateQuestionScores(data.focus) ? calculateAverage(data.focus) : -1;
+  const domainAvg = validateQuestionScores(data.domain)
+    ? calculateAverage(data.domain)
+    : -1;
+  const modeAvg = validateQuestionScores(data.mode)
+    ? calculateAverage(data.mode)
+    : -1;
+  const environmentAvg = validateQuestionScores(data.environment)
+    ? calculateAverage(data.environment)
+    : -1;
+  const focusAvg = validateQuestionScores(data.focus)
+    ? calculateAverage(data.focus)
+    : -1;
 
-  if(domainAvg === -1 || modeAvg === -1 || environmentAvg === -1 || focusAvg === -1) {
+  if (
+    domainAvg === -1 ||
+    modeAvg === -1 ||
+    environmentAvg === -1 ||
+    focusAvg === -1
+  ) {
     return helpers.inputError("Invalid scores", data);
   }
 

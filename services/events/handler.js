@@ -12,6 +12,17 @@ import {
   USERS_TABLE,
   USER_REGISTRATIONS_TABLE
 } from "../../constants/tables";
+import {
+  S3Client,
+  PutObjectCommand
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+
+const S3 = new S3Client({
+  region: "us-west-2"
+});
+
+const THUMBNAIL_BUCKET = "biztech-event-images";
 
 export const create = async (event, ctx, callback) => {
   try {
@@ -248,6 +259,84 @@ export const update = async (event, ctx, callback) => {
     console.error(err);
     callback(null, err);
     return null;
+  }
+};
+
+// POST events/event-thumbnail-upload-url/{id}/{year}
+export const createThumbnailPicUploadUrl = async (event, ctx, callback) => {
+  try {
+    const data = JSON.parse(event.body);
+    helpers.checkPayloadProps(data, {
+      fileType: {
+        required: true
+      },
+      fileName: {
+        required: true
+      },
+      prefix: {
+        required: true
+      },
+      eventId: {
+        required: true
+      },
+    });
+    const {
+      fileType, fileName, prefix, eventId
+    } = JSON.parse(event.body || "{}");
+    if (!fileType || !fileName) {
+      const res = helpers.createResponse(400, {
+        message: "Missing fileType or fileName"
+      });
+      callback?.(null, res);
+      return res;
+    }
+
+    if (!fileType.startsWith("image/")) {
+      const res = helpers.createResponse(400, {
+        message: "Only image uploads are allowed"
+      });
+      callback?.(null, res);
+      return res;
+    }
+
+    const safeExt = (fileName.split(".").pop() || "jpg")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+
+    const folder =
+      prefix === "original" || prefix === "optimized" ? prefix : "optimized";
+
+    const key = `event-thumbnails/${eventId}/${folder}/${Date.now()}.${
+      safeExt || "jpg"
+    }`;
+
+    // ?
+    const putCmd = new PutObjectCommand({
+      Bucket: THUMBNAIL_BUCKET,
+      Key: key,
+      ContentType: fileType,
+      CacheControl: "public, max-age=31536000, immutable"
+    });
+
+    const uploadUrl = await getSignedUrl(S3, putCmd, {
+      expiresIn: 60
+    });
+    const publicUrl = `https://${THUMBNAIL_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+
+    const res = helpers.createResponse(200, {
+      uploadUrl,
+      key,
+      publicUrl
+    });
+    callback?.(null, res);
+    return res;
+  } catch (err) {
+    console.error("createThumbnail error", err);
+    const res = helpers.createResponse(500, {
+      message: "Failed to get upload URL"
+    });
+    callback(null, res);
+    return res;
   }
 };
 
