@@ -400,13 +400,9 @@ export const payment = async (event, ctx, callback) => {
         } else if (registered < 180) {
           unit_amount = 2500;
           data.paymentName = `${event.ename} (Regular)`;
-        } else if (registered < 230) {
+        } else {
           unit_amount = 3500;
           data.paymentName = `${event.ename} (Last Minute)`;
-        } else {
-          return helpers.createResponse(400, {
-            message: "Tickets are sold out."
-          });
         }
       } else {
         const isMember = !isEmpty(user) && user.isMember;
