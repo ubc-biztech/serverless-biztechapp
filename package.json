@@ -11,6 +11,7 @@
     "@aws-sdk/client-sns": "^3.637.0",
     "@aws-sdk/lib-dynamodb": "^3.620.1",
     "@aws-sdk/s3-request-presigner": "^3.965.0",
+    "algoliasearch": "^5.46.2",
     "concurrently": "^6.2.0",
     "copy-dynamodb-table": "^2.2.1",
     "csv-parser": "^3.0.0",

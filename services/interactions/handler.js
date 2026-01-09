@@ -1,4 +1,8 @@
 import {
+  BLUEPRINT_OPENSEARCH_TEST_INDEX,
+  OPENSEARCH_INDEX_TOP_K
+} from "../../constants/indexes";
+import {
   CONNECTIONS_TABLE,
   MEMBERS2026_TABLE,
   PROFILES_TABLE,
@@ -9,6 +13,7 @@ import db from "../../lib/db";
 import docClient from "../../lib/docClient";
 import handlerHelpers from "../../lib/handlerHelpers";
 import helpers from "../../lib/handlerHelpers";
+import search from "../../lib/search";
 import {
   TYPES
 } from "../profiles/constants";
@@ -30,6 +35,34 @@ import {
 const CONNECTION = "CONNECTION";
 const WORK = "WORKSHOP";
 const BOOTH = "BOOTH";
+
+export const recommend = async (event, ctx, callback) =>  {
+  try {
+    const data = JSON.parse(event.body);
+    helpers.checkPayloadProps(data, {
+      query: {
+        required: true,
+        type: "string"
+      },
+      topK: {
+        required: false,
+        type: "number"
+      }
+    });
+    // Uncomment below to use staging or prod index 
+    // const indexToUse = process.env.ENVIRONMENT === "STAGING" ? BLUEPRINT_OPENSEARCH_STAGING_INDEX : BLUEPRINT_OPENSEARCH_PROD_INDEX;  
+    const result = await search.retrieveTopK({
+      indexName: BLUEPRINT_OPENSEARCH_TEST_INDEX, // TODO: change to indexToUse later
+      queryText: data.query,
+      topK: data.topK || OPENSEARCH_INDEX_TOP_K,
+    });
+    return helpers.createResponse(200, result);
+  } catch (err) {
+    return helpers.createResponse(500, {
+      message: "Internal server error"
+    });
+  }
+};
 
 export const postInteraction = async (event, ctx, callback) => {
   try {
