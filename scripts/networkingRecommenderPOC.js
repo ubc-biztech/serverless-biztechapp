@@ -9,33 +9,9 @@ import {
 // Also keep in mind another cluster should be used for production
 const INDEX_TO_USE = BLUEPRINT_OPENSEARCH_TEST_INDEX;
 
-/**
- * Index mappings
- * profile_text is a concatenation of all answers for search
- */
-const mappings = {
-  properties: {
-    name: { type: "text" },
-    linkedin: { type: "keyword" },
-
-    companiesWorkedAt: { type: "text" },
-    technologiesExperienced: { type: "text" },
-    technologiesInterested: { type: "text" },
-    industriesInterested: { type: "text" },
-    networkingGoal: { type: "text" },
-
-    profile_text: { type: "text" }
-  }
-};
-
-const settings = {
-  number_of_shards: 1,
-  number_of_replicas: 2
-};
-
 const profiles = [
   {
-    id: "1",
+    objectID: "1",
     name: "Alex Chen",
     linkedin: "https://linkedin.com/in/alexchen",
     companiesWorkedAt: "Jane Street",
@@ -45,7 +21,7 @@ const profiles = [
     networkingGoal: "Meet engineers building high performance trading systems"
   },
   {
-    id: "2",
+    objectID: "2",
     name: "Priya Patel",
     linkedin: "https://linkedin.com/in/priyapatel",
     companiesWorkedAt: "Amazon",
@@ -55,7 +31,7 @@ const profiles = [
     networkingGoal: "Learn how large-scale distributed systems are designed"
   },
   {
-    id: "3",
+    objectID: "3",
     name: "Samantha Lee",
     linkedin: "https://linkedin.com/in/samanthalee",
     companiesWorkedAt: "Apple",
@@ -65,7 +41,7 @@ const profiles = [
     networkingGoal: "Meet other mobile engineers working on next-gen apps"
   },
   {
-    id: "4",
+    objectID: "4",
     name: "Michael Torres",
     linkedin: "https://linkedin.com/in/michaeltorres",
     companiesWorkedAt: "Meta",
@@ -75,7 +51,7 @@ const profiles = [
     networkingGoal: "Transition from engineering to PM roles"
   },
   {
-    id: "5",
+    objectID: "5",
     name: "Daniel Novak",
     linkedin: "https://linkedin.com/in/danielnovak",
     companiesWorkedAt: "Stripe",
@@ -85,7 +61,7 @@ const profiles = [
     networkingGoal: "Exchange lessons scaling financial products"
   },
   {
-    id: "6",
+    objectID: "6",
     name: "Fatima Hassan",
     linkedin: "https://linkedin.com/in/fatimahassan",
     companiesWorkedAt: "Google",
@@ -95,7 +71,7 @@ const profiles = [
     networkingGoal: "Discuss production reliability best practices"
   },
   {
-    id: "7",
+    objectID: "7",
     name: "Ryan Kim",
     linkedin: "https://linkedin.com/in/ryankim",
     companiesWorkedAt: "Early-stage startup",
@@ -105,17 +81,17 @@ const profiles = [
     networkingGoal: "Meet founders and early engineers"
   },
   {
-    id: "8",
+    objectID: "8",
     name: "Isabella Rossi",
     linkedin: "https://linkedin.com/in/isabellarossi",
     companiesWorkedAt: "McKinsey",
     technologiesExperienced: "Data analysis, SQL",
     technologiesInterested: "Product analytics",
     industriesInterested: "Consulting, tech strategy",
-    networkingGoal: "Bridge strategy and product roles"
+    networkingGoal: "BrobjectIDge strategy and product roles"
   },
   {
-    id: "9",
+    objectID: "9",
     name: "Tom Williams",
     linkedin: "https://linkedin.com/in/tomwilliams",
     companiesWorkedAt: "Netflix",
@@ -125,7 +101,7 @@ const profiles = [
     networkingGoal: "Learn about real-time data pipelines"
   },
   {
-    id: "10",
+    objectID: "10",
     name: "Nina Müller",
     linkedin: "https://linkedin.com/in/ninamueller",
     companiesWorkedAt: "SAP",
@@ -135,7 +111,7 @@ const profiles = [
     networkingGoal: "Understand cloud-native architectures"
   },
   {
-    id: "11",
+    objectID: "11",
     name: "Ethan Brooks",
     linkedin: "https://linkedin.com/in/ethanbrooks",
     companiesWorkedAt: "Tesla",
@@ -145,7 +121,7 @@ const profiles = [
     networkingGoal: "Meet engineers working on autonomy stacks"
   },
   {
-    id: "12",
+    objectID: "12",
     name: "Lucía Gómez",
     linkedin: "https://linkedin.com/in/luciagomez",
     companiesWorkedAt: "Uber",
@@ -155,7 +131,7 @@ const profiles = [
     networkingGoal: "Learn how ML improves logistics"
   },
   {
-    id: "13",
+    objectID: "13",
     name: "Kevin O'Neil",
     linkedin: "https://linkedin.com/in/kevinoneil",
     companiesWorkedAt: "Goldman Sachs",
@@ -165,7 +141,7 @@ const profiles = [
     networkingGoal: "Compare finance and big tech engineering"
   },
   {
-    id: "14",
+    objectID: "14",
     name: "Aisha Rahman",
     linkedin: "https://linkedin.com/in/aisharahman",
     companiesWorkedAt: "Shopify",
@@ -175,7 +151,7 @@ const profiles = [
     networkingGoal: "Meet product-focused engineers"
   },
   {
-    id: "15",
+    objectID: "15",
     name: "Victor Alvarez",
     linkedin: "https://linkedin.com/in/victoralvarez",
     companiesWorkedAt: "Spotify",
@@ -185,7 +161,7 @@ const profiles = [
     networkingGoal: "Discuss large-scale data ingestion"
   },
   {
-    id: "16",
+    objectID: "16",
     name: "Hannah Park",
     linkedin: "https://linkedin.com/in/hannahpark",
     companiesWorkedAt: "Airbnb",
@@ -195,7 +171,7 @@ const profiles = [
     networkingGoal: "Share insights on A/B testing at scale"
   },
   {
-    id: "17",
+    objectID: "17",
     name: "Marco Silva",
     linkedin: "https://linkedin.com/in/marcosilva",
     companiesWorkedAt: "Booking.com",
@@ -205,7 +181,7 @@ const profiles = [
     networkingGoal: "Learn from legacy modernization stories"
   },
   {
-    id: "18",
+    objectID: "18",
     name: "Emily Johnson",
     linkedin: "https://linkedin.com/in/emilyjohnson",
     companiesWorkedAt: "Microsoft",
@@ -215,7 +191,7 @@ const profiles = [
     networkingGoal: "Meet engineers building internal platforms"
   },
   {
-    id: "19",
+    objectID: "19",
     name: "Arjun Mehta",
     linkedin: "https://linkedin.com/in/arjunmehta",
     companiesWorkedAt: "Flipkart",
@@ -225,7 +201,7 @@ const profiles = [
     networkingGoal: "Understand how search impacts conversion"
   },
   {
-    id: "20",
+    objectID: "20",
     name: "Sophie Dubois",
     linkedin: "https://linkedin.com/in/sophiedubois",
     companiesWorkedAt: "Datadog",
@@ -237,35 +213,12 @@ const profiles = [
 ];
 
 async function run() {
-  const created = await search.createIndex({
+  await search.indexDocuments({
     indexName: INDEX_TO_USE,
-    mappings,
-    settings
+    documents: profiles
   });
 
-  console.log(created ? "Index created" : "Index already exists");
-
-  for (const profile of profiles) {
-    const profileText = `
-      ${profile.name}
-      ${profile.companiesWorkedAt}
-      ${profile.technologiesExperienced}
-      ${profile.technologiesInterested}
-      ${profile.industriesInterested}
-      ${profile.networkingGoal}
-    `;
-
-    await search.indexDocument({
-      indexName: INDEX_TO_USE,
-      id: profile.id,
-      document: {
-        ...profile,
-        profile_text: profileText
-      }
-    });
-  }
-
-  console.log(`Seeded ${INDEX_TO_USE} with 20 profiles`);
+  console.log("Successfully indexed profiles");
 }
 
 run().catch(console.error);
