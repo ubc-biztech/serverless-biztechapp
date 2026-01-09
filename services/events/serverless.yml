@@ -46,6 +46,13 @@ provider:
         - dynamodb:BatchGetItem
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechUsers${self:provider.environment.ENVIRONMENT}"
+    - Effect: Allow
+      Action:
+        - s3:PutObject
+        - s3:GetObject
+      Resource:
+        - arn:aws:s3:::biztech-event-images/*
+
 
 custom: ${file(../../serverless.common.yml):custom}
 
@@ -122,3 +129,29 @@ functions:
           path: events/getActiveEvent
           method: get
           cors: true
+  createEventImageUploadUrl:
+    handler: handler.createThumbnailPicUploadUrl
+    events:
+      - http:
+          path: events/event-image-upload-url
+          method: post
+          cors:
+            origins:
+              - http://localhost:3000
+              - https://app.ubcbiztech.com
+              - https://dev.app.ubcbiztech.com
+            headers:
+              - Content-Type
+              - Authorization
+              - X-Amz-Date
+              - X-Amz-Security-Token
+              - X-Requested-With
+            allowCredentials: false
+            methods:
+              - OPTIONS
+              - POST
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+
