@@ -383,6 +383,8 @@ export const payment = async (event, ctx, callback) => {
       }
 
       // Special tiered pricing for blueprint;2026
+      // https://github.com/ubc-biztech/serverless-biztechapp/pull/631
+      // Remove from codebase after blueprint 2026
       if (data.eventID === "blueprint" && Number(data.year) === 2026) {
         const counts = await registrationHelpers.getEventCounts(
           data.eventID,
