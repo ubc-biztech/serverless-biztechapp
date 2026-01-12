@@ -1,0 +1,7 @@
+{
+  "name": "biztechapi-quests",
+  "version": "1.0.0",
+  "devDependencies": {
+    "serverless-offline": "^14.3.2"
+  }
+}

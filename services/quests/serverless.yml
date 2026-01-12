@@ -1,0 +1,111 @@
+service: biztechApi-quests
+tenant: ianmh
+app: biztechapp
+
+plugins:
+  - serverless-dynamodb
+  - serverless-offline
+  - serverless-domain-manager
+  - serverless-bundle
+  - serverless-prune-plugin
+  - serverless-mocha-plugin
+
+provider:
+  name: aws
+  stage: ${file(../../serverless.common.yml):provider.stage}
+  runtime: ${file(../../serverless.common.yml):provider.runtime}
+  region: ${file(../../serverless.common.yml):provider.region}
+  cfLogs: true
+  environment:
+    ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
+    NODE_ENV: ${env:NODE_ENV}
+
+  apiGateway:
+    restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
+    restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
+
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+        - dynamodb:Query
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechQuests${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechQuests${self:provider.environment.ENVIRONMENT}/index/event-query"
+
+custom: ${file(../../serverless.common.yml):custom}
+
+functions:
+  updateQuest:
+    handler: handler.updateQuest
+    events:
+      - http:
+          path: quests/{event_id}/{year}
+          method: patch
+          request:
+            parameters:
+              path:
+                event_id: true
+                year: true
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  getQuest:
+    handler: handler.getQuest
+    events:
+      - http:
+          path: quests/{event_id}/{year}
+          method: get
+          request:
+            parameters:
+              path:
+                event_id: true
+                year: true
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  getAllQuests:
+    handler: handler.getAllQuests
+    events:
+      - http:
+          path: quests/
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+resources:
+  Resources:
+    BiztechQuests:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: biztechQuests${self:provider.environment.ENVIRONMENT}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: user_email
+            AttributeType: S
+          - AttributeName: eventID_year
+            AttributeType: S
+          - AttributeName: eventID
+            AttributeType: S
+        KeySchema:
+          - AttributeName: user_email
+            KeyType: HASH
+          - AttributeName: eventID_year
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: event-query
+            KeySchema:
+              - AttributeName: eventID
+                KeyType: HASH
+              - AttributeName: user_email
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
