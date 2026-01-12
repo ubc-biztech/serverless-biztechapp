@@ -1,76 +1,72 @@
 export const groups = {
-  "leads": [
-    "grace",
-    "pauline",
-    "ethanx",
-    "kevin",
-    "john",
-    "dhrishty",
-    "mikayla",
-    "lillian",
-    "lucas"
-  ],
-  "internal": ["mikayla", "erping", "ashley"],
-  "experiences": [
-    "pauline",
-    "angela",
-    "gautham",
-    "jack",
-    "allison",
-    "danielz",
-    "danielt",
-    "chris"
-  ],
-  "partnerships": [
-    "john",
-    "rohan",
-    "darius",
-    "jimmy",
-    "keon",
-    "karens",
-    "angelaf"
-  ],
-  "mmd": [
-    "emma",
-    "keira",
-    "dhrishty",
-    "emilyl",
-    "stephanie",
-    "ali",
-    "yumin",
-    "indy",
-    "chelsea",
-    "julianna"
-  ],
-  "devs": [
-    "kevin",
-    "ali",
-    "jay",
-    "ethan",
-    "elijah",
-    "brian",
-    "benny",
-    "kevinh",
-    "isaac",
-    "aurora",
-    "alexg"
-  ],
-  "fyr": ["michele", "sophia", "jade"],
-  "data": ["ethanx", "hiro", "elena", "janaye"],
-  "bizbot": ["alexg", "kevinh", "isaac", "jay", "kevin"],
-  "bt-web-v2": ["benny", "ethan", "aurora", "ali", "jay", "kevin"]
+	"leads": [
+		"grace",
+		"pauline",
+		"kevin",
+		"john",
+		"dhrishty",
+		"mikayla",
+		"lillian",
+		"lucas"
+	],
+	"internal": ["lucas", "grace", "erping", "ashley"],
+	"experiences": [
+		"pauline",
+		"angela",
+		"gautham",
+		"jack",
+		"allison",
+		"danielz",
+		"danielt",
+		"chris"
+	],
+	"partnerships": [
+		"john",
+		"rohan",
+		"darius",
+		"jimmy",
+		"keon",
+		"karens",
+		"angelaf"
+	],
+	"mmd": [
+		"emma",
+		"keira",
+		"dhrishty",
+		"emilyl",
+		"stephanie",
+		"yumin",
+		"indy",
+		"chelsea",
+		"julianna"
+	],
+	"devs": [
+		"kevin",
+		"ali",
+		"jay",
+		"ethan",
+		"elijah",
+		"brian",
+		"benny",
+		"isaac",
+		"aurora",
+		"alexg",
+		"janaye"
+	],
+	"fyr": ["michele", "sophia", "jade"],
+	"data": ["elena"],
 };
 
 export const projects = [
-  "BT-Web-V2",
-  "Discord Bot",
-  "Biztech Card",
-  "Internal Tools"
+	"BT-Web-V2",
+	"Discord Bot",
+	"Biztech Card",
+	"Internal Tools"
 ];
 
 export const ack = {
-  statusCode: 200,
-  body: ""
+	statusCode: 200,
+	body: ""
 };
 
 export const installationID = 71407901;
@@ -125,20 +121,20 @@ export const query = `
 `;
 
 export const btFields = Object.freeze({
-  endDate: "End date"
+	endDate: "End date"
 });
 
 export const btDevs = Object.freeze({
-  "ethan-t-hansen": "ethan",
-  "kevinxiao27": "kevin",
-  "ahosseini06": "ali",
-  "jaypark25": "jay",
-  "bennypc": "benny",
-  "liuisaac": "isaac",
-  "auroraxcheng": "aurora",
-  "alex-gour": "alexg",
-  "briannval": "brian",
-  "elijahzhao24": "elijah"
+	"ethan-t-hansen": "ethan",
+	"kevinxiao27": "kevin",
+	"ahosseini06": "ali",
+	"jaypark25": "jay",
+	"bennypc": "benny",
+	"liuisaac": "isaac",
+	"auroraxcheng": "aurora",
+	"alex-gour": "alexg",
+	"briannval": "brian",
+	"elijahzhao24": "elijah"
 });
 
 // discord constants (hardcoded to the server)
@@ -148,6 +144,6 @@ const VERIFIED_MEMBERSHIP = "1422059115273785434";
 const MEMBERSHIP_PROD = "1414805157371318272";
 
 export const MEMBERSHIP_ROLES = {
-  verified: [VERIFIED_MEMBERSHIP],
-  verifiedPROD: [MEMBERSHIP_PROD]
+	verified: [VERIFIED_MEMBERSHIP],
+	verifiedPROD: [MEMBERSHIP_PROD]
 };
