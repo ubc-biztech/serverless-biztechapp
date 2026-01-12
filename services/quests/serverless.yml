@@ -89,14 +89,14 @@ resources:
         TableName: biztechQuests${self:provider.environment.ENVIRONMENT}
         BillingMode: PAY_PER_REQUEST
         AttributeDefinitions:
-          - AttributeName: user_email
+          - AttributeName: ID 
             AttributeType: S
           - AttributeName: eventID_year
             AttributeType: S
           - AttributeName: eventID
             AttributeType: S
         KeySchema:
-          - AttributeName: user_email
+          - AttributeName: ID
             KeyType: HASH
           - AttributeName: eventID_year
             KeyType: RANGE
@@ -105,7 +105,7 @@ resources:
             KeySchema:
               - AttributeName: eventID
                 KeyType: HASH
-              - AttributeName: user_email
+              - AttributeName: ID
                 KeyType: RANGE
             Projection:
               ProjectionType: ALL
