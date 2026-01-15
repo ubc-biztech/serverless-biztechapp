@@ -245,7 +245,7 @@ export const wrapped = async (event, ctx, callback) => {
         type: "string"
       }
     });
-    
+
     let eventAndYear = "blueprint;2026";
 
     if (event.pathParameters && event.pathParameters.event) {
@@ -267,7 +267,7 @@ export const wrapped = async (event, ctx, callback) => {
     const othersWithSameMbtiCount = sameMbtiCount.length - 1;
     const totalWithMbtiCount = sameMbtiCount.length;
 
-    let percentage; 
+    let percentage;
     if (quizzes.length) {
       percentage = (totalWithMbtiCount / quizzes.length) * 100;
     } else {
