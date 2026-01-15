@@ -239,7 +239,6 @@ export const wrapped = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
 
-    // object means array of scores
     helpers.checkPayloadProps(data, {
       mbti: {
         required: true,
