@@ -79,6 +79,14 @@ functions:
             path:
               event: true
           cors: true
+  
+  wrapped:
+    handler: handler.wrapped
+    events:
+      - http:
+          path: quizzes/wrapped
+          method: post
+          cors: true
 
 resources:
   Resources:
