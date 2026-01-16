@@ -229,3 +229,51 @@ export const aggregate = async (event, ctx, callback) => {
     });
   }
 };
+
+export const wrapped = async (event, ctx, callback) => {
+  /*
+    Responsible for:
+    - Getting stats for one's MBTI
+  */
+
+  try {
+    const data = JSON.parse(event.body);
+
+    helpers.checkPayloadProps(data, {
+      mbti: {
+        required: true,
+        type: "string"
+      }
+    });
+
+    let eventAndYear = "blueprint;2026";
+
+    if (event.pathParameters && event.pathParameters.event) {
+      eventAndYear = event.pathParameters.event;
+    }
+
+    const keyCondition = {
+      expression: "#eventIDYear = :query",
+      expressionNames: {
+        "#eventIDYear": "eventID;year"
+      },
+      expressionValues: {
+        ":query": eventAndYear
+      }
+    };
+
+    const quizzes = await db.query(QUIZZES_TABLE, "event-query", keyCondition);
+    const totalResponses = quizzes.length;
+    const sameMbtiCount = quizzes.filter((quiz) => quiz.mbti === data.mbti);
+    const totalWithMbtiCount = sameMbtiCount.length;
+
+    return helpers.createResponse(200, {
+      totalResponses,
+      totalWithMbtiCount,
+    });
+  } catch (error) {
+    return helpers.createResponse(500, {
+      message: "Internal Server Error"
+    });
+  }
+};
