@@ -263,21 +263,13 @@ export const wrapped = async (event, ctx, callback) => {
     };
 
     const quizzes = await db.query(QUIZZES_TABLE, "event-query", keyCondition);
+    const totalResponses = quizzes.length;
     const sameMbtiCount = quizzes.filter((quiz) => quiz.mbti === data.mbti);
-    const othersWithSameMbtiCount = sameMbtiCount.length - 1;
     const totalWithMbtiCount = sameMbtiCount.length;
 
-    let percentage;
-    if (quizzes.length) {
-      percentage = (totalWithMbtiCount / quizzes.length) * 100;
-    } else {
-      percentage = 0;
-    }
-
     return helpers.createResponse(200, {
-      othersWithSameMbtiCount,
+      totalResponses,
       totalWithMbtiCount,
-      percentage
     });
   } catch (error) {
     return helpers.createResponse(500, {
