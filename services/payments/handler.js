@@ -275,8 +275,6 @@ export const webhook = async (event, ctx, callback) => {
 
   const eventRegistration = async (data) => {
     try {
-      let updatedRegistrationStatus = "registered";
-
       const eventIDAndYear = data.eventID + ";" + data.year;
 
       const keyCondition = {
@@ -297,16 +295,30 @@ export const webhook = async (event, ctx, callback) => {
       );
       console.log(JSON.stringify(result, null, 2));
 
-      if (
-        result[0].registrationStatus === "accepted" ||
-        result[0].registrationStatus === "acceptedPending"
-      ) {
-        updatedRegistrationStatus = "acceptedComplete"; // ad hoc case for application based events
+      const currentReg = result[0];
+      let updatedApplicationStatus;
+      let updatedRegistrationStatus;
+
+      if (currentReg.registrationStatus === "PAYMENTPENDING") {
+        updatedApplicationStatus = "ACCEPTED";
+        updatedRegistrationStatus = "COMPLETE";
+      }
+      // HANDLE LEGACY STATUSES
+      else if (currentReg.registrationStatus === "accepted" ||
+               currentReg.registrationStatus === "acceptedPending") {
+        updatedApplicationStatus = "ACCEPTED";
+        updatedRegistrationStatus = "COMPLETE";
+      }
+      // fallback case
+      else {
+        updatedApplicationStatus = "ACCEPTED";
+        updatedRegistrationStatus = "COMPLETE";
       }
 
       const body = {
         eventID: data.eventID,
         year: Number(data.year),
+        applicationStatus: updatedApplicationStatus,
         registrationStatus: updatedRegistrationStatus
       };
       await updateHelper(body, false, data.email, data.fname, true);

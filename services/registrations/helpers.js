@@ -92,16 +92,14 @@ export default {
       if (Array.isArray(result)) {
         result.forEach((item) => {
           if (item.isPartner === undefined || !item.isPartner) {
-            switch (item.registrationStatus) {
-            case "registered":
-              counts.registeredCount++;
-              break;
-            case "checkedIn":
+            // TODO: Handle legacy statuses
+
+            if (item.applicationStatus === "CHECKED_IN") {
               counts.checkedInCount++;
-              break;
-            case "waitlist":
+            } else if (item.applicationStatus === "WAITLISTED") {
               counts.waitlistCount++;
-              break;
+            } else if (item.applicationStatus === "ACCEPTED" || item.registrationStatus === "COMPLETE") {
+              counts.registeredCount++;
             }
           }
 

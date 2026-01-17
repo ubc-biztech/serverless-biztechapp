@@ -170,7 +170,7 @@ export default class SESEmailService {
     }
   }
 
-  async sendDynamicQR(event, user, registrationStatus, emailType) {
+  async sendDynamicQR(event, user, applicationStatus, registrationStatus, emailType) {
     const {
       id: email, fname
     } = user;
@@ -184,6 +184,7 @@ export default class SESEmailService {
     const emailParams = {
       fname,
       ename,
+      applicationStatus,
       registrationStatus,
       logoBase64,
       qrCode: qr,
