@@ -193,7 +193,7 @@ export const getAllConnections = async (event, ctx, callback) => {
     let data = result.sort((a, b) => {
       return b.createdAt - a.createdAt;
     });
-    
+
     let response = handlerHelpers.createResponse(200, {
       message: `all connections for ${userID}`,
       data
