@@ -4,6 +4,7 @@ import {
 } from "../../constants/indexes";
 import {
   CONNECTIONS_TABLE,
+  EVENTS_TABLE,
   MEMBERS2026_TABLE,
   PROFILES_TABLE,
   QRS_TABLE,
@@ -189,14 +190,50 @@ export const getAllConnections = async (event, ctx, callback) => {
       }
     });
 
-    const data = result.sort((a, b) => {
+    let data = result.sort((a, b) => {
       return b.createdAt - a.createdAt;
     });
-
-    const response = handlerHelpers.createResponse(200, {
+    
+    let response = handlerHelpers.createResponse(200, {
       message: `all connections for ${userID}`,
       data
     });
+
+    const qs = event.queryStringParameters || {};
+    const eventId = qs.eventId || null;
+    const year = qs.year || null;
+
+    if (eventId && year) {
+      const existingEvent = await db.getOne(eventId, EVENTS_TABLE, {
+        year: Number(year)
+      });
+
+      if (existingEvent) {
+        // convert from ISO to UNIX
+        let start = existingEvent.startDate;
+        let end = existingEvent.endDate;
+
+        // if start exists, filter from start date
+        if (start) {
+          start = new Date(start).getTime();
+          data = data.filter(item => item.createdAt >= start);
+        }
+
+        // if end exists, filter to end data
+        if (end) {
+          end = new Date(end).getTime();
+          data = data.filter(item => item.createdAt <= end);
+        }
+
+        // if we did any filtering, update the response
+        if (start || end) {
+          response = handlerHelpers.createResponse(200, {
+            message: `all connections for ${userID} during event ${eventId} and year ${year}`,
+            data
+          });
+        }
+      }
+    }
 
     callback(null, response);
   } catch (err) {
