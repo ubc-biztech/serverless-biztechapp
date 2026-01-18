@@ -84,6 +84,10 @@ functions:
 resources:
   Resources:
     BiztechQuests:
+    # update the quests to include types and unique companies talked to
+    # extend to a new endpoint 
+    #    
+
       Type: AWS::DynamoDB::Table
       Properties:
         TableName: biztechQuests${self:provider.environment.ENVIRONMENT}
@@ -109,3 +113,177 @@ resources:
                 KeyType: RANGE
             Projection:
               ProjectionType: ALL
+
+
+# service: biztechApi-quests
+# tenant: ianmh
+# app: biztechapp
+
+# plugins:
+#   - serverless-dynamodb
+#   - serverless-offline
+#   - serverless-domain-manager
+#   - serverless-bundle
+#   - serverless-prune-plugin
+#   - serverless-mocha-plugin
+
+# provider:
+#   name: aws
+#   stage: ${file(../../serverless.common.yml):provider.stage}
+#   runtime: ${file(../../serverless.common.yml):provider.runtime}
+#   region: ${file(../../serverless.common.yml):provider.region}
+#   cfLogs: true
+
+#   environment:
+#     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
+#     NODE_ENV: ${env:NODE_ENV}
+
+#   apiGateway:
+#     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
+#     restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
+
+#   iamRoleStatements:
+#     - Effect: Allow
+#       Action:
+#         - dynamodb:GetItem
+#         - dynamodb:PutItem
+#         - dynamodb:UpdateItem
+#         - dynamodb:Query
+#       Resource:
+#         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechQuests${self:provider.environment.ENVIRONMENT}"
+#         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechQuests${self:provider.environment.ENVIRONMENT}/index/event-query"
+
+# custom: ${file(../../serverless.common.yml):custom}
+
+# functions:
+#   # PROGRESS API (PATCH): updates quests[questId] state for this user+event
+#   updateQuestProgress:
+#     handler: handler.updateQuest
+#     events:
+#       - http:
+#           path: quests/{event_id}/{year}/progress # establish a new endpoint 
+#           method: patch
+#           request:
+#             parameters:
+#               path:
+#                 event_id: true
+#                 year: true
+#           cors: true
+#           authorizer:
+#             type: COGNITO_USER_POOLS
+#             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+#   # GET all progress for this user+event (quests map)
+#   getQuestProgress:
+#     handler: handler.getQuest
+#     events:
+#       - http:
+#           path: quests/{event_id}/{year}/progress
+#           method: get
+#           request:
+#             parameters:
+#               path:
+#                 event_id: true
+#                 year: true
+#           cors: true
+#           authorizer:
+#             type: COGNITO_USER_POOLS
+#             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+#   # GET quest plus progress objects for this user+event
+# #   getAllQuests:
+# #     handler: handler.getAllQuests
+# #     events:
+# #       - http:
+# #           path: quests/
+# #           method: get
+# #           cors: true
+# #           authorizer:
+# #             type: COGNITO_USER_POOLS
+# #             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+# # resources:
+# #   Resources:
+# #     BiztechQuests:
+# #       Type: AWS::DynamoDB::Table
+# #       Properties:
+# #         TableName: biztechQuests${self:provider.environment.ENVIRONMENT}
+# #         BillingMode: PAY_PER_REQUEST
+
+# #         AttributeDefinitions:
+# #           - AttributeName: user_email
+# #             AttributeType: S
+# #           - AttributeName: eventID_year
+# #             AttributeType: S
+# #           - AttributeName: eventID
+# #             AttributeType: S
+
+# #         KeySchema:
+# #           - AttributeName: user_email
+# #             KeyType: HASH
+# #           - AttributeName: eventID_year
+# #             KeyType: RANGE
+
+# #         GlobalSecondaryIndexes:
+# #           - IndexName: event-query
+# #             KeySchema:
+# #               - AttributeName: eventID
+# #                 KeyType: HASH
+# #               - AttributeName: user_email
+# #                 KeyType: RANGE
+# #             Projection:
+# #               ProjectionType: ALL
+
+
+# # get quest plus progress via quests[questId] for this user+event
+#   for each quest definition q:
+
+# questsMap[q.id] gives you the saved progress
+
+# otherwise you call initProgress(q)
+
+# What “the value” should contain (by type)
+# COUNTER quest value
+
+# Stores only count + target + status
+
+# {
+#   status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED",
+#   count: number,
+#   target: number,
+#   updatedAt: number
+# }
+
+# UNIQUE_SET quest value
+
+# Stores the unique items, plus count derived from length
+
+# {
+#   status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED",
+#   items: string[],
+#   count: number,
+#   target: number | undefined,
+#   updatedAt: number
+# }
+
+# Important detail: the quest id should NOT live inside the value
+
+
+# because the key already tells you which quest it is.
+
+# When PATCH happens: what gets updated
+
+# Your update handler receives an event like:
+
+# { eventType: "NEW_CONNECTION", eventPayload: {} }
+
+
+# Then you update only the quests whose params.eventType matches:
+
+# for all quests where quest.params.eventType === "NEW_CONNECTION"
+
+# update their stored value at quests[quest.id]
+
+# So yes: key = quest id, value = that quest’s evolving progress object.
+
+# …but if multiple quests share the same event type (like 5/10/20 connections), you’ll do that update for each matching quest (or rebuild the whole quests map and SET quests = :nextQuests).
