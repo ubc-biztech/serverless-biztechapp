@@ -1,168 +1,86 @@
 /**
- * Quest Types
- */
-const QUEST_TYPES = {
-    // different quest types definitions for how progress is tracked per quest
-  COUNTER: "COUNTER",       // simple count-based quests
-  UNIQUE_SET: "UNIQUE_SET", // track unique values for companies for the company talk 
-};
-
-/**
- * Update the quest progress 
- */
-const QUEST_EVENT_TYPES = {
-  RECOMMENDED_CONNECTION: "RECOMMENDED_CONNECTION",
-  NEW_CONNECTION: "NEW_CONNECTION", // update for each of the new connections made (target for each set) 
-  COMPANY_TALK: "COMPANY_TALK", // unique companies    
-};
-
-
-
-/**
- * Quest IDs (single source of truth) 
+ * Quest IDs (keys used inside item.quests[questId] where item is the nest)
  */
 const QUEST_IDS = {
-  RECOMMENDED_CONNECTIONS: "recommended_connections",
   NEW_CONNECTIONS_5: "new_connections_5",
   NEW_CONNECTIONS_10: "new_connections_10",
   NEW_CONNECTIONS_20: "new_connections_20",
+  RECOMMENDED_CONNECTIONS: "recommended_connections",
   UNIQUE_COMPANIES_TALKED_TO: "unique_companies_talked_to",
 };
 
-
-/*
+/**
+ * Quest Types (controls how progress increments)
  */
-const QUESTS = {
-  [QUEST_IDS.RECOMMENDED_CONNECTIONS]: {
-    id: QUEST_IDS.RECOMMENDED_CONNECTIONS,
-    name: "Recommended Connections",
-    type: QUEST_TYPES.COUNTER,
-    params: {
-      // target: verify the target value to update for progress for each quest type 
-      eventType: QUEST_EVENT_TYPES.RECOMMENDED_CONNECTION,
-    },
-  },
+const QUEST_TYPES = {
+  COUNTER: "COUNTER",
+  UNIQUE_SET: "UNIQUE_SET", // to track the companies 
+};
 
+/**
+ * Event types accepted by progress endpoint
+ */
+const QUEST_EVENT_TYPES = {
+  NEW_CONNECTION: "NEW_CONNECTION",
+  RECOMMENDED_CONNECTION: "RECOMMENDED_CONNECTION",
+  COMPANY_TALK: "COMPANY_TALK",
+};
+
+/**
+ */
+const QUEST_DEFS = {
   [QUEST_IDS.NEW_CONNECTIONS_5]: {
     id: QUEST_IDS.NEW_CONNECTIONS_5,
-    name: "New Connections Made (5)",
     type: QUEST_TYPES.COUNTER,
-    params: {
-      target: 5,
-      eventType: QUEST_EVENT_TYPES.NEW_CONNECTION,
-    },
+    target: 5,
+    description: "Make 5 new connections",
+    eventType: QUEST_EVENT_TYPES.NEW_CONNECTION,
   },
 
   [QUEST_IDS.NEW_CONNECTIONS_10]: {
     id: QUEST_IDS.NEW_CONNECTIONS_10,
-    name: "New Connections Made (10)",
     type: QUEST_TYPES.COUNTER,
-    params: {
-      target: 10,
-      eventType: QUEST_EVENT_TYPES.NEW_CONNECTION,
-    },
+    target: 10,
+    description: "Make 10 new connections",
+    eventType: QUEST_EVENT_TYPES.NEW_CONNECTION,
   },
 
   [QUEST_IDS.NEW_CONNECTIONS_20]: {
     id: QUEST_IDS.NEW_CONNECTIONS_20,
-    name: "New Connections Made (20)",
     type: QUEST_TYPES.COUNTER,
-    params: {
-      target: 20,
-      eventType: QUEST_EVENT_TYPES.NEW_CONNECTION,
-    },
+    target: 20,
+    description: "Make 20 new connections",
+    eventType: QUEST_EVENT_TYPES.NEW_CONNECTION,
+  },
+
+  [QUEST_IDS.RECOMMENDED_CONNECTIONS]: {
+    id: QUEST_IDS.RECOMMENDED_CONNECTIONS,
+    type: QUEST_TYPES.COUNTER,
+    target: 3, // what is the number of recommended connections 
+    description: "Connect with 3 recommended people",
+    eventType: QUEST_EVENT_TYPES.RECOMMENDED_CONNECTION,
   },
 
   [QUEST_IDS.UNIQUE_COMPANIES_TALKED_TO]: {
     id: QUEST_IDS.UNIQUE_COMPANIES_TALKED_TO,
-    name: "Companies You Talked To",
     type: QUEST_TYPES.UNIQUE_SET,
-    params: {
-      eventType: QUEST_EVENT_TYPES.COMPANY_TALK,
-      valueKey: "company",
-    },
+    //` what is the target 
+    target: null,
+    description: "Talk to unique companies",
+    eventType: QUEST_EVENT_TYPES.COMPANY_TALK,
+    valueKey: "company", 
   },
 };
 
-/**
- * Initialize a progress api for the quest (the initial target value)
- */
-function initProgress(quest, now) {
-    // target type based on quest and type
-
-  if (quest.type === QUEST_TYPES.COUNTER) {
-    return {
-      status: "NOT_STARTED",
-      count: 0,
-      target: quest.params.target,
-      updatedAt: now,
-    };
-  }
-
-  else if (quest.type === QUEST_TYPES.UNIQUE_SET) {
-    return {
-      status: "NOT_STARTED",
-      items: [],
-      count: 0,
-      target: quest.params.target,
-      updatedAt: now,
-    };
-  }
-
-  return {
-    status: "NOT_STARTED",
-    items: [],
-    count: 0,
-    target: quest.params.target,
-    updatedAt: now,
-  };
-}
-
-/**
- * Apply an event to quest progress 
- */
-function applyQuestEvent({ quest, current, event, now }) {
-  const state = current || initProgress(quest, now);
-  if (quest.params.eventType !== event.eventType) {
-    return state;
-  }
-
-  if (quest.type === QUEST_TYPES.COUNTER) {
-    const nextCount = state.count + 1;
-    const completed = nextCount >= quest.params.target;
-
-    return {
-      status: completed ? "COMPLETED" : "IN_PROGRESS",
-      count: nextCount,
-      target: quest.params.target,
-      updatedAt: now,
-    };
-  }
-
-  const value = event.eventPayload && event.eventPayload[quest.params.valueKey];
-  if (typeof value !== "string") return state;
-
-  const normalized = value.trim().toLowerCase();
-  const exists = state.items.some(
-    (v) => v.toLowerCase() === normalized
-  );
-
-  const nextItems = exists ? state.items : [...state.items, value.trim()];
-  const nextCount = nextItems.length;
-
-  const target = quest.params.target;
-  const completed =
-    typeof target === "number" ? nextCount >= target : false;
-
-  return {
-    status: completed ? "COMPLETED" : "IN_PROGRESS",
-    items: nextItems,
-    count: nextCount,
-    target,
-    updatedAt: now,
-  };
-}
-
+module.exports = {
+  QUEST_IDS,
+  QUEST_TYPES,
+  QUEST_EVENT_TYPES,
+  QUEST_DEFS,
+  getQuestDef,
+  initStoredQuest,
+  applyQuestEvent,
+};
 
 /*
 

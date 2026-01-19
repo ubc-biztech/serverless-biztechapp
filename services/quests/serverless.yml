@@ -1,12 +1,12 @@
-service: biztechApi-quests
-tenant: ianmh
-app: biztechapp
+service: biztech-quests
+
+frameworkVersion: "3"
 
 plugins:
   - serverless-dynamodb
   - serverless-offline
-  - serverless-domain-manager
   - serverless-bundle
+  - serverless-domain-manager
   - serverless-prune-plugin
   - serverless-mocha-plugin
 
@@ -19,220 +19,95 @@ provider:
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
-
+  timeout: 15 # in seconds
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
     restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
 
-  iamRoleStatements:
-    - Effect: Allow
-      Action:
-        - dynamodb:Scan
-        - dynamodb:GetItem
-        - dynamodb:PutItem
-        - dynamodb:UpdateItem
-        - dynamodb:DeleteItem
-        - dynamodb:Query
-      Resource:
-        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechQuests${self:provider.environment.ENVIRONMENT}"
-        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechQuests${self:provider.environment.ENVIRONMENT}/index/event-query"
+  # This matches your code pattern: TableName = table + (process.env.ENVIRONMENT || "")
+  environment:
+    ENVIRONMENT: -${self:provider.stage}
+    QUESTS_TABLE: ${self:custom.questsTableBaseName}
 
-custom: ${file(../../serverless.common.yml):custom}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:Query
+          Resource:
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${self:custom.questsTableBaseName}${self:provider.environment.ENVIRONMENT}
+
+
+custom:
+  # IMPORTANT:
+  # Your code appends ENVIRONMENT (e.g., "-dev") at runtime.
+  # So the *physical* table should be named like: biztech-quests-dev
+  questsTableBaseName: biztech-quests
 
 functions:
+  # Optional but typical endpoints (rename handlers to match your repo)
+  getQuests:
+    handler: src/handlers/quests/getAllQuest.getAllQuest
+    events:
+      - http:
+          path: quests
+          method: get
+          cors: true
+
   updateQuest:
-    handler: handler.updateQuest
+    handler: src/handlers/quests/updateQuest.updateQuest
     events:
       - http:
-          path: quests/{event_id}/{year}
-          method: patch
-          request:
-            parameters:
-              path:
-                event_id: true
-                year: true
+          path: quests
+          method: post
           cors: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
-  getQuest:
-    handler: handler.getQuest
-    events:
-      - http:
-          path: quests/{event_id}/{year}
-          method: get
-          request:
-            parameters:
-              path:
-                event_id: true
-                year: true
-          cors: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
-  getAllQuests:
-    handler: handler.getAllQuests
-    events:
-      - http:
-          path: quests/
-          method: get
-          cors: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
 
 resources:
   Resources:
     BiztechQuests:
-    # update the quests to include types and unique companies talked to
-    # extend to a new endpoint 
-    #    
-
       Type: AWS::DynamoDB::Table
       Properties:
         TableName: biztechQuests${self:provider.environment.ENVIRONMENT}
         BillingMode: PAY_PER_REQUEST
         AttributeDefinitions:
-          - AttributeName: ID 
+          - AttributeName: id # user id is their email 
             AttributeType: S
-          - AttributeName: eventID_year
+          - AttributeName: eventID;year
             AttributeType: S
-          - AttributeName: eventID
-            AttributeType: S
+
         KeySchema:
-          - AttributeName: ID
+          - AttributeName: id # user id is their email 
             KeyType: HASH
-          - AttributeName: eventID_year
+          - AttributeName: eventID;year
             KeyType: RANGE
+
+        # see if necessary 
         GlobalSecondaryIndexes:
           - IndexName: event-query
             KeySchema:
-              - AttributeName: eventID
+              - AttributeName: eventID;year
                 KeyType: HASH
-              - AttributeName: ID
+              - AttributeName: id
                 KeyType: RANGE
             Projection:
               ProjectionType: ALL
 
 
-# service: biztechApi-quests
-# tenant: ianmh
-# app: biztechapp
+        SSESpecification:
+          SSEEnabled: true
 
-# plugins:
-#   - serverless-dynamodb
-#   - serverless-offline
-#   - serverless-domain-manager
-#   - serverless-bundle
-#   - serverless-prune-plugin
-#   - serverless-mocha-plugin
+  Outputs:
+    QuestsTableName:
+      Value: ${self:custom.questsTableBaseName}${self:provider.environment.ENVIRONMENT}
 
-# provider:
-#   name: aws
-#   stage: ${file(../../serverless.common.yml):provider.stage}
-#   runtime: ${file(../../serverless.common.yml):provider.runtime}
-#   region: ${file(../../serverless.common.yml):provider.region}
-#   cfLogs: true
-
-#   environment:
-#     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
-#     NODE_ENV: ${env:NODE_ENV}
-
-#   apiGateway:
-#     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
-#     restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
-
-#   iamRoleStatements:
-#     - Effect: Allow
-#       Action:
-#         - dynamodb:GetItem
-#         - dynamodb:PutItem
-#         - dynamodb:UpdateItem
-#         - dynamodb:Query
-#       Resource:
-#         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechQuests${self:provider.environment.ENVIRONMENT}"
-#         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechQuests${self:provider.environment.ENVIRONMENT}/index/event-query"
-
-# custom: ${file(../../serverless.common.yml):custom}
-
-# functions:
-#   # PROGRESS API (PATCH): updates quests[questId] state for this user+event
-#   updateQuestProgress:
-#     handler: handler.updateQuest
-#     events:
-#       - http:
-#           path: quests/{event_id}/{year}/progress # establish a new endpoint 
-#           method: patch
-#           request:
-#             parameters:
-#               path:
-#                 event_id: true
-#                 year: true
-#           cors: true
-#           authorizer:
-#             type: COGNITO_USER_POOLS
-#             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
-
-#   # GET all progress for this user+event (quests map)
-#   getQuestProgress:
-#     handler: handler.getQuest
-#     events:
-#       - http:
-#           path: quests/{event_id}/{year}/progress
-#           method: get
-#           request:
-#             parameters:
-#               path:
-#                 event_id: true
-#                 year: true
-#           cors: true
-#           authorizer:
-#             type: COGNITO_USER_POOLS
-#             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
-
-#   # GET quest plus progress objects for this user+event
-# #   getAllQuests:
-# #     handler: handler.getAllQuests
-# #     events:
-# #       - http:
-# #           path: quests/
-# #           method: get
-# #           cors: true
-# #           authorizer:
-# #             type: COGNITO_USER_POOLS
-# #             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
-
-# # resources:
-# #   Resources:
-# #     BiztechQuests:
-# #       Type: AWS::DynamoDB::Table
-# #       Properties:
-# #         TableName: biztechQuests${self:provider.environment.ENVIRONMENT}
-# #         BillingMode: PAY_PER_REQUEST
-
-# #         AttributeDefinitions:
-# #           - AttributeName: user_email
-# #             AttributeType: S
-# #           - AttributeName: eventID_year
-# #             AttributeType: S
-# #           - AttributeName: eventID
-# #             AttributeType: S
-
-# #         KeySchema:
-# #           - AttributeName: user_email
-# #             KeyType: HASH
-# #           - AttributeName: eventID_year
-# #             KeyType: RANGE
-
-# #         GlobalSecondaryIndexes:
-# #           - IndexName: event-query
-# #             KeySchema:
-# #               - AttributeName: eventID
-# #                 KeyType: HASH
-# #               - AttributeName: user_email
-# #                 KeyType: RANGE
-# #             Projection:
-# #               ProjectionType: ALL
+# How quest progress is stored in DynamoDB
 
 
 # # get quest plus progress via quests[questId] for this user+event
