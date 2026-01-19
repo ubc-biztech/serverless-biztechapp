@@ -14,6 +14,7 @@ import docClient from "../../lib/docClient";
 import handlerHelpers from "../../lib/handlerHelpers";
 import helpers from "../../lib/handlerHelpers";
 import search from "../../lib/search";
+import recommend from "../../lib/recommend";
 import {
   TYPES
 } from "../profiles/constants";
@@ -36,7 +37,49 @@ const CONNECTION = "CONNECTION";
 const WORK = "WORKSHOP";
 const BOOTH = "BOOTH";
 
-export const recommend = async (event, ctx, callback) =>  {
+export const recommend = async (event, ctx, callback) => {
+  try {
+    const data = JSON.parse(event.body);
+    helpers.checkPayloadProps(data, {
+      objectID: {
+        required: true,
+        type: "string"
+      },
+      indexName: {
+        required: true,
+        type: "string"
+      },
+      maxRecommendations: {
+        required: false,
+        type: "number"
+      },
+      model: {
+        required: false,
+        type: "string"
+      },
+      threshold: {
+        required: false,
+        type: "number"
+      }
+    });
+
+    const result = await recommend.retrieveTopK({
+      indexName: data.indexName,
+      objectID: data.objectID,
+      maxRecommendations: data.maxRecommendations || 5,
+      model: data.model || "related-products",
+      threshold: data.threshold || 42.1
+    });
+
+    return helpers.createResponse(200, result);
+  } catch (err) {
+    return helpers.createResponse(500, {
+      message: "Internal server error"
+    });
+  }
+};
+
+export const search = async (event, ctx, callback) =>  {
   try {
     const data = JSON.parse(event.body);
     helpers.checkPayloadProps(data, {
