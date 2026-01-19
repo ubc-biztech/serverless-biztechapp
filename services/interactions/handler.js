@@ -37,7 +37,8 @@ const CONNECTION = "CONNECTION";
 const WORK = "WORKSHOP";
 const BOOTH = "BOOTH";
 
-export const recommend = async (event, ctx, callback) => {
+// named to rec to avoid conflict with recommend import
+export const rec = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
     helpers.checkPayloadProps(data, {
@@ -63,10 +64,10 @@ export const recommend = async (event, ctx, callback) => {
       }
     });
 
-    const result = await recommend.retrieveTopK({
+    const result = await recommend.recommendTopK({
       indexName: data.indexName,
       objectID: data.objectID,
-      maxRecommendations: data.maxRecommendations || 5,
+      maxRecommendations: data.maxRecommendations || OPENSEARCH_INDEX_TOP_K,
       model: data.model || "related-products",
       threshold: data.threshold || 42.1
     });
@@ -79,7 +80,8 @@ export const recommend = async (event, ctx, callback) => {
   }
 };
 
-export const search = async (event, ctx, callback) =>  {
+// named to sc to avoid conflict with search import
+export const sc = async (event, ctx, callback) =>  {
   try {
     const data = JSON.parse(event.body);
     helpers.checkPayloadProps(data, {

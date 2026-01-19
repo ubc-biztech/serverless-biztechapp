@@ -133,7 +133,7 @@ custom:
 
 functions:
   search:
-    handler: handler.search
+    handler: handler.sc
     events:
       - http:
           path: interactions/search
@@ -141,7 +141,7 @@ functions:
           cors: true
   
   recommend:
-    handler: handler.recommend
+    handler: handler.rec
     events:
       - http:
           path: interactions/recommend
