@@ -1,15 +1,13 @@
 import { QUESTS_TABLE } from "../../constants/tables";
 import db from "../../lib/db";
 import { QUEST_IDS, QUEST_TYPES, QUEST_EVENT_TYPES, QUESTS, QUEST_DEFS } from "./constants";
-import { applyQuestEvent } from "./helper.js";
+import { applyQuestEvent, parseEvents } from "./helper.js";
 import handlerHelpers from "../../lib/handlerHelpers";
 import helpers from "../../lib/handlerHelpers";
 
 // go through callback and context 
 export const handleQuestEvent = async (event, ctx, callback) => {
-
 	try {
-
 		const userID = event.requestContext.authorizer.claims.email.toLowerCase();
 		const body = JSON.parse(event.body); // make json first 
 		try {
@@ -45,13 +43,7 @@ export const handleQuestEvent = async (event, ctx, callback) => {
 			return null;
 		}
 
-
-		// replace the for loop with a map operation! 
-		// add try catch for db operations
-
 		const questsMap = userItem?.quests || {};
-		// pull the quests map from the userItem 
-
 		// pull the quests by their event types (in case multiple quests need to be updated by one event)
 		const eventsByType = questEvents.reduce((m, e) => {
 			(m[e.eventType] ??= []).push(e);
@@ -73,8 +65,6 @@ export const handleQuestEvent = async (event, ctx, callback) => {
 			return { ...acc, [def.id]: updated };
 		}, questsMap);
 
-
-
 		try {
 			await db.put(
 				userID,
@@ -83,7 +73,7 @@ export const handleQuestEvent = async (event, ctx, callback) => {
 			);
 		} catch (err) {
 			console.error("Error updating quest progress:", err);
-			callback(null, handlerHelpers.createResponse(500, { message: "DB write failed" }));
+			callback(null, handlerHelpers.createResponse(500, { message: "Internal server error" }));
 			return null;
 		}
 
@@ -132,7 +122,6 @@ export const getQuest = async (event, ctx, callback) => {
 			body: JSON.stringify({ message: "Get quest endpoint" }),
 		};
 
-
 	} catch (err) {
 		console.error(err);
 		callback(
@@ -145,61 +134,6 @@ export const getQuest = async (event, ctx, callback) => {
 
 	return null;
 }
-
-
-function parseEvents(body) {
-	switch (body.type) {
-		case "company":
-			return [{
-				questId: QUEST_IDS.UNIQUE_COMPANIES_TALKED_TO,
-				questType: QUEST_TYPES.UNIQUE_SET,
-				eventType: QUEST_EVENT_TYPES.COMPANY_TALK,
-				eventParam: { company: body.argument },
-			}];
-
-		case "connection": {
-			// flag for the recommended connection to tell whether to count it or not
-			const isRecommended = !!body.argument?.recommended;
-
-			// regardless of recommendation, counts toward the connection 5 / 10 / 20 quests
-			const events = [
-				{
-					questId: QUEST_IDS.NEW_CONNECTIONS_5,
-					questType: QUEST_TYPES.COUNTER,
-					eventType: QUEST_EVENT_TYPES.NEW_CONNECTION,
-					eventParam: {},
-				},
-				{
-					questId: QUEST_IDS.NEW_CONNECTIONS_10,
-					questType: QUEST_TYPES.COUNTER,
-					eventType: QUEST_EVENT_TYPES.NEW_CONNECTION,
-					eventParam: {},
-				},
-				{
-					questId: QUEST_IDS.NEW_CONNECTIONS_20,
-					questType: QUEST_TYPES.COUNTER,
-					eventType: QUEST_EVENT_TYPES.NEW_CONNECTION,
-					eventParam: {},
-				},
-			];
-
-			if (isRecommended) {
-				events.push({
-					questId: QUEST_IDS.RECOMMENDED_CONNECTIONS,
-					questType: QUEST_TYPES.COUNTER,
-					eventType: QUEST_EVENT_TYPES.RECOMMENDED_CONNECTION,
-					eventParam: {},
-				});
-			}
-
-			return events;
-		}
-
-		default:
-			return null;
-	}
-}
-
 
 export const getAllQuests = async (event, ctx, callback) => {
 	try {
