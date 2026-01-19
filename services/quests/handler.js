@@ -8,6 +8,8 @@ import helpers from "../../lib/handlerHelpers";
 // go through callback and context 
 export const handleQuestEvent = async (event, ctx, callback) => {
 
+try {
+
   const userID = event.requestContext.authorizer.claims.email.toLowerCase();
   const body = JSON.parse(event.body); // make json first 
   try {
@@ -94,8 +96,13 @@ export const handleQuestEvent = async (event, ctx, callback) => {
     );
 
     return null;
-};
 
+  } catch (err) {
+    console.error("Unhandled error in handleQuestEvent:", err);
+    callback(null, handlerHelpers.createResponse(500, { message: "Internal server error" }));
+    return null;
+  }
+};
 
 export const getQuest = async (event, ctx, callback) => {
   try {
