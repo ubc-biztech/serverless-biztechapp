@@ -1,224 +1,197 @@
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const { PdfReader } = require("pdfreader"); // commonjs import is necessary
+
 import search from "../lib/search.js";
 import {
   BLUEPRINT_OPENSEARCH_TEST_INDEX,
-  BLUEPRINT_OPENSEARCH_STAGING_INDEX,
-  BLUEPRINT_OPENSEARCH_PROD_INDEX
+  BLUEPRINT_RESPONSE_MAP
 } from "../constants/indexes.js";
+import { QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import axios from "axios";
 
-// Modify to staging / prod later
-// Also keep in mind another cluster should be used for production
-const INDEX_TO_USE = BLUEPRINT_OPENSEARCH_TEST_INDEX;
+const awsConfig = {
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  region: "us-west-2"
+};
 
-const profiles = [
-  {
-    objectID: "1",
-    name: "Alex Chen",
-    linkedin: "https://linkedin.com/in/alexchen",
-    companiesWorkedAt: "Jane Street",
-    technologiesExperienced: "Python, OCaml, low-latency systems",
-    technologiesInterested: "Rust, performance engineering",
-    industriesInterested: "Quant trading, finance",
-    networkingGoal: "Meet engineers building high performance trading systems"
-  },
-  {
-    objectID: "2",
-    name: "Priya Patel",
-    linkedin: "https://linkedin.com/in/priyapatel",
-    companiesWorkedAt: "Amazon",
-    technologiesExperienced: "Java, AWS, DynamoDB",
-    technologiesInterested: "Search systems, OpenSearch",
-    industriesInterested: "Cloud infrastructure",
-    networkingGoal: "Learn how large-scale distributed systems are designed"
-  },
-  {
-    objectID: "3",
-    name: "Samantha Lee",
-    linkedin: "https://linkedin.com/in/samanthalee",
-    companiesWorkedAt: "Apple",
-    technologiesExperienced: "Swift, SwiftUI, iOS",
-    technologiesInterested: "VisionOS, ARKit",
-    industriesInterested: "Consumer hardware",
-    networkingGoal: "Meet other mobile engineers working on next-gen apps"
-  },
-  {
-    objectID: "4",
-    name: "Michael Torres",
-    linkedin: "https://linkedin.com/in/michaeltorres",
-    companiesWorkedAt: "Meta",
-    technologiesExperienced: "React, TypeScript, GraphQL",
-    technologiesInterested: "Product management",
-    industriesInterested: "Social platforms",
-    networkingGoal: "Transition from engineering to PM roles"
-  },
-  {
-    objectID: "5",
-    name: "Daniel Novak",
-    linkedin: "https://linkedin.com/in/danielnovak",
-    companiesWorkedAt: "Stripe",
-    technologiesExperienced: "Ruby, payments APIs",
-    technologiesInterested: "Fintech compliance",
-    industriesInterested: "Fintech",
-    networkingGoal: "Exchange lessons scaling financial products"
-  },
-  {
-    objectID: "6",
-    name: "Fatima Hassan",
-    linkedin: "https://linkedin.com/in/fatimahassan",
-    companiesWorkedAt: "Google",
-    technologiesExperienced: "Go, Kubernetes, SRE",
-    technologiesInterested: "Platform reliability",
-    industriesInterested: "Infrastructure",
-    networkingGoal: "Discuss production reliability best practices"
-  },
-  {
-    objectID: "7",
-    name: "Ryan Kim",
-    linkedin: "https://linkedin.com/in/ryankim",
-    companiesWorkedAt: "Early-stage startup",
-    technologiesExperienced: "Next.js, Prisma, PostgreSQL",
-    technologiesInterested: "AI developer tools",
-    industriesInterested: "SaaS",
-    networkingGoal: "Meet founders and early engineers"
-  },
-  {
-    objectID: "8",
-    name: "Isabella Rossi",
-    linkedin: "https://linkedin.com/in/isabellarossi",
-    companiesWorkedAt: "McKinsey",
-    technologiesExperienced: "Data analysis, SQL",
-    technologiesInterested: "Product analytics",
-    industriesInterested: "Consulting, tech strategy",
-    networkingGoal: "BrobjectIDge strategy and product roles"
-  },
-  {
-    objectID: "9",
-    name: "Tom Williams",
-    linkedin: "https://linkedin.com/in/tomwilliams",
-    companiesWorkedAt: "Netflix",
-    technologiesExperienced: "Java, microservices",
-    technologiesInterested: "Streaming optimization",
-    industriesInterested: "Media",
-    networkingGoal: "Learn about real-time data pipelines"
-  },
-  {
-    objectID: "10",
-    name: "Nina Müller",
-    linkedin: "https://linkedin.com/in/ninamueller",
-    companiesWorkedAt: "SAP",
-    technologiesExperienced: "ABAP, enterprise systems",
-    technologiesInterested: "Cloud migration",
-    industriesInterested: "Enterprise software",
-    networkingGoal: "Understand cloud-native architectures"
-  },
-  {
-    objectID: "11",
-    name: "Ethan Brooks",
-    linkedin: "https://linkedin.com/in/ethanbrooks",
-    companiesWorkedAt: "Tesla",
-    technologiesExperienced: "Embedded C++, vehicle systems",
-    technologiesInterested: "Autonomous driving",
-    industriesInterested: "Automotive",
-    networkingGoal: "Meet engineers working on autonomy stacks"
-  },
-  {
-    objectID: "12",
-    name: "Lucía Gómez",
-    linkedin: "https://linkedin.com/in/luciagomez",
-    companiesWorkedAt: "Uber",
-    technologiesExperienced: "Python backend, geospatial systems",
-    technologiesInterested: "Machine learning",
-    industriesInterested: "Mobility",
-    networkingGoal: "Learn how ML improves logistics"
-  },
-  {
-    objectID: "13",
-    name: "Kevin O'Neil",
-    linkedin: "https://linkedin.com/in/kevinoneil",
-    companiesWorkedAt: "Goldman Sachs",
-    technologiesExperienced: "Java, risk platforms",
-    technologiesInterested: "Cloud cost optimization",
-    industriesInterested: "Finance",
-    networkingGoal: "Compare finance and big tech engineering"
-  },
-  {
-    objectID: "14",
-    name: "Aisha Rahman",
-    linkedin: "https://linkedin.com/in/aisharahman",
-    companiesWorkedAt: "Shopify",
-    technologiesExperienced: "Rails, e-commerce platforms",
-    technologiesInterested: "Headless commerce",
-    industriesInterested: "E-commerce",
-    networkingGoal: "Meet product-focused engineers"
-  },
-  {
-    objectID: "15",
-    name: "Victor Alvarez",
-    linkedin: "https://linkedin.com/in/victoralvarez",
-    companiesWorkedAt: "Spotify",
-    technologiesExperienced: "Scala, data pipelines",
-    technologiesInterested: "Real-time analytics",
-    industriesInterested: "Music tech",
-    networkingGoal: "Discuss large-scale data ingestion"
-  },
-  {
-    objectID: "16",
-    name: "Hannah Park",
-    linkedin: "https://linkedin.com/in/hannahpark",
-    companiesWorkedAt: "Airbnb",
-    technologiesExperienced: "Experimentation platforms",
-    technologiesInterested: "Causal inference",
-    industriesInterested: "Travel",
-    networkingGoal: "Share insights on A/B testing at scale"
-  },
-  {
-    objectID: "17",
-    name: "Marco Silva",
-    linkedin: "https://linkedin.com/in/marcosilva",
-    companiesWorkedAt: "Booking.com",
-    technologiesExperienced: "PHP, backend systems",
-    technologiesInterested: "Platform modernization",
-    industriesInterested: "Travel tech",
-    networkingGoal: "Learn from legacy modernization stories"
-  },
-  {
-    objectID: "18",
-    name: "Emily Johnson",
-    linkedin: "https://linkedin.com/in/emilyjohnson",
-    companiesWorkedAt: "Microsoft",
-    technologiesExperienced: "C#, Azure",
-    technologiesInterested: "Developer tooling",
-    industriesInterested: "Cloud",
-    networkingGoal: "Meet engineers building internal platforms"
-  },
-  {
-    objectID: "19",
-    name: "Arjun Mehta",
-    linkedin: "https://linkedin.com/in/arjunmehta",
-    companiesWorkedAt: "Flipkart",
-    technologiesExperienced: "Supply chain systems",
-    technologiesInterested: "Search relevance",
-    industriesInterested: "E-commerce",
-    networkingGoal: "Understand how search impacts conversion"
-  },
-  {
-    objectID: "20",
-    name: "Sophie Dubois",
-    linkedin: "https://linkedin.com/in/sophiedubois",
-    companiesWorkedAt: "Datadog",
-    technologiesExperienced: "Observability, metrics",
-    technologiesInterested: "OpenTelemetry",
-    industriesInterested: "Developer tools",
-    networkingGoal: "Connect with infra engineers using observability"
-  }
-];
+const client = new DynamoDBClient(awsConfig);
 
-async function run() {
-  await search.indexDocuments({
-    indexName: INDEX_TO_USE,
-    documents: profiles
+// clanker code
+
+async function downloadDrivePDF(driveUrl) {
+  const fileId = driveUrl.match(/[-\w]{25,}/)?.[0];
+  if (!fileId) return null;
+
+  const baseUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+
+  let response = await axios.get(baseUrl, {
+    responseType: "arraybuffer",
+    headers: { "User-Agent": "Mozilla/5.0" }
   });
 
-  console.log("Successfully indexed profiles");
+  // handle case where file is too large
+  if (response.headers["content-type"]?.includes("text/html")) {
+    const html = response.data.toString();
+    const confirmToken = html.match(/confirm=([0-9A-Za-z_]+)/)?.[1];
+    if (confirmToken) {
+      response = await axios.get(`${baseUrl}&confirm=${confirmToken}`, {
+        responseType: "arraybuffer"
+      });
+    }
+  }
+
+  return Buffer.from(response.data);
 }
 
-run().catch(console.error);
+async function extractTextFromPDF(pdfBuffer) {
+  return new Promise((resolve, reject) => {
+    let text = "";
+    new PdfReader().parseBuffer(pdfBuffer, (err, item) => {
+      if (err) reject(err);
+      else if (!item) resolve(text.trim());
+      else if (item.text) text += item.text + " ";
+    });
+  });
+}
+
+function normalizer(text) {
+  if (!text) return "";
+  return text
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x1F\x7F-\x9F]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .substring(0, 10000); // text cap
+}
+
+async function parseResume(resumeURL) {
+  if (!resumeURL) return "";
+  try {
+    const buffer = await downloadDrivePDF(resumeURL);
+    if (!buffer) return "";
+    const text = await extractTextFromPDF(buffer);
+    return normalizer(text.replace(/\s+/g, " ").trim());
+  } catch (error) {
+    console.error(`PDF Error: ${error.message}`);
+    return "";
+  }
+}
+
+// not clanker code
+
+async function fetchProfiles(eventID, year) {
+  const registrations = await client.send(
+    new QueryCommand({
+      TableName: "biztechRegistrations" + (process.env.ENVIRONMENT || ""),
+      IndexName: "event-query",
+      KeyConditionExpression: "#eventIDYear = :eventIDYear",
+      ExpressionAttributeNames: { "#eventIDYear": "eventID;year" },
+      ExpressionAttributeValues: { ":eventIDYear": `${eventID};${year}` }
+    })
+  );
+  return registrations;
+}
+
+async function parseRegistrationsToProfiles(registrations) {
+  const profiles = [];
+  for (const registration of registrations) {
+    const responses = registration.dynamicResponses || {};
+    const resumeURL = responses[BLUEPRINT_RESPONSE_MAP.resume];
+
+    let resumeText = "";
+    if (resumeURL) {
+      console.log(`Parsing: ${registration.basicInformation.fname}...`);
+      resumeText = await parseResume(resumeURL);
+      // avoid being rate limited by calling groq because im a brick
+      resumeText = await cleanWithLLM(resumeText);
+    }
+
+    profiles.push({
+      objectID: registration.id,
+      name: `${registration.basicInformation.fname} ${registration.basicInformation.lname}`,
+      companiesWorkedAt: responses[BLUEPRINT_RESPONSE_MAP.experience] || "",
+      rolesInterested: responses[BLUEPRINT_RESPONSE_MAP.interested_roles] || "",
+      industriesInterested: responses[BLUEPRINT_RESPONSE_MAP.interested_industries] || "",
+      resumeText
+    });
+  }
+  return profiles;
+}
+
+async function cleanWithLLM(text) {
+  if (!text || text.length < 10) return text;
+
+  const systemInstructions = "You are a JSON-only API. Extract exactly 30 keywords from the resume focusing on companies, skills, technologies, and interests. Respond with ONLY valid JSON array format: [\"keyword1\",\"keyword2\",...]. NO markdown, NO explanations, NO code blocks, NO extra text.";
+
+  try {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.GROQ_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "llama-3.1-8b-instant",
+        messages: [
+          {
+            role: "system",
+            content: systemInstructions
+          },
+          {
+            role: "user",
+            content: text
+          }
+        ],
+        temperature: 0
+      })
+    });
+
+    if (!response.ok) {
+      console.error(`Groq API failed: ${response.status} ${response.statusText}`);
+      return "";
+    }
+
+    const data = await response.json();
+    let content = data.choices?.[0]?.message?.content || "";
+
+    content = content.replace(/```json/g, "").replace(/```/g, "").trim();
+
+    const jsonMatch = content.match(/\[[\s\S]*\]|\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error("No JSON found in response:", content);
+      return "";
+    }
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    const keywords = Array.isArray(parsed) ? parsed : (parsed.keywords || []);
+    return keywords.join(", ");
+  } catch (e) {
+    console.error("LLM error:", e.message);
+    return "";
+  }
+}
+
+async function run(eventID, year) {
+  const allProfiles = await fetchProfiles(String(eventID), String(year));
+  const checkedIn = (allProfiles.Items || []).filter(r =>
+    r.registrationStatus?.toLowerCase() === "checkedin"
+  );
+
+  console.log(`Found ${checkedIn.length} checked-in users.`);
+  const parsedProfiles = await parseRegistrationsToProfiles(checkedIn);
+
+  console.log("Parsed", parsedProfiles.length, "profiles.");
+
+  console.log(parsedProfiles);
+
+  await search.indexDocuments({
+    indexName: BLUEPRINT_OPENSEARCH_TEST_INDEX,
+    documents: parsedProfiles
+  });
+}
+
+run("blueprint", 2026).catch(console.error);
+
