@@ -28,17 +28,17 @@ async function downloadDrivePDF(driveUrl) {
   const baseUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
 
   let response = await axios.get(baseUrl, {
-    responseType: 'arraybuffer',
-    headers: { 'User-Agent': 'Mozilla/5.0' }
+    responseType: "arraybuffer",
+    headers: { "User-Agent": "Mozilla/5.0" }
   });
 
   // handle case where file is too large
-  if (response.headers['content-type']?.includes('text/html')) {
+  if (response.headers["content-type"]?.includes("text/html")) {
     const html = response.data.toString();
     const confirmToken = html.match(/confirm=([0-9A-Za-z_]+)/)?.[1];
     if (confirmToken) {
       response = await axios.get(`${baseUrl}&confirm=${confirmToken}`, {
-        responseType: 'arraybuffer'
+        responseType: "arraybuffer"
       });
     }
   }
@@ -73,7 +73,7 @@ async function parseResume(resumeURL) {
     const buffer = await downloadDrivePDF(resumeURL);
     if (!buffer) return "";
     const text = await extractTextFromPDF(buffer);
-    return normalizer(text.replace(/\s+/g, ' ').trim());
+    return normalizer(text.replace(/\s+/g, " ").trim());
   } catch (error) {
     console.error(`PDF Error: ${error.message}`);
     return "";
@@ -124,7 +124,7 @@ async function parseRegistrationsToProfiles(registrations) {
 async function cleanWithLLM(text) {
   if (!text || text.length < 10) return text;
 
-  const systemInstructions = `You are a JSON-only API. Extract exactly 30 keywords from the resume focusing on companies, skills, technologies, and interests. Respond with ONLY valid JSON array format: ["keyword1","keyword2",...]. NO markdown, NO explanations, NO code blocks, NO extra text.`;
+  const systemInstructions = "You are a JSON-only API. Extract exactly 30 keywords from the resume focusing on companies, skills, technologies, and interests. Respond with ONLY valid JSON array format: [\"keyword1\",\"keyword2\",...]. NO markdown, NO explanations, NO code blocks, NO extra text.";
 
   try {
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -136,8 +136,14 @@ async function cleanWithLLM(text) {
       body: JSON.stringify({
         model: "llama-3.1-8b-instant",
         messages: [
-          { role: "system", content: systemInstructions },
-          { role: "user", content: text }
+          {
+            role: "system",
+            content: systemInstructions
+          },
+          {
+            role: "user",
+            content: text
+          }
         ],
         temperature: 0
       })
@@ -151,7 +157,7 @@ async function cleanWithLLM(text) {
     const data = await response.json();
     let content = data.choices?.[0]?.message?.content || "";
 
-    content = content.replace(/```json/g, '').replace(/```/g, '').trim();
+    content = content.replace(/```json/g, "").replace(/```/g, "").trim();
 
     const jsonMatch = content.match(/\[[\s\S]*\]|\{[\s\S]*\}/);
     if (!jsonMatch) {
@@ -161,7 +167,7 @@ async function cleanWithLLM(text) {
 
     const parsed = JSON.parse(jsonMatch[0]);
     const keywords = Array.isArray(parsed) ? parsed : (parsed.keywords || []);
-    return keywords.join(', ');
+    return keywords.join(", ");
   } catch (e) {
     console.error("LLM error:", e.message);
     return "";
@@ -179,7 +185,7 @@ async function run(eventID, year) {
 
   console.log("Parsed", parsedProfiles.length, "profiles.");
 
-  console.log(parsedProfiles)
+  console.log(parsedProfiles);
 
   await search.indexDocuments({
     indexName: BLUEPRINT_OPENSEARCH_TEST_INDEX,
