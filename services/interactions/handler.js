@@ -173,14 +173,11 @@ export const getAllConnections = async (event, ctx, callback) => {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
 
     const memberData = await db.getOne(userID, MEMBERS2026_TABLE);
+    const { profileID } = memberData;
 
-    const {
-      profileID
-    } = memberData;
-
-    const result = await db.query(PROFILES_TABLE, null, {
+    let data = await db.query(PROFILES_TABLE, null, {
       expression:
-        "compositeID = :compositeID AND  begins_with(#type, :typePrefix)",
+        "compositeID = :compositeID AND begins_with(#type, :typePrefix)",
       expressionValues: {
         ":compositeID": `PROFILE#${profileID}`,
         ":typePrefix": `${TYPES.CONNECTION}#`
@@ -190,18 +187,14 @@ export const getAllConnections = async (event, ctx, callback) => {
       }
     });
 
-    let data = result.sort((a, b) => {
-      return b.createdAt - a.createdAt;
-    });
-
-    let response = handlerHelpers.createResponse(200, {
-      message: `all connections for ${userID}`,
-      data
-    });
+    // sort first
+    data.sort((a, b) => b.createdAt - a.createdAt);
 
     const qs = event.queryStringParameters || {};
-    const eventId = qs.eventId || null;
-    const year = qs.year || null;
+    const eventId = qs.eventId;
+    const year = qs.year;
+
+    let message = `all connections for ${userID}`;
 
     if (eventId && year) {
       const existingEvent = await db.getOne(eventId, EVENTS_TABLE, {
@@ -209,41 +202,37 @@ export const getAllConnections = async (event, ctx, callback) => {
       });
 
       if (existingEvent) {
-        // convert from ISO to UNIX
-        let start = existingEvent.startDate;
-        let end = existingEvent.endDate;
+        let { startDate, endDate } = existingEvent;
 
-        // if start exists, filter from start date
-        if (start) {
-          start = new Date(start).getTime();
+        if (startDate) {
+          const start = new Date(startDate).getTime();
           data = data.filter(item => item.createdAt >= start);
         }
 
-        // if end exists, filter to end data
-        if (end) {
-          end = new Date(end).getTime();
+        if (endDate) {
+          const end = new Date(endDate).getTime();
           data = data.filter(item => item.createdAt <= end);
         }
 
-        // if we did any filtering, update the response
-        if (start || end) {
-          response = handlerHelpers.createResponse(200, {
-            message: `all connections for ${userID} during event ${eventId} and year ${year}`,
-            data
-          });
-        }
+        message = `all connections for ${userID} during event ${eventId} and year ${year}`;
       }
     }
+
+    const response = handlerHelpers.createResponse(200, {
+      message,
+      data
+    });
 
     callback(null, response);
   } catch (err) {
     console.error(err);
-    throw handlerHelpers.createResponse(500, {
-      message: "Internal server error"
-    });
+    callback(
+      null,
+      handlerHelpers.createResponse(500, {
+        message: "Internal server error"
+      })
+    );
   }
-
-  return null;
 };
 
 export const getAllQuests = async (event, ctx, callback) => {
