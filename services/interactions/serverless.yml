@@ -132,8 +132,16 @@ custom:
       - dev
 
 functions:
+  search:
+    handler: handler.sc
+    events:
+      - http:
+          path: interactions/search
+          method: post
+          cors: true
+  
   recommend:
-    handler: handler.recommend
+    handler: handler.rec
     events:
       - http:
           path: interactions/recommend

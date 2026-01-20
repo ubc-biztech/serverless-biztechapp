@@ -15,6 +15,7 @@ import docClient from "../../lib/docClient";
 import handlerHelpers from "../../lib/handlerHelpers";
 import helpers from "../../lib/handlerHelpers";
 import search from "../../lib/search";
+import recommend from "../../lib/recommend";
 import {
   TYPES
 } from "../profiles/constants";
@@ -37,7 +38,51 @@ const CONNECTION = "CONNECTION";
 const WORK = "WORKSHOP";
 const BOOTH = "BOOTH";
 
-export const recommend = async (event, ctx, callback) =>  {
+// named to rec to avoid conflict with recommend import
+export const rec = async (event, ctx, callback) => {
+  try {
+    const data = JSON.parse(event.body);
+    helpers.checkPayloadProps(data, {
+      objectID: {
+        required: true,
+        type: "string"
+      },
+      indexName: {
+        required: true,
+        type: "string"
+      },
+      maxRecommendations: {
+        required: false,
+        type: "number"
+      },
+      model: {
+        required: false,
+        type: "string"
+      },
+      threshold: {
+        required: false,
+        type: "number"
+      }
+    });
+
+    const result = await recommend.recommendTopK({
+      indexName: data.indexName,
+      objectID: data.objectID,
+      maxRecommendations: data.maxRecommendations || OPENSEARCH_INDEX_TOP_K,
+      model: data.model || "related-products",
+      threshold: data.threshold || 42.1
+    });
+
+    return helpers.createResponse(200, result);
+  } catch (err) {
+    return helpers.createResponse(500, {
+      message: "Internal server error"
+    });
+  }
+};
+
+// named to sc to avoid conflict with search import
+export const sc = async (event, ctx, callback) =>  {
   try {
     const data = JSON.parse(event.body);
     helpers.checkPayloadProps(data, {
