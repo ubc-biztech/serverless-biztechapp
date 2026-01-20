@@ -4,6 +4,7 @@ import {
 } from "../../constants/indexes";
 import {
   CONNECTIONS_TABLE,
+  EVENTS_TABLE,
   MEMBERS2026_TABLE,
   PROFILES_TABLE,
   QRS_TABLE,
@@ -172,14 +173,11 @@ export const getAllConnections = async (event, ctx, callback) => {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
 
     const memberData = await db.getOne(userID, MEMBERS2026_TABLE);
+    const { profileID } = memberData;
 
-    const {
-      profileID
-    } = memberData;
-
-    const result = await db.query(PROFILES_TABLE, null, {
+    let data = await db.query(PROFILES_TABLE, null, {
       expression:
-        "compositeID = :compositeID AND  begins_with(#type, :typePrefix)",
+        "compositeID = :compositeID AND begins_with(#type, :typePrefix)",
       expressionValues: {
         ":compositeID": `PROFILE#${profileID}`,
         ":typePrefix": `${TYPES.CONNECTION}#`
@@ -189,24 +187,52 @@ export const getAllConnections = async (event, ctx, callback) => {
       }
     });
 
-    const data = result.sort((a, b) => {
-      return b.createdAt - a.createdAt;
-    });
+    // sort first
+    data.sort((a, b) => b.createdAt - a.createdAt);
+
+    const qs = event.queryStringParameters || {};
+    const eventId = qs.eventId;
+    const year = qs.year;
+
+    let message = `all connections for ${userID}`;
+
+    if (eventId && year) {
+      const existingEvent = await db.getOne(eventId, EVENTS_TABLE, {
+        year: Number(year)
+      });
+
+      if (existingEvent) {
+        let { startDate, endDate } = existingEvent;
+
+        if (startDate) {
+          const start = new Date(startDate).getTime();
+          data = data.filter(item => item.createdAt >= start);
+        }
+
+        if (endDate) {
+          const end = new Date(endDate).getTime();
+          data = data.filter(item => item.createdAt <= end);
+        }
+
+        message = `all connections for ${userID} during event ${eventId} and year ${year}`;
+      }
+    }
 
     const response = handlerHelpers.createResponse(200, {
-      message: `all connections for ${userID}`,
+      message,
       data
     });
 
     callback(null, response);
   } catch (err) {
     console.error(err);
-    throw handlerHelpers.createResponse(500, {
-      message: "Internal server error"
-    });
+    callback(
+      null,
+      handlerHelpers.createResponse(500, {
+        message: "Internal server error"
+      })
+    );
   }
-
-  return null;
 };
 
 export const getAllQuests = async (event, ctx, callback) => {
