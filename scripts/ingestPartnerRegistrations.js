@@ -24,7 +24,9 @@ const PROFILES_TABLE = "biztechProfiles" + (process.env.ENVIRONMENT || "");
 const MEMBERS2026_TABLE = "biztechMembers2026" + (process.env.ENVIRONMENT || "");
 const USER_REGISTRATIONS_TABLE = "biztechRegistrations" + (process.env.ENVIRONMENT || "");
 
-// NOTE: Usage of this is mainly for kickstart;2025 event
+// TODO
+// NOTE: ADJUSTED FOR BLUEPRINT 2026
+
 async function updateTables(user) {
   const timestamp = new Date().getTime();
   const profileID = humanId();
@@ -75,7 +77,6 @@ async function updateTables(user) {
             updatedAt: timestamp,
             profileType: "PARTNER",
             linkedIn: user.linkedin,
-            pronouns: user.pronouns,
             company: user.company,
             position: user.position,
             viewableMap: {
@@ -100,14 +101,14 @@ async function updateTables(user) {
           ConditionExpression: "attribute_not_exists(id)"
         }
       },
-      // 4. Create a registration for kickstart so they can invest (partner-flagged investment)
+      // 4. Create a registration for blueprint
       {
         Put: {
           TableName: USER_REGISTRATIONS_TABLE,
           Item: {
             id: user.email.toLowerCase(),
-            ["eventID;year"]: "kickstart;2025",
-            registrationStatus: "acceptedComplete",
+            ["eventID;year"]: "blueprint;2026",
+            registrationStatus: "registered",
             isPartner: true, // flag as partner investment
             fname: user.fname,
             createdAt: timestamp,
@@ -161,18 +162,37 @@ async function processCSV(filePath) {
       .on("end", async () => {
         console.log(`Found ${results.length} records to process`);
 
+        const getValue = (row, key) => (row[key] || "").trim();
+
+        const getFirstLastName = (fullName) => {
+          const cleaned = fullName.trim();
+          if (!cleaned) return ["", ""];
+          const parts = cleaned.split(/\s+/);
+          if (parts.length === 1) return [parts[0], ""];
+          const last = parts.pop();
+          return [parts.join(" "), last];
+        };
+
         // Process each record
         for (const [index, row] of results.entries()) {
           try {
-            // ADJUST BASED ON CSV
+            // Mapped to current partner CSV headers
+            const displayName =
+              getValue(row, "Name as you would like to see it on your name tag") ||
+              getValue(row, "Full Name");
+            const [firstname, lastname] = getFirstLastName(displayName);
+
             const user = {
-              email: row["Email Address"]?.trim().toLowerCase() || "", // sanitize compendium emails
-              fname: row["First Name"],
-              lname: row["Last Name"],
-              pronouns: row["Pronouns"],
-              linkedin: row["LinkedIn"],
-              company: row["What organization will you be representing?"], // adjust
-              position: row["What is your current role?"] // adjust
+              email: getValue(row, "Email Address").toLowerCase(),
+              fname: firstname,
+              lname: lastname,
+              pronouns: getValue(row, "Pronouns"),
+              linkedin: getValue(
+                row,
+                "Please include your LinkedIn URL if your profile is not public"
+              ),
+              company: getValue(row, "What company do you work for?"),
+              position: getValue(row, "What is your current role?")
             };
 
             const success = await updateTables(user);

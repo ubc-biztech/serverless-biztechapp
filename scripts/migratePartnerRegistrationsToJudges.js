@@ -6,10 +6,20 @@ import {
 } from "@aws-sdk/client-dynamodb";
 
 const awsConfig = {
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID, // change this
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   region: "us-west-2"
 };
+
+const destConfig = {
+  credentials: {
+    accessKeyId: "AKID",
+    secretAccessKey: "SECRET",
+  },
+  endpoint: process.env.DYNAMODB_LOCAL_ENDPOINT || "http://localhost:8000",
+  region: process.env.AWS_REGION || "us-west-2",
+};
+
 
 const client = new DynamoDBClient(awsConfig);
 
