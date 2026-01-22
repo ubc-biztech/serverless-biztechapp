@@ -80,6 +80,17 @@ functions:
               event: true
           cors: true
   
+  perMbti:
+    handler: handler.perMbti
+    events:
+      - http:
+          path: quizzes/perMbti/{mbti}
+          method: get
+          request:
+            path:
+              mbti: true
+          cors: true
+  
   wrapped:
     handler: handler.wrapped
     events:
@@ -112,5 +123,13 @@ resources:
                 KeyType: HASH
               - AttributeName: id
                 KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+          - IndexName: mbti-query
+            KeySchema:
+              - AttributeName: mbti
+                KeyType: HASH
+              - AttributeName: eventID;year
+                KeyType: HASH
             Projection:
               ProjectionType: ALL
