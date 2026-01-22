@@ -98,7 +98,7 @@ export const upload = async (event, ctx, callback) => {
         ":mbti": mbti
       },
       ConditionExpression: "attribute_exists(compositeId)",
-    })
+    });
   }
 
   return helpers.createResponse(200, {
