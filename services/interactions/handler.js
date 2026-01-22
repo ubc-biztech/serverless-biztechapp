@@ -5,6 +5,7 @@ import {
 import db from "../../lib/db";
 import handlerHelpers from "../../lib/handlerHelpers";
 import helpers from "../../lib/handlerHelpers";
+import search from "../../lib/search";
 import {
   TYPES
 } from "../profiles/constants";
@@ -18,6 +19,34 @@ import {
 const CONNECTION = "CONNECTION";
 const WORK = "WORKSHOP";
 const BOOTH = "BOOTH";
+
+export const recommend = async (event, ctx, callback) =>  {
+  try {
+    const data = JSON.parse(event.body);
+    helpers.checkPayloadProps(data, {
+      query: {
+        required: true,
+        type: "string"
+      },
+      topK: {
+        required: false,
+        type: "number"
+      }
+    });
+    // Uncomment below to use staging or prod index 
+    // const indexToUse = process.env.ENVIRONMENT === "STAGING" ? BLUEPRINT_OPENSEARCH_STAGING_INDEX : BLUEPRINT_OPENSEARCH_PROD_INDEX;  
+    const result = await search.retrieveTopK({
+      indexName: BLUEPRINT_OPENSEARCH_TEST_INDEX, // TODO: change to indexToUse later
+      queryText: data.query,
+      topK: data.topK || OPENSEARCH_INDEX_TOP_K,
+    });
+    return helpers.createResponse(200, result);
+  } catch (err) {
+    return helpers.createResponse(500, {
+      message: "Internal server error"
+    });
+  }
+};
 
 export const postInteraction = async (event, ctx, callback) => {
   try {
@@ -113,14 +142,11 @@ export const getAllConnections = async (event, ctx, callback) => {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
 
     const memberData = await db.getOne(userID, MEMBERS2026_TABLE);
+    const { profileID } = memberData;
 
-    const {
-      profileID
-    } = memberData;
-
-    const result = await db.query(PROFILES_TABLE, null, {
+    let data = await db.query(PROFILES_TABLE, null, {
       expression:
-				"compositeID = :compositeID AND  begins_with(#type, :typePrefix)",
+        "compositeID = :compositeID AND begins_with(#type, :typePrefix)",
       expressionValues: {
         ":compositeID": `PROFILE#${profileID}`,
         ":typePrefix": `${TYPES.CONNECTION}#`
@@ -130,24 +156,52 @@ export const getAllConnections = async (event, ctx, callback) => {
       }
     });
 
-    const data = result.sort((a, b) => {
-      return b.createdAt - a.createdAt;
-    });
+    // sort first
+    data.sort((a, b) => b.createdAt - a.createdAt);
+
+    const qs = event.queryStringParameters || {};
+    const eventId = qs.eventId;
+    const year = qs.year;
+
+    let message = `all connections for ${userID}`;
+
+    if (eventId && year) {
+      const existingEvent = await db.getOne(eventId, EVENTS_TABLE, {
+        year: Number(year)
+      });
+
+      if (existingEvent) {
+        let { startDate, endDate } = existingEvent;
+
+        if (startDate) {
+          const start = new Date(startDate).getTime();
+          data = data.filter(item => item.createdAt >= start);
+        }
+
+        if (endDate) {
+          const end = new Date(endDate).getTime();
+          data = data.filter(item => item.createdAt <= end);
+        }
+
+        message = `all connections for ${userID} during event ${eventId} and year ${year}`;
+      }
+    }
 
     const response = handlerHelpers.createResponse(200, {
-      message: `all connections for ${userID}`,
+      message,
       data
     });
 
     callback(null, response);
   } catch (err) {
     console.error(err);
-    throw handlerHelpers.createResponse(500, {
-      message: "Internal server error"
-    });
+    callback(
+      null,
+      handlerHelpers.createResponse(500, {
+        message: "Internal server error"
+      })
+    );
   }
-
-  return null;
 };
 
 export const getWallSnapshot = async (event) => {
