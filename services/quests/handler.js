@@ -49,7 +49,7 @@ export const updateQuest = async (event, ctx, callback) => {
 
 		const questsMap = userItem?.quests || {};
 		const eventsByType = questEvents.reduce((m, e) => {
-			(m[e.eventType] ??= []).push(e);
+			(m[e.eventType] ??= []).push(e); // eslint-disable-line
 			return m;
 		}, {});
 
