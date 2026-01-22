@@ -277,3 +277,39 @@ export const wrapped = async (event, ctx, callback) => {
     });
   }
 };
+
+export const perMbti = async (event, ctx, callback) => {
+  /*
+    Responsible for:
+    - Getting stats for one's MBTI
+  */
+
+  try {
+    if (!event.pathParameters || !event.pathParameters.mbti) {
+      return helpers.missingIdQueryResponse("mbti");
+    }
+
+    const mbti = event.pathParameters.mbti;
+
+    const keyCondition = {
+      expression: "#mbti = :query",
+      expressionNames: {
+        "#mbti": "mbti"
+      },
+      expressionValues: {
+        ":query": mbti 
+      }
+    };
+
+    const mbtiQuizzes = await db.query(QUIZZES_TABLE, "mbti-query", keyCondition);
+
+    return helpers.createResponse(200, {
+      [`mbtiQuizzes-${mbti}`]: mbtiQuizzes,
+    });
+  } catch (error) {
+    return helpers.createResponse(500, {
+      message: "Internal Server Error"
+    });
+  }
+};
+
