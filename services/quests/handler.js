@@ -141,13 +141,18 @@ export const getQuestsByEvent = async (event, ctx, callback) => {
 			return handlerHelpers.createResponse(400, { message: "missing path parameters" });
 		}
 
+		const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+		if (!userID.endsWith("@ubcbiztech.com")) {
+			return handlerHelpers.createResponse(401, { message: "Unauthorized" })
+		}
+
 		const { event_id, year } = event.pathParameters;
 		const eventKey = `${event_id}#${year}`;
 
 		const items = await db.scan(QUESTS_TABLE, {
-			FilterExpression: "#eventID#year = :eventKey",
+			FilterExpression: "#eventquery = :eventKey",
 			ExpressionAttributeNames: {
-				"#eventID#year": "eventID#year"
+				"#eventquery": "eventID#year"
 			},
 			ExpressionAttributeValues: {
 				":eventKey": eventKey
