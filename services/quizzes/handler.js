@@ -297,7 +297,7 @@ export const perMbti = async (event, ctx, callback) => {
         "#mbti": "mbti"
       },
       expressionValues: {
-        ":query": mbti 
+        ":query": mbti
       }
     };
 
