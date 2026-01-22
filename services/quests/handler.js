@@ -1,6 +1,6 @@
 import { QUESTS_TABLE } from "../../constants/tables";
 import db from "../../lib/db";
-import { QUESTS, QUEST_DEFS, QUEST_TYPES } from "./constants";
+import { QUEST_DEFS, QUEST_TYPES } from "./constants";
 import { applyQuestEvent, parseEvents } from "./helper.js";
 import handlerHelpers from "../../lib/handlerHelpers";
 import helpers from "../../lib/handlerHelpers";
@@ -16,29 +16,27 @@ export const updateQuest = async (event, ctx, callback) => {
 		const { event_id, year } = event.pathParameters;
 
 		const userID = event.requestContext.authorizer.claims.email.toLowerCase();
-		const body = JSON.parse(event.body); // make json first 
-		try {
-			helpers.checkPayloadProps(body, {
-				type: {
-					required: true
-				},
-				argument: {
-					required: true
-				}
-			});
-		} catch (error) {
-			callback(null, error);
-			return null;
+		const body = JSON.parse(event.body);
+
+		// Validate input
+		if (!body.type) {
+			return handlerHelpers.createResponse(400, { message: "Missing required field: type. Valid types: 'connection', 'company'" });
 		}
+		if (!body.argument) {
+			return handlerHelpers.createResponse(400, { message: "Missing required field: argument" });
+		}
+		if (body.type !== "connection" && body.type !== "company") {
+			return handlerHelpers.createResponse(400, { message: `Invalid type: '${body.type}'. Valid types: 'connection', 'company'` });
+		}
+		if (body.type === "company" && typeof body.argument !== "string") {
+			return handlerHelpers.createResponse(400, { message: "For 'company' type, argument must be a company name string" });
+		}
+
 		const timestamp = Date.now();
-		const questEvents = parseEvents(body); // convert json parsed body  to quest event for different cases 
+		const questEvents = parseEvents(body);
 
 		if (!questEvents) {
-			callback(
-				null,
-				handlerHelpers.createResponse(400, { message: "Quest event argument not found" })
-			);
-			return null;
+			return handlerHelpers.createResponse(400, { message: "Failed to parse quest event" });
 		}
 
 		let userItem;
@@ -46,12 +44,10 @@ export const updateQuest = async (event, ctx, callback) => {
 			userItem = await db.getOne(userID, QUESTS_TABLE, { "eventID#year": `${event_id}#${year}` });
 		} catch (err) {
 			console.error("Could not read user data:", err);
-			callback(null, handlerHelpers.createResponse(500, { message: "DB read failed" }));
-			return null;
+			return handlerHelpers.createResponse(500, { message: "DB read failed" });
 		}
 
 		const questsMap = userItem?.quests || {};
-		// pull the quests by their event types (in case multiple quests need to be updated by one event)
 		const eventsByType = questEvents.reduce((m, e) => {
 			(m[e.eventType] ??= []).push(e);
 			return m;
@@ -62,7 +58,6 @@ export const updateQuest = async (event, ctx, callback) => {
 			const current = acc[def.id];
 			const now = timestamp;
 
-			// Initialize quest if not exists
 			if (!current) {
 				const initialized = {
 					progress: 0,
@@ -72,7 +67,6 @@ export const updateQuest = async (event, ctx, callback) => {
 					description: def.description,
 				};
 
-				// UNIQUE_SET needs items array
 				if (def.type === QUEST_TYPES.UNIQUE_SET) {
 					initialized.items = [];
 				}
@@ -84,9 +78,8 @@ export const updateQuest = async (event, ctx, callback) => {
 
 			if (!events?.length) return acc;
 
-			// Apply events to the quest
 			const updated = events.reduce(
-				(state, e) => applyQuestEvent(def, state, e, timestamp),
+				(state, e) => applyQuestEvent(def, state, e, now),
 				current
 			);
 
@@ -101,31 +94,23 @@ export const updateQuest = async (event, ctx, callback) => {
 			);
 		} catch (err) {
 			console.error("Error updating quest progress:", err);
-			callback(null, handlerHelpers.createResponse(500, { message: "Internal server error" }));
-			return null;
+			return handlerHelpers.createResponse(500, { message: "Internal server error" });
 		}
 
-		callback(
-			null,
-			handlerHelpers.createResponse(200, {
-				message: "Quest progress updated",
-				quests: nextQuestsMap,
-			})
-		);
-
-		return null;
+		return handlerHelpers.createResponse(200, {
+			quests: nextQuestsMap,
+		});
 
 	} catch (err) {
-		console.error("Unhandled error in handleQuestEvent:", err);
-		callback(null, handlerHelpers.createResponse(500, { message: "Internal server error" }));
-		return null;
+		console.error("Unhandled error in updateQuest:", err);
+		return handlerHelpers.createResponse(500, { message: "Internal server error" });
 	}
 };
 
 export const getQuest = async (event, ctx, callback) => {
 	try {
 		if (!event.pathParameters || !event.pathParameters.event_id || !event.pathParameters.year) {
-			return helpers.createResponse(400, { message: "missing path parameters" });
+			return handlerHelpers.createResponse(400, { message: "missing path parameters" });
 		}
 
 		const { event_id, year } = event.pathParameters;
@@ -134,78 +119,55 @@ export const getQuest = async (event, ctx, callback) => {
 		const userItem = await db.getOne(userID, QUESTS_TABLE, { "eventID#year": `${event_id}#${year}` });
 
 		if (!userItem) {
-			callback(
-				null,
-				handlerHelpers.createResponse(200, {
-					message: `quest for ${event_id} ${year}`,
-					quests: {},
-				})
-			);
-			return null;
+			return handlerHelpers.createResponse(200, {
+				quests: {},
+			});
 		}
 
-		callback(
-			null,
-			handlerHelpers.createResponse(200, {
-				message: `quest for ${event_id} ${year}`,
-				quests: userItem.quests || {},
-			})
-		);
+		return handlerHelpers.createResponse(200, {
+			quests: userItem.quests || {},
+		});
 	} catch (err) {
 		console.error(err);
-		callback(
-			null,
-			handlerHelpers.createResponse(500, {
-				message: "Internal server error",
-			})
-		);
+		return handlerHelpers.createResponse(500, {
+			message: "Internal server error",
+		});
 	}
-
-	return null;
 };
 
-export const getAllQuests = async (event, ctx, callback) => {
+export const getQuestsByEvent = async (event, ctx, callback) => {
 	try {
-		const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+		if (!event.pathParameters || !event.pathParameters.event_id || !event.pathParameters.year) {
+			return handlerHelpers.createResponse(400, { message: "missing path parameters" });
+		}
 
-		const userItem = await db.getOne(userID, QUESTS_TABLE);
-		const questsMap = userItem?.quests || {};
+		const { event_id, year } = event.pathParameters;
+		const eventKey = `${event_id}#${year}`;
 
-		const data = Object.values(QUESTS).map((q) => {
-			const stored = questsMap[q.id];
+		const items = await db.scan(QUESTS_TABLE, {
+			FilterExpression: "#eventID#year = :eventKey",
+			ExpressionAttributeNames: {
+				"#eventID#year": "eventID#year"
+			},
+			ExpressionAttributeValues: {
+				":eventKey": eventKey
+			}
+		}, "event-query");
 
-			// don't reinitialize! just read either the base case or the null case)
-			return {
-				quest: q,
+		const quests = items.map(item => ({
+			userId: item.id,
+			quests: item.quests || {}
+		}));
 
-				progress: stored ?? {
-					progress: 0,
-					target: q.target ?? null,
-					startedAt: null,
-					completedAt: null,
-					description: q.description,
-				},
-			};
+		return handlerHelpers.createResponse(200, {
+			quests,
 		});
-
-		callback(
-			null,
-			handlerHelpers.createResponse(200, {
-				message: `all quests for ${userID}`,
-				data,
-			})
-		);
 	} catch (err) {
 		console.error(err);
-		callback(
-			null,
-			handlerHelpers.createResponse(500, {
-				message: "Internal server error",
-			})
-		);
+		return handlerHelpers.createResponse(500, {
+			message: "Internal server error",
+		});
 	}
-
-	return null;
 };
 
 

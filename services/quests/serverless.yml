@@ -55,21 +55,26 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
-  getAllQuests:
-    handler: handler.getAllQuests
-    events:
-      - http:
-          path: quests/
-          method: get
-          cors: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   getQuest:
     handler: handler.getQuest
     events:
       - http:
           path: quests/{event_id}/{year}
+          method: get
+          request:
+            parameters:
+              path:
+                event_id: true
+                year: true
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  getQuestsByEvent:
+    handler: handler.getQuestsByEvent
+    events:
+      - http:
+          path: quests/event/{event_id}/{year}
           method: get
           request:
             parameters:
