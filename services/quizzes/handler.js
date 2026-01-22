@@ -1,4 +1,4 @@
-import { QUIZZES_TABLE } from "../../constants/tables.js";
+import { MEMBERS2026_TABLE, PROFILES_TABLE, QUIZZES_TABLE } from "../../constants/tables.js";
 import db from "../../lib/db.js";
 import helpers from "../../lib/handlerHelpers.js";
 import {
@@ -83,6 +83,23 @@ export const upload = async (event, ctx, callback) => {
 
   // create new if doesn't exist anc vice versa
   await db.put(dbEntry, QUIZZES_TABLE, !exists);
+
+  // denormalize -> upload to profiles table
+  const member = await db.getOne(data.id, MEMBERS2026_TABLE);
+  if (member && member.profileId) {
+    await db.updateDBCustom({
+      TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
+      Key: {
+        compositeId: "PROFILE#" + member.profileId,
+        type: "PROFILE"
+      },
+      UpdateExpression: "SET mbti = :mbti",
+      ExpressionAttributeValues: {
+        ":mbti": mbti
+      },
+      ConditionExpression: "attribute_exists(compositeId)",
+    })
+  }
 
   return helpers.createResponse(200, {
     message: "Upload successful"
