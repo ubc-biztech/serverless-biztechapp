@@ -1,21 +1,28 @@
 import { QUESTS_TABLE } from "../../constants/tables";
 import db from "../../lib/db";
-import { QUESTS, QUEST_DEFS } from "./constants";
+import { QUESTS, QUEST_DEFS, QUEST_TYPES } from "./constants";
 import { applyQuestEvent, parseEvents } from "./helper.js";
 import handlerHelpers from "../../lib/handlerHelpers";
 import helpers from "../../lib/handlerHelpers";
 
 // go through callback and context 
-export const handleQuestEvent = async (event, ctx, callback) => {
+export const updateQuest = async (event, ctx, callback) => {
 	try {
+		if (!event.pathParameters || !event.pathParameters.event_id || !event.pathParameters.year) {
+			console.log(event.pathParameters)
+			return helpers.createResponse(400, { message: "missing path parameters" })
+		}
+
+		const { event_id, year } = event.pathParameters;
+
 		const userID = event.requestContext.authorizer.claims.email.toLowerCase();
 		const body = JSON.parse(event.body); // make json first 
 		try {
 			helpers.checkPayloadProps(body, {
-				eventType: {
+				type: {
 					required: true
 				},
-				eventParam: {
+				argument: {
 					required: true
 				}
 			});
@@ -36,7 +43,7 @@ export const handleQuestEvent = async (event, ctx, callback) => {
 
 		let userItem;
 		try {
-			userItem = await db.getOne(userID, QUESTS_TABLE);
+			userItem = await db.getOne(userID, QUESTS_TABLE, { "eventID#year": `${event_id}#${year}` });
 		} catch (err) {
 			console.error("Could not read user data:", err);
 			callback(null, handlerHelpers.createResponse(500, { message: "DB read failed" }));
@@ -52,12 +59,33 @@ export const handleQuestEvent = async (event, ctx, callback) => {
 
 		const nextQuestsMap = Object.values(QUEST_DEFS).reduce((acc, def) => {
 			const events = eventsByType[def.eventType];
+			const current = acc[def.id];
+			const now = timestamp;
+
+			// Initialize quest if not exists
+			if (!current) {
+				const initialized = {
+					progress: 0,
+					target: def.target ?? null,
+					startedAt: now,
+					completedAt: null,
+					description: def.description,
+				};
+
+				// UNIQUE_SET needs items array
+				if (def.type === QUEST_TYPES.UNIQUE_SET) {
+					initialized.items = [];
+				}
+
+				if (!events?.length) {
+					return { ...acc, [def.id]: initialized };
+				}
+			}
+
 			if (!events?.length) return acc;
 
-			const current = acc[def.id];
-
-			// changed applyQuestEvent to cap progress at target for counter quests
-			const updated = events.reduce( // no need for update check)
+			// Apply events to the quest
+			const updated = events.reduce(
 				(state, e) => applyQuestEvent(def, state, e, timestamp),
 				current
 			);
@@ -67,9 +95,9 @@ export const handleQuestEvent = async (event, ctx, callback) => {
 
 		try {
 			await db.put(
-				userID,
-				{ ...(userItem || { id: userID }), quests: nextQuestsMap },
-				QUESTS_TABLE
+				{ "eventID#year": `${event_id}#${year}`, ...(userItem || { id: userID }), quests: nextQuestsMap },
+				QUESTS_TABLE,
+				!userItem
 			);
 		} catch (err) {
 			console.error("Error updating quest progress:", err);
@@ -96,32 +124,33 @@ export const handleQuestEvent = async (event, ctx, callback) => {
 
 export const getQuest = async (event, ctx, callback) => {
 	try {
-		if (
-			!event.pathParameters ||
-			!event.pathParameters.id ||
-			typeof event.pathParameters.id !== "string"
-		)
-			throw helpers.missingIdQueryResponse("profile ID in request path"); // double check from teh helpers
-
-		const questID = event.pathParameters.id;
-		const userID = event.requestContext.authorizer.claims.email.toLowerCase();
-		const memberData = await db.getOne(userID, QUESTS_TABLE);
-
-		if (!memberData || !memberData.quests || !memberData.quests[questID]) {
-			return helpers.notFoundResponse("quest", questID);
+		if (!event.pathParameters || !event.pathParameters.event_id || !event.pathParameters.year) {
+			return helpers.createResponse(400, { message: "missing path parameters" });
 		}
 
-		if (!memberData)
-			return helpers.createResponse(200, {
-				message: `No profile associated with ${userID}`,
-				connected: false
-			});
+		const { event_id, year } = event.pathParameters;
+		const userID = event.requestContext.authorizer.claims.email.toLowerCase();
 
-		return {
-			statusCode: 200,
-			body: JSON.stringify({ message: "Get quest endpoint" }),
-		};
+		const userItem = await db.getOne(userID, QUESTS_TABLE, { "eventID#year": `${event_id}#${year}` });
 
+		if (!userItem) {
+			callback(
+				null,
+				handlerHelpers.createResponse(200, {
+					message: `quest for ${event_id} ${year}`,
+					quests: {},
+				})
+			);
+			return null;
+		}
+
+		callback(
+			null,
+			handlerHelpers.createResponse(200, {
+				message: `quest for ${event_id} ${year}`,
+				quests: userItem.quests || {},
+			})
+		);
 	} catch (err) {
 		console.error(err);
 		callback(
@@ -133,7 +162,7 @@ export const getQuest = async (event, ctx, callback) => {
 	}
 
 	return null;
-}
+};
 
 export const getAllQuests = async (event, ctx, callback) => {
 	try {
@@ -178,4 +207,5 @@ export const getAllQuests = async (event, ctx, callback) => {
 
 	return null;
 };
+
 

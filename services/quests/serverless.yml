@@ -55,6 +55,16 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  getAllQuests:
+    handler: handler.getAllQuests
+    events:
+      - http:
+          path: quests/
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   getQuest:
     handler: handler.getQuest
     events:
@@ -70,16 +80,6 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
-  getAllQuests:
-    handler: handler.getAllQuests
-    events:
-      - http:
-          path: quests/
-          method: get
-          cors: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
 
 resources:
   Resources:
@@ -89,23 +89,19 @@ resources:
         TableName: biztechQuests${self:provider.environment.ENVIRONMENT}
         BillingMode: PAY_PER_REQUEST
         AttributeDefinitions:
-          - AttributeName: ID 
+          - AttributeName: id
             AttributeType: S
-          - AttributeName: eventID;year
-            AttributeType: S
-          - AttributeName: eventID
+          - AttributeName: eventID#year
             AttributeType: S
         KeySchema:
-          - AttributeName: ID
+          - AttributeName: id
             KeyType: HASH
-          - AttributeName: eventID;year
+          - AttributeName: eventID#year
             KeyType: RANGE
         GlobalSecondaryIndexes:
           - IndexName: event-query
             KeySchema:
-              - AttributeName: eventID
+              - AttributeName: eventID#year
                 KeyType: HASH
-              - AttributeName: ID
-                KeyType: RANGE
             Projection:
               ProjectionType: ALL

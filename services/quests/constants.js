@@ -62,8 +62,7 @@ export const QUEST_DEFS = {
 	[QUEST_IDS.UNIQUE_COMPANIES_TALKED_TO]: {
 		id: QUEST_IDS.UNIQUE_COMPANIES_TALKED_TO,
 		type: QUEST_TYPES.UNIQUE_SET,
-		//` what is the target 
-		target: null,
+		target: 6,
 		description: "Talk to unique companies",
 		eventType: QUEST_EVENT_TYPES.COMPANY_TALK,
 		valueKey: "company",
