@@ -1,32 +1,23 @@
 import {
   PutCommand,
   QueryCommand,
-  UpdateCommand,
   DeleteCommand
 } from "@aws-sdk/lib-dynamodb";
 import {
   ApiGatewayManagementApi
 } from "@aws-sdk/client-apigatewaymanagementapi";
 import {
-  QUESTS_TABLE,
   PROFILES_TABLE,
-  NFC_SCANS_TABLE,
   MEMBERS2026_TABLE
 } from "../../constants/tables";
 import db from "../../lib/db";
 import handlerHelpers from "../../lib/handlerHelpers";
 import docClient from "../../lib/docClient";
 import {
-  BIGTECH,
   CURRENT_EVENT,
   EXEC,
-  QUEST_BIGTECH,
-  QUEST_STARTUP,
   QUEST_WORKSHOP,
-  STARTUPS,
   WORKSHOP_TWO,
-  PHOTOBOOTH,
-  QUEST_PHOTOBOOTH,
   WORKSHOP_TWO_PARTICIPANT,
   QUEST_WORKSHOP_TWO_PARTICIPANT
 } from "./constants";
@@ -271,13 +262,11 @@ export const handleConnection = async (userID, connProfileID, timestamp) => {
   }
 
   return handlerHelpers.createResponse(200, {
-    message: `Connection created with ${
-      swap ? userProfile.fname : connProfile.fname
+    message: `Connection created with ${swap ? userProfile.fname : connProfile.fname
     }`,
-    name: `${
-      swap
-        ? userProfile.fname + " " + userProfile.lname
-        : connProfile.fname + " " + connProfile.lname
+    name: `${swap
+      ? userProfile.fname + " " + userProfile.lname
+      : connProfile.fname + " " + connProfile.lname
     }`
   });
 };
@@ -291,108 +280,6 @@ const isDuplicateRequest = async (userID, connID) => {
     }
   });
   return Boolean(result);
-};
-
-export const handleWorkshop = async (profileID, workshopID) => {
-  try {
-    switch (workshopID) {
-    case WORKSHOP_TWO:
-      await incrementQuestProgress(profileID, QUEST_WORKSHOP);
-      return handlerHelpers.createResponse(200, {
-        message: "Completed Workshop Two Challenge"
-      });
-
-    case WORKSHOP_TWO_PARTICIPANT:
-      await incrementQuestProgress(profileID, QUEST_WORKSHOP_TWO_PARTICIPANT);
-      return handlerHelpers.createResponse(200, {
-        message: "Braved 1-on-1 onstage interview"
-      });
-
-    default:
-      return handlerHelpers.createResponse(200, {
-        message: "Unknown workshop"
-      });
-    }
-  } catch (error) {
-    console.error(error);
-    throw error;
-  }
-};
-
-export const handleBooth = async (profileID, boothID, timestamp) => {
-  let putItem = {
-    id: profileID,
-    name: boothID,
-    createdAt: timestamp
-  };
-
-  const params = {
-    Item: putItem,
-    TableName: NFC_SCANS_TABLE + (process.env.ENVIRONMENT || "")
-  };
-
-  try {
-    const command = new PutCommand(params);
-    await docClient.send(command);
-  } catch (err) {
-    const errorResponse = this.dynamoErrorResponse(err);
-    console.error(errorResponse);
-  }
-
-  if (BIGTECH.includes(boothID)) {
-    try {
-      await incrementQuestProgress(profileID, QUEST_BIGTECH);
-      return handlerHelpers.createResponse(200, {
-        message: `Checked into booth ${boothID}`
-      });
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
-  }
-
-  if (STARTUPS.includes(boothID)) {
-    try {
-      await incrementQuestProgress(profileID, QUEST_STARTUP);
-      return handlerHelpers.createResponse(200, {
-        message: `Checked into booth ${boothID}`
-      });
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
-  }
-
-  if (boothID === PHOTOBOOTH) {
-    try {
-      await incrementQuestProgress(profileID, QUEST_PHOTOBOOTH);
-      return handlerHelpers.createResponse(200, {
-        message: `Checked into booth ${boothID}`
-      });
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
-  }
-};
-
-const incrementQuestProgress = async (userID, questID) => {
-  const command = new UpdateCommand({
-    TableName: QUESTS_TABLE + (process.env.ENVIRONMENT || ""),
-    Key: {
-      userID,
-      questID
-    },
-    UpdateExpression:
-      "SET progress = if_not_exists(progress, :startValue) + :incrementValue",
-    ExpressionAttributeValues: {
-      ":startValue": 1,
-      ":incrementValue": 1
-    },
-    ReturnValues: "ALL_NEW"
-  });
-
-  return await docClient.send(command);
 };
 
 export async function saveSocketConnection({

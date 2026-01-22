@@ -2,9 +2,12 @@
 node_modules
 .webpack
 jspm_packages
+services/*/package-lock.json
 
 # Serverless directories
 .serverless
+
+
 
 .env
 .vscode
