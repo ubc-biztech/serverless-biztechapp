@@ -4,7 +4,7 @@ const { PdfReader } = require("pdfreader"); // commonjs import is necessary
 
 import search from "../lib/search.js";
 import {
-  BLUEPRINT_OPENSEARCH_TEST_INDEX,
+  BLUEPRINT_OPENSEARCH_PROD_INDEX,
   BLUEPRINT_RESPONSE_MAP
 } from "../constants/indexes.js";
 import { QueryCommand } from "@aws-sdk/lib-dynamodb";
@@ -188,7 +188,7 @@ async function run(eventID, year) {
   console.log(parsedProfiles);
 
   await search.indexDocuments({
-    indexName: BLUEPRINT_OPENSEARCH_TEST_INDEX,
+    indexName: BLUEPRINT_OPENSEARCH_PROD_INDEX,
     documents: parsedProfiles
   });
 }
