@@ -34,10 +34,12 @@ export async function createProfile(email, profileType) {
     hobby2: false,
     funQuestion1: false,
     funQuestion2: false,
-    linkedIn: false,
-    profilePictureURL: false,
-    additionalLink: false,
-    description: false
+    linkedIn: true,
+    profilePictureURL: true,
+    additionalLink: true,
+    description: true,
+    company: true,
+    position: true,
   };
 
   // Map registration data to profile schema
