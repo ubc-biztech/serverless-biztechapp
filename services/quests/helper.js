@@ -4,7 +4,7 @@ import { QUEST_IDS, QUEST_DEFS, QUEST_TYPES, QUEST_EVENT_TYPES } from "./constan
  * def is the defined quest object from QUEST_DEFS
  */
 
-function initStoredQuest(def, now) {
+export function initStoredQuest(def, now) {
   const base = {
     progress: 0,
     target: def.target ?? null,
