@@ -35,41 +35,33 @@ export function parseEvents(body) {
     }];
 
   case "connection": {
-    // flag for the recommended connection to tell whether to count it or not
     const isRecommended = !!body.argument?.recommended;
 
-    // regardless of recommendation, counts toward the connection 5 / 10 / 20 quests
-    const events = [
-      {
-        questId: QUEST_IDS.NEW_CONNECTIONS_5,
-        questType: QUEST_TYPES.COUNTER,
-        eventType: QUEST_EVENT_TYPES.NEW_CONNECTION,
-        eventParam: {},
-      },
-      {
-        questId: QUEST_IDS.NEW_CONNECTIONS_10,
-        questType: QUEST_TYPES.COUNTER,
-        eventType: QUEST_EVENT_TYPES.NEW_CONNECTION,
-        eventParam: {},
-      },
-      {
-        questId: QUEST_IDS.NEW_CONNECTIONS_20,
-        questType: QUEST_TYPES.COUNTER,
-        eventType: QUEST_EVENT_TYPES.NEW_CONNECTION,
-        eventParam: {},
-      },
-    ];
-
-    if (isRecommended) {
-      events.push({
-        questId: QUEST_IDS.RECOMMENDED_CONNECTIONS,
-        questType: QUEST_TYPES.COUNTER,
-        eventType: QUEST_EVENT_TYPES.RECOMMENDED_CONNECTION,
-        eventParam: {},
-      });
-    }
-
-    return events;
+    return [{
+      questId: QUEST_IDS.NEW_CONNECTIONS_5,
+      questType: QUEST_TYPES.COUNTER,
+      eventType: QUEST_EVENT_TYPES.NEW_CONNECTION,
+      eventParam: {},
+      count: 1,
+    }, {
+      questId: QUEST_IDS.NEW_CONNECTIONS_10,
+      questType: QUEST_TYPES.COUNTER,
+      eventType: QUEST_EVENT_TYPES.NEW_CONNECTION,
+      eventParam: {},
+      count: 1,
+    }, {
+      questId: QUEST_IDS.NEW_CONNECTIONS_20,
+      questType: QUEST_TYPES.COUNTER,
+      eventType: QUEST_EVENT_TYPES.NEW_CONNECTION,
+      eventParam: {},
+      count: 1,
+    }, ...(isRecommended ? [{
+      questId: QUEST_IDS.RECOMMENDED_CONNECTIONS,
+      questType: QUEST_TYPES.COUNTER,
+      eventType: QUEST_EVENT_TYPES.RECOMMENDED_CONNECTION,
+      eventParam: {},
+      count: 1,
+    }] : [])];
   }
 
   default:
@@ -88,8 +80,9 @@ export function applyQuestEvent(def, currentStored, event, now) {
 
   // IF COUNTER QUEST 
   if (def.type === QUEST_TYPES.COUNTER) {
-    const next = Math.min(state.progress + 1, state.target ?? Infinity);
-    const completed = typeof state.target === "number" && next >= state.target; // don't increment if past target
+    const increment = event.count || 1;
+    const next = Math.min(state.progress + increment, state.target ?? Infinity);
+    const completed = typeof state.target === "number" && next >= state.target;
 
     return {
       ...state,

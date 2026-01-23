@@ -18,18 +18,21 @@ export const updateQuest = async (event, ctx, callback) => {
 		const userID = event.requestContext.authorizer.claims.email.toLowerCase();
 		const body = JSON.parse(event.body);
 
-		// Validate input
-		if (!body.type) {
-			return handlerHelpers.createResponse(400, { message: "Missing required field: type. Valid types: 'connection', 'company'" });
-		}
-		if (!body.argument) {
-			return handlerHelpers.createResponse(400, { message: "Missing required field: argument" });
-		}
-		if (body.type !== "connection" && body.type !== "company") {
-			return handlerHelpers.createResponse(400, { message: `Invalid type: '${body.type}'. Valid types: 'connection', 'company'` });
-		}
-		if (body.type === "company" && typeof body.argument !== "string") {
-			return handlerHelpers.createResponse(400, { message: "For 'company' type, argument must be a company name string" });
+		try {
+			handlerHelpers.checkPayloadProps(body, {
+				type: { required: true, type: "string" },
+				argument: { required: true, type: "object" }
+			});
+
+			if (body.type !== "connection" && body.type !== "company") {
+				return handlerHelpers.createResponse(400, { message: `Invalid type: '${body.type}'. Valid types: 'connection', 'company'` });
+			}
+
+			if (body.type === "company" && typeof body.argument !== "string") {
+				return handlerHelpers.createResponse(400, { message: "For 'company' type, argument must be a company name string" });
+			}
+		} catch (err) {
+			return err;
 		}
 
 		const timestamp = Date.now();
@@ -48,48 +51,24 @@ export const updateQuest = async (event, ctx, callback) => {
 		}
 
 		const questsMap = userItem?.quests || {};
-		const eventsByType = questEvents.reduce((m, e) => {
-			(m[e.eventType] ??= []).push(e);
-			return m;
-		}, {});
 
 		const nextQuestsMap = Object.values(QUEST_DEFS).reduce((acc, def) => {
-			const events = eventsByType[def.eventType];
+			const event = questEvents.find(e => e.questId === def.id);
 			const current = acc[def.id];
 			const now = timestamp;
 
 			if (!current) {
-				const initialized = {
-					progress: 0,
-					target: def.target ?? null,
-					startedAt: now,
-					completedAt: null,
-					description: def.description,
-				};
-
-				if (def.type === QUEST_TYPES.UNIQUE_SET) {
-					initialized.items = [];
-				}
-
-				if (!events?.length) {
-					return {
-						...acc,
-						[def.id]: initialized
-					};
+				const initialized = initStoredQuest(def, now);
+				if (!event) {
+					return { ...acc, [def.id]: initialized };
 				}
 			}
 
-			if (!events?.length) return acc;
+			if (!event) return acc;
 
-			const updated = events.reduce(
-				(state, e) => applyQuestEvent(def, state, e, now),
-				current
-			);
+			const updated = applyQuestEvent(def, current, event, now);
 
-			return {
-				...acc,
-				[def.id]: updated
-			};
+			return { ...acc, [def.id]: updated };
 		}, questsMap);
 
 		try {
