@@ -1,10 +1,4 @@
 {
   "name": "biztechapi-qr",
-  "version": "1.0.0",
-  "devDependencies": {
-    "serverless-offline": "^14.3.2"
-  },
-  "dependencies": {
-    "ws": "^8.16.0"
-  }
+  "version": "1.0.0"
 }

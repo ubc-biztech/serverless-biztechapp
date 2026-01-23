@@ -32,7 +32,6 @@ jobs:
           sudo npm i -g serverless@3 --legacy-peer-dep
           sls -v
           npm ci --legacy-peer-deps
-          npm run install
 
       - name: "Deploy Dev"
         if: github.ref == 'refs/heads/dev'

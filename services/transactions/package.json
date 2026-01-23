@@ -1,15 +1,9 @@
 {
   "name": "biztechapi-transactions",
   "version": "1.0.0",
-  "dependencies": {
-    "uuid": "^8.3.1"
-  },
   "scripts": {
     "itest": "npm run itest transactions --prefix ../../",
     "utest": "npm run utest transactions --prefix ../../",
     "test": "npm run utest transactions --prefix ../../ && npm run itest transactions --prefix ../../"
-  },
-  "devDependencies": {
-    "serverless-offline": "^14.3.2"
   }
 }

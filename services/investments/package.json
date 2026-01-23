@@ -5,8 +5,5 @@
     "itest": "npm run itest investments --prefix ../../",
     "utest": "npm run utest investments --prefix ../../",
     "test": "npm run utest investments --prefix ../../ && npm run itest investments --prefix ../../"
-  },
-  "devDependencies": {
-    "serverless-offline": "^14.3.2"
   }
 }
