@@ -2,6 +2,8 @@ service: biztech-quizzes
 tenant: ianmh
 app: biztechapp
 
+frameworkVersion: 3.40.0
+
 plugins:
   - serverless-dynamodb
   - serverless-offline
@@ -110,6 +112,8 @@ resources:
           - AttributeName: id
             AttributeType: S
           - AttributeName: eventID;year
+            AttributeType: S
+          - AttributeName: mbti
             AttributeType: S
         KeySchema:
           - AttributeName: id

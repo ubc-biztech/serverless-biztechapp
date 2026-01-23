@@ -19,6 +19,9 @@ services:
   - srvName: qr
     srvPath: qr
     srvSource: services/qr
+  - srvName: quests
+    srvPath: quests
+    srvSource: services/quests 
   - srvName: qr
     srvPath: qrscan
     srvSource: services/qr
