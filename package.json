@@ -37,7 +37,7 @@
     "lint": "eslint . --fix",
     "pretty": "prettier --write \"./**/*.{js,jsx,ts,tsx,json}\"",
     "fix-sls-offline": "find services/* -maxdepth 0 -type d -exec sh -c 'cd \"{}\" && node ../../scripts/fix-sls-offline.js' \\;",
-    "install": "find services -maxdepth 1 -mindepth 1 -type d -exec sh -c 'echo \"--- Installing in: $1\" && cd \"$1\" && npm ci --ignore-scripts --save-dev 2>&1' _ {} \\;",
+    "install": "find services -maxdepth 1 -mindepth 1 -type d -exec sh -c 'echo \"--- Installing in: $1\" && cd \"$1\" && if [ -f package.json ]; then npm ci --ignore-scripts --save-dev; fi' _ {} \\;",
     "sls-offline-i": "find services/*/ -maxdepth 0 -type d -exec sh -c 'cd \"{}\" && serverless plugin install -n serverless-offline' \\;",
     "dev": "node ./index.js",
     "init:db": "cd scripts && node ./initlocal.js",
