@@ -9,7 +9,7 @@ import handlerHelpers from "../../lib/handlerHelpers";
 import helpers from "../../lib/handlerHelpers";
 import search from "../../lib/search";
 import {
-  TYPES 
+  TYPES
 } from "../profiles/constants";
 import {
   handleConnection,
