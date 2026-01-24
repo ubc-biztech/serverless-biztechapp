@@ -1,7 +1,6 @@
-import { QUESTS_TABLE, MEMBERS2026_TABLE } from "../../constants/tables";
+import { QUESTS_TABLE, MEMBERS2026_TABLE, PROFILES_TABLE } from "../../constants/tables";
 import db from "../../lib/db";
-import { QUEST_DEFS, QUEST_TYPES } from "./constants";
-import { MEMBERS2026_TABLE, PROFILES_TABLE } from "../../constants/tables";
+import { QUEST_DEFS } from "./constants";
 import { applyQuestEvent, parseEvents, initStoredQuest } from "./helper.js";
 import handlerHelpers from "../../lib/handlerHelpers";
 import helpers from "../../lib/handlerHelpers";
