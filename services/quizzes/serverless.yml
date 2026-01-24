@@ -135,11 +135,3 @@ resources:
                 KeyType: RANGE
             Projection:
               ProjectionType: ALL
-          - IndexName: mbti-query
-            KeySchema:
-              - AttributeName: mbti
-                KeyType: HASH
-              - AttributeName: eventID;year
-                KeyType: RANGE
-            Projection:
-              ProjectionType: ALL
