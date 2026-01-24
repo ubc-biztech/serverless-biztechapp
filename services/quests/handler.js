@@ -1,4 +1,8 @@
-import { QUESTS_TABLE, MEMBERS2026_TABLE, PROFILES_TABLE } from "../../constants/tables";
+import {
+  QUESTS_TABLE,
+  MEMBERS2026_TABLE,
+  PROFILES_TABLE
+} from "../../constants/tables";
 import db from "../../lib/db";
 import { QUEST_DEFS } from "./constants";
 import { applyQuestEvent, parseEvents, initStoredQuest } from "./helper.js";
@@ -38,7 +42,7 @@ async function getEmailFromProfileId(profileId) {
  * Handles both new users (no quests yet) and existing users
  * Also handles race conditions when creating new quest records
  * IDEMPOTENT: For connection events, tracks connected profileIds to prevent double-counting
- * 
+ *
  * @param {string} userID - The user ID (email) to update quests for
  * @param {string} event_id - The event ID
  * @param {string} year - The event year
@@ -47,12 +51,21 @@ async function getEmailFromProfileId(profileId) {
  * @param {string|null} connectionProfileId - For connection events, the profileId being connected to (for idempotency)
  * @returns {Object} - { success: boolean, quests: Object, alreadyConnected?: boolean, error?: string }
  */
-async function updateUserQuestProgress(userID, event_id, year, questEvents, timestamp, connectionProfileId = null) {
+async function updateUserQuestProgress(
+  userID,
+  event_id,
+  year,
+  questEvents,
+  timestamp,
+  connectionProfileId = null
+) {
   const eventKey = `${event_id}#${year}`;
 
   let userItem;
   try {
-    userItem = await db.getOne(userID, QUESTS_TABLE, { "eventID#year": eventKey });
+    userItem = await db.getOne(userID, QUESTS_TABLE, {
+      "eventID#year": eventKey
+    });
   } catch (err) {
     console.error(`Could not read user data for ${userID}:`, err);
     return {
@@ -65,8 +78,13 @@ async function updateUserQuestProgress(userID, event_id, year, questEvents, time
   const connectedProfiles = (userItem && userItem.connectedProfiles) || [];
 
   // IDEMPOTENCY: If this is a connection event and we've already connected with this profile, skip
-  if (connectionProfileId && connectedProfiles.includes(connectionProfileId.toLowerCase())) {
-    console.log(`User ${userID} already connected with ${connectionProfileId}, skipping (idempotent)`);
+  if (
+    connectionProfileId &&
+    connectedProfiles.includes(connectionProfileId.toLowerCase())
+  ) {
+    console.log(
+      `User ${userID} already connected with ${connectionProfileId}, skipping (idempotent)`
+    );
     return {
       success: true,
       quests: (userItem && userItem.quests) || {},
@@ -77,7 +95,7 @@ async function updateUserQuestProgress(userID, event_id, year, questEvents, time
   const questsMap = (userItem && userItem.quests) || {};
 
   const nextQuestsMap = Object.values(QUEST_DEFS).reduce((acc, def) => {
-    const event = questEvents.find(e => e.questId === def.id);
+    const event = questEvents.find((e) => e.questId === def.id);
     const current = acc[def.id];
     const now = timestamp;
 
@@ -107,10 +125,10 @@ async function updateUserQuestProgress(userID, event_id, year, questEvents, time
     : connectedProfiles;
 
   const itemToWrite = {
-    id: userID,
+    "id": userID,
     "eventID#year": eventKey,
-    quests: nextQuestsMap,
-    connectedProfiles: nextConnectedProfiles
+    "quests": nextQuestsMap,
+    "connectedProfiles": nextConnectedProfiles
   };
 
   try {
@@ -124,7 +142,9 @@ async function updateUserQuestProgress(userID, event_id, year, questEvents, time
     // Handle race condition: if we tried to create but it already exists,
     const isConditionalCheckFailed =
       err.code === "ConditionalCheckFailedException" ||
-      (err.body && err.body.includes && err.body.includes("ConditionalCheckFailed"));
+      (err.body &&
+        err.body.includes &&
+        err.body.includes("ConditionalCheckFailed"));
 
     if (isConditionalCheckFailed) {
       console.log(`Race condition detected for ${userID}, retrying...`);
@@ -221,14 +241,23 @@ export const updateQuest = async (event, ctx, callback) => {
     );
 
     if (!userAResult.success) {
-      return handlerHelpers.createResponse(500, { message: userAResult.error || "Internal server error" });
+      return handlerHelpers.createResponse(500, {
+        message: userAResult.error || "Internal server error"
+      });
     }
 
     // Handle bi-directional updates for connection events
     // When User A connects with User B, also update User B's quest progress
-    const isBidirectional = !(body.argument && body.argument.bidirectional === false); // Default to true
+    const isBidirectional = !(
+      body.argument && body.argument.bidirectional === false
+    ); // Default to true
 
-    if (isConnectionEvent && isBidirectional && targetProfileId && !userAResult.alreadyConnected) {
+    if (
+      isConnectionEvent &&
+      isBidirectional &&
+      targetProfileId &&
+      !userAResult.alreadyConnected
+    ) {
       const userBEmail = await getEmailFromProfileId(targetProfileId);
 
       if (userBEmail) {
@@ -254,7 +283,9 @@ export const updateQuest = async (event, ctx, callback) => {
           );
 
           if (!userBResult.success) {
-            console.error(`Failed to update bi-directional quest for ${targetProfileId} (${userBEmail}): ${userBResult.error}`);
+            console.error(
+              `Failed to update bi-directional quest for ${targetProfileId} (${userBEmail}): ${userBResult.error}`
+            );
           }
         }
       } else {
@@ -325,8 +356,12 @@ export const getQuest = async (event, ctx, callback) => {
       }
     }
 
-    userItem = await db.getOne(userID, QUESTS_TABLE, { "eventID#year": `${event_id}#${year}` });
-    return handlerHelpers.createResponse(200, { quests: (userItem && userItem.quests) || {} });
+    userItem = await db.getOne(userID, QUESTS_TABLE, {
+      "eventID#year": `${event_id}#${year}`
+    });
+    return handlerHelpers.createResponse(200, {
+      quests: (userItem && userItem.quests) || {}
+    });
   } catch (err) {
     console.error(err);
     return handlerHelpers.createResponse(500, {
@@ -390,33 +425,24 @@ function looksLikeEmail(s) {
 }
 
 async function resolveEmailFromProfileId(profileId) {
+  if (!profileId) return null;
+
   try {
-    const results = await db.query(MEMBERS2026_TABLE, "profileID-index", {
-      expression: "profileID = :pid",
+    const results = await db.query(MEMBERS2026_TABLE, "profile-query", {
+      expression: "#profileID = :profileID",
+      expressionNames: {
+        "#profileID": "profileID"
+      },
       expressionValues: {
-        ":pid": profileId
+        ":profileID": profileId
       }
     });
 
     if (results && results.length > 0 && results[0]?.id) {
       return String(results[0].id).toLowerCase();
     }
-  } catch (e) {
-    // ignore; fallback to scan
-  }
-
-  const items = await db.scan(MEMBERS2026_TABLE, {
-    FilterExpression: "#pid = :pid",
-    ExpressionAttributeNames: {
-      "#pid": "profileID"
-    },
-    ExpressionAttributeValues: {
-      ":pid": profileId
-    }
-  });
-
-  if (items && items.length > 0 && items[0]?.id) {
-    return String(items[0].id).toLowerCase();
+  } catch (err) {
+    console.error(`resolveEmailFromProfileId failed for ${profileId}:`, err);
   }
 
   return null;
@@ -467,19 +493,18 @@ export const getQuestKiosk = async (event, ctx, callback) => {
       return acc;
     }, {});
 
+    const writeId = email || profileId;
+
     await db.put(
-      {
-        "id": email || profileId,
-        "eventID#year": eventKey,
-        "quests": newQuests
-      },
+      { "id": writeId, "eventID#year": eventKey, "quests": newQuests },
       QUESTS_TABLE,
       true
     );
 
     return handlerHelpers.createResponse(200, {
       quests: newQuests,
-      resolvedUser: email ? "initialized-email" : "initialized-profileId"
+      resolvedUser: email ? "initialized-email" : "initialized-profileId",
+      resolvedEmail: email || null
     });
   } catch (err) {
     console.error("getQuestKiosk error:", err);
