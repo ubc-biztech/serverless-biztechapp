@@ -241,18 +241,6 @@ export default {
 			dynamic_template_data: dynamicCalendarMsg.dynamic_template_data,
 			templateId: dynamicCalendarMsg.templateId
 		};
-		// send the email for the calendar invite
-		// for the qr code email, go to handlers.js
-		const msg = {
-			to: user.id,
-			from: {
-				email: "info@ubcbiztech.com",
-				name: "UBC BizTech"
-			},
-			attachments,
-			dynamic_template_data: dynamicCalendarMsg.dynamic_template_data,
-			templateId: dynamicCalendarMsg.templateId
-		};
 
 		return sgMail.send(msg);
 	}
