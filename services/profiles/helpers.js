@@ -94,7 +94,7 @@ export async function createProfile(email, profileType) {
 }
 
 export function filterPublicProfileFields(profile) {
-    const viewableMap = {
+  const viewableMap = {
     fname: true,
     lname: true,
     pronouns: true,
