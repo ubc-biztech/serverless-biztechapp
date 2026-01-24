@@ -56,8 +56,14 @@ provider:
         - dynamodb:Query
         - dynamodb:PutItem
         - dynamodb:TransactWriteItems
+        - dynamodb:Scan
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechProfiles${self:provider.environment.ENVIRONMENT}"
+    - Effect: Allow
+      Action:
+        - dynamodb:GetItem
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechEvents${self:provider.environment.ENVIRONMENT}"
     - Effect: Allow
       Action:
         - dynamodb:Query
@@ -200,6 +206,14 @@ functions:
           # authorizer:
           #   type: COGNITO_USER_POOLS
           #   authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  companiesLeaderboard:
+    handler: handler.getCompaniesLeaderboard
+    events:
+      - http:
+          path: interactions/companies/leaderboard
+          method: get
+          cors: true
 
   wsConnect:
     handler: handler.wsConnect

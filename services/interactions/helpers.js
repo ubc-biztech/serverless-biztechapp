@@ -1,7 +1,8 @@
 import {
   PutCommand,
   QueryCommand,
-  DeleteCommand
+  DeleteCommand,
+  ScanCommand
 } from "@aws-sdk/lib-dynamodb";
 import {
   ApiGatewayManagementApi
@@ -399,4 +400,101 @@ export async function fetchRecentConnections({
   });
   const res = await docClient.send(cmd);
   return res.Items || [];
+}
+
+/**
+ * Get company leaderboard by aggregating partner connections
+ * @param {Object} params
+ * @param {string} params.eventID - Event ID
+ * @param {number} params.year - Event year
+ * @param {string} params.startDate - Event start date (ISO string)
+ * @param {string} params.endDate - Event end date (ISO string)
+ * @param {number} params.limit - Number of top companies to return
+ * @returns {Array} Array of company objects with tap counts
+ */
+export async function getCompanyLeaderboard({
+  eventID,
+  year,
+  startDate,
+  endDate,
+  limit = 5
+}) {
+  // Scan all connections from profiles table where type begins with CONNECTION#
+  // and has a company field (partner connections)
+  const connections = await db.scan(PROFILES_TABLE, {
+    FilterExpression: "begins_with(#type, :connectionPrefix) AND attribute_exists(company)",
+    ExpressionAttributeNames: {
+      "#type": "type"
+    },
+    ExpressionAttributeValues: {
+      ":connectionPrefix": `${TYPES.CONNECTION}#`
+    }
+  });
+
+  // Filter by event date range if provided
+  let filteredConnections = connections;
+  if (startDate || endDate) {
+    const start = startDate ? new Date(startDate).getTime() : 0;
+    const end = endDate ? new Date(endDate).getTime() : Infinity;
+
+    filteredConnections = connections.filter(conn => {
+      const createdAt = conn.createdAt || 0;
+      return createdAt >= start && createdAt <= end;
+    });
+  }
+
+  // Aggregate by company name
+  const companyTaps = {};
+  for (const conn of filteredConnections) {
+    const company = conn.company;
+    if (!companyTaps[company]) {
+      companyTaps[company] = {
+        company,
+        count: 0
+      };
+    }
+    companyTaps[company].count++;
+  }
+
+  // Convert to array and sort by count descending
+  const sortedCompanies = Object.values(companyTaps)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit);
+
+  // Try to fetch company logos from company profiles
+  const eventIDAndYear = `${eventID};${year}`;
+  const companyProfiles = await db.scan(PROFILES_TABLE, {
+    FilterExpression: "#type = :companyType",
+    ExpressionAttributeNames: {
+      "#type": "type"
+    },
+    ExpressionAttributeValues: {
+      ":companyType": "Company"
+    }
+  });
+
+  // Create a map of company name (normalized) to profile
+  const companyProfileMap = {};
+  for (const profile of companyProfiles) {
+    // Normalize company name for matching
+    const normalizedName = profile.name?.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (normalizedName) {
+      companyProfileMap[normalizedName] = profile;
+    }
+  }
+
+  // Enrich with logos
+  const leaderboard = sortedCompanies.map(item => {
+    const normalizedCompany = item.company?.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const companyProfile = companyProfileMap[normalizedCompany];
+
+    return {
+      companyId: companyProfile?.id || normalizedCompany,
+      name: item.company,
+      taps: item.count,
+      logo: companyProfile?.profilePictureURL || null
+    };
+  });
+
+  return leaderboard;
 }
