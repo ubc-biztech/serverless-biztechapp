@@ -36,11 +36,13 @@ export const recommend = async (event, ctx, callback) => {
     });
     // Uncomment below to use staging or prod index 
     // const indexToUse = process.env.ENVIRONMENT === "STAGING" ? BLUEPRINT_OPENSEARCH_STAGING_INDEX : BLUEPRINT_OPENSEARCH_PROD_INDEX;  
-    const result = await search.retrieveTopK({
+    const reqObj = {
       indexName: BLUEPRINT_OPENSEARCH_TEST_INDEX, // TODO: change to indexToUse later
       queryText: data.query,
       topK: data.topK || OPENSEARCH_INDEX_TOP_K,
-    });
+    };
+    console.log("reqObj:", reqObj);
+    const result = await search.retrieveTopK(reqObj);
     return helpers.createResponse(200, result);
   } catch (err) {
     console.error("Error in recommend:", err);
