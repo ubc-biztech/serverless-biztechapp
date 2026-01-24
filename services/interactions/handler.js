@@ -1,4 +1,8 @@
 import {
+  BLUEPRINT_OPENSEARCH_PROD_INDEX,
+  OPENSEARCH_INDEX_TOP_K
+} from "../../constants/indexes";
+import {
   MEMBERS2026_TABLE,
   PROFILES_TABLE,
   EVENTS_TABLE
@@ -8,7 +12,7 @@ import handlerHelpers from "../../lib/handlerHelpers";
 import helpers from "../../lib/handlerHelpers";
 import search from "../../lib/search";
 import {
-  TYPES, BLUEPRINT_OPENSEARCH_TEST_INDEX, OPENSEARCH_INDEX_TOP_K
+  TYPES
 } from "../profiles/constants";
 import {
   handleConnection,
@@ -37,7 +41,7 @@ export const recommend = async (event, ctx, callback) => {
     // Uncomment below to use staging or prod index 
     // const indexToUse = process.env.ENVIRONMENT === "STAGING" ? BLUEPRINT_OPENSEARCH_STAGING_INDEX : BLUEPRINT_OPENSEARCH_PROD_INDEX;  
     const reqObj = {
-      indexName: BLUEPRINT_OPENSEARCH_TEST_INDEX, // TODO: change to indexToUse later
+      indexName: BLUEPRINT_OPENSEARCH_PROD_INDEX, // TODO: change to indexToUse later
       queryText: data.query,
       topK: data.topK || OPENSEARCH_INDEX_TOP_K,
     };
@@ -97,8 +101,8 @@ export const checkConnection = async (event, ctx, callback) => {
   try {
     if (
       !event.pathParameters ||
-			!event.pathParameters.id ||
-			typeof event.pathParameters.id !== "string"
+      !event.pathParameters.id ||
+      typeof event.pathParameters.id !== "string"
     )
       throw helpers.missingIdQueryResponse("profile ID in request path");
 
@@ -150,7 +154,7 @@ export const getAllConnections = async (event, ctx, callback) => {
 
     let data = await db.query(PROFILES_TABLE, null, {
       expression:
-				"compositeID = :compositeID AND begins_with(#type, :typePrefix)",
+        "compositeID = :compositeID AND begins_with(#type, :typePrefix)",
       expressionValues: {
         ":compositeID": `PROFILE#${profileID}`,
         ":typePrefix": `${TYPES.CONNECTION}#`
