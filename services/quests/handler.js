@@ -5,12 +5,18 @@ import { applyQuestEvent, parseEvents, initStoredQuest } from "./helper.js";
 import handlerHelpers from "../../lib/handlerHelpers";
 import helpers from "../../lib/handlerHelpers";
 
-// go through callback and context 
+// go through callback and context
 export const updateQuest = async (event, ctx, callback) => {
   try {
-    if (!event.pathParameters || !event.pathParameters.event_id || !event.pathParameters.year) {
+    if (
+      !event.pathParameters ||
+      !event.pathParameters.event_id ||
+      !event.pathParameters.year
+    ) {
       console.log(event.pathParameters);
-      return helpers.createResponse(400, { message: "missing path parameters" });
+      return helpers.createResponse(400, {
+        message: "missing path parameters"
+      });
     }
 
     const { event_id, year } = event.pathParameters;
@@ -31,11 +37,15 @@ export const updateQuest = async (event, ctx, callback) => {
       });
 
       if (body.type !== "connection" && body.type !== "company") {
-        return handlerHelpers.createResponse(400, { message: `Invalid type: '${body.type}'. Valid types: 'connection', 'company'` });
+        return handlerHelpers.createResponse(400, {
+          message: `Invalid type: '${body.type}'. Valid types: 'connection', 'company'`
+        });
       }
 
       if (body.type === "company" && typeof body.argument !== "string") {
-        return handlerHelpers.createResponse(400, { message: "For 'company' type, argument must be a company name string" });
+        return handlerHelpers.createResponse(400, {
+          message: "For 'company' type, argument must be a company name string"
+        });
       }
     } catch (err) {
       return err;
@@ -45,12 +55,16 @@ export const updateQuest = async (event, ctx, callback) => {
     const questEvents = parseEvents(body);
 
     if (!questEvents) {
-      return handlerHelpers.createResponse(400, { message: "Failed to parse quest event" });
+      return handlerHelpers.createResponse(400, {
+        message: "Failed to parse quest event"
+      });
     }
 
     let userItem;
     try {
-      userItem = await db.getOne(userID, QUESTS_TABLE, { "eventID#year": `${event_id}#${year}` });
+      userItem = await db.getOne(userID, QUESTS_TABLE, {
+        "eventID#year": `${event_id}#${year}`
+      });
     } catch (err) {
       console.error("Could not read user data:", err);
       return handlerHelpers.createResponse(500, { message: "DB read failed" });
@@ -59,7 +73,7 @@ export const updateQuest = async (event, ctx, callback) => {
     const questsMap = userItem?.quests || {};
 
     const nextQuestsMap = Object.values(QUEST_DEFS).reduce((acc, def) => {
-      const event = questEvents.find(e => e.questId === def.id);
+      const event = questEvents.find((e) => e.questId === def.id);
       const current = acc[def.id];
       const now = timestamp;
 
@@ -88,39 +102,51 @@ export const updateQuest = async (event, ctx, callback) => {
         {
           "eventID#year": `${event_id}#${year}`,
           ...(userItem || { id: userID }),
-          quests: nextQuestsMap
+          "quests": nextQuestsMap
         },
         QUESTS_TABLE,
         !userItem
       );
     } catch (err) {
       console.error("Error updating quest progress:", err);
-      return handlerHelpers.createResponse(500, { message: "Internal server error" });
+      return handlerHelpers.createResponse(500, {
+        message: "Internal server error"
+      });
     }
 
     return handlerHelpers.createResponse(200, {
-      quests: nextQuestsMap,
+      quests: nextQuestsMap
     });
   } catch (err) {
     console.error("Unhandled error in updateQuest:", err);
-    return handlerHelpers.createResponse(500, { message: "Internal server error" });
+    return handlerHelpers.createResponse(500, {
+      message: "Internal server error"
+    });
   }
 };
 
 export const getQuest = async (event, ctx, callback) => {
   try {
-    if (!event.pathParameters || !event.pathParameters.event_id || !event.pathParameters.year) {
-      return handlerHelpers.createResponse(400, { message: "missing path parameters" });
+    if (
+      !event.pathParameters ||
+      !event.pathParameters.event_id ||
+      !event.pathParameters.year
+    ) {
+      return handlerHelpers.createResponse(400, {
+        message: "missing path parameters"
+      });
     }
 
     const { event_id, year } = event.pathParameters;
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
 
-    let userItem = await db.getOne(userID, QUESTS_TABLE, { "eventID#year": `${event_id}#${year}` });
+    let userItem = await db.getOne(userID, QUESTS_TABLE, {
+      "eventID#year": `${event_id}#${year}`
+    });
 
     if (userItem) {
       return handlerHelpers.createResponse(200, {
-        quests: userItem.quests || {},
+        quests: userItem.quests || {}
       });
     }
 
@@ -130,34 +156,50 @@ export const getQuest = async (event, ctx, callback) => {
     }, {});
 
     try {
-      await db.put({
-        id: userID,
-        "eventID#year": `${event_id}#${year}`,
-        quests: newQuests
-      }, QUESTS_TABLE, true);
+      await db.put(
+        {
+          "id": userID,
+          "eventID#year": `${event_id}#${year}`,
+          "quests": newQuests
+        },
+        QUESTS_TABLE,
+        true
+      );
 
       return handlerHelpers.createResponse(200, { quests: newQuests });
     } catch (err) {
       if (err.code !== "ConditionalCheckFailedException") {
         console.error(err);
-        return handlerHelpers.createResponse(500, { message: "Internal server error" });
+        return handlerHelpers.createResponse(500, {
+          message: "Internal server error"
+        });
       }
     }
 
-    userItem = await db.getOne(userID, QUESTS_TABLE, { "eventID#year": `${event_id}#${year}` });
-    return handlerHelpers.createResponse(200, { quests: userItem?.quests || {} });
+    userItem = await db.getOne(userID, QUESTS_TABLE, {
+      "eventID#year": `${event_id}#${year}`
+    });
+    return handlerHelpers.createResponse(200, {
+      quests: userItem?.quests || {}
+    });
   } catch (err) {
     console.error(err);
     return handlerHelpers.createResponse(500, {
-      message: "Internal server error",
+      message: "Internal server error"
     });
   }
 };
 
 export const getQuestsByEvent = async (event, ctx, callback) => {
   try {
-    if (!event.pathParameters || !event.pathParameters.event_id || !event.pathParameters.year) {
-      return handlerHelpers.createResponse(400, { message: "missing path parameters" });
+    if (
+      !event.pathParameters ||
+      !event.pathParameters.event_id ||
+      !event.pathParameters.year
+    ) {
+      return handlerHelpers.createResponse(400, {
+        message: "missing path parameters"
+      });
     }
 
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
@@ -168,30 +210,99 @@ export const getQuestsByEvent = async (event, ctx, callback) => {
     const { event_id, year } = event.pathParameters;
     const eventKey = `${event_id}#${year}`;
 
-    const items = await db.scan(QUESTS_TABLE, {
-      FilterExpression: "#eventquery = :eventKey",
-      ExpressionAttributeNames: {
-        "#eventquery": "eventID#year"
+    const items = await db.scan(
+      QUESTS_TABLE,
+      {
+        FilterExpression: "#eventquery = :eventKey",
+        ExpressionAttributeNames: {
+          "#eventquery": "eventID#year"
+        },
+        ExpressionAttributeValues: {
+          ":eventKey": eventKey
+        }
       },
-      ExpressionAttributeValues: {
-        ":eventKey": eventKey
-      }
-    }, "event-query");
+      "event-query"
+    );
 
-    const quests = items.map(item => ({
+    const quests = items.map((item) => ({
       userId: item.id,
       quests: item.quests || {}
     }));
 
     return handlerHelpers.createResponse(200, {
-      quests,
+      quests
     });
   } catch (err) {
     console.error(err);
     return handlerHelpers.createResponse(500, {
-      message: "Internal server error",
+      message: "Internal server error"
     });
   }
 };
 
+export const getQuestKiosk = async (event, ctx, callback) => {
+  try {
+    if (
+      !event.pathParameters ||
+      !event.pathParameters.event_id ||
+      !event.pathParameters.year ||
+      !event.pathParameters.profileId
+    ) {
+      return handlerHelpers.createResponse(400, {
+        message: "missing path parameters"
+      });
+    }
 
+    const { event_id, year, profileId } = event.pathParameters;
+
+    const userID = String(profileId);
+
+    let userItem = await db.getOne(userID, QUESTS_TABLE, {
+      "eventID#year": `${event_id}#${year}`
+    });
+
+    if (userItem) {
+      return handlerHelpers.createResponse(200, {
+        quests: userItem.quests || {}
+      });
+    }
+
+    const newQuests = Object.entries(QUEST_DEFS).reduce((acc, [id, def]) => {
+      acc[id] = initStoredQuest(def, Date.now());
+      return acc;
+    }, {});
+
+    try {
+      await db.put(
+        {
+          "id": userID,
+          "eventID#year": `${event_id}#${year}`,
+          "quests": newQuests
+        },
+        QUESTS_TABLE,
+        true
+      );
+
+      return handlerHelpers.createResponse(200, { quests: newQuests });
+    } catch (err) {
+      if (err.code !== "ConditionalCheckFailedException") {
+        console.error(err);
+        return handlerHelpers.createResponse(500, {
+          message: "Internal server error"
+        });
+      }
+    }
+
+    userItem = await db.getOne(userID, QUESTS_TABLE, {
+      "eventID#year": `${event_id}#${year}`
+    });
+    return handlerHelpers.createResponse(200, {
+      quests: userItem?.quests || {}
+    });
+  } catch (err) {
+    console.error(err);
+    return handlerHelpers.createResponse(500, {
+      message: "Internal server error"
+    });
+  }
+};
