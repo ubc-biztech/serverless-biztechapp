@@ -237,5 +237,9 @@ export function computeScoreAndReason(
     overlapTokens: overlap
   };
 
-  return { score, reason, facts };
+  return {
+    score,
+    reason,
+    facts
+  };
 }
