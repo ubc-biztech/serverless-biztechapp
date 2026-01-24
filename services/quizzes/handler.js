@@ -1,6 +1,7 @@
 import { MEMBERS2026_TABLE, PROFILES_TABLE, QUIZZES_TABLE } from "../../constants/tables.js";
 import db from "../../lib/db.js";
 import helpers from "../../lib/handlerHelpers.js";
+import { TYPES } from "../profiles/constants.js";
 import {
   calculateAverage,
   generateMBTI,
@@ -68,7 +69,7 @@ export const upload = async (event, ctx, callback) => {
     const profile = await db.getOneCustom({
       TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
       Key: {
-        compositeID: `PROFILE#${userProfileID}`,
+        compositeID: `PROFILE#${data.id}`,
         type: TYPES.PROFILE
       }
     });
