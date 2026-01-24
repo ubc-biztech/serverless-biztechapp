@@ -119,8 +119,6 @@ resources:
             AttributeType: S
           - AttributeName: eventID;year
             AttributeType: S
-          - AttributeName: mbti
-            AttributeType: S
         KeySchema:
           - AttributeName: id
             KeyType: HASH
