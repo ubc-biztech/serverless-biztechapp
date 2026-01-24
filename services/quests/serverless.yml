@@ -85,8 +85,8 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
-  
-    getQuestKiosk:
+
+  getQuestKiosk:
     handler: handler.getQuestKiosk
     events:
       - http:
@@ -99,7 +99,6 @@ functions:
                 year: true
                 profileId: true
           cors: true
-
 
 resources:
   Resources:
