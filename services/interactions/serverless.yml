@@ -134,11 +134,11 @@ custom:
       - dev
 
 functions:
-  recommend:
-    handler: handler.recommend
+  search:
+    handler: handler.searchHandler
     events:
       - http:
-          path: interactions/recommend
+          path: interactions/search
           method: post
           cors: true
 

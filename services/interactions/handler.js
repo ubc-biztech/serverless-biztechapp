@@ -25,7 +25,7 @@ const CONNECTION = "CONNECTION";
 const WORK = "WORKSHOP";
 const BOOTH = "BOOTH";
 
-export const recommend = async (event, ctx, callback) => {
+export const searchHandler = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
     helpers.checkPayloadProps(data, {
@@ -101,8 +101,8 @@ export const checkConnection = async (event, ctx, callback) => {
   try {
     if (
       !event.pathParameters ||
-      !event.pathParameters.id ||
-      typeof event.pathParameters.id !== "string"
+			!event.pathParameters.id ||
+			typeof event.pathParameters.id !== "string"
     )
       throw helpers.missingIdQueryResponse("profile ID in request path");
 
@@ -154,7 +154,7 @@ export const getAllConnections = async (event, ctx, callback) => {
 
     let data = await db.query(PROFILES_TABLE, null, {
       expression:
-        "compositeID = :compositeID AND begins_with(#type, :typePrefix)",
+				"compositeID = :compositeID AND begins_with(#type, :typePrefix)",
       expressionValues: {
         ":compositeID": `PROFILE#${profileID}`,
         ":typePrefix": `${TYPES.CONNECTION}#`

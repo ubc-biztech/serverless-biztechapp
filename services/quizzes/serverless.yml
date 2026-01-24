@@ -61,6 +61,10 @@ functions:
           path: quizzes/report
           method: get
           cors: true
+          authorizer:
+             type: COGNITO_USER_POOLS
+             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
 
   all:
     handler: handler.all
