@@ -245,39 +245,37 @@ function looksLikeEmail(s) {
   return typeof s === "string" && s.includes("@") && s.includes(".");
 }
 
-async function resolveEmailFromProfileId(profileId, event_id, year) {
-  const sk1 = { "eventID;year": `${event_id};${year}` };
-
-  const sk2 = { "eventID#year": `${event_id}#${year}` };
-
-  let profileItem = null;
-
+async function resolveEmailFromProfileId(profileId) {
   try {
-    profileItem = await db.getOne(profileId, PROFILES_TABLE, sk1);
-  } catch (e) {
-    // ignore
-  }
+    const results = await db.query(MEMBERS2026_TABLE, "profileID-index", {
+      expression: "profileID = :pid",
+      expressionValues: {
+        ":pid": profileId
+      }
+    });
 
-  if (!profileItem) {
-    try {
-      profileItem = await db.getOne(profileId, PROFILES_TABLE, sk2);
-    } catch (e) {
-      // ignore
+    if (results && results.length > 0 && results[0]?.id) {
+      return String(results[0].id).toLowerCase();
     }
+  } catch (e) {
+    // ignore; fallback to scan
   }
 
-  if (!profileItem) return null;
+  const items = await db.scan(MEMBERS2026_TABLE, {
+    FilterExpression: "#pid = :pid",
+    ExpressionAttributeNames: {
+      "#pid": "profileID"
+    },
+    ExpressionAttributeValues: {
+      ":pid": profileId
+    }
+  });
 
-  const candidates = [
-    profileItem.email,
-    profileItem.userEmail,
-    profileItem.userID,
-    profileItem.owner,
-    profileItem.id
-  ];
+  if (items && items.length > 0 && items[0]?.id) {
+    return String(items[0].id).toLowerCase();
+  }
 
-  const email = candidates.find(looksLikeEmail);
-  return email ? email.toLowerCase() : null;
+  return null;
 }
 
 export const getQuestKiosk = async (event, ctx, callback) => {
@@ -293,29 +291,29 @@ export const getQuestKiosk = async (event, ctx, callback) => {
       });
     }
 
-    const email = await resolveEmailFromProfileId(profileId, event_id, year);
-
     const eventKey = `${event_id}#${year}`;
 
+    const email = await resolveEmailFromProfileId(profileId);
+
     if (email) {
-      const existingByEmail = await db.getOne(email, QUESTS_TABLE, {
+      const byEmail = await db.getOne(email, QUESTS_TABLE, {
         "eventID#year": eventKey
       });
-      if (existingByEmail?.quests) {
+      if (byEmail?.quests) {
         return handlerHelpers.createResponse(200, {
-          quests: existingByEmail.quests || {},
-          resolvedUser: "email"
+          quests: byEmail.quests || {},
+          resolvedUser: "email",
+          resolvedEmail: email
         });
       }
     }
 
-    let userItem = await db.getOne(profileId, QUESTS_TABLE, {
+    const byProfileId = await db.getOne(profileId, QUESTS_TABLE, {
       "eventID#year": eventKey
     });
-
-    if (userItem) {
+    if (byProfileId?.quests) {
       return handlerHelpers.createResponse(200, {
-        quests: userItem.quests || {},
+        quests: byProfileId.quests || {},
         resolvedUser: "profileId"
       });
     }
@@ -327,7 +325,7 @@ export const getQuestKiosk = async (event, ctx, callback) => {
 
     await db.put(
       {
-        "id": profileId,
+        "id": email || profileId,
         "eventID#year": eventKey,
         "quests": newQuests
       },
@@ -337,7 +335,7 @@ export const getQuestKiosk = async (event, ctx, callback) => {
 
     return handlerHelpers.createResponse(200, {
       quests: newQuests,
-      resolvedUser: "initialized-profileId"
+      resolvedUser: email ? "initialized-email" : "initialized-profileId"
     });
   } catch (err) {
     console.error("getQuestKiosk error:", err);
