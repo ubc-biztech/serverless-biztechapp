@@ -36,6 +36,8 @@ provider:
         - dynamodb:DeleteItem
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechQuizzes${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechQuizzes${self:provider.environment.ENVIRONMENT}/index/event-query"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechQuizzes${self:provider.environment.ENVIRONMENT}/index/mbti-query"
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechProfiles${self:provider.environment.ENVIRONMENT}"
     - Effect: Allow
       Action:
@@ -119,8 +121,6 @@ resources:
             AttributeType: S
           - AttributeName: eventID;year
             AttributeType: S
-          - AttributeName: mbti
-            AttributeType: S
         KeySchema:
           - AttributeName: id
             KeyType: HASH
@@ -133,13 +133,5 @@ resources:
                 KeyType: HASH
               - AttributeName: id
                 KeyType: RANGE
-            Projection:
-              ProjectionType: ALL
-          - IndexName: mbti-query
-            KeySchema:
-              - AttributeName: mbti
-                KeyType: HASH
-              - AttributeName: eventID;year
-                KeyType: HASH
             Projection:
               ProjectionType: ALL
