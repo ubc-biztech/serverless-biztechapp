@@ -490,7 +490,11 @@ export const getQuestKiosk = async (event, ctx, callback) => {
     const writeId = email || profileId;
 
     await db.put(
-      { "id": writeId, "eventID#year": eventKey, "quests": newQuests },
+      {
+        "id": writeId,
+        "eventID#year": eventKey,
+        "quests": newQuests
+      },
       QUESTS_TABLE,
       true
     );
