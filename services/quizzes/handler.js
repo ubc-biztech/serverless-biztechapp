@@ -15,82 +15,86 @@ export const upload = async (event, ctx, callback) => {
 	  - Storing individual scores and MBTI in DB
 	*/
 
-  const data = JSON.parse(event.body);
+  try {
+    const data = JSON.parse(event.body);
 
-  // object means array of scores
-  helpers.checkPayloadProps(data, {
-    id: {
-      required: true,
-      type: "string"
-    },
-    domain: {
-      required: true,
-      type: "object"
-    },
-    mode: {
-      required: true,
-      type: "object"
-    },
-    environment: {
-      required: true,
-      type: "object"
-    },
-    focus: {
-      required: true,
-      type: "object"
+    // object means array of scores
+    helpers.checkPayloadProps(data, {
+      id: {
+        required: true,
+        type: "string"
+      },
+      domain: {
+        required: true,
+        type: "object"
+      },
+      mode: {
+        required: true,
+        type: "object"
+      },
+      environment: {
+        required: true,
+        type: "object"
+      },
+      focus: {
+        required: true,
+        type: "object"
+      }
+    });
+
+    const domainAvg = validateQuestionScores(data.domain)
+      ? calculateAverage(data.domain)
+      : -1;
+    const modeAvg = validateQuestionScores(data.mode)
+      ? calculateAverage(data.mode)
+      : -1;
+    const environmentAvg = validateQuestionScores(data.environment)
+      ? calculateAverage(data.environment)
+      : -1;
+    const focusAvg = validateQuestionScores(data.focus)
+      ? calculateAverage(data.focus)
+      : -1;
+
+    if (
+      domainAvg === -1 ||
+      modeAvg === -1 ||
+      environmentAvg === -1 ||
+      focusAvg === -1
+    ) {
+      return helpers.inputError("Invalid scores", data);
     }
-  });
 
-  const domainAvg = validateQuestionScores(data.domain)
-    ? calculateAverage(data.domain)
-    : -1;
-  const modeAvg = validateQuestionScores(data.mode)
-    ? calculateAverage(data.mode)
-    : -1;
-  const environmentAvg = validateQuestionScores(data.environment)
-    ? calculateAverage(data.environment)
-    : -1;
-  const focusAvg = validateQuestionScores(data.focus)
-    ? calculateAverage(data.focus)
-    : -1;
+    const mbti = generateMBTI(domainAvg, modeAvg, environmentAvg, focusAvg);
+    const profile = await db.getOne("PROFILE#" + data.id, PROFILES_TABLE, {
+      type: "PROFILE"
+    });
 
-  if (
-    domainAvg === -1 ||
-		modeAvg === -1 ||
-		environmentAvg === -1 ||
-		focusAvg === -1
-  ) {
-    return helpers.inputError("Invalid scores", data);
-  }
+    // Check if entry exists in DB
+    const entry = await db.getOne(data.id, QUIZZES_TABLE, {
+      "eventID;year": "blueprint;2026"
+    });
+    const exists = !!entry;
 
-  const mbti = generateMBTI(domainAvg, modeAvg, environmentAvg, focusAvg);
+    const dbEntry = {
+      id: data.id,
+      fname: profile?.fname,
+      lname: profile?.lname,
+      ["eventID;year"]: "blueprint;2026",
+      domainAvg,
+      modeAvg,
+      environmentAvg,
+      focusAvg,
+      mbti
+    };
 
-  // Check if entry exists in DB
-  const entry = await db.getOne(data.id, QUIZZES_TABLE, {
-    "eventID;year": "blueprint;2026"
-  });
-  const exists = !!entry;
+    // create new if doesn't exist anc vice versa
+    await db.put(dbEntry, QUIZZES_TABLE, !exists);
 
-  const dbEntry = {
-    id: data.id,
-    ["eventID;year"]: "blueprint;2026",
-    domainAvg,
-    modeAvg,
-    environmentAvg,
-    focusAvg,
-    mbti
-  };
-
-  // create new if doesn't exist anc vice versa
-  await db.put(dbEntry, QUIZZES_TABLE, !exists);
-
-  // denormalize -> upload to profiles table
-  const member = await db.getOne(data.id, MEMBERS2026_TABLE);
-  if (member && member.profileId) {
+    // denormalize -> upload to profiles table
     await db.updateDBCustom({
       TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
       Key: {
-        compositeId: "PROFILE#" + member.profileId,
+        compositeId: "PROFILE#" + data.id,
         type: "PROFILE"
       },
       UpdateExpression: "SET mbti = :mbti",
@@ -99,11 +103,15 @@ export const upload = async (event, ctx, callback) => {
       },
       ConditionExpression: "attribute_exists(compositeId)",
     });
-  }
 
-  return helpers.createResponse(200, {
-    message: "Upload successful"
-  });
+    return helpers.createResponse(200, {
+      message: "Upload successful"
+    });
+  } catch (error) {
+    return helpers.createResponse(500, {
+      message: "Internal Server Error"
+    });
+  }
 };
 
 export const report = async (event, ctx, callback) => {
@@ -112,31 +120,37 @@ export const report = async (event, ctx, callback) => {
 	  - Sending a report of the user's MBTI and average scores
 	*/
 
-  const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+  try {
+    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
 
-  const member = await db.getOne(userID, MEMBERS2026_TABLE);
+    const member = await db.getOne(userID, MEMBERS2026_TABLE);
 
-  if (!member) {
-    return helpers.createResponse(404, {
-      message: "User is not a member"
+    if (!member) {
+      return helpers.createResponse(404, {
+        message: "User is not a member"
+      });
+    }
+
+    const profileID = member.profileID;
+
+    const entry = await db.getOne(profileID, QUIZZES_TABLE, {
+      "eventID;year": "blueprint;2026"
+    });
+
+    if (!entry) {
+      return helpers.createResponse(404, {
+        message: "Quiz report not found"
+      });
+    }
+
+    return helpers.createResponse(200, {
+      data: entry
+    });
+  } catch (error) {
+    return helpers.createResponse(500, {
+      message: "Internal Server Error"
     });
   }
-
-  const profileID = member.profileID;
-
-  const entry = await db.getOne(profileID, QUIZZES_TABLE, {
-    "eventID;year": "blueprint;2026"
-  });
-
-  if (!entry) {
-    return helpers.createResponse(404, {
-      message: "Quiz report not found"
-    });
-  }
-
-  return helpers.createResponse(200, {
-    data: entry
-  });
 };
 
 export const all = async (event, ctx, callback) => {
