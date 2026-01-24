@@ -61,10 +61,6 @@ functions:
           path: quizzes/report
           method: get
           cors: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
-
 
   all:
     handler: handler.all
@@ -76,7 +72,7 @@ functions:
             path:
               event: true
           cors: true
-  
+
   aggregate:
     handler: handler.aggregate
     events:
@@ -87,7 +83,7 @@ functions:
             path:
               event: true
           cors: true
-  
+
   perMbti:
     handler: handler.perMbti
     events:
@@ -98,7 +94,7 @@ functions:
             path:
               mbti: true
           cors: true
-  
+
   wrapped:
     handler: handler.wrapped
     events:
