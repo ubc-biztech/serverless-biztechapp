@@ -202,15 +202,9 @@ export const updateQuest = async (event, ctx, callback) => {
         }
       });
 
-      if (body.type !== "connection" && body.type !== "company") {
+      if (body.type !== "connection") {
         return handlerHelpers.createResponse(400, {
-          message: `Invalid type: '${body.type}'. Valid types: 'connection', 'company'`
-        });
-      }
-
-      if (body.type === "company" && typeof body.argument !== "string") {
-        return handlerHelpers.createResponse(400, {
-          message: "For 'company' type, argument must be a company name string"
+          message: `Invalid type: '${body.type}'. Valid types: 'connection'`
         });
       }
     } catch (err) {
@@ -496,7 +490,11 @@ export const getQuestKiosk = async (event, ctx, callback) => {
     const writeId = email || profileId;
 
     await db.put(
-      { "id": writeId, "eventID#year": eventKey, "quests": newQuests },
+      {
+        "id": writeId,
+        "eventID#year": eventKey,
+        "quests": newQuests
+      },
       QUESTS_TABLE,
       true
     );
