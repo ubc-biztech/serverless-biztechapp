@@ -11,11 +11,11 @@ sgMail.setApiKey(process.env.SENDGRID_KEY);
 
 export default {
   /**
-	 * Takes a semicolon separated event ID and year and returns an object containing
-	 * registeredCount, checkedInCount and waitlistCount for that event
-	 * @param {String} eventIDAndYear
-	 * @return {registeredCount checkedInCount waitlistCount}
-	 */
+	       * Takes a semicolon separated event ID and year and returns an object containing
+	       * registeredCount, checkedInCount and waitlistCount for that event
+	       * @param {String} eventIDAndYear
+	       * @return {registeredCount checkedInCount waitlistCount}
+	       */
   getEventCounts: async function(eventID, year) {
     try {
       const event = await db.getOne(eventID, EVENTS_TABLE, {
@@ -147,6 +147,9 @@ export default {
     // parse start and end dates into event duration object (hours, minutes, seconds)
     startDate = new Date(startDate);
     endDate = new Date(endDate);
+    // parse start and end dates into event duration object (hours, minutes, seconds)
+    startDate = new Date(startDate);
+    endDate = new Date(endDate);
 
     // startDateArray follows format [year, month, day, hour, minute]
     const startDateArray = [
@@ -203,6 +206,10 @@ export default {
       error, value
     } = ics.createEvent(eventDetails);
 
+    if (error) {
+      console.log(error);
+      return error;
+    }
     if (error) {
       console.log(error);
       return error;
