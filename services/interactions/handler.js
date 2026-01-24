@@ -8,13 +8,14 @@ import handlerHelpers from "../../lib/handlerHelpers";
 import helpers from "../../lib/handlerHelpers";
 import search from "../../lib/search";
 import {
-  TYPES, BLUEPRINT_OPENSEARCH_TEST_INDEX, OPENSEARCH_INDEX_TOP_K
+  TYPES, BLUEPRINT_OPENSEARCH_TEST_INDEX, OPENSEARCH_INDEX_TOP_K, PROFILE_TYPES
 } from "../profiles/constants";
 import {
   handleConnection,
   saveSocketConnection,
   removeSocketConnection,
-  fetchRecentConnections
+  fetchRecentConnections,
+  getCompanyLeaderboard
 } from "./helpers";
 
 const CONNECTION = "CONNECTION";
@@ -337,5 +338,56 @@ export const wsSubscribe = async (event) => {
       statusCode: 500,
       body: "subscribe failed"
     };
+  }
+};
+
+/**
+ * GET /interactions/companies/leaderboard
+ * Returns top companies by partner connection count for a given event
+ * Query params:
+ *   - eventID: event ID (required)
+ *   - year: event year (required)
+ *   - limit: number of companies to return (optional, default 5)
+ */
+export const getCompaniesLeaderboard = async (event, ctx, callback) => {
+  try {
+    const qs = event.queryStringParameters || {};
+    const eventID = qs.eventID;
+    const year = qs.year ? Number(qs.year) : null;
+    const limit = qs.limit ? Number(qs.limit) : 5;
+
+    if (!eventID || !year) {
+      return helpers.createResponse(400, {
+        message: "Missing required query parameters: eventID and year"
+      });
+    }
+
+    // Get event to determine date range
+    const eventData = await db.getOne(eventID, EVENTS_TABLE, {
+      year
+    });
+
+    if (!eventData) {
+      return helpers.createResponse(404, {
+        message: `Event ${eventID} for year ${year} not found`
+      });
+    }
+
+    const leaderboard = await getCompanyLeaderboard({
+      eventID,
+      year,
+      startDate: eventData.startDate,
+      endDate: eventData.endDate,
+      limit
+    });
+
+    return helpers.createResponse(200, {
+      data: leaderboard
+    });
+  } catch (err) {
+    console.error("getCompaniesLeaderboard error:", err);
+    return helpers.createResponse(500, {
+      message: "Internal server error"
+    });
   }
 };
