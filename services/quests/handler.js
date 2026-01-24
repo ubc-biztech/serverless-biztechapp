@@ -1,10 +1,120 @@
-import { QUESTS_TABLE } from "../../constants/tables";
+import { QUESTS_TABLE, MEMBERS2026_TABLE } from "../../constants/tables";
 import db from "../../lib/db";
 import { QUEST_DEFS, QUEST_TYPES } from "./constants";
 import { MEMBERS2026_TABLE, PROFILES_TABLE } from "../../constants/tables";
 import { applyQuestEvent, parseEvents, initStoredQuest } from "./helper.js";
 import handlerHelpers from "../../lib/handlerHelpers";
 import helpers from "../../lib/handlerHelpers";
+
+/**
+ * Look up a user's email from their profileId using the members table GSI
+ * @param {string} profileId - The human-readable profile ID (e.g., "clever-fox-123")
+ * @returns {string|null} - The user's email or null if not found
+ */
+async function getEmailFromProfileId(profileId) {
+  try {
+    const results = await db.query(MEMBERS2026_TABLE, "profile-query", {
+      expression: "#profileID = :profileID",
+      expressionNames: {
+        "#profileID": "profileID"
+      },
+      expressionValues: {
+        ":profileID": profileId
+      }
+    });
+    
+    if (results && results.length > 0) {
+      // The 'id' field in the members table is the email
+      return results[0].id;
+    }
+    return null;
+  } catch (err) {
+    console.error(`Error looking up email for profileId ${profileId}:`, err);
+    return null;
+  }
+}
+
+/**
+ * Helper function to update quest progress for a specific user
+ * Handles both new users (no quests yet) and existing users
+ * Also handles race conditions when creating new quest records
+ * 
+ * @param {string} userID - The user ID (email) to update quests for
+ * @param {string} event_id - The event ID
+ * @param {string} year - The event year
+ * @param {Array} questEvents - Parsed quest events to apply
+ * @param {number} timestamp - The timestamp for the update
+ * @returns {Object} - { success: boolean, quests: Object, error?: string }
+ */
+async function updateUserQuestProgress(userID, event_id, year, questEvents, timestamp) {
+  const eventKey = `${event_id}#${year}`;
+  
+  let userItem;
+  try {
+    userItem = await db.getOne(userID, QUESTS_TABLE, { "eventID#year": eventKey });
+  } catch (err) {
+    console.error(`Could not read user data for ${userID}:`, err);
+    return { success: false, error: "DB read failed" };
+  }
+
+  const questsMap = (userItem && userItem.quests) || {};
+
+  const nextQuestsMap = Object.values(QUEST_DEFS).reduce((acc, def) => {
+    const event = questEvents.find(e => e.questId === def.id);
+    const current = acc[def.id];
+    const now = timestamp;
+
+    if (!current) {
+      const initialized = initStoredQuest(def, now);
+      if (!event) {
+        return {
+          ...acc,
+          [def.id]: initialized
+        };
+      }
+    }
+
+    if (!event) return acc;
+
+    const updated = applyQuestEvent(def, current, event, now);
+
+    return {
+      ...acc,
+      [def.id]: updated
+    };
+  }, questsMap);
+
+  const itemToWrite = {
+    id: userID,
+    "eventID#year": eventKey,
+    quests: nextQuestsMap
+  };
+
+  try {
+    // Try to create new record if user doesn't exist, or update if they do
+    await db.put(itemToWrite, QUESTS_TABLE, !userItem);
+    return { success: true, quests: nextQuestsMap };
+  } catch (err) {
+    // Handle race condition: if we tried to create but it already exists,
+    const isConditionalCheckFailed = 
+      err.code === "ConditionalCheckFailedException" ||
+      (err.body && err.body.includes && err.body.includes("ConditionalCheckFailed"));
+    
+    if (isConditionalCheckFailed) {
+      console.log(`Race condition detected for ${userID}, retrying...`);
+      try {
+        await db.put(itemToWrite, QUESTS_TABLE, !!userItem);
+        return { success: true, quests: nextQuestsMap };
+      } catch (retryErr) {
+        console.error(`Retry failed for ${userID}:`, retryErr);
+        return { success: false, error: "DB write failed after retry" };
+      }
+    }
+    
+    console.error(`Error updating quest progress for ${userID}:`, err);
+    return { success: false, error: "DB write failed" };
+  }
+}
 
 // go through callback and context
 export const updateQuest = async (event, ctx, callback) => {
@@ -61,62 +171,44 @@ export const updateQuest = async (event, ctx, callback) => {
       });
     }
 
-    let userItem;
-    try {
-      userItem = await db.getOne(userID, QUESTS_TABLE, {
-        "eventID#year": `${event_id}#${year}`
-      });
-    } catch (err) {
-      console.error("Could not read user data:", err);
-      return handlerHelpers.createResponse(500, { message: "DB read failed" });
+
+    const userAResult = await updateUserQuestProgress(userID, event_id, year, questEvents, timestamp);
+    
+    if (!userAResult.success) {
+      return handlerHelpers.createResponse(500, { message: userAResult.error || "Internal server error" });
     }
 
-    const questsMap = userItem?.quests || {};
-
-    const nextQuestsMap = Object.values(QUEST_DEFS).reduce((acc, def) => {
-      const event = questEvents.find((e) => e.questId === def.id);
-      const current = acc[def.id];
-      const now = timestamp;
-
-      if (!current) {
-        const initialized = initStoredQuest(def, now);
-        if (!event) {
-          return {
-            ...acc,
-            [def.id]: initialized
-          };
+    // Handle bi-directional updates for connection events
+    // When User A connects with User B, also update User B's quest progress
+    const isBidirectional = !(body.argument && body.argument.bidirectional === false); // Default to true
+    const targetProfileId = body.argument && body.argument.profileId;
+    
+    if (body.type === "connection" && isBidirectional && targetProfileId) {
+      const userBEmail = await getEmailFromProfileId(targetProfileId);
+      
+      if (userBEmail) {
+        const userBEmailLower = userBEmail.toLowerCase();
+        
+        if (userBEmailLower !== userID) {
+          const userBResult = await updateUserQuestProgress(
+            userBEmailLower,
+            event_id,
+            year,
+            questEvents,
+            timestamp
+          );
+          
+          if (!userBResult.success) {
+            console.error(`Failed to update bi-directional quest for ${targetProfileId} (${userBEmail}): ${userBResult.error}`);
+          }
         }
+      } else {
+        console.warn(`Could not find email for profileId: ${targetProfileId}`);
       }
-
-      if (!event) return acc;
-
-      const updated = applyQuestEvent(def, current, event, now);
-
-      return {
-        ...acc,
-        [def.id]: updated
-      };
-    }, questsMap);
-
-    try {
-      await db.put(
-        {
-          "eventID#year": `${event_id}#${year}`,
-          ...(userItem || { id: userID }),
-          "quests": nextQuestsMap
-        },
-        QUESTS_TABLE,
-        !userItem
-      );
-    } catch (err) {
-      console.error("Error updating quest progress:", err);
-      return handlerHelpers.createResponse(500, {
-        message: "Internal server error"
-      });
     }
 
     return handlerHelpers.createResponse(200, {
-      quests: nextQuestsMap
+      quests: userAResult.quests,
     });
   } catch (err) {
     console.error("Unhandled error in updateQuest:", err);
@@ -177,12 +269,8 @@ export const getQuest = async (event, ctx, callback) => {
       }
     }
 
-    userItem = await db.getOne(userID, QUESTS_TABLE, {
-      "eventID#year": `${event_id}#${year}`
-    });
-    return handlerHelpers.createResponse(200, {
-      quests: userItem?.quests || {}
-    });
+    userItem = await db.getOne(userID, QUESTS_TABLE, { "eventID#year": `${event_id}#${year}` });
+    return handlerHelpers.createResponse(200, { quests: (userItem && userItem.quests) || {} });
   } catch (err) {
     console.error(err);
     return handlerHelpers.createResponse(500, {

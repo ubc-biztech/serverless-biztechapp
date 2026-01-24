@@ -7,7 +7,7 @@ import { QUEST_IDS, QUEST_DEFS, QUEST_TYPES, QUEST_EVENT_TYPES } from "./constan
 export function initStoredQuest(def, now) {
   const base = {
     progress: 0,
-    target: def.target ?? null,
+    target: def.target !== undefined ? def.target : null,
     startedAt: now,
     completedAt: null,
     description: def.description,
@@ -35,7 +35,7 @@ export function parseEvents(body) {
     }];
 
   case "connection": {
-    const isRecommended = !!body.argument?.recommended;
+    const isRecommended = !!(body.argument && body.argument.recommended);
 
     return [{
       questId: QUEST_IDS.NEW_CONNECTIONS_5,
@@ -81,13 +81,13 @@ export function applyQuestEvent(def, currentStored, event, now) {
   // IF COUNTER QUEST 
   if (def.type === QUEST_TYPES.COUNTER) {
     const increment = event.count || 1;
-    const next = Math.min(state.progress + increment, state.target ?? Infinity);
+    const next = Math.min(state.progress + increment, typeof state.target === "number" ? state.target : Infinity);
     const completed = typeof state.target === "number" && next >= state.target;
 
     return {
       ...state,
       progress: next,
-      completedAt: completed ? (state.completedAt ?? now) : null,
+      completedAt: completed ? (state.completedAt || now) : null,
     };
   }
 
