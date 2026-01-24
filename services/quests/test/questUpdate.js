@@ -28,7 +28,7 @@ describe("questUpdate - Bi-directional Connection Quests", () => {
     // Reset mock database and call counter before each test
     mockQuestsDB = {};
     putCallCount = 0;
-    
+
     // Mock DynamoDB get operation
     AWSMock.mock("DynamoDB.DocumentClient", "get", (params, callback) => {
       const key = params.Key.id + "#" + params.Key["eventID#year"];
@@ -55,7 +55,10 @@ describe("questUpdate - Bi-directional Connection Quests", () => {
       requestContext: {
         authorizer: { claims: { email: "userA@test.com" } }
       },
-      body: JSON.stringify({ type: "connection", argument: {} })
+      body: JSON.stringify({
+        type: "connection",
+        argument: {}
+      })
     });
     expect(response.statusCode).to.be.equal(400);
   });
@@ -113,10 +116,10 @@ describe("questUpdate - Helper Function Tests", () => {
         argument: { recommended: false }
       };
       const events = parseEvents(body);
-      
+
       expect(events).to.be.an("array");
       expect(events.length).to.equal(3); // 5, 10, 20 connection quests
-      
+
       const questIds = events.map(e => e.questId);
       expect(questIds).to.include(QUEST_IDS.NEW_CONNECTIONS_5);
       expect(questIds).to.include(QUEST_IDS.NEW_CONNECTIONS_10);
@@ -129,9 +132,9 @@ describe("questUpdate - Helper Function Tests", () => {
         argument: { recommended: true }
       };
       const events = parseEvents(body);
-      
+
       expect(events.length).to.equal(4); // 5, 10, 20 + recommended
-      
+
       const questIds = events.map(e => e.questId);
       expect(questIds).to.include(QUEST_IDS.RECOMMENDED_CONNECTIONS);
     });
@@ -142,7 +145,7 @@ describe("questUpdate - Helper Function Tests", () => {
         argument: "Tech Corp"
       };
       const events = parseEvents(body);
-      
+
       expect(events.length).to.equal(1);
       expect(events[0].questId).to.equal(QUEST_IDS.UNIQUE_COMPANIES_TALKED_TO);
       expect(events[0].eventParam.company).to.equal("Tech Corp");
@@ -154,7 +157,7 @@ describe("questUpdate - Helper Function Tests", () => {
         argument: {}
       };
       const events = parseEvents(body);
-      
+
       expect(events).to.be.null;
     });
   });
@@ -164,7 +167,7 @@ describe("questUpdate - Helper Function Tests", () => {
       const def = QUEST_DEFS[QUEST_IDS.NEW_CONNECTIONS_5];
       const now = Date.now();
       const stored = initStoredQuest(def, now);
-      
+
       expect(stored.progress).to.equal(0);
       expect(stored.target).to.equal(5);
       expect(stored.startedAt).to.equal(now);
@@ -175,7 +178,7 @@ describe("questUpdate - Helper Function Tests", () => {
       const def = QUEST_DEFS[QUEST_IDS.UNIQUE_COMPANIES_TALKED_TO];
       const now = Date.now();
       const stored = initStoredQuest(def, now);
-      
+
       expect(stored.items).to.be.an("array").that.is.empty;
       expect(stored.progress).to.equal(0);
     });
@@ -186,16 +189,16 @@ describe("questUpdate - Helper Function Tests", () => {
       const def = QUEST_DEFS[QUEST_IDS.NEW_CONNECTIONS_5];
       const now = Date.now();
       const current = initStoredQuest(def, now);
-      
+
       const event = {
         questId: QUEST_IDS.NEW_CONNECTIONS_5,
         questType: QUEST_TYPES.COUNTER,
         eventType: QUEST_EVENT_TYPES.NEW_CONNECTION,
         count: 1
       };
-      
+
       const updated = applyQuestEvent(def, current, event, now);
-      
+
       expect(updated.progress).to.equal(1);
       expect(updated.completedAt).to.be.null;
     });
@@ -209,16 +212,16 @@ describe("questUpdate - Helper Function Tests", () => {
         startedAt: now - 1000,
         completedAt: null
       };
-      
+
       const event = {
         questId: QUEST_IDS.NEW_CONNECTIONS_5,
         questType: QUEST_TYPES.COUNTER,
         eventType: QUEST_EVENT_TYPES.NEW_CONNECTION,
         count: 1
       };
-      
+
       const updated = applyQuestEvent(def, current, event, now);
-      
+
       expect(updated.progress).to.equal(5);
       expect(updated.completedAt).to.equal(now);
     });
@@ -232,16 +235,16 @@ describe("questUpdate - Helper Function Tests", () => {
         startedAt: now - 1000,
         completedAt: null
       };
-      
+
       const event = {
         questId: QUEST_IDS.NEW_CONNECTIONS_5,
         questType: QUEST_TYPES.COUNTER,
         eventType: QUEST_EVENT_TYPES.NEW_CONNECTION,
         count: 5 // Trying to add 5, but should cap at target
       };
-      
+
       const updated = applyQuestEvent(def, current, event, now);
-      
+
       expect(updated.progress).to.equal(5); // Should cap at target
     });
 
@@ -255,16 +258,16 @@ describe("questUpdate - Helper Function Tests", () => {
         startedAt: now - 2000,
         completedAt: completedTime
       };
-      
+
       const event = {
         questId: QUEST_IDS.NEW_CONNECTIONS_5,
         questType: QUEST_TYPES.COUNTER,
         eventType: QUEST_EVENT_TYPES.NEW_CONNECTION,
         count: 1
       };
-      
+
       const updated = applyQuestEvent(def, current, event, now);
-      
+
       expect(updated.progress).to.equal(5); // Should not change
       expect(updated.completedAt).to.equal(completedTime); // Should keep original completion time
     });

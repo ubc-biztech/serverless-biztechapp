@@ -22,7 +22,7 @@ async function getEmailFromProfileId(profileId) {
         ":profileID": profileId
       }
     });
-    
+
     if (results && results.length > 0) {
       // The 'id' field in the members table is the email
       return results[0].id;
@@ -48,13 +48,16 @@ async function getEmailFromProfileId(profileId) {
  */
 async function updateUserQuestProgress(userID, event_id, year, questEvents, timestamp) {
   const eventKey = `${event_id}#${year}`;
-  
+
   let userItem;
   try {
     userItem = await db.getOne(userID, QUESTS_TABLE, { "eventID#year": eventKey });
   } catch (err) {
     console.error(`Could not read user data for ${userID}:`, err);
-    return { success: false, error: "DB read failed" };
+    return {
+      success: false,
+      error: "DB read failed"
+    };
   }
 
   const questsMap = (userItem && userItem.quests) || {};
@@ -93,26 +96,38 @@ async function updateUserQuestProgress(userID, event_id, year, questEvents, time
   try {
     // Try to create new record if user doesn't exist, or update if they do
     await db.put(itemToWrite, QUESTS_TABLE, !userItem);
-    return { success: true, quests: nextQuestsMap };
+    return {
+      success: true,
+      quests: nextQuestsMap
+    };
   } catch (err) {
     // Handle race condition: if we tried to create but it already exists,
-    const isConditionalCheckFailed = 
+    const isConditionalCheckFailed =
       err.code === "ConditionalCheckFailedException" ||
       (err.body && err.body.includes && err.body.includes("ConditionalCheckFailed"));
-    
+
     if (isConditionalCheckFailed) {
       console.log(`Race condition detected for ${userID}, retrying...`);
       try {
         await db.put(itemToWrite, QUESTS_TABLE, !!userItem);
-        return { success: true, quests: nextQuestsMap };
+        return {
+          success: true,
+          quests: nextQuestsMap
+        };
       } catch (retryErr) {
         console.error(`Retry failed for ${userID}:`, retryErr);
-        return { success: false, error: "DB write failed after retry" };
+        return {
+          success: false,
+          error: "DB write failed after retry"
+        };
       }
     }
-    
+
     console.error(`Error updating quest progress for ${userID}:`, err);
-    return { success: false, error: "DB write failed" };
+    return {
+      success: false,
+      error: "DB write failed"
+    };
   }
 }
 
@@ -173,7 +188,7 @@ export const updateQuest = async (event, ctx, callback) => {
 
 
     const userAResult = await updateUserQuestProgress(userID, event_id, year, questEvents, timestamp);
-    
+
     if (!userAResult.success) {
       return handlerHelpers.createResponse(500, { message: userAResult.error || "Internal server error" });
     }
@@ -182,13 +197,13 @@ export const updateQuest = async (event, ctx, callback) => {
     // When User A connects with User B, also update User B's quest progress
     const isBidirectional = !(body.argument && body.argument.bidirectional === false); // Default to true
     const targetProfileId = body.argument && body.argument.profileId;
-    
+
     if (body.type === "connection" && isBidirectional && targetProfileId) {
       const userBEmail = await getEmailFromProfileId(targetProfileId);
-      
+
       if (userBEmail) {
         const userBEmailLower = userBEmail.toLowerCase();
-        
+
         if (userBEmailLower !== userID) {
           const userBResult = await updateUserQuestProgress(
             userBEmailLower,
@@ -197,7 +212,7 @@ export const updateQuest = async (event, ctx, callback) => {
             questEvents,
             timestamp
           );
-          
+
           if (!userBResult.success) {
             console.error(`Failed to update bi-directional quest for ${targetProfileId} (${userBEmail}): ${userBResult.error}`);
           }
