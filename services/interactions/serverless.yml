@@ -1,6 +1,8 @@
 service: biztechApi-interactions
 app: biztechapp
 
+frameworkVersion: 3.40.0
+
 plugins:
   - serverless-dynamodb
   - serverless-offline
@@ -19,6 +21,8 @@ provider:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
     WS_API_ENDPOINT: https://bn27jq3bal.execute-api.us-west-2.amazonaws.com/prod
+    ALGOLIA_APP_ID: ${env:ALGOLIA_APP_ID}
+    ALGOLIA_API_KEY: ${env:ALGOLIA_API_KEY}
   timeout: 15 # in seconds
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
@@ -130,6 +134,14 @@ custom:
       - dev
 
 functions:
+  search:
+    handler: handler.searchHandler
+    events:
+      - http:
+          path: interactions/search
+          method: post
+          cors: true
+
   interactionCreate:
     handler: handler.postInteraction
     events:

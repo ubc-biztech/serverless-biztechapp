@@ -34,10 +34,12 @@ export async function createProfile(email, profileType) {
     hobby2: false,
     funQuestion1: false,
     funQuestion2: false,
-    linkedIn: false,
-    profilePictureURL: false,
-    additionalLink: false,
-    description: false
+    linkedIn: true,
+    profilePictureURL: true,
+    additionalLink: true,
+    description: true,
+    company: true,
+    position: true,
   };
 
   // Map registration data to profile schema
@@ -92,9 +94,28 @@ export async function createProfile(email, profileType) {
 }
 
 export function filterPublicProfileFields(profile) {
+  const viewableMap = {
+    fname: true,
+    lname: true,
+    pronouns: true,
+    major: true,
+    year: true,
+    profileType: true,
+    hobby1: false,
+    hobby2: false,
+    funQuestion1: false,
+    funQuestion2: false,
+    linkedIn: true,
+    profilePictureURL: true,
+    additionalLink: true,
+    description: true,
+    company: true,
+    position: true,
+  };
+
   const publicFields = {
   };
-  const map = profile.viewableMap;
+  const map = viewableMap;
 
   for (const key in profile) {
     if (profile.hasOwnProperty(key) && map[key]) {

@@ -1,6 +1,9 @@
 service: biztechApi-registrations
 tenant: ianmh
 app: biztechapp
+
+frameworkVersion: 3.40.0
+
 plugins:
   - serverless-dynamodb
   - serverless-offline

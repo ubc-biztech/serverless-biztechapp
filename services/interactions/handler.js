@@ -1,35 +1,60 @@
 import {
-  CONNECTIONS_TABLE,
+  BLUEPRINT_OPENSEARCH_PROD_INDEX,
+  OPENSEARCH_INDEX_TOP_K
+} from "../../constants/indexes";
+import {
   MEMBERS2026_TABLE,
   PROFILES_TABLE,
-  QRS_TABLE,
-  QUESTS_TABLE
+  EVENTS_TABLE
 } from "../../constants/tables";
 import db from "../../lib/db";
-import docClient from "../../lib/docClient";
 import handlerHelpers from "../../lib/handlerHelpers";
 import helpers from "../../lib/handlerHelpers";
+import search from "../../lib/search";
 import {
   TYPES
 } from "../profiles/constants";
 import {
-  CURRENT_EVENT
-} from "./constants";
-import {
-  handleBooth,
   handleConnection,
-  handleWorkshop,
   saveSocketConnection,
   removeSocketConnection,
   fetchRecentConnections
 } from "./helpers";
-import {
-  QueryCommand
-} from "@aws-sdk/lib-dynamodb";
 
 const CONNECTION = "CONNECTION";
 const WORK = "WORKSHOP";
 const BOOTH = "BOOTH";
+
+export const searchHandler = async (event, ctx, callback) => {
+  try {
+    const data = JSON.parse(event.body);
+    helpers.checkPayloadProps(data, {
+      query: {
+        required: true,
+        type: "string"
+      },
+      topK: {
+        required: false,
+        type: "number"
+      }
+    });
+    // Uncomment below to use staging or prod index 
+    // const indexToUse = process.env.ENVIRONMENT === "STAGING" ? BLUEPRINT_OPENSEARCH_STAGING_INDEX : BLUEPRINT_OPENSEARCH_PROD_INDEX;  
+    const reqObj = {
+      indexName: BLUEPRINT_OPENSEARCH_PROD_INDEX, // TODO: change to indexToUse later
+      queryText: data.query,
+      topK: data.topK || OPENSEARCH_INDEX_TOP_K,
+    };
+    console.log("reqObj:", reqObj);
+    const result = await search.retrieveTopK(reqObj);
+    return helpers.createResponse(200, result);
+  } catch (err) {
+    console.error("Error in recommend:", err);
+    return helpers.createResponse(500, {
+      message: "Internal server error"
+    });
+  }
+};
 
 export const postInteraction = async (event, ctx, callback) => {
   try {
@@ -55,27 +80,13 @@ export const postInteraction = async (event, ctx, callback) => {
       eventType, eventParam
     } = data;
 
-    let response;
-
-    switch (eventType) {
-    case CONNECTION:
-      response = await handleConnection(userID, eventParam, timestamp);
-      break;
-
-    case WORK:
-      response = await handleWorkshop(userID, eventParam, timestamp);
-      break;
-
-    case BOOTH:
-      response = await handleBooth(userID, eventParam, timestamp);
-      break;
-
-    default:
+    if (eventType != CONNECTION) {
       throw handlerHelpers.createResponse(400, {
         message: "interactionType argument does not match known case"
       });
     }
 
+    const response = await handleConnection(userID, eventParam, timestamp);
     callback(null, response);
   } catch (err) {
     console.error(err);
@@ -90,8 +101,8 @@ export const checkConnection = async (event, ctx, callback) => {
   try {
     if (
       !event.pathParameters ||
-      !event.pathParameters.id ||
-      typeof event.pathParameters.id !== "string"
+			!event.pathParameters.id ||
+			typeof event.pathParameters.id !== "string"
     )
       throw helpers.missingIdQueryResponse("profile ID in request path");
 
@@ -139,14 +150,11 @@ export const getAllConnections = async (event, ctx, callback) => {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
 
     const memberData = await db.getOne(userID, MEMBERS2026_TABLE);
+    const { profileID } = memberData;
 
-    const {
-      profileID
-    } = memberData;
-
-    const result = await db.query(PROFILES_TABLE, null, {
+    let data = await db.query(PROFILES_TABLE, null, {
       expression:
-        "compositeID = :compositeID AND  begins_with(#type, :typePrefix)",
+				"compositeID = :compositeID AND begins_with(#type, :typePrefix)",
       expressionValues: {
         ":compositeID": `PROFILE#${profileID}`,
         ":typePrefix": `${TYPES.CONNECTION}#`
@@ -156,53 +164,52 @@ export const getAllConnections = async (event, ctx, callback) => {
       }
     });
 
-    const data = result.sort((a, b) => {
-      return b.createdAt - a.createdAt;
-    });
+    // sort first
+    data.sort((a, b) => b.createdAt - a.createdAt);
+
+    const qs = event.queryStringParameters || {};
+    const eventId = qs.eventId;
+    const year = qs.year;
+
+    let message = `all connections for ${userID}`;
+
+    if (eventId && year) {
+      const existingEvent = await db.getOne(eventId, EVENTS_TABLE, {
+        year: Number(year)
+      });
+
+      if (existingEvent) {
+        let { startDate, endDate } = existingEvent;
+
+        if (startDate) {
+          const start = new Date(startDate).getTime();
+          data = data.filter(item => item.createdAt >= start);
+        }
+
+        if (endDate) {
+          const end = new Date(endDate).getTime();
+          data = data.filter(item => item.createdAt <= end);
+        }
+
+        message = `all connections for ${userID} during event ${eventId} and year ${year}`;
+      }
+    }
 
     const response = handlerHelpers.createResponse(200, {
-      message: `all connections for ${userID}`,
+      message,
       data
     });
 
     callback(null, response);
   } catch (err) {
     console.error(err);
-    throw handlerHelpers.createResponse(500, {
-      message: "Internal server error"
-    });
+    callback(
+      null,
+      handlerHelpers.createResponse(500, {
+        message: "Internal server error"
+      })
+    );
   }
-
-  return null;
-};
-
-export const getAllQuests = async (event, ctx, callback) => {
-  try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
-
-    const command = new QueryCommand({
-      ExpressionAttributeValues: {
-        ":uid": userID
-      },
-      KeyConditionExpression: "userID = :uid",
-      TableName: QUESTS_TABLE + (process.env.ENVIRONMENT || "")
-    });
-    const result = await docClient.send(command);
-
-    const response = handlerHelpers.createResponse(200, {
-      message: `all quests for ${userID}`,
-      data: result.Items
-    });
-
-    callback(null, response);
-  } catch (err) {
-    console.error(err);
-    throw handlerHelpers.createResponse(500, {
-      message: "Internal server error"
-    });
-  }
-
-  return null;
 };
 
 export const getWallSnapshot = async (event) => {

@@ -5,16 +5,5 @@
     "itest": "npm run itest profiles --prefix ../../",
     "utest": "npm run utest profiles --prefix ../../",
     "test": "npm run utest profiles --prefix ../../ && npm run itest profiles --prefix ../../"
-  },
-  "devDependencies": {
-    "aws-sdk-client-mock": "^4.1.0",
-    "jest": "^29.7.0",
-    "serverless-offline": "^14.4.0",
-    "sinon": "^19.0.2",
-    "sinon-chai": "^4.0.0"
-  },
-  "dependencies": {
-    "@aws-sdk/client-s3": "^3.873.0",
-    "@aws-sdk/s3-request-presigner": "^3.873.0"
   }
 }

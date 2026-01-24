@@ -11,12 +11,12 @@ sgMail.setApiKey(process.env.SENDGRID_KEY);
 
 export default {
   /**
-   * Takes a semicolon separated event ID and year and returns an object containing
-   * registeredCount, checkedInCount and waitlistCount for that event
-   * @param {String} eventIDAndYear
-   * @return {registeredCount checkedInCount waitlistCount}
-   */
-  getEventCounts: async function (eventID, year) {
+	 * Takes a semicolon separated event ID and year and returns an object containing
+	 * registeredCount, checkedInCount and waitlistCount for that event
+	 * @param {String} eventIDAndYear
+	 * @return {registeredCount checkedInCount waitlistCount}
+	 */
+  getEventCounts: async function(eventID, year) {
     try {
       const event = await db.getOne(eventID, EVENTS_TABLE, {
         year: year
@@ -66,10 +66,7 @@ export default {
         }
       };
 
-      console.log("Querying with params:", keyCondition);
-
       const result = await db.query(USER_REGISTRATIONS_TABLE, "event-query", keyCondition);
-      console.log("Query result:", result);
 
       let counts = {
         registeredCount: 0,

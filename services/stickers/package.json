@@ -3,13 +3,5 @@
   "version": "1.0.0",
   "scripts": {
     "ltest": "cd test/ && artillery run loadTestPROD.yml"
-  },
-  "devDependencies": {
-    "serverless-offline": "^14.3.2"
-  },
-  "dependencies": {
-    "@aws-sdk/client-apigatewaymanagementapi": "^3.664.0",
-    "artillery": "^2.0.21",
-    "serverless-apigateway-plugin": "^0.0.6"
   }
 }
