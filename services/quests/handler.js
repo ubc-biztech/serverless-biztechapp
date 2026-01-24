@@ -1,6 +1,7 @@
 import { QUESTS_TABLE } from "../../constants/tables";
 import db from "../../lib/db";
 import { QUEST_DEFS, QUEST_TYPES } from "./constants";
+import { MEMBERS2026_TABLE, PROFILES_TABLE } from "../../constants/tables";
 import { applyQuestEvent, parseEvents, initStoredQuest } from "./helper.js";
 import handlerHelpers from "../../lib/handlerHelpers";
 import helpers from "../../lib/handlerHelpers";
@@ -240,30 +241,80 @@ export const getQuestsByEvent = async (event, ctx, callback) => {
   }
 };
 
+function looksLikeEmail(s) {
+  return typeof s === "string" && s.includes("@") && s.includes(".");
+}
+
+async function resolveEmailFromProfileId(profileId) {
+  try {
+    const results = await db.query(MEMBERS2026_TABLE, "profileID-index", {
+      expression: "profileID = :pid",
+      expressionValues: {
+        ":pid": profileId
+      }
+    });
+
+    if (results && results.length > 0 && results[0]?.id) {
+      return String(results[0].id).toLowerCase();
+    }
+  } catch (e) {
+    // ignore; fallback to scan
+  }
+
+  const items = await db.scan(MEMBERS2026_TABLE, {
+    FilterExpression: "#pid = :pid",
+    ExpressionAttributeNames: {
+      "#pid": "profileID"
+    },
+    ExpressionAttributeValues: {
+      ":pid": profileId
+    }
+  });
+
+  if (items && items.length > 0 && items[0]?.id) {
+    return String(items[0].id).toLowerCase();
+  }
+
+  return null;
+}
+
 export const getQuestKiosk = async (event, ctx, callback) => {
   try {
-    if (
-      !event.pathParameters ||
-      !event.pathParameters.event_id ||
-      !event.pathParameters.year ||
-      !event.pathParameters.profileId
-    ) {
+    const p = event.pathParameters || {};
+    const event_id = p.event_id;
+    const year = p.year;
+    const profileId = p.profileId;
+
+    if (!event_id || !year || !profileId) {
       return handlerHelpers.createResponse(400, {
         message: "missing path parameters"
       });
     }
 
-    const { event_id, year, profileId } = event.pathParameters;
+    const eventKey = `${event_id}#${year}`;
 
-    const userID = String(profileId);
+    const email = await resolveEmailFromProfileId(profileId);
 
-    let userItem = await db.getOne(userID, QUESTS_TABLE, {
-      "eventID#year": `${event_id}#${year}`
+    if (email) {
+      const byEmail = await db.getOne(email, QUESTS_TABLE, {
+        "eventID#year": eventKey
+      });
+      if (byEmail?.quests) {
+        return handlerHelpers.createResponse(200, {
+          quests: byEmail.quests || {},
+          resolvedUser: "email",
+          resolvedEmail: email
+        });
+      }
+    }
+
+    const byProfileId = await db.getOne(profileId, QUESTS_TABLE, {
+      "eventID#year": eventKey
     });
-
-    if (userItem) {
+    if (byProfileId?.quests) {
       return handlerHelpers.createResponse(200, {
-        quests: userItem.quests || {}
+        quests: byProfileId.quests || {},
+        resolvedUser: "profileId"
       });
     }
 
@@ -272,35 +323,22 @@ export const getQuestKiosk = async (event, ctx, callback) => {
       return acc;
     }, {});
 
-    try {
-      await db.put(
-        {
-          "id": userID,
-          "eventID#year": `${event_id}#${year}`,
-          "quests": newQuests
-        },
-        QUESTS_TABLE,
-        true
-      );
+    await db.put(
+      {
+        "id": email || profileId,
+        "eventID#year": eventKey,
+        "quests": newQuests
+      },
+      QUESTS_TABLE,
+      true
+    );
 
-      return handlerHelpers.createResponse(200, { quests: newQuests });
-    } catch (err) {
-      if (err.code !== "ConditionalCheckFailedException") {
-        console.error(err);
-        return handlerHelpers.createResponse(500, {
-          message: "Internal server error"
-        });
-      }
-    }
-
-    userItem = await db.getOne(userID, QUESTS_TABLE, {
-      "eventID#year": `${event_id}#${year}`
-    });
     return handlerHelpers.createResponse(200, {
-      quests: userItem?.quests || {}
+      quests: newQuests,
+      resolvedUser: email ? "initialized-email" : "initialized-profileId"
     });
   } catch (err) {
-    console.error(err);
+    console.error("getQuestKiosk error:", err);
     return handlerHelpers.createResponse(500, {
       message: "Internal server error"
     });
