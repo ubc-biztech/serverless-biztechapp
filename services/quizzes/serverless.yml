@@ -140,6 +140,6 @@ resources:
               - AttributeName: mbti
                 KeyType: HASH
               - AttributeName: eventID;year
-                KeyType: HASH
+                KeyType: RANGE
             Projection:
               ProjectionType: ALL
