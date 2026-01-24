@@ -65,8 +65,12 @@ export const upload = async (event, ctx, callback) => {
     }
 
     const mbti = generateMBTI(domainAvg, modeAvg, environmentAvg, focusAvg);
-    const profile = await db.getOne("PROFILE#" + data.id, PROFILES_TABLE, {
-      type: "PROFILE"
+    const profile = await db.getOneCustom({
+      TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
+      Key: {
+        compositeID: `PROFILE#${userProfileID}`,
+        type: TYPES.PROFILE
+      }
     });
 
     // Check if entry exists in DB
