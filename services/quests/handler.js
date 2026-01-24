@@ -38,15 +38,17 @@ async function getEmailFromProfileId(profileId) {
  * Helper function to update quest progress for a specific user
  * Handles both new users (no quests yet) and existing users
  * Also handles race conditions when creating new quest records
+ * IDEMPOTENT: For connection events, tracks connected profileIds to prevent double-counting
  * 
  * @param {string} userID - The user ID (email) to update quests for
  * @param {string} event_id - The event ID
  * @param {string} year - The event year
  * @param {Array} questEvents - Parsed quest events to apply
  * @param {number} timestamp - The timestamp for the update
- * @returns {Object} - { success: boolean, quests: Object, error?: string }
+ * @param {string|null} connectionProfileId - For connection events, the profileId being connected to (for idempotency)
+ * @returns {Object} - { success: boolean, quests: Object, alreadyConnected?: boolean, error?: string }
  */
-async function updateUserQuestProgress(userID, event_id, year, questEvents, timestamp) {
+async function updateUserQuestProgress(userID, event_id, year, questEvents, timestamp, connectionProfileId = null) {
   const eventKey = `${event_id}#${year}`;
 
   let userItem;
@@ -57,6 +59,19 @@ async function updateUserQuestProgress(userID, event_id, year, questEvents, time
     return {
       success: false,
       error: "DB read failed"
+    };
+  }
+
+  // Get existing connected profiles for idempotency check
+  const connectedProfiles = (userItem && userItem.connectedProfiles) || [];
+
+  // IDEMPOTENCY: If this is a connection event and we've already connected with this profile, skip
+  if (connectionProfileId && connectedProfiles.includes(connectionProfileId.toLowerCase())) {
+    console.log(`User ${userID} already connected with ${connectionProfileId}, skipping (idempotent)`);
+    return {
+      success: true,
+      quests: (userItem && userItem.quests) || {},
+      alreadyConnected: true
     };
   }
 
@@ -87,10 +102,16 @@ async function updateUserQuestProgress(userID, event_id, year, questEvents, time
     };
   }, questsMap);
 
+  // Add new connection to the list if this is a connection event
+  const nextConnectedProfiles = connectionProfileId
+    ? [...connectedProfiles, connectionProfileId.toLowerCase()]
+    : connectedProfiles;
+
   const itemToWrite = {
     id: userID,
     "eventID#year": eventKey,
-    quests: nextQuestsMap
+    quests: nextQuestsMap,
+    connectedProfiles: nextConnectedProfiles
   };
 
   try {
@@ -186,8 +207,19 @@ export const updateQuest = async (event, ctx, callback) => {
       });
     }
 
+    // For connection events, we need the target profileId for idempotency
+    const targetProfileId = body.argument && body.argument.profileId;
+    const isConnectionEvent = body.type === "connection";
 
-    const userAResult = await updateUserQuestProgress(userID, event_id, year, questEvents, timestamp);
+    // For User A, we track User B's profileId to make it idempotent
+    const userAResult = await updateUserQuestProgress(
+      userID,
+      event_id,
+      year,
+      questEvents,
+      timestamp,
+      isConnectionEvent ? targetProfileId : null
+    );
 
     if (!userAResult.success) {
       return handlerHelpers.createResponse(500, { message: userAResult.error || "Internal server error" });
@@ -196,21 +228,30 @@ export const updateQuest = async (event, ctx, callback) => {
     // Handle bi-directional updates for connection events
     // When User A connects with User B, also update User B's quest progress
     const isBidirectional = !(body.argument && body.argument.bidirectional === false); // Default to true
-    const targetProfileId = body.argument && body.argument.profileId;
 
-    if (body.type === "connection" && isBidirectional && targetProfileId) {
+    if (isConnectionEvent && isBidirectional && targetProfileId && !userAResult.alreadyConnected) {
       const userBEmail = await getEmailFromProfileId(targetProfileId);
 
       if (userBEmail) {
         const userBEmailLower = userBEmail.toLowerCase();
 
         if (userBEmailLower !== userID) {
+          // Look up User A's profileId from their email to track on User B's side for idempotency
+          let userAProfileId = null;
+          try {
+            const userAMember = await db.getOne(userID, MEMBERS2026_TABLE);
+            userAProfileId = userAMember && userAMember.profileID;
+          } catch (e) {
+            console.warn(`Could not get profileId for ${userID}`);
+          }
+
           const userBResult = await updateUserQuestProgress(
             userBEmailLower,
             event_id,
             year,
             questEvents,
-            timestamp
+            timestamp,
+            userAProfileId // Track User A's profileId on User B's record
           );
 
           if (!userBResult.success) {
@@ -224,6 +265,7 @@ export const updateQuest = async (event, ctx, callback) => {
 
     return handlerHelpers.createResponse(200, {
       quests: userAResult.quests,
+      alreadyConnected: userAResult.alreadyConnected || false
     });
   } catch (err) {
     console.error("Unhandled error in updateQuest:", err);
