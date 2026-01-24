@@ -1,4 +1,4 @@
-import { MEMBERS2026_TABLE, PROFILES_TABLE, QUIZZES_TABLE } from "../../constants/tables.js";
+import { PROFILES_TABLE, QUIZZES_TABLE } from "../../constants/tables.js";
 import db from "../../lib/db.js";
 import helpers from "../../lib/handlerHelpers.js";
 import { TYPES } from "../profiles/constants.js";
@@ -127,17 +127,13 @@ export const report = async (event, ctx, callback) => {
 	      */
 
 	try {
-		const userID = event.requestContext.authorizer.claims.email.toLowerCase();
-
-		const member = await db.getOne(userID, MEMBERS2026_TABLE);
-
-		if (!member) {
-			return helpers.createResponse(404, {
-				message: "User is not a member"
+		if (!event.pathParameters || !event.pathParameters.profile_id) {
+			return helpers.createResponse(400, {
+				message: "Missing profile_id path parameter"
 			});
 		}
 
-		const profileID = member.profileID;
+		const profileID = event.pathParameters.profile_id;
 
 		const entry = await db.getOne(profileID, QUIZZES_TABLE, {
 			"eventID;year": "blueprint;2026"

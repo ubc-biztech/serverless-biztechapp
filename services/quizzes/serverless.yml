@@ -39,11 +39,6 @@ provider:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechQuizzes${self:provider.environment.ENVIRONMENT}/index/event-query"
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechQuizzes${self:provider.environment.ENVIRONMENT}/index/mbti-query"
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechProfiles${self:provider.environment.ENVIRONMENT}"
-    - Effect: Allow
-      Action:
-        - dynamodb:GetItem
-      Resource:
-        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2026${self:provider.environment.ENVIRONMENT}"
 
 custom: ${file(../../serverless.common.yml):custom}
 
@@ -60,12 +55,12 @@ functions:
     handler: handler.report
     events:
       - http:
-          path: quizzes/report
+          path: quizzes/report/{profile_id}
           method: get
+          request:
+            path:
+              profile_id: true
           cors: true
-          authorizer:
-             type: COGNITO_USER_POOLS
-             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
 
 
   all:
