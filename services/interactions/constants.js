@@ -1,4 +1,4 @@
-export const CURRENT_EVENT = "kickstart-2025";
+export const CURRENT_EVENT = "blueprint-2026";
 
 export const PARTNER = "Partner";
 
