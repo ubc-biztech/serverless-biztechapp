@@ -1,7 +1,13 @@
 import fs from "fs";
 import csv from "csv-parser";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  GetCommand,
+  PutCommand,
+  TransactWriteCommand,
+  UpdateCommand
+} from "@aws-sdk/lib-dynamodb";
 import { humanId } from "human-id";
 import dotenv from "dotenv";
 
@@ -23,8 +29,154 @@ const USERS_TABLE = "biztechUsers" + (process.env.ENVIRONMENT || "");
 const PROFILES_TABLE = "biztechProfiles" + (process.env.ENVIRONMENT || "");
 const MEMBERS2026_TABLE = "biztechMembers2026" + (process.env.ENVIRONMENT || "");
 const USER_REGISTRATIONS_TABLE = "biztechRegistrations" + (process.env.ENVIRONMENT || "");
+const EVENT_ID_AND_YEAR = "blueprint;2026";
 
-// NOTE: Usage of this is mainly for kickstart;2025 event
+// TODO
+// NOTE: ADJUSTED FOR BLUEPRINT 2026
+
+// Fallback in case email already exists
+async function upsertPartnerEntries(user) {
+  const timestamp = new Date().getTime();
+  const email = user.email.toLowerCase();
+
+  try {
+    await docClient.send(
+      new PutCommand({
+        TableName: USERS_TABLE,
+        Item: {
+          id: email,
+          fname: user.fname,
+          lname: user.lname,
+          isMember: true,
+          createdAt: timestamp,
+          updatedAt: timestamp
+        },
+        ConditionExpression: "attribute_not_exists(id)"
+      })
+    );
+  } catch (error) {
+    if (error.name !== "ConditionalCheckFailedException") {
+      throw error;
+    }
+  }
+
+  let member = null;
+  const memberResult = await docClient.send(
+    new GetCommand({
+      TableName: MEMBERS2026_TABLE,
+      Key: {
+        id: email
+      }
+    })
+  );
+  member = memberResult.Item || null;
+
+  // get biztechMembers2026 record to see if memeber exists, and get profileId if it exists
+  // else generate a new profileID
+  let profileID = member?.profileID;
+  if (!profileID) {
+    profileID = humanId();
+  }
+
+  // upsert new member with profileID
+  if (!member) {
+    try {
+      await docClient.send(
+        new PutCommand({
+          TableName: MEMBERS2026_TABLE,
+          Item: {
+            id: email,
+            profileID,
+            firstName: user.fname,
+            lastName: user.lname,
+            createdAt: timestamp,
+            updatedAt: timestamp
+          },
+          ConditionExpression: "attribute_not_exists(id)"
+        })
+      );
+    } catch (error) {
+      if (error.name !== "ConditionalCheckFailedException") {
+        throw error;
+      }
+    }
+  }
+
+  // Only update missing fields in biztechProfiles
+  try {
+    await docClient.send(
+      new PutCommand({
+        TableName: PROFILES_TABLE,
+        Item: {
+          fname: user.fname,
+          lname: user.lname,
+          pronouns: user.pronouns,
+          type: "PROFILE",
+          compositeID: `PROFILE#${profileID}`,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          profileType: "PARTNER",
+          linkedIn: user.linkedin,
+          company: user.company,
+          position: user.position,
+          viewableMap: {
+            fname: true,
+            lname: true,
+            pronouns: true,
+            major: false,
+            year: false,
+            profileType: true,
+            hobby1: false,
+            hobby2: false,
+            funQuestion1: false,
+            funQuestion2: false,
+            linkedIn: true,
+            profilePictureURL: false,
+            additionalLink: false,
+            description: false,
+            company: true,
+            position: true
+          }
+        },
+        ConditionExpression: "attribute_not_exists(compositeID)"
+      })
+    );
+  } catch (error) {
+    if (error.name !== "ConditionalCheckFailedException") {
+      throw error;
+    }
+  }
+
+  // write registration if missing
+  try {
+    await docClient.send(
+      new PutCommand({
+        TableName: USER_REGISTRATIONS_TABLE,
+        Item: {
+          id: email,
+          ["eventID;year"]: EVENT_ID_AND_YEAR,
+          registrationStatus: "registered",
+          isPartner: true,
+          fname: user.fname,
+          createdAt: timestamp,
+          updatedAt: timestamp
+        },
+        ExpressionAttributeNames: {
+          "#eventIDYear": "eventID;year"
+        },
+        ConditionExpression:
+          "attribute_not_exists(id) and attribute_not_exists(#eventIDYear)"
+      })
+    );
+  } catch (error) {
+    if (error.name !== "ConditionalCheckFailedException") {
+      throw error;
+    }
+  }
+
+  return true;
+}
+
 async function updateTables(user) {
   const timestamp = new Date().getTime();
   const profileID = humanId();
@@ -69,13 +221,13 @@ async function updateTables(user) {
           Item: {
             fname: user.fname,
             lname: user.lname,
+            pronouns: user.pronouns,
             type: "PROFILE",
             compositeID: `PROFILE#${profileID}`,
             createdAt: timestamp,
             updatedAt: timestamp,
             profileType: "PARTNER",
             linkedIn: user.linkedin,
-            pronouns: user.pronouns,
             company: user.company,
             position: user.position,
             viewableMap: {
@@ -100,20 +252,24 @@ async function updateTables(user) {
           ConditionExpression: "attribute_not_exists(id)"
         }
       },
-      // 4. Create a registration for kickstart so they can invest (partner-flagged investment)
+      // 4. Create a registration for blueprint
       {
         Put: {
           TableName: USER_REGISTRATIONS_TABLE,
           Item: {
             id: user.email.toLowerCase(),
-            ["eventID;year"]: "kickstart;2025",
-            registrationStatus: "acceptedComplete",
+            ["eventID;year"]: EVENT_ID_AND_YEAR,
+            registrationStatus: "registered",
             isPartner: true, // flag as partner investment
             fname: user.fname,
             createdAt: timestamp,
             updatedAt: timestamp,
           },
-          ConditionExpression: "attribute_not_exists(id)"
+          ExpressionAttributeNames: {
+            "#eventIDYear": "eventID;year"
+          },
+          ConditionExpression:
+            "attribute_not_exists(id) and attribute_not_exists(#eventIDYear)"
         }
       }
     ]
@@ -127,7 +283,15 @@ async function updateTables(user) {
     return true;
   } catch (error) {
     if (error.name === "ConditionalCheckFailedException") {
-      console.log(`Entry already exists for ${user.email}`);
+      console.log(`Entry already exists for ${user.email}, attempting profile upsert`);
+      try {
+        await upsertPartnerEntries(user);
+        return true;
+      } catch (upsertError) {
+        console.error(`Upsert failed for ${user.email}:`, upsertError.message);
+        console.error("Error details:", upsertError);
+        return false;
+      }
     } else {
       console.error(`Error processing ${user.email}:`, error.message);
       console.error("Error details:", error);
@@ -161,18 +325,36 @@ async function processCSV(filePath) {
       .on("end", async () => {
         console.log(`Found ${results.length} records to process`);
 
+        const getValue = (row, key) => (row[key] || "").trim();
+
+        const getFirstLastName = (fullName) => {
+          const cleaned = fullName.trim();
+          if (!cleaned) return ["", ""];
+          const parts = cleaned.split(/\s+/);
+          if (parts.length === 1) return [parts[0], ""];
+          const last = parts.pop();
+          return [parts.join(" "), last];
+        };
+
         // Process each record
         for (const [index, row] of results.entries()) {
           try {
-            // ADJUST BASED ON CSV
+            // Mapped to current partner CSV headers
+            const displayName =
+              getValue(row, "Full Name");
+            const [firstname, lastname] = getFirstLastName(displayName);
+
             const user = {
-              email: row["Email Address"]?.trim().toLowerCase() || "", // sanitize compendium emails
-              fname: row["First Name"],
-              lname: row["Last Name"],
-              pronouns: row["Pronouns"],
-              linkedin: row["LinkedIn"],
-              company: row["What organization will you be representing?"], // adjust
-              position: row["What is your current role?"] // adjust
+              email: getValue(row, "Email Address").toLowerCase(),
+              fname: firstname,
+              lname: lastname,
+              pronouns: getValue(row, "Pronouns"),
+              linkedin: getValue(
+                row,
+                "Please include your LinkedIn URL if your profile is not public"
+              ),
+              company: getValue(row, "What company do you work for?"),
+              position: getValue(row, "What is your current role?")
             };
 
             const success = await updateTables(user);
