@@ -248,6 +248,49 @@ export const editMembership = async (event, ctx, callback) => {
 
       const member = await db.getOne(email, MEMBERS2026_TABLE);
 
+      // Grant membership, no behavior if user already has a membership
+      if (data.membership == true) {
+        if (!member) {
+          const timestamp = new Date().getTime();
+          const memberParams = {
+            id: email,
+            firstName: user.fname || "",
+            lastName: user.lname || "",
+            pronouns: user.gender || "",
+            major: user.major || "",
+            year: user.year || "",
+            education: user.education || "",
+            createdAt: timestamp,
+            updatedAt: timestamp
+          };
+          await db.put(memberParams, MEMBERS2026_TABLE, true);
+        }
+
+        await db.updateDB(email, { isMember: true }, USERS_TABLE);
+
+        const freshMember = await db.getOne(email, MEMBERS2026_TABLE);
+
+        if (!freshMember?.profileID) {
+          await createProfile(
+            email,
+            email.endsWith("@ubcbiztech.com") ? PROFILE_TYPES.EXEC : PROFILE_TYPES.ATTENDEE
+          );
+        }
+
+        return callback(
+          null,
+          helpers.createResponse(200, { message: "Membership granted" })
+        );
+      } else {
+        await db.updateDB(email, { isMember: false }, USERS_TABLE);
+
+        if (member && member.profileID) {
+          
+        }
+      }
+
+
+
   } catch (e) {
     callback(null, err);
     return null;
