@@ -236,8 +236,14 @@ export const editMembership = async (event, ctx, callback) => {
 
     const data = JSON.parse(event.body);
     helpers.checkPayloadProps(data, {
-      email: { required: true, type: "string" },
-      membership: { required: true, type: "boolean" }
+      email: {
+        required: true,
+        type: "string"
+      },
+      membership: {
+        required: true,
+        type: "boolean"
+      }
     });
 
     const email = data.email.toLowerCase();
