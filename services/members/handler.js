@@ -270,6 +270,7 @@ export const editMembership = async (event, ctx, callback) => {
 
         const freshMember = await db.getOne(email, MEMBERS2026_TABLE);
 
+        // create a profile (same as stripe flow)
         if (!freshMember?.profileID) {
           await createProfile(
             email,
@@ -281,16 +282,32 @@ export const editMembership = async (event, ctx, callback) => {
           null,
           helpers.createResponse(200, { message: "Membership granted" })
         );
-      } else {
+      } else { 
+        // revoke membership, no behavior if user already has no membership
         await db.updateDB(email, { isMember: false }, USERS_TABLE);
 
+        // delete from profile from profile table
         if (member && member.profileID) {
-          
+          await docClient.send(new DeleteCommand(
+            {
+              TableName: PROFILES_TABLE + process.env.ENVIRONMENT,
+              Key: {
+                compositeID: `PROFILE#${member.profileID}`,
+                type: TYPES.PROFILE
+              }
+            }
+          ));
         }
+
+        if (member) {
+          await db.deleteOne(email, MEMBERS2026_TABLE);
+        }
+
+        return callback(
+          null,
+          helpers.createResponse(200, { message: "Membership revoked" })
+        );
       }
-
-
-
   } catch (e) {
     callback(null, err);
     return null;
