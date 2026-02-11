@@ -2,9 +2,14 @@ import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
 import { isEmpty, isValidEmail } from "../../lib/utils";
 import docClient from "../../lib/docClient";
-import { USERS_TABLE, MEMBERS2026_TABLE, PROFILES_TABLE } from "../../constants/tables";
+import {
+  USERS_TABLE,
+  MEMBERS2026_TABLE,
+  PROFILES_TABLE
+} from "../../constants/tables";
 import { DeleteCommand } from "@aws-sdk/lib-dynamodb";
 import { createProfile } from "../profiles/helpers";
+import { PROFILE_TYPES, TYPES } from "../profiles/constants";
 
 export const create = async (event, ctx, callback) => {
   const userID = event.requestContext.authorizer.claims.email.toLowerCase();
@@ -229,86 +234,88 @@ export const editMembership = async (event, ctx, callback) => {
         message: "unauthorized"
       });
 
-      const data = JSON.parse(event.body);
-      helpers.checkPayloadProps(data, {
-        email: { required: true, type: "string" },
-        membership: { required: true, type: "boolean" }
-      });
+    const data = JSON.parse(event.body);
+    helpers.checkPayloadProps(data, {
+      email: { required: true, type: "string" },
+      membership: { required: true, type: "boolean" }
+    });
 
-      const email = data.email.toLowerCase();
+    const email = data.email.toLowerCase();
 
-      if (!isValidEmail(email)) {
-        return helpers.inputError("Invalid email", email);
+    if (!isValidEmail(email)) {
+      throw helpers.inputError("Invalid email", email);
+    }
+
+    const user = await db.getOne(email, USERS_TABLE);
+    if (isEmpty(user)) {
+      throw helpers.notFoundResponse("user", email);
+    }
+
+    const member = await db.getOne(email, MEMBERS2026_TABLE);
+
+    // Grant membership, no behavior if user already has a membership
+    if (data.membership == true) {
+      if (!member) {
+        const timestamp = new Date().getTime();
+        const memberParams = {
+          id: email,
+          firstName: user.fname || "",
+          lastName: user.lname || "",
+          pronouns: user.gender || "",
+          major: user.major || "",
+          year: user.year || "",
+          education: user.education || "",
+          createdAt: timestamp,
+          updatedAt: timestamp
+        };
+        await db.put(memberParams, MEMBERS2026_TABLE, true);
       }
 
-      const user = await db.getOne(email, USERS_TABLE);
-      if (isEmpty(user)) {
-        throw helpers.notFoundResponse("user", email);
-      }
+      await db.updateDB(email, { isMember: true }, USERS_TABLE);
 
-      const member = await db.getOne(email, MEMBERS2026_TABLE);
+      const freshMember = await db.getOne(email, MEMBERS2026_TABLE);
 
-      // Grant membership, no behavior if user already has a membership
-      if (data.membership == true) {
-        if (!member) {
-          const timestamp = new Date().getTime();
-          const memberParams = {
-            id: email,
-            firstName: user.fname || "",
-            lastName: user.lname || "",
-            pronouns: user.gender || "",
-            major: user.major || "",
-            year: user.year || "",
-            education: user.education || "",
-            createdAt: timestamp,
-            updatedAt: timestamp
-          };
-          await db.put(memberParams, MEMBERS2026_TABLE, true);
-        }
-
-        await db.updateDB(email, { isMember: true }, USERS_TABLE);
-
-        const freshMember = await db.getOne(email, MEMBERS2026_TABLE);
-
-        // create a profile (same as stripe flow)
-        if (!freshMember?.profileID) {
-          await createProfile(
-            email,
-            email.endsWith("@ubcbiztech.com") ? PROFILE_TYPES.EXEC : PROFILE_TYPES.ATTENDEE
-          );
-        }
-
-        return callback(
-          null,
-          helpers.createResponse(200, { message: "Membership granted" })
+      // create a profile (same as stripe flow)
+      if (!freshMember || !freshMember.profileID) {
+        await createProfile(
+          email,
+          email.endsWith("@ubcbiztech.com")
+            ? PROFILE_TYPES.EXEC
+            : PROFILE_TYPES.ATTENDEE
         );
-      } else { 
-        // revoke membership, no behavior if user already has no membership
-        await db.updateDB(email, { isMember: false }, USERS_TABLE);
+      }
 
-        // delete from profile from profile table
-        if (member && member.profileID) {
-          await docClient.send(new DeleteCommand(
-            {
-              TableName: PROFILES_TABLE + process.env.ENVIRONMENT,
-              Key: {
-                compositeID: `PROFILE#${member.profileID}`,
-                type: TYPES.PROFILE
-              }
+      return callback(
+        null,
+        helpers.createResponse(200, { message: "Membership granted" })
+      );
+    } else {
+      // revoke membership, no behavior if user already has no membership
+      await db.updateDB(email, { isMember: false }, USERS_TABLE);
+
+      // delete from profile from profile table
+      if (member && member.profileID) {
+        await docClient.send(
+          new DeleteCommand({
+            TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
+            Key: {
+              compositeID: `PROFILE#${member.profileID}`,
+              type: TYPES.PROFILE
             }
-          ));
-        }
-
-        if (member) {
-          await db.deleteOne(email, MEMBERS2026_TABLE);
-        }
-
-        return callback(
-          null,
-          helpers.createResponse(200, { message: "Membership revoked" })
+          })
         );
       }
-  } catch (e) {
+
+      if (member) {
+        await db.deleteOne(email, MEMBERS2026_TABLE);
+      }
+
+      return callback(
+        null,
+        helpers.createResponse(200, { message: "Membership revoked" })
+      );
+    }
+  } catch (err) {
     callback(null, err);
     return null;
   }
