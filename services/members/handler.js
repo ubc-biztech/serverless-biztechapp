@@ -2,7 +2,9 @@ import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
 import { isEmpty, isValidEmail } from "../../lib/utils";
 import docClient from "../../lib/docClient";
-import { MEMBERS2026_TABLE } from "../../constants/tables";
+import { USERS_TABLE, MEMBERS2026_TABLE, PROFILES_TABLE } from "../../constants/tables";
+import { DeleteCommand } from "@aws-sdk/lib-dynamodb";
+import { createProfile } from "../profiles/helpers";
 
 export const create = async (event, ctx, callback) => {
   const userID = event.requestContext.authorizer.claims.email.toLowerCase();
@@ -214,6 +216,39 @@ export const del = async (event, ctx, callback) => {
     callback(null, response);
     return null;
   } catch (err) {
+    callback(null, err);
+    return null;
+  }
+};
+
+export const editMembership = async (event, ctx, callback) => {
+  try {
+    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    if (!userID.endsWith("@ubcbiztech.com"))
+      throw helpers.createResponse(403, {
+        message: "unauthorized"
+      });
+
+      const data = JSON.parse(event.body);
+      helpers.checkPayloadProps(data, {
+        email: { required: true, type: "string" },
+        membership: { required: true, type: "boolean" }
+      });
+
+      const email = data.email.toLowerCase();
+
+      if (!isValidEmail(email)) {
+        return helpers.inputError("Invalid email", email);
+      }
+
+      const user = await db.getOne(email, USERS_TABLE);
+      if (isEmpty(user)) {
+        throw helpers.notFoundResponse("user", email);
+      }
+
+      const member = await db.getOne(email, MEMBERS2026_TABLE);
+
+  } catch (e) {
     callback(null, err);
     return null;
   }
