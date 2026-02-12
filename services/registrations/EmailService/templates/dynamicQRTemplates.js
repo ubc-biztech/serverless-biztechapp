@@ -34,14 +34,13 @@ export const getDefaultApplicationTemplate = (emailParams) => {
     fname, ename, registrationStatus, logoBase64, qrCode, currentYear
   } = emailParams;
 
+  // revert this change after techstart
   return `<div style="font-size: 15px; text-align: left;">
       <div>
           <p>Hello ${fname},</p>
-          <p>Your application status for UBC BizTech's ${ename} event is: <b>${registrationStatus}</b>. You can check your application status in your
-          personal <a href="https://app.ubcbiztech.com/companion">companion</a>.</p>
-          <p>Please reach out to our Experiences Team Lead at <a href="mailto:grace@ubcbiztech.com">grace@ubcbiztech.com</a> if this is a mistake.</p>
-          <p>Here's your QR code (if it doesn't display, please speak to the sign-in desk):</p>
-          <img src="cid:qr@biztech.com" alt="Attached QR Code" style="max-width: 200px;" />
+          <p>Thank you for registering for TechStrat 2026 – Preliminary Round! We are excited for you to join us at UBC BizTech’s flagship case competition. Be sure to look out for our preliminary case, which will be released on February 16, 2026. We will send an additional email to confirm your team registration soon after the case releases.</p>
+          <p>All TechStrat participants are encouraged to join our <a href="https://join.slack.com/t/techstrat2026/shared_invite/zt-3p2tnx513-2qFEqNGz64925b404USpJA">TechStrat Slack Community Channel</a> to stay updated on event announcements, participant questions, and information about team formation.</p>
+          <p>Please reach out to our Event Director at TechStrat@ubcbiztech.com if this was a mistake!</p>
       </div>
       <img src="${logoBase64}" width="40" height="40" alt="BizTech Logo">
       <br>
