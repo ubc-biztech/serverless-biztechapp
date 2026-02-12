@@ -34,7 +34,7 @@ export const getDefaultApplicationTemplate = (emailParams) => {
     fname, ename, registrationStatus, logoBase64, qrCode, currentYear
   } = emailParams;
 
-  // revert this change after techstart
+  // revert this change after techstrat
   return `<div style="font-size: 15px; text-align: left;">
       <div>
           <p>Hello ${fname},</p>
