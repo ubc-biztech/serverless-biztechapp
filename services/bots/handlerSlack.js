@@ -135,16 +135,15 @@ export const shortcutHandler = async (event, ctx) => {
     body.type === "view_submission" &&
     body.view.callback_id === "ping_modal_submit"
   ) {
-    callback(null, ack);
     submitPingShortcut(body);
-    return;
+    return ack;
   }
 
-  callback(null, ack);
+  return ack;
 };
 
-export const slackGithubReminder = async (event, ctx, callback) => {
+export const slackGithubReminder = async (event, ctx) => {
   const projectBoard = await getProjectBoard();
   sendIssueReminders(projectBoard);
-  callback(null, ack);
+  return ack;
 };
