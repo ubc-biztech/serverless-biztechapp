@@ -321,7 +321,7 @@ export async function sendEmail(
   }
 }
 
-export const post = async (event, ctx) => {
+export const post = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
     // Normalize email to lowercase
@@ -400,7 +400,7 @@ export const post = async (event, ctx) => {
  *
  * Returns: The response object
  */
-export const put = async (event, ctx) => {
+export const put = async (event, ctx, callback) => {
   try {
     if (!event.pathParameters || !event.pathParameters.email)
       throw helpers.missingIdQueryResponse("user");
@@ -479,7 +479,7 @@ export const put = async (event, ctx) => {
 };
 
 // Updates a batch of registration statuses
-export async function massUpdate(event, ctx) {
+export async function massUpdate(event, ctx, callback) {
   try {
     const { eventID, eventYear, updates } = JSON.parse(event.body);
 
@@ -533,7 +533,7 @@ export async function massUpdate(event, ctx) {
 }
 
 // Return list of entries with the matching id
-export const get = async (event, ctx) => {
+export const get = async (event, ctx, callback) => {
   try {
     const queryString = event.queryStringParameters;
     if (
@@ -606,7 +606,7 @@ export const get = async (event, ctx) => {
 };
 
 // (used for testing)
-export const del = async (event, ctx) => {
+export const del = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -642,7 +642,7 @@ export const del = async (event, ctx) => {
   }
 };
 
-export const delMany = async (event, ctx) => {
+export const delMany = async (event, ctx, callback) => {
   try {
     const email = event.requestContext.authorizer.claims.email.toLowerCase();
     if (!email.endsWith("@ubcbiztech.com")) {
@@ -693,7 +693,7 @@ export const delMany = async (event, ctx) => {
   }
 };
 
-export const leaderboard = async (event, ctx) => {
+export const leaderboard = async (event, ctx, callback) => {
   try {
     const queryString = event.queryStringParameters;
     if (!queryString || (!queryString.eventID && !queryString.year)) {

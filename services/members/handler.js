@@ -4,7 +4,7 @@ import { isEmpty, isValidEmail } from "../../lib/utils";
 import docClient from "../../lib/docClient";
 import { MEMBERS2026_TABLE } from "../../constants/tables";
 
-export const create = async (event, ctx) => {
+export const create = async (event, ctx, callback) => {
   const userID = event.requestContext.authorizer.claims.email.toLowerCase();
   if (!userID.endsWith("@ubcbiztech.com"))
     throw helpers.createResponse(403, {
@@ -61,7 +61,7 @@ export const create = async (event, ctx) => {
   }
 };
 
-export const getEmailFromProfile = async (event, ctx) => {
+export const getEmailFromProfile = async (event, ctx, callback) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
 
@@ -98,7 +98,7 @@ export const getEmailFromProfile = async (event, ctx) => {
   }
 };
 
-export const get = async (event, ctx) => {
+export const get = async (event, ctx, callback) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
     if (!userID.endsWith("@ubcbiztech.com"))
@@ -123,7 +123,7 @@ export const get = async (event, ctx) => {
   }
 };
 
-export const getAll = async (event, ctx) => {
+export const getAll = async (event, ctx, callback) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
     if (!userID.endsWith("@ubcbiztech.com"))
@@ -142,7 +142,7 @@ export const getAll = async (event, ctx) => {
   }
 };
 
-export const update = async (event, ctx) => {
+export const update = async (event, ctx, callback) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
     if (!userID.endsWith("@ubcbiztech.com"))
@@ -176,7 +176,7 @@ export const update = async (event, ctx) => {
   }
 };
 
-export const del = async (event, ctx) => {
+export const del = async (event, ctx, callback) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
     if (!userID.endsWith("@ubcbiztech.com"))

@@ -24,7 +24,7 @@ const S3 = new S3Client({
 
 const THUMBNAIL_BUCKET = "biztech-event-images";
 
-export const create = async (event, ctx) => {
+export const create = async (event, ctx, callback) => {
   try {
     const timestamp = new Date().getTime();
     const data = JSON.parse(event.body);
@@ -106,7 +106,7 @@ export const create = async (event, ctx) => {
 
 // DELETE /events/{id}/{year}
 // eslint-disable-next-line
-export const del = async (event, ctx) => {
+export const del = async (event, ctx, callback) => {
   try {
     if (!event.pathParameters || !event.pathParameters.id)
       throw helpers.missingIdQueryResponse("event");
@@ -141,7 +141,7 @@ export const del = async (event, ctx) => {
   }
 };
 
-export const getAll = async (event, ctx) => {
+export const getAll = async (event, ctx, callback) => {
   try {
     // Set context callbackWaitsForEmptyEventLoop to false to prevent Lambda from waiting
     ctx.callbackWaitsForEmptyEventLoop = false;
@@ -173,7 +173,7 @@ export const getAll = async (event, ctx) => {
 };
 
 // PATCH events/{id}/{year}
-export const update = async (event, ctx) => {
+export const update = async (event, ctx, callback) => {
   try {
     if (!event.pathParameters || !event.pathParameters.id)
       throw helpers.missingIdQueryResponse("event");
@@ -254,7 +254,7 @@ export const update = async (event, ctx) => {
 };
 
 // POST events/event-thumbnail-upload-url/{id}/{year}
-export const createThumbnailPicUploadUrl = async (event, ctx) => {
+export const createThumbnailPicUploadUrl = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
     helpers.checkPayloadProps(data, {
@@ -328,7 +328,7 @@ export const createThumbnailPicUploadUrl = async (event, ctx) => {
 };
 
 // GET events/{id}/{year}
-export const get = async (event, ctx) => {
+export const get = async (event, ctx, callback) => {
   try {
     if (!event.pathParameters || !event.pathParameters.id)
       throw helpers.missingIdQueryResponse("event");
@@ -457,7 +457,7 @@ export const get = async (event, ctx) => {
 };
 
 // GET events/getActiveEvent
-export const getActiveEvent = async (event, ctx) => {
+export const getActiveEvent = async (event, ctx, callback) => {
   try {
     // already now by default
     const nowISO = new Date().toISOString();

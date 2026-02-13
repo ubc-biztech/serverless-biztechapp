@@ -32,7 +32,7 @@ const cancelSecret =
     : process.env.STRIPE_DEV_CANCEL;
 
 // Creates the member here
-export const webhook = async (event, ctx) => {
+export const webhook = async (event, ctx, callback) => {
   const OAuthMemberSignup = async (data) => {
     const timestamp = new Date().getTime();
     const email = data.email.toLowerCase();
@@ -361,7 +361,7 @@ export const webhook = async (event, ctx) => {
   }
 };
 
-export const payment = async (event, ctx) => {
+export const payment = async (event, ctx, callback) => {
   try {
     let data = JSON.parse(event.body);
     if (data.email) {
@@ -467,7 +467,7 @@ export const payment = async (event, ctx) => {
   }
 };
 
-export const cancel = async (event, ctx) => {
+export const cancel = async (event, ctx, callback) => {
   // NOTE: cancel webhook currently only operates correctly for events i.e. payment incomplete
   const sig = event.headers["Stripe-Signature"];
   const eventData = stripe.webhooks.constructEvent(

@@ -7,7 +7,7 @@ import {
   PRIZES_TABLE
 } from "../../constants/tables";
 
-export const getAll = async (event, ctx) => {
+export const getAll = async (event, ctx, callback) => {
   try {
     const prizes = await db.scan(PRIZES_TABLE);
 
@@ -20,7 +20,7 @@ export const getAll = async (event, ctx) => {
   }
 };
 
-export const create = async (event, ctx) => {
+export const create = async (event, ctx, callback) => {
   try {
     const timestamp = new Date().getTime();
     const data = JSON.parse(event.body);
@@ -69,7 +69,7 @@ export const create = async (event, ctx) => {
   }
 };
 
-export const update = async (event, ctx) => {
+export const update = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -107,7 +107,7 @@ export const update = async (event, ctx) => {
   }
 };
 
-export const del = async (event, ctx) => {
+export const del = async (event, ctx, callback) => {
   try {
     if(!event.pathParameters || !event.pathParameters.id) throw helpers.missingIdQueryResponse("prize");
     const id = event.pathParameters.id;

@@ -35,7 +35,7 @@ const S3 = new S3Client({
 });
 const PROFILE_BUCKET = "biztech-profile-pictures";
 
-export const create = async (event, ctx) => {
+export const create = async (event, ctx, callback) => {
   try {
     const email = event.requestContext.authorizer.claims.email.toLowerCase();
     const response = await createProfile(
@@ -52,7 +52,7 @@ export const create = async (event, ctx) => {
 };
 
 // deprecated, will be done in another pr
-export const createPartialPartnerProfile = async (event, ctx) => {
+export const createPartialPartnerProfile = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -171,7 +171,7 @@ export const createPartialPartnerProfile = async (event, ctx) => {
   }
 };
 
-export const updatePublicProfile = async (event, ctx) => {
+export const updatePublicProfile = async (event, ctx, callback) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
     const body = JSON.parse(event.body);
@@ -263,7 +263,7 @@ export const updatePublicProfile = async (event, ctx) => {
   }
 };
 
-export const getPublicProfile = async (event, ctx) => {
+export const getPublicProfile = async (event, ctx, callback) => {
   try {
     if (!event.pathParameters || !event.pathParameters.profileID) {
       throw helpers.missingPathParamResponse("profileID");
@@ -296,7 +296,7 @@ export const getPublicProfile = async (event, ctx) => {
   }
 };
 
-export const getUserProfile = async (event, ctx) => {
+export const getUserProfile = async (event, ctx, callback) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
 
@@ -330,7 +330,7 @@ export const getUserProfile = async (event, ctx) => {
 };
 
 // deprecated, will be done in another pr
-export const createCompanyProfile = async (event, ctx) => {
+export const createCompanyProfile = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -439,7 +439,7 @@ export const createCompanyProfile = async (event, ctx) => {
   }
 };
 
-export const createProfilePicUploadUrl = async (event, ctx) => {
+export const createProfilePicUploadUrl = async (event, ctx, callback) => {
   try {
     const claims = event.requestContext?.authorizer?.claims || {
     };
@@ -512,7 +512,7 @@ export const createProfilePicUploadUrl = async (event, ctx) => {
   }
 };
 
-export const linkPartnerToCompany = async (event, ctx) => {
+export const linkPartnerToCompany = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -631,7 +631,7 @@ export const linkPartnerToCompany = async (event, ctx) => {
   }
 };
 
-export const syncPartnerData = async (event, ctx) => {
+export const syncPartnerData = async (event, ctx, callback) => {
   try {
     // Get all partner profiles
     const partnerProfiles = await db.scan(PROFILES_TABLE, {

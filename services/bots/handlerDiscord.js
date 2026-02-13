@@ -12,7 +12,7 @@ import {
   backfillUserRoles
 } from "./helpersDiscord";
 
-export const interactions = (event, ctx) => {
+export const interactions = (event, ctx, callback) => {
   const body = JSON.parse(event.body);
 
   // reject if request is not valid
@@ -60,11 +60,11 @@ export const interactions = (event, ctx) => {
   }
 };
 
-export const webhook = (event, ctx) => {
+export const webhook = (event, ctx, callback) => {
   //stub
 };
 
-export const mapDiscordAccountToMembership = async (event, ctx) => {
+export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
   const data = JSON.parse(event.body);
 
   handlerHelpers.checkPayloadProps(data, {
@@ -129,7 +129,7 @@ export const mapDiscordAccountToMembership = async (event, ctx) => {
   }
 };
 
-export const assignRoles = async (event, ctx) => {
+export const assignRoles = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -171,7 +171,7 @@ export const assignRoles = async (event, ctx) => {
   }
 };
 
-export const removeRoles = async (event, ctx) => {
+export const removeRoles = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -213,7 +213,7 @@ export const removeRoles = async (event, ctx) => {
   }
 };
 
-export const backfillRoles = async (event, ctx) => {
+export const backfillRoles = async (event, ctx, callback) => {
   try {
     if (!event.pathParameters || !event.pathParameters.userID) {
       throw handlerHelpers.missingPathParamResponse("user", "userID");

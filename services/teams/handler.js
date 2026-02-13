@@ -30,7 +30,7 @@ import { WEIGHTS, ROUND } from "./constants.js";
     "metadata": object
  */
 
-export const updateTeamPoints = async (event, ctx) => {
+export const updateTeamPoints = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -83,7 +83,7 @@ export const updateTeamPoints = async (event, ctx) => {
   }
 };
 
-export const leaveTeam = async (event, ctx) => {
+export const leaveTeam = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -118,7 +118,7 @@ export const leaveTeam = async (event, ctx) => {
   }
 };
 
-export const joinTeam = async (event, ctx) => {
+export const joinTeam = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -159,7 +159,7 @@ export const joinTeam = async (event, ctx) => {
   }
 };
 
-export const makeTeam = async (event, ctx) => {
+export const makeTeam = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -203,7 +203,7 @@ export const makeTeam = async (event, ctx) => {
   }
 };
 
-export const getTeamFromUserID = async (event, ctx) => {
+export const getTeamFromUserID = async (event, ctx, callback) => {
   /*
     Returns the team object of the team that the user is on from the user's ID.
 
@@ -246,7 +246,7 @@ export const getTeamFromUserID = async (event, ctx) => {
   }
 };
 
-export const get = async (event, ctx) => {
+export const get = async (event, ctx, callback) => {
   let obfuscateEmails = true;
 
   const userID = event.requestContext.authorizer.claims.email.toLowerCase();
@@ -291,15 +291,15 @@ export const get = async (event, ctx) => {
 
 // STUBS or unused functions below
 
-// export const changeTeam = async (event, ctx) => {
+// export const changeTeam = async (event, ctx, callback) => {
 
 // };
 
-// export const addMember = async (event, ctx) => {
+// export const addMember = async (event, ctx, callback) => {
 
 // };
 
-export const changeTeamName = async (event, ctx) => {
+export const changeTeamName = async (event, ctx, callback) => {
   /*
     Changes the team name of the team with the given user_id.
    */
@@ -346,15 +346,15 @@ export const changeTeamName = async (event, ctx) => {
   }
 };
 
-// export const viewPoints = async (event, ctx) => {
+// export const viewPoints = async (event, ctx, callback) => {
 
 // };
 
-// export const changePoints = async (event, ctx) => {
+// export const changePoints = async (event, ctx, callback) => {
 
 // };
 
-export const addQRScan = async (event, ctx) => {
+export const addQRScan = async (event, ctx, callback) => {
   /*
     !!!! DEPRECATED: use the QR microservice for client facing calls.
 
@@ -413,7 +413,7 @@ export const addQRScan = async (event, ctx) => {
   }
 };
 
-export const addMultipleQuestions = async (event, ctx) => {
+export const addMultipleQuestions = async (event, ctx, callback) => {
   /*
     !!!! NOTE: This is specifically for Dataverse, where we are using the
     scannedQRs field to store correctly answered questions.
@@ -477,7 +477,7 @@ export const addMultipleQuestions = async (event, ctx) => {
   }
 };
 
-export const checkQRScanned = async (event, ctx) => {
+export const checkQRScanned = async (event, ctx, callback) => {
   /*
     !!!! DEPRECATED: use the QR microservice for client facing calls.
 
@@ -524,7 +524,7 @@ export const checkQRScanned = async (event, ctx) => {
   }
 };
 
-export const getNormalizedRoundScores = async (event, ctx) => {
+export const getNormalizedRoundScores = async (event, ctx, callback) => {
   let scores;
 
   try {
@@ -619,7 +619,7 @@ export const getNormalizedRoundScores = async (event, ctx) => {
   return handlerHelpers.createResponse(200, res);
 };
 
-export const createJudgeSubmissions = async (event, ctx) => {
+export const createJudgeSubmissions = async (event, ctx, callback) => {
   const data = JSON.parse(event.body);
 
   try {
@@ -746,7 +746,7 @@ export const createJudgeSubmissions = async (event, ctx) => {
   });
 };
 
-export const getJudgeSubmissions = async (event, ctx) => {
+export const getJudgeSubmissions = async (event, ctx, callback) => {
   try {
     const { judgeID } = event.pathParameters;
 
@@ -809,7 +809,7 @@ export const getJudgeSubmissions = async (event, ctx) => {
   }
 };
 
-export const getJudgeCurrentTeam = async (event, ctx) => {
+export const getJudgeCurrentTeam = async (event, ctx, callback) => {
   try {
     const { judgeID } = event.pathParameters;
 
@@ -844,7 +844,7 @@ export const getJudgeCurrentTeam = async (event, ctx) => {
   }
 };
 
-export const getCurrentRound = async (event, ctx) => {
+export const getCurrentRound = async (event, ctx, callback) => {
   try {
     const round = await db.getOne(ROUND, JUDGING_TABLE);
 
@@ -859,7 +859,7 @@ export const getCurrentRound = async (event, ctx) => {
   }
 };
 
-export const setCurrentRound = async (event, ctx) => {
+export const setCurrentRound = async (event, ctx, callback) => {
   try {
     const { round } = event.pathParameters;
 
@@ -888,7 +888,7 @@ export const setCurrentRound = async (event, ctx) => {
   }
 };
 
-export const getTeamFeedbackScore = async (event, ctx) => {
+export const getTeamFeedbackScore = async (event, ctx, callback) => {
   try {
     const { teamID } = event.pathParameters;
     if (!teamID) {
@@ -943,7 +943,7 @@ export const getTeamFeedbackScore = async (event, ctx) => {
   }
 };
 
-export const updateJudgeSubmission = async (event, ctx) => {
+export const updateJudgeSubmission = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -1026,7 +1026,7 @@ export const updateJudgeSubmission = async (event, ctx) => {
   }
 };
 
-export const updateCurrentTeamForJudge = async (event, ctx) => {
+export const updateCurrentTeamForJudge = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -1097,18 +1097,18 @@ export const updateCurrentTeamForJudge = async (event, ctx) => {
   }
 };
 
-// export const addTransaction = async (event, ctx) => {
+// export const addTransaction = async (event, ctx, callback) => {
 
 // };
 
-// export const getTransactions = async (event, ctx) => {
+// export const getTransactions = async (event, ctx, callback) => {
 
 // };
 
-// export const addInventory = async (event, ctx) => {
+// export const addInventory = async (event, ctx, callback) => {
 
 // };
 
-// export const getTeamInventory = async (event, ctx) => {
+// export const getTeamInventory = async (event, ctx, callback) => {
 
 // };

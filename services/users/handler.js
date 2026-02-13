@@ -8,7 +8,7 @@ import {
 } from "../../constants/tables";
 import docClient from "../../lib/docClient";
 
-export const create = async (event, ctx) => {
+export const create = async (event, ctx, callback) => {
   const timestamp = new Date().getTime();
   const data = JSON.parse(event.body);
   if (!isValidEmail(data.email))
@@ -134,7 +134,7 @@ export const create = async (event, ctx) => {
   }
 };
 
-export const checkUser = async (event, ctx) => {
+export const checkUser = async (event, ctx, callback) => {
   try {
     const email = event.pathParameters.email;
     const user = await db.getOne(email, USERS_TABLE);
@@ -148,7 +148,7 @@ export const checkUser = async (event, ctx) => {
   }
 };
 
-export const checkUserMembership = async (event, ctx) => {
+export const checkUserMembership = async (event, ctx, callback) => {
   console.log(event);
   try {
     const email = event.pathParameters.email;
@@ -163,7 +163,7 @@ export const checkUserMembership = async (event, ctx) => {
   }
 };
 
-export const get = async (event, ctx) => {
+export const get = async (event, ctx, callback) => {
   try {
     let email = event.requestContext.authorizer.claims.email.toLowerCase();
 
@@ -191,7 +191,7 @@ export const get = async (event, ctx) => {
   }
 };
 
-export const update = async (event, ctx) => {
+export const update = async (event, ctx, callback) => {
   try {
     if (!event.pathParameters || !event.pathParameters.email)
       throw helpers.missingIdQueryResponse("event");
@@ -223,7 +223,7 @@ export const update = async (event, ctx) => {
   }
 };
 
-export const getAll = async (event, ctx) => {
+export const getAll = async (event, ctx, callback) => {
   try {
     const users = await db.scan(USERS_TABLE);
 
@@ -237,7 +237,7 @@ export const getAll = async (event, ctx) => {
 };
 
 // TODO: Fix favouriteEvents 08/08/24
-export const favouriteEvent = async (event, ctx) => {
+export const favouriteEvent = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -345,7 +345,7 @@ export const favouriteEvent = async (event, ctx) => {
 };
 
 // TODO: refactor to abstract delete code among different endpoints
-export const del = async (event, ctx) => {
+export const del = async (event, ctx, callback) => {
   try {
     // check that the param was given
     if (!event.pathParameters || !event.pathParameters.email)

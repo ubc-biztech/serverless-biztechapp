@@ -18,7 +18,7 @@ import {
 */
 
 // Endpoint: POST /qr
-export const post = async (event, ctx) => {
+export const post = async (event, ctx, callback) => {
   /* Processes a QR code scan and tries to update the user's points in the Registrations database
 
   Args:
@@ -103,7 +103,7 @@ export const post = async (event, ctx) => {
   }
 };
 
-export const get = async (event, ctx) => {
+export const get = async (event, ctx, callback) => {
   try {
     const qrs = await db.scan(QRS_TABLE, {
     });
@@ -115,7 +115,7 @@ export const get = async (event, ctx) => {
   }
 };
 
-export const getOne = async (event, ctx) => {
+export const getOne = async (event, ctx, callback) => {
   try {
     if (
       !event.pathParameters ||
@@ -139,7 +139,7 @@ export const getOne = async (event, ctx) => {
   }
 };
 
-export const create = async (event, ctx) => {
+export const create = async (event, ctx, callback) => {
   try {
     const timestamp = new Date().getTime();
     const data = JSON.parse(event.body);
@@ -209,7 +209,7 @@ export const create = async (event, ctx) => {
   }
 };
 
-export const update = async (event, ctx) => {
+export const update = async (event, ctx, callback) => {
   try {
     if (
       !event.pathParameters ||
@@ -267,7 +267,7 @@ export const update = async (event, ctx) => {
   }
 };
 
-export const del = async (event, ctx) => {
+export const del = async (event, ctx, callback) => {
   try {
     if (
       !event.pathParameters ||

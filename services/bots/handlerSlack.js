@@ -14,7 +14,7 @@ import {
 const processedEventIds = new Set();
 
 // router
-export const shortcutHandler = async (event, ctx) => {
+export const shortcutHandler = async (event, ctx, callback) => {
   let body;
 
   if (event.headers["X-Slack-Retry-Num"]) {
@@ -142,7 +142,7 @@ export const shortcutHandler = async (event, ctx) => {
   return ack;
 };
 
-export const slackGithubReminder = async (event, ctx) => {
+export const slackGithubReminder = async (event, ctx, callback) => {
   const projectBoard = await getProjectBoard();
   sendIssueReminders(projectBoard);
   return ack;

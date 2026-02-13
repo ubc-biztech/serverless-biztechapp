@@ -41,7 +41,7 @@ import {
  * to voter role
  *
  */
-export const connectHandler = async (event, ctx) => {
+export const connectHandler = async (event, ctx, callback) => {
   const connectionID = event.requestContext.connectionId;
 
   let roomID = "";
@@ -75,7 +75,7 @@ export const connectHandler = async (event, ctx) => {
  *
  * Cleans up socket table upon graceful disconnect
  */
-export const disconnectHandler = async (event, ctx) => {
+export const disconnectHandler = async (event, ctx, callback) => {
   const connectionID = event.requestContext.connectionId;
   await deleteConnection(connectionID);
   return {
@@ -95,7 +95,7 @@ export const disconnectHandler = async (event, ctx) => {
  *
  *    to sync connection to admin role and state, set id = ADMIN_ROLE
  */
-export const syncHandler = async (event, ctx) => {
+export const syncHandler = async (event, ctx, callback) => {
   const body = JSON.parse(event.body);
   if (!body.hasOwnProperty("id") || !body.hasOwnProperty("roomID")) {
     const errMessage = checkPayloadProps(body, {
@@ -169,7 +169,7 @@ export const syncHandler = async (event, ctx) => {
  *    if changeTeam is used as the action, then a team property must
  *    be provided as part of the message body
  */
-export const adminHandler = async (event, ctx) => {
+export const adminHandler = async (event, ctx, callback) => {
   const body = JSON.parse(event.body);
   if (!body.hasOwnProperty("event") || !body.hasOwnProperty("roomID")) {
     const errMessage = checkPayloadProps(body, {
@@ -290,7 +290,7 @@ export const adminHandler = async (event, ctx) => {
  *
  *
  */
-export const stickerHandler = async (event, ctx) => {
+export const stickerHandler = async (event, ctx, callback) => {
   const body = JSON.parse(event.body);
   if (
     !body.hasOwnProperty("id") ||
@@ -500,7 +500,7 @@ export const stickerHandler = async (event, ctx) => {
  *
  *
  */
-export const scoreHandler = async (event, ctx) => {
+export const scoreHandler = async (event, ctx, callback) => {
   const body = JSON.parse(event.body);
   if (
     !body.hasOwnProperty("id") ||
@@ -575,7 +575,7 @@ export const scoreHandler = async (event, ctx) => {
  *
  * Returns status 400 error for unrecognized action
  */
-export const defaultHandler = async (event, ctx) => {
+export const defaultHandler = async (event, ctx, callback) => {
   try {
     await sendMessage(event, {
       status: 400,
@@ -595,7 +595,7 @@ export const defaultHandler = async (event, ctx) => {
  * Endpoint to return all scores
  *
  */
-export const getScores = async (event, ctx) => {
+export const getScores = async (event, ctx, callback) => {
   let res;
   try {
     res = await db.scan(SCORE_TABLE);
@@ -628,7 +628,7 @@ export const getScores = async (event, ctx) => {
 };
 
 /** Endpoint to return all scores in room */
-export const getScoresRoom = async (event, ctx) => {
+export const getScoresRoom = async (event, ctx, callback) => {
   if (!event.pathParameters || !event.pathParameters.roomID)
     throw missingPathParamResponse("roomID");
 
@@ -673,7 +673,7 @@ export const getScoresRoom = async (event, ctx) => {
  * Endpoint to return all scores
  *
  */
-export const getScoresTeam = async (event, ctx) => {
+export const getScoresTeam = async (event, ctx, callback) => {
   if (!event.pathParameters || !event.pathParameters.teamName)
     throw missingPathParamResponse("teamName");
 
@@ -710,7 +710,7 @@ export const getScoresTeam = async (event, ctx) => {
 /**
  * Endpoint to return all stickers
  */
-export const getStickers = async (event, ctx) => {
+export const getStickers = async (event, ctx, callback) => {
   let res;
   try {
     res = await db.scan(STICKERS_TABLE + (process.env.ENVIRONMENT || ""));
@@ -742,7 +742,7 @@ export const getStickers = async (event, ctx) => {
   return res;
 };
 
-export const getStickersRoom = async (event, ctx) => {
+export const getStickersRoom = async (event, ctx, callback) => {
   if (!event.pathParameters || !event.pathParameters.roomID)
     throw missingPathParamResponse("roomID");
 
@@ -786,7 +786,7 @@ export const getStickersRoom = async (event, ctx) => {
 /**
  * Endpoint to return all stickers
  */
-export const getStickersTeam = async (event, ctx) => {
+export const getStickersTeam = async (event, ctx, callback) => {
   if (!event.pathParameters || !event.pathParameters.teamName)
     throw missingPathParamResponse("teamName");
 

@@ -10,7 +10,7 @@ import {
   TRANSACTIONS_TABLE, USERS_TABLE
 } from "../../constants/tables";
 
-export const getAll = async (event, ctx) => {
+export const getAll = async (event, ctx, callback) => {
   try {
     const filters = {
     };
@@ -54,7 +54,7 @@ export const getAll = async (event, ctx) => {
   }
 };
 
-export const create = async (event, ctx) => {
+export const create = async (event, ctx, callback) => {
   try {
     const timestamp = new Date().getTime();
     const data = JSON.parse(event.body);

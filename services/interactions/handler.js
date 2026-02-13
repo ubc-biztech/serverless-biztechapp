@@ -25,7 +25,7 @@ const CONNECTION = "CONNECTION";
 const WORK = "WORKSHOP";
 const BOOTH = "BOOTH";
 
-export const searchHandler = async (event, ctx) => {
+export const searchHandler = async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
     helpers.checkPayloadProps(data, {
@@ -56,7 +56,7 @@ export const searchHandler = async (event, ctx) => {
   }
 };
 
-export const postInteraction = async (event, ctx) => {
+export const postInteraction = async (event, ctx, callback) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
     const data = JSON.parse(event.body);
@@ -93,7 +93,7 @@ export const postInteraction = async (event, ctx) => {
   }
 };
 
-export const checkConnection = async (event, ctx) => {
+export const checkConnection = async (event, ctx, callback) => {
   try {
     if (
       !event.pathParameters ||
@@ -141,7 +141,7 @@ export const checkConnection = async (event, ctx) => {
   }
 };
 
-export const getAllConnections = async (event, ctx) => {
+export const getAllConnections = async (event, ctx, callback) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
 
