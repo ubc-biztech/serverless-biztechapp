@@ -4,7 +4,7 @@ import { isEmpty, isValidEmail } from "../../lib/utils";
 import docClient from "../../lib/docClient";
 import { MEMBERS2026_TABLE } from "../../constants/tables";
 
-export const create = async (event, ctx, callback) => {
+export const create = async (event, ctx) => {
   const userID = event.requestContext.authorizer.claims.email.toLowerCase();
   if (!userID.endsWith("@ubcbiztech.com"))
     throw helpers.createResponse(403, {
@@ -46,7 +46,7 @@ export const create = async (event, ctx, callback) => {
       message: "Created!",
       params: memberParams
     });
-    callback(null, response);
+    return response;
   } catch (error) {
     let response;
     if (error.type === "ConditionalCheckFailedException") {
@@ -57,11 +57,11 @@ export const create = async (event, ctx, callback) => {
     } else {
       response = helpers.createResponse(502, "Internal server error");
     }
-    callback(null, response);
+    return response;
   }
 };
 
-export const getEmailFromProfile = async (event, ctx, callback) => {
+export const getEmailFromProfile = async (event, ctx) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
 
@@ -91,16 +91,14 @@ export const getEmailFromProfile = async (event, ctx, callback) => {
     const { id } = member[0];
 
     const response = helpers.createResponse(200, { email: id });
-    callback(null, response);
-    return null;
+    return response;
   } catch (err) {
     console.log(err);
-    callback(null, err);
-    return null;
+    return err;
   }
 };
 
-export const get = async (event, ctx, callback) => {
+export const get = async (event, ctx) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
     if (!userID.endsWith("@ubcbiztech.com"))
@@ -118,16 +116,14 @@ export const get = async (event, ctx, callback) => {
     if (isEmpty(member)) throw helpers.notFoundResponse("member", email);
 
     const response = helpers.createResponse(200, member);
-    callback(null, response);
-    return null;
+    return response;
   } catch (err) {
     console.log(err);
-    callback(null, err);
-    return null;
+    return err;
   }
 };
 
-export const getAll = async (event, ctx, callback) => {
+export const getAll = async (event, ctx) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
     if (!userID.endsWith("@ubcbiztech.com"))
@@ -135,23 +131,18 @@ export const getAll = async (event, ctx, callback) => {
         message: "unauthorized for this action"
       });
 
-    // scan the table
     const members = await db.scan(MEMBERS2026_TABLE);
 
-    // re-organize the response
     let response = {};
     if (members !== null) response = helpers.createResponse(200, members);
 
-    // return the response object
-    callback(null, response);
-    return null;
+    return response;
   } catch (err) {
-    callback(null, err);
-    return null;
+    return err;
   }
 };
 
-export const update = async (event, ctx, callback) => {
+export const update = async (event, ctx) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
     if (!userID.endsWith("@ubcbiztech.com"))
@@ -178,16 +169,14 @@ export const update = async (event, ctx, callback) => {
       response: res
     });
 
-    callback(null, response);
-    return null;
+    return response;
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return null;
+    return err;
   }
 };
 
-export const del = async (event, ctx, callback) => {
+export const del = async (event, ctx) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
     if (!userID.endsWith("@ubcbiztech.com"))
@@ -200,7 +189,6 @@ export const del = async (event, ctx, callback) => {
 
     const email = event.pathParameters.id;
     if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
-    // check that the member exists
     const existingMember = await db.getOne(email, MEMBERS2026_TABLE);
     if (isEmpty(existingMember))
       throw helpers.notFoundResponse("Member", email);
@@ -211,10 +199,8 @@ export const del = async (event, ctx, callback) => {
       response: res
     });
 
-    callback(null, response);
-    return null;
+    return response;
   } catch (err) {
-    callback(null, err);
-    return null;
+    return err;
   }
 };

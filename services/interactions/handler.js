@@ -25,7 +25,7 @@ const CONNECTION = "CONNECTION";
 const WORK = "WORKSHOP";
 const BOOTH = "BOOTH";
 
-export const searchHandler = async (event, ctx, callback) => {
+export const searchHandler = async (event, ctx) => {
   try {
     const data = JSON.parse(event.body);
     helpers.checkPayloadProps(data, {
@@ -56,7 +56,7 @@ export const searchHandler = async (event, ctx, callback) => {
   }
 };
 
-export const postInteraction = async (event, ctx, callback) => {
+export const postInteraction = async (event, ctx) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
     const data = JSON.parse(event.body);
@@ -71,8 +71,7 @@ export const postInteraction = async (event, ctx, callback) => {
         }
       });
     } catch (error) {
-      callback(null, error);
-      return null;
+      return error;
     }
 
     const timestamp = new Date().getTime();
@@ -87,17 +86,14 @@ export const postInteraction = async (event, ctx, callback) => {
     }
 
     const response = await handleConnection(userID, eventParam, timestamp);
-    callback(null, response);
+    return response;
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return err;
+    return helpers.createResponse(500, { message: err.message || err });
   }
-
-  return null;
 };
 
-export const checkConnection = async (event, ctx, callback) => {
+export const checkConnection = async (event, ctx) => {
   try {
     if (
       !event.pathParameters ||
@@ -145,7 +141,7 @@ export const checkConnection = async (event, ctx, callback) => {
   }
 };
 
-export const getAllConnections = async (event, ctx, callback) => {
+export const getAllConnections = async (event, ctx) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
 
@@ -200,15 +196,12 @@ export const getAllConnections = async (event, ctx, callback) => {
       data
     });
 
-    callback(null, response);
+    return response;
   } catch (err) {
     console.error(err);
-    callback(
-      null,
-      handlerHelpers.createResponse(500, {
-        message: "Internal server error"
-      })
-    );
+    return handlerHelpers.createResponse(500, {
+      message: "Internal server error"
+    });
   }
 };
 

@@ -321,7 +321,7 @@ export async function sendEmail(
   }
 }
 
-export const post = async (event, ctx, callback) => {
+export const post = async (event, ctx) => {
   try {
     const data = JSON.parse(event.body);
     // Normalize email to lowercase
@@ -365,30 +365,21 @@ export const post = async (event, ctx, callback) => {
     if (existingReg) {
       if (existingReg.registrationStatus === "incomplete") {
         await updateHelper(data, false, data.email, data.fname);
-        const response = helpers.createResponse(200, {
+        return helpers.createResponse(200, {
           message: "Redirect to link",
           url: existingReg.checkoutLink
         });
-
-        callback(null, response);
-        return response;
       } else {
-        const response = helpers.createResponse(400, {
+        return helpers.createResponse(400, {
           message: "You are already registered for this event!"
         });
-
-        callback(null, response);
-        return response;
       }
     } else {
-      const response = await updateHelper(data, true, data.email, data.fname);
-      callback(null, response);
-      return null;
+      return await updateHelper(data, true, data.email, data.fname);
     }
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
@@ -409,7 +400,7 @@ export const post = async (event, ctx, callback) => {
  *
  * Returns: The response object
  */
-export const put = async (event, ctx, callback) => {
+export const put = async (event, ctx) => {
   try {
     if (!event.pathParameters || !event.pathParameters.email)
       throw helpers.missingIdQueryResponse("user");
@@ -480,17 +471,15 @@ export const put = async (event, ctx, callback) => {
       event.pathParameters.fname
     );
 
-    callback(null, response);
-    return null;
+    return response;
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
 // Updates a batch of registration statuses
-export async function massUpdate(event, ctx, callback) {
+export async function massUpdate(event, ctx) {
   try {
     const { eventID, eventYear, updates } = JSON.parse(event.body);
 
@@ -532,25 +521,19 @@ export async function massUpdate(event, ctx, callback) {
       })
     );
 
-    callback(
-      null,
-      helpers.createResponse(200, {
-        results
-      })
-    );
+    return helpers.createResponse(200, {
+      results
+    });
   } catch (error) {
     console.error("Mass update failed", error);
-    callback(
-      null,
-      helpers.createResponse(500, {
-        error: "Internal server error"
-      })
-    );
+    return helpers.createResponse(500, {
+      error: "Internal server error"
+    });
   }
 }
 
 // Return list of entries with the matching id
-export const get = async (event, ctx, callback) => {
+export const get = async (event, ctx) => {
   try {
     const queryString = event.queryStringParameters;
     if (
@@ -612,22 +595,18 @@ export const get = async (event, ctx, callback) => {
       );
     }
 
-    const response = helpers.createResponse(200, {
+    return helpers.createResponse(200, {
       size: registrations.length,
       data: registrations
     });
-
-    callback(null, response);
-    return null;
   } catch (err) {
     console.error("Error in get handler:", err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
 // (used for testing)
-export const del = async (event, ctx, callback) => {
+export const del = async (event, ctx) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -654,20 +633,16 @@ export const del = async (event, ctx, callback) => {
       ["eventID;year"]: eventIDAndYear
     });
 
-    const response = helpers.createResponse(200, {
+    return helpers.createResponse(200, {
       message: "Registration entry Deleted!",
       response: res
     });
-
-    callback(null, response);
-    return null;
   } catch (err) {
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
-export const delMany = async (event, ctx, callback) => {
+export const delMany = async (event, ctx) => {
   try {
     const email = event.requestContext.authorizer.claims.email.toLowerCase();
     if (!email.endsWith("@ubcbiztech.com")) {
@@ -709,20 +684,16 @@ export const delMany = async (event, ctx, callback) => {
 
     const res = await db.batchDelete(itemsToDelete, USER_REGISTRATIONS_TABLE);
 
-    const response = helpers.createResponse(200, {
+    return helpers.createResponse(200, {
       message: "Registration entry Deleted!",
       response: res
     });
-
-    callback(null, response);
-    return null;
   } catch (err) {
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
-export const leaderboard = async (event, ctx, callback) => {
+export const leaderboard = async (event, ctx) => {
   try {
     const queryString = event.queryStringParameters;
     if (!queryString || (!queryString.eventID && !queryString.year)) {

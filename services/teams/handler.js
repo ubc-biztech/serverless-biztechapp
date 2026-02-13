@@ -30,7 +30,7 @@ import { WEIGHTS, ROUND } from "./constants.js";
     "metadata": object
  */
 
-export const updateTeamPoints = async (event, ctx, callback) => {
+export const updateTeamPoints = async (event, ctx) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -38,19 +38,19 @@ export const updateTeamPoints = async (event, ctx, callback) => {
       user_id: {
         required: true,
         type: "string"
-      }, // User ID
+      },
       eventID: {
         required: true,
         type: "string"
-      }, // Event identifier
+      },
       year: {
         required: true,
         type: "number"
-      }, // Event year
+      },
       change_points: {
         required: true,
         type: "number"
-      } // Points to add/subtract
+      }
     });
 
     const team = await teamHelpers._getTeamFromUserRegistration(
@@ -60,33 +60,30 @@ export const updateTeamPoints = async (event, ctx, callback) => {
     );
 
     if (!team) {
-      const response = helpers.createResponse(404, {
+      return helpers.createResponse(404, {
         message: "User not associated with a team",
       });
-      callback(null, response);
     }
 
     team.points += data.change_points;
 
     await teamHelpers._putTeam(team, false);
 
-    const response = helpers.createResponse(200, {
+    return helpers.createResponse(200, {
       message: "Team points updated successfully",
       updatedPoints: team.points
     });
-    callback(null, response);
   } catch (error) {
     console.error("Error updating team points:", error);
 
-    const errorResponse = helpers.createResponse(500, {
+    return helpers.createResponse(500, {
       message: "Failed to update team points",
       error: error.message
     });
-    callback(null, errorResponse);
   }
 };
 
-export const leaveTeam = async (event, ctx, callback) => {
+export const leaveTeam = async (event, ctx) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -107,25 +104,21 @@ export const leaveTeam = async (event, ctx, callback) => {
 
     await teamHelpers.leaveTeam(data.memberID, data.eventID, data.year, data.teamID);
 
-    const response = helpers.createResponse(200, {
+    return helpers.createResponse(200, {
       message: "Successfully left team.",
       response: data
     });
-    callback(null, response);
-    return response;
   } catch (error) {
     console.error("Error leaving team:", error);
 
-    const errorResponse = helpers.createResponse(500, {
+    return helpers.createResponse(500, {
       message: "Failed to leave team",
       error: error.message
     });
-    callback(null, errorResponse);
-    return errorResponse;
   }
 };
 
-export const joinTeam = async (event, ctx, callback) => {
+export const joinTeam = async (event, ctx) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -150,27 +143,23 @@ export const joinTeam = async (event, ctx, callback) => {
 
     const { memberIDs, teamName } = await teamHelpers.joinTeam(data.memberID, data.eventID, data.year, data.teamID);
 
-    const response = helpers.createResponse(200, {
+    return helpers.createResponse(200, {
       message: "Successfully joined team.",
       response: data,
       memberIDs,
       teamName
     });
-    callback(null, response);
-    return response;
   } catch (error) {
     console.error("Error joining team:", error);
 
-    const errorResponse = helpers.createResponse(500, {
+    return helpers.createResponse(500, {
       message: "Failed to join team",
       error: error.message
     });
-    callback(null, errorResponse);
-    return errorResponse;
   }
 };
 
-export const makeTeam = async (event, ctx, callback) => {
+export const makeTeam = async (event, ctx) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -190,39 +179,31 @@ export const makeTeam = async (event, ctx, callback) => {
       memberIDs: {
         required: true,
         type: "object"
-      } // 'object' means array in this case
+      }
     });
 
-    await teamHelpers
-      .makeTeam(data.team_name, data.eventID, data.year, data.memberIDs)
-      .then((res) => {
-        if (res) {
-          const response_success = helpers.createResponse(200, {
-            message: "Successfully created new team.",
-            response: res
-          });
+    const res = await teamHelpers.makeTeam(data.team_name, data.eventID, data.year, data.memberIDs);
 
-          callback(null, response_success);
-          return response_success;
-        }
-      })
-      .catch((err) => {
-        const response_fail = helpers.createResponse(403, {
-          message: "Could not create team.",
-          response: err
-        });
-
-        callback(null, response_fail);
-        return response_fail;
+    if (res) {
+      return helpers.createResponse(200, {
+        message: "Successfully created new team.",
+        response: res
       });
+    } else {
+      return helpers.createResponse(403, {
+        message: "Could not create team.",
+        response: res
+      });
+    }
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, {
+      message: err.message || err
+    });
   }
 };
 
-export const getTeamFromUserID = async (event, ctx, callback) => {
+export const getTeamFromUserID = async (event, ctx) => {
   /*
     Returns the team object of the team that the user is on from the user's ID.
 
@@ -246,33 +227,26 @@ export const getTeamFromUserID = async (event, ctx, callback) => {
     }
   });
 
-  await teamHelpers
-    ._getTeamFromUserRegistration(data.user_id, data.eventID, data.year)
-    .then((res) => {
-      if (res) {
-        const response_success = helpers.createResponse(200, {
-          message: "Successfully retrieved team.",
-          response: res
-        });
-
-        callback(null, response_success);
-        return response_success;
-      } else {
-        callback(null, helpers.createResponse(404, { message: "Team not found" }));
-      }
-    })
-    .catch((err) => {
-      const response_fail = helpers.createResponse(403, {
-        message: "Could not retrieve team.",
-        response: err
+  try {
+    const res = await teamHelpers._getTeamFromUserRegistration(data.user_id, data.eventID, data.year);
+    
+    if (res) {
+      return helpers.createResponse(200, {
+        message: "Successfully retrieved team.",
+        response: res
       });
-
-      callback(null, response_fail);
-      return response_fail;
+    } else {
+      return helpers.createResponse(404, { message: "Team not found" });
+    }
+  } catch (err) {
+    return helpers.createResponse(403, {
+      message: "Could not retrieve team.",
+      response: err
     });
+  }
 };
 
-export const get = async (event, ctx, callback) => {
+export const get = async (event, ctx) => {
   let obfuscateEmails = true;
 
   const userID = event.requestContext.authorizer.claims.email.toLowerCase();
@@ -306,27 +280,26 @@ export const get = async (event, ctx, callback) => {
         delete team.memberIDs;
       });
     }
-    const response = helpers.createResponse(200, teams);
-    callback(null, response);
-    return response;
+    return helpers.createResponse(200, teams);
   } catch (err) {
     console.log(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, {
+      message: err.message || err
+    });
   }
 };
 
 // STUBS or unused functions below
 
-// export const changeTeam = async (event, ctx, callback) => {
+// export const changeTeam = async (event, ctx) => {
 
 // };
 
-// export const addMember = async (event, ctx, callback) => {
+// export const addMember = async (event, ctx) => {
 
 // };
 
-export const changeTeamName = async (event, ctx, callback) => {
+export const changeTeamName = async (event, ctx) => {
   /*
     Changes the team name of the team with the given user_id.
    */
@@ -352,44 +325,36 @@ export const changeTeamName = async (event, ctx, callback) => {
       }
     });
 
-    await teamHelpers
-      .changeTeamName(data.user_id, data.eventID, data.year, data.team_name)
-      .then((res) => {
-        if (res) {
-          const response_success = helpers.createResponse(200, {
-            message: "Successfully changed team name.",
-            response: res
-          });
+    const res = await teamHelpers.changeTeamName(data.user_id, data.eventID, data.year, data.team_name);
 
-          callback(null, response_success);
-          return response_success;
-        }
-      })
-      .catch((err) => {
-        const response_fail = helpers.createResponse(403, {
-          message: "Could not change team name.",
-          response: err
-        });
-
-        callback(null, response_fail);
-        return response_fail;
+    if (res) {
+      return helpers.createResponse(200, {
+        message: "Successfully changed team name.",
+        response: res
       });
+    } else {
+      return helpers.createResponse(403, {
+        message: "Could not change team name.",
+        response: res
+      });
+    }
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, {
+      message: err.message || err
+    });
   }
 };
 
-// export const viewPoints = async (event, ctx, callback) => {
+// export const viewPoints = async (event, ctx) => {
 
 // };
 
-// export const changePoints = async (event, ctx, callback) => {
+// export const changePoints = async (event, ctx) => {
 
 // };
 
-export const addQRScan = async (event, ctx, callback) => {
+export const addQRScan = async (event, ctx) => {
   /*
     !!!! DEPRECATED: use the QR microservice for client facing calls.
 
@@ -427,36 +392,28 @@ export const addQRScan = async (event, ctx, callback) => {
 
     const points = data.points ? data.points : 0;
 
-    await teamHelpers
-      .addQRScan(data.user_id, data.qr_code_id, data.eventID, data.year, points)
-      .then((res) => {
-        if (res) {
-          const response_success = helpers.createResponse(200, {
-            message: "Successfully added QR code to scannedQRs array of team.",
-            response: res
-          });
+    const res = await teamHelpers.addQRScan(data.user_id, data.qr_code_id, data.eventID, data.year, points);
 
-          callback(null, response_success);
-          return response_success;
-        }
-      })
-      .catch((err) => {
-        const response_fail = helpers.createResponse(403, {
-          message: "Could not add QR code to scannedQRs array of team.",
-          response: err
-        });
-
-        callback(null, response_fail);
-        return response_fail;
+    if (res) {
+      return helpers.createResponse(200, {
+        message: "Successfully added QR code to scannedQRs array of team.",
+        response: res
       });
+    } else {
+      return helpers.createResponse(403, {
+        message: "Could not add QR code to scannedQRs array of team.",
+        response: res
+      });
+    }
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, {
+      message: err.message || err
+    });
   }
 };
 
-export const addMultipleQuestions = async (event, ctx, callback) => {
+export const addMultipleQuestions = async (event, ctx) => {
   /*
     !!!! NOTE: This is specifically for Dataverse, where we are using the
     scannedQRs field to store correctly answered questions.
@@ -492,43 +449,35 @@ export const addMultipleQuestions = async (event, ctx, callback) => {
 
     const points = data.points ? data.points : 0;
 
-    await teamHelpers
-      .addQuestions(
-        data.user_id,
-        data.answered_questions,
-        data.eventID,
-        data.year,
-        points
-      )
-      .then((res) => {
-        if (res) {
-          const response_success = helpers.createResponse(200, {
-            message:
-              "Successfully added questions to scannedQRs array of team.",
-            response: res
-          });
+    const res = await teamHelpers.addQuestions(
+      data.user_id,
+      data.answered_questions,
+      data.eventID,
+      data.year,
+      points
+    );
 
-          callback(null, response_success);
-          return response_success;
-        }
-      })
-      .catch((err) => {
-        const response_fail = helpers.createResponse(403, {
-          message: "Could not add questions to scannedQRs array of team.",
-          response: err
-        });
-
-        callback(null, response_fail);
-        return response_fail;
+    if (res) {
+      return helpers.createResponse(200, {
+        message:
+          "Successfully added questions to scannedQRs array of team.",
+        response: res
       });
+    } else {
+      return helpers.createResponse(403, {
+        message: "Could not add questions to scannedQRs array of team.",
+        response: res
+      });
+    }
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, {
+      message: err.message || err
+    });
   }
 };
 
-export const checkQRScanned = async (event, ctx, callback) => {
+export const checkQRScanned = async (event, ctx) => {
   /*
     !!!! DEPRECATED: use the QR microservice for client facing calls.
 
@@ -559,47 +508,32 @@ export const checkQRScanned = async (event, ctx, callback) => {
       }
     });
 
-    await teamHelpers
-      .checkQRScanned(data.user_id, data.qr_code_id, data.eventID, data.year)
-      .then((bool) => {
-        const response_success = helpers.createResponse(200, {
-          message:
-            "Attached boolean for check if QR code has been scanned for that user's team; refer to \"response\" field.",
-          response: bool
-        });
+    const bool = await teamHelpers.checkQRScanned(data.user_id, data.qr_code_id, data.eventID, data.year);
 
-        callback(null, response_success);
-        return response_success;
-      })
-      .catch((err) => {
-        const response_fail = helpers.createResponse(403, {
-          message: "Could not check if QR code has been scanned.",
-          response: err
-        });
-
-        callback(null, response_fail);
-        return response_fail;
-      });
+    return helpers.createResponse(200, {
+      message:
+        "Attached boolean for check if QR code has been scanned for that user's team; refer to \"response\" field.",
+      response: bool
+    });
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(403, {
+      message: "Could not check if QR code has been scanned.",
+      response: err
+    });
   }
 };
 
-export const getNormalizedRoundScores = async (event, ctx, callback) => {
+export const getNormalizedRoundScores = async (event, ctx) => {
   let scores;
 
   try {
     scores = await db.scan(FEEDBACK_TABLE);
   } catch (error) {
     console.error(error);
-    callback(
-      null,
-      db.createResponse(500, {
-        message: "Failed to fetch all feedback"
-      })
-    );
+    return helpers.createResponse(500, {
+      message: "Failed to fetch all feedback"
+    });
   }
 
   // step 1: format data by team
@@ -685,165 +619,134 @@ export const getNormalizedRoundScores = async (event, ctx, callback) => {
   return handlerHelpers.createResponse(200, res);
 };
 
-export const createJudgeSubmissions = async (event, ctx, callback) => {
+export const createJudgeSubmissions = async (event, ctx) => {
+  const data = JSON.parse(event.body);
+
   try {
-    const data = JSON.parse(event.body);
-
-    try {
-      helpers.checkPayloadProps(data, {
-        teamID: {
-          required: true
-        },
-        judgeID: {
-          required: true
-        },
-        eventID: {
-          required: true,
-          type: "string"
-        },
-        year: {
-          required: true,
-          type: "number"
-        },
-        scores: {
-          required: true,
-          type: "object"
-        }
-      });
-
-      if (
-        !data.scores.metric1 ||
-        !data.scores.metric2 ||
-        !data.scores.metric3 ||
-        !data.scores.metric4 ||
-        !data.scores.metric5
-      ) {
-        callback(null, {
-          message: "invalid scores object; should have valid metrics in body"
-        });
+    helpers.checkPayloadProps(data, {
+      teamID: {
+        required: true
+      },
+      judgeID: {
+        required: true
+      },
+      eventID: {
+        required: true,
+        type: "string"
+      },
+      year: {
+        required: true,
+        type: "number"
+      },
+      scores: {
+        required: true,
+        type: "object"
       }
-    } catch (error) {
-      callback(null, error);
-      return null;
-    }
-
-    const eventIDYear = `${data.eventID};${data.year}`;
-
-    if (!data.teamID || !data.judgeID) {
-      callback(
-        null,
-        helpers.createResponse(400, {
-          message: "Missing required fields: teamID;round or judgeID"
-        })
-      );
-    }
-
-    let judgeReg;
-
-    try {
-      judgeReg = await db.getOne(data.judgeID, USER_REGISTRATIONS_TABLE, {
-        ["eventID;year"]: "productx;2025"
-      });
-    } catch (error) {
-      callback(
-        null,
-        helpers.createResponse(409, {
-          message: "judge registration doesn't exist"
-        })
-      );
-    }
-
-    if (!judgeReg.isPartner) {
-      callback(
-        null,
-        helpers.createResponse(409, {
-          message: "not a judge"
-        })
-      );
-    }
-
-    const round = await db.getOne(ROUND, JUDGING_TABLE);
-    const teamID_round = data.teamID + ";" + round.currentTeam;
-
-    let existingFeedback;
-    try {
-      existingFeedback = await db.getOne(data.judgeID, FEEDBACK_TABLE, {
-        "teamID;round": teamID_round
-      });
-      if (existingFeedback) {
-        callback(
-          null,
-          helpers.createResponse(409, {
-            message: "Feedback already exists for this judge and team round",
-            existingFeedback
-          })
-        );
-      }
-    } catch (error) {
-      console.error(error);
-
-      if (error.statusCode !== 404) {
-        callback(
-          null,
-          helpers.createResponse(500, {
-            message: "Error checking existing feedback",
-            error: error.message
-          })
-        );
-      }
-    }
-
-    const teamDetails = await db.getOne(data.teamID, TEAMS_TABLE, {
-      "eventID;year": eventIDYear
-    });
-    const teamName =
-      teamDetails && teamDetails.teamName
-        ? teamDetails.teamName
-        : "Team not found"; // Default if name is missing
-
-    const newFeedback = {
-      "teamID;round": teamID_round,
-      "id": data.judgeID,
-      "judgeName": judgeReg.fname,
-      "teamName": teamName,
-      "teamID": data.teamID,
-      "scores": data.scores || {},
-      "feedback": data.feedback || {},
-      "createdAt": new Date().toISOString()
-    };
-
-    try {
-      await db.put(newFeedback, FEEDBACK_TABLE, true);
-    } catch (error) {
-      callback(
-        null,
-        helpers.createResponse(500, {
-          message: "Error creating feedback",
-          error: error.message
-        })
-      );
-    }
-
-    const response = helpers.createResponse(200, {
-      message: "Feedback created successfully",
-      newFeedback
     });
 
-    callback(null, response);
-  } catch (err) {
-    console.error("Internal error:", err);
-    callback(
-      null,
-      helpers.createResponse(500, {
-        message: "Internal server error"
-      })
-    );
+    if (
+      !data.scores.metric1 ||
+      !data.scores.metric2 ||
+      !data.scores.metric3 ||
+      !data.scores.metric4 ||
+      !data.scores.metric5
+    ) {
+      return helpers.createResponse(400, {
+        message: "invalid scores object; should have valid metrics in body"
+      });
+    }
+  } catch (error) {
+    return helpers.createResponse(500, {
+      message: error.message || error
+    });
   }
 
-  return null;
+  const eventIDYear = `${data.eventID};${data.year}`;
+
+  if (!data.teamID || !data.judgeID) {
+    return helpers.createResponse(400, {
+      message: "Missing required fields: teamID;round or judgeID"
+    });
+  }
+
+  let judgeReg;
+
+  try {
+    judgeReg = await db.getOne(data.judgeID, USER_REGISTRATIONS_TABLE, {
+      ["eventID;year"]: "productx;2025"
+    });
+  } catch (error) {
+    return helpers.createResponse(409, {
+      message: "judge registration doesn't exist"
+    });
+  }
+
+  if (!judgeReg.isPartner) {
+    return helpers.createResponse(409, {
+      message: "not a judge"
+    });
+  }
+
+  const round = await db.getOne(ROUND, JUDGING_TABLE);
+  const teamID_round = data.teamID + ";" + round.currentTeam;
+
+  let existingFeedback;
+  try {
+    existingFeedback = await db.getOne(data.judgeID, FEEDBACK_TABLE, {
+      "teamID;round": teamID_round
+    });
+    if (existingFeedback) {
+      return helpers.createResponse(409, {
+        message: "Feedback already exists for this judge and team round",
+        existingFeedback
+      });
+    }
+  } catch (error) {
+    console.error(error);
+
+    if (error.statusCode !== 404) {
+      return helpers.createResponse(500, {
+        message: "Error checking existing feedback",
+        error: error.message
+      });
+    }
+  }
+
+  const teamDetails = await db.getOne(data.teamID, TEAMS_TABLE, {
+    "eventID;year": eventIDYear
+  });
+  const teamName =
+    teamDetails && teamDetails.teamName
+      ? teamDetails.teamName
+      : "Team not found";
+
+  const newFeedback = {
+    "teamID;round": teamID_round,
+    "id": data.judgeID,
+    "judgeName": judgeReg.fname,
+    "teamName": teamName,
+    "teamID": data.teamID,
+    "scores": data.scores || {},
+    "feedback": data.feedback || {},
+    "createdAt": new Date().toISOString()
+  };
+
+  try {
+    await db.put(newFeedback, FEEDBACK_TABLE, true);
+  } catch (error) {
+    return helpers.createResponse(500, {
+      message: "Error creating feedback",
+      error: error.message
+    });
+  }
+
+  return helpers.createResponse(200, {
+    message: "Feedback created successfully",
+    newFeedback
+  });
 };
 
-export const getJudgeSubmissions = async (event, ctx, callback) => {
+export const getJudgeSubmissions = async (event, ctx) => {
   try {
     const { judgeID } = event.pathParameters;
 
@@ -894,12 +797,10 @@ export const getJudgeSubmissions = async (event, ctx, callback) => {
       return acc;
     }, {});
 
-    const response = helpers.createResponse(200, {
+    return helpers.createResponse(200, {
       message: "Scores retrieved successfully",
       scores: groupedScores
     });
-
-    callback(null, response);
   } catch (err) {
     console.error("Internal error:", err);
     throw helpers.createResponse(500, {
@@ -908,7 +809,7 @@ export const getJudgeSubmissions = async (event, ctx, callback) => {
   }
 };
 
-export const getJudgeCurrentTeam = async (event, ctx, callback) => {
+export const getJudgeCurrentTeam = async (event, ctx) => {
   try {
     const { judgeID } = event.pathParameters;
 
@@ -930,25 +831,20 @@ export const getJudgeCurrentTeam = async (event, ctx, callback) => {
       "eventID;year": judge["eventID;year"]
     });
 
-    const response = helpers.createResponse(200, {
+    return helpers.createResponse(200, {
       message: "Current team retrieved successfully",
       currentTeamID: judge.currentTeam,
       currentTeamName: teamDetails.teamName || null
     });
-
-    callback(null, response);
   } catch (err) {
     console.error("Internal error:", err);
-    callback(
-      null,
-      helpers.createResponse(500, {
-        message: "Internal server error"
-      })
-    );
+    return helpers.createResponse(500, {
+      message: "Internal server error"
+    });
   }
 };
 
-export const getCurrentRound = async (event, ctx, callback) => {
+export const getCurrentRound = async (event, ctx) => {
   try {
     const round = await db.getOne(ROUND, JUDGING_TABLE);
 
@@ -957,16 +853,13 @@ export const getCurrentRound = async (event, ctx, callback) => {
     });
   } catch (err) {
     console.error("Internal error:", err);
-    callback(
-      null,
-      helpers.createResponse(500, {
-        message: "unable to fetch current round"
-      })
-    );
+    return helpers.createResponse(500, {
+      message: "unable to fetch current round"
+    });
   }
 };
 
-export const setCurrentRound = async (event, ctx, callback) => {
+export const setCurrentRound = async (event, ctx) => {
   try {
     const { round } = event.pathParameters;
 
@@ -989,16 +882,13 @@ export const setCurrentRound = async (event, ctx, callback) => {
     });
   } catch (err) {
     console.error("Internal error:", err);
-    callback(
-      null,
-      helpers.createResponse(500, {
-        message: "unable to set current round"
-      })
-    );
+    return helpers.createResponse(500, {
+      message: "unable to set current round"
+    });
   }
 };
 
-export const getTeamFeedbackScore = async (event, ctx, callback) => {
+export const getTeamFeedbackScore = async (event, ctx) => {
   try {
     const { teamID } = event.pathParameters;
     if (!teamID) {
@@ -1041,12 +931,10 @@ export const getTeamFeedbackScore = async (event, ctx, callback) => {
       return acc;
     }, {});
 
-    const response = helpers.createResponse(200, {
+    return helpers.createResponse(200, {
       message: "Scores retrieved successfully",
       scores: scoresPerRound
     });
-
-    callback(null, response);
   } catch (err) {
     console.error("Internal error:", err);
     throw helpers.createResponse(500, {
@@ -1055,7 +943,7 @@ export const getTeamFeedbackScore = async (event, ctx, callback) => {
   }
 };
 
-export const updateJudgeSubmission = async (event, ctx, callback) => {
+export const updateJudgeSubmission = async (event, ctx) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -1072,8 +960,9 @@ export const updateJudgeSubmission = async (event, ctx, callback) => {
         }
       });
     } catch (error) {
-      callback(null, error);
-      return null;
+      return helpers.createResponse(500, {
+        message: error.message || error
+      });
     }
 
     if (!data.teamID || !data.round || !data.judgeID) {
@@ -1125,23 +1014,19 @@ export const updateJudgeSubmission = async (event, ctx, callback) => {
       });
     }
 
-    const response = helpers.createResponse(200, {
+    return helpers.createResponse(200, {
       message: "Feedback updated successfully",
       updatedFeedback
     });
-
-    callback(null, response);
   } catch (err) {
     console.error("Internal error:", err);
     throw helpers.createResponse(500, {
       message: "Internal server error"
     });
   }
-
-  return null;
 };
 
-export const updateCurrentTeamForJudge = async (event, ctx, callback) => {
+export const updateCurrentTeamForJudge = async (event, ctx) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -1152,8 +1037,9 @@ export const updateCurrentTeamForJudge = async (event, ctx, callback) => {
         }
       });
     } catch (error) {
-      callback(null, error);
-      return null;
+      return helpers.createResponse(500, {
+        message: error.message || error
+      });
     }
 
     const { judgeIDs } = data;
@@ -1191,40 +1077,38 @@ export const updateCurrentTeamForJudge = async (event, ctx, callback) => {
       });
     }
 
-    let response;
-
     try {
-      response = await teamHelpers.updateJudgeTeam(judgeIDs, teamID);
+      const response = await teamHelpers.updateJudgeTeam(judgeIDs, teamID);
+      return helpers.createResponse(200, {
+        message: "Successfully updated judge entries",
+        response
+      });
     } catch (error) {
       throw helpers.createResponse(500, {
         message: "Error updating judge entries",
         error: error.message
       });
     }
-
-    callback(null, response);
   } catch (err) {
     console.error(err);
     throw helpers.createResponse(500, {
       message: "Internal server error"
     });
   }
-
-  return null;
 };
 
-// export const addTransaction = async (event, ctx, callback) => {
+// export const addTransaction = async (event, ctx) => {
 
 // };
 
-// export const getTransactions = async (event, ctx, callback) => {
+// export const getTransactions = async (event, ctx) => {
 
 // };
 
-// export const addInventory = async (event, ctx, callback) => {
+// export const addInventory = async (event, ctx) => {
 
 // };
 
-// export const getTeamInventory = async (event, ctx, callback) => {
+// export const getTeamInventory = async (event, ctx) => {
 
 // };

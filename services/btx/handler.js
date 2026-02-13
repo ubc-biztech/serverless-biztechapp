@@ -274,7 +274,7 @@ export const getPriceHistory = async (event) => {
   }
 };
 
-export const postAdminProject = async (event, ctx, callback) => {
+export const postAdminProject = async (event) => {
   console.log("[BTX admin] postAdminProject START", {
     httpMethod: event.httpMethod,
     path: event.path,
@@ -310,11 +310,9 @@ export const postAdminProject = async (event, ctx, callback) => {
       });
     } catch (error) {
       console.warn("[BTX admin] payload validation error:", error);
-      if (callback) {
-        callback(null, error);
-        return null;
-      }
-      return error;
+      return helpers.createResponse(400, {
+        message: error.message || error
+      });
     }
 
     const { projectId, eventId, ticker, name, description, seedAmount } = body;
@@ -335,21 +333,12 @@ export const postAdminProject = async (event, ctx, callback) => {
 
     console.log("[BTX admin] SUCCESS", response);
 
-    if (callback) {
-      callback(null, response);
-      return null;
-    }
     return response;
   } catch (err) {
     console.error("[BTX admin] postAdminProject error", err);
-    const resp = handlerHelpers.createResponse(500, {
+    return handlerHelpers.createResponse(500, {
       message: "Internal server error (BTX admin project)"
     });
-    if (callback) {
-      callback(null, resp);
-      return null;
-    }
-    return resp;
   }
 };
 

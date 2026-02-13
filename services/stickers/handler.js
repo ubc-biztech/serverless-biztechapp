@@ -41,7 +41,7 @@ import {
  * to voter role
  *
  */
-export const connectHandler = async (event, ctx, callback) => {
+export const connectHandler = async (event, ctx) => {
   const connectionID = event.requestContext.connectionId;
 
   let roomID = "";
@@ -75,7 +75,7 @@ export const connectHandler = async (event, ctx, callback) => {
  *
  * Cleans up socket table upon graceful disconnect
  */
-export const disconnectHandler = async (event, ctx, callback) => {
+export const disconnectHandler = async (event, ctx) => {
   const connectionID = event.requestContext.connectionId;
   await deleteConnection(connectionID);
   return {
@@ -95,7 +95,7 @@ export const disconnectHandler = async (event, ctx, callback) => {
  *
  *    to sync connection to admin role and state, set id = ADMIN_ROLE
  */
-export const syncHandler = async (event, ctx, callback) => {
+export const syncHandler = async (event, ctx) => {
   const body = JSON.parse(event.body);
   if (!body.hasOwnProperty("id") || !body.hasOwnProperty("roomID")) {
     const errMessage = checkPayloadProps(body, {
@@ -169,7 +169,7 @@ export const syncHandler = async (event, ctx, callback) => {
  *    if changeTeam is used as the action, then a team property must
  *    be provided as part of the message body
  */
-export const adminHandler = async (event, ctx, callback) => {
+export const adminHandler = async (event, ctx) => {
   const body = JSON.parse(event.body);
   if (!body.hasOwnProperty("event") || !body.hasOwnProperty("roomID")) {
     const errMessage = checkPayloadProps(body, {
@@ -290,7 +290,7 @@ export const adminHandler = async (event, ctx, callback) => {
  *
  *
  */
-export const stickerHandler = async (event, ctx, callback) => {
+export const stickerHandler = async (event, ctx) => {
   const body = JSON.parse(event.body);
   if (
     !body.hasOwnProperty("id") ||
@@ -500,7 +500,7 @@ export const stickerHandler = async (event, ctx, callback) => {
  *
  *
  */
-export const scoreHandler = async (event, ctx, callback) => {
+export const scoreHandler = async (event, ctx) => {
   const body = JSON.parse(event.body);
   if (
     !body.hasOwnProperty("id") ||
@@ -575,7 +575,7 @@ export const scoreHandler = async (event, ctx, callback) => {
  *
  * Returns status 400 error for unrecognized action
  */
-export const defaultHandler = async (event, ctx, callback) => {
+export const defaultHandler = async (event, ctx) => {
   try {
     await sendMessage(event, {
       status: 400,
@@ -584,8 +584,7 @@ export const defaultHandler = async (event, ctx, callback) => {
     });
   } catch (error) {
     console.error(error);
-    callback(null, error);
-    return null;
+    return createResponse(500, { message: error.message || error });
   }
   return {
     statusCode: 200
@@ -596,17 +595,15 @@ export const defaultHandler = async (event, ctx, callback) => {
  * Endpoint to return all scores
  *
  */
-export const getScores = async (event, ctx, callback) => {
+export const getScores = async (event, ctx) => {
   let res;
   try {
     res = await db.scan(SCORE_TABLE);
   } catch (error) {
     console.error(error);
-    res = createResponse(500, {
+    return createResponse(500, {
       message: "failed to fetch scores"
     });
-    callback(null, res);
-    return res;
   }
 
   let scoresMap = new Map();
@@ -627,12 +624,11 @@ export const getScores = async (event, ctx, callback) => {
     message: "All scores",
     data: result
   });
-  callback(null, res);
   return res;
 };
 
 /** Endpoint to return all scores in room */
-export const getScoresRoom = async (event, ctx, callback) => {
+export const getScoresRoom = async (event, ctx) => {
   if (!event.pathParameters || !event.pathParameters.roomID)
     throw missingPathParamResponse("roomID");
 
@@ -647,11 +643,9 @@ export const getScoresRoom = async (event, ctx, callback) => {
     });
   } catch (error) {
     console.error(error);
-    res = createResponse(500, {
+    return createResponse(500, {
       message: "failed to fetch scores"
     });
-    callback(null, res);
-    return res;
   }
 
   let scoresMap = new Map();
@@ -672,7 +666,6 @@ export const getScoresRoom = async (event, ctx, callback) => {
     message: `Scores for ${roomID}`,
     data: result
   });
-  callback(null, res);
   return res;
 };
 
@@ -680,7 +673,7 @@ export const getScoresRoom = async (event, ctx, callback) => {
  * Endpoint to return all scores
  *
  */
-export const getScoresTeam = async (event, ctx, callback) => {
+export const getScoresTeam = async (event, ctx) => {
   if (!event.pathParameters || !event.pathParameters.teamName)
     throw missingPathParamResponse("teamName");
 
@@ -702,35 +695,30 @@ export const getScoresTeam = async (event, ctx, callback) => {
   } catch (error) {
     let errResponse = db.dynamoErrorResponse(error);
     console.error(errResponse);
-    res = createResponse(502, {
+    return createResponse(502, {
       message: "Failed to fetch scores"
     });
-    callback(null, res);
-    return res;
   }
 
   res = createResponse(200, {
     message: `Scores for ${teamName}`,
     data: res
   });
-  callback(null, res);
   return res;
 };
 
 /**
  * Endpoint to return all stickers
  */
-export const getStickers = async (event, ctx, callback) => {
+export const getStickers = async (event, ctx) => {
   let res;
   try {
     res = await db.scan(STICKERS_TABLE + (process.env.ENVIRONMENT || ""));
   } catch (error) {
     console.error(error);
-    res = createResponse(500, {
+    return createResponse(500, {
       message: "failed to fetch scores"
     });
-    callback(null, res);
-    return res;
   }
 
   let stickersMap = new Map();
@@ -751,11 +739,10 @@ export const getStickers = async (event, ctx, callback) => {
     message: "All Stickers",
     data: result
   });
-  callback(null, res);
   return res;
 };
 
-export const getStickersRoom = async (event, ctx, callback) => {
+export const getStickersRoom = async (event, ctx) => {
   if (!event.pathParameters || !event.pathParameters.roomID)
     throw missingPathParamResponse("roomID");
 
@@ -770,11 +757,9 @@ export const getStickersRoom = async (event, ctx, callback) => {
     });
   } catch (error) {
     console.error(error);
-    res = createResponse(500, {
+    return createResponse(500, {
       message: "failed to fetch scores"
     });
-    callback(null, res);
-    return res;
   }
 
   let stickersMap = new Map();
@@ -795,14 +780,13 @@ export const getStickersRoom = async (event, ctx, callback) => {
     message: `Stickers for ${roomID}`,
     data: result
   });
-  callback(null, res);
   return res;
 };
 
 /**
  * Endpoint to return all stickers
  */
-export const getStickersTeam = async (event, ctx, callback) => {
+export const getStickersTeam = async (event, ctx) => {
   if (!event.pathParameters || !event.pathParameters.teamName)
     throw missingPathParamResponse("teamName");
 
@@ -826,17 +810,14 @@ export const getStickersTeam = async (event, ctx, callback) => {
   } catch (error) {
     let errResponse = db.dynamoErrorResponse(error);
     console.error(errResponse);
-    res = createResponse(502, {
+    return createResponse(502, {
       message: "Failed to fetch stickers"
     });
-    callback(null, res);
-    return res;
   }
 
   let res = createResponse(200, {
     message: `Stickers for ${teamName}`,
     data: stickers
   });
-  callback(null, res);
   return res;
 };

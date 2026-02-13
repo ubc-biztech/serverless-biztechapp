@@ -35,7 +35,7 @@ const S3 = new S3Client({
 });
 const PROFILE_BUCKET = "biztech-profile-pictures";
 
-export const create = async (event, ctx, callback) => {
+export const create = async (event, ctx) => {
   try {
     const email = event.requestContext.authorizer.claims.email.toLowerCase();
     const response = await createProfile(
@@ -44,17 +44,15 @@ export const create = async (event, ctx, callback) => {
         ? PROFILE_TYPES.EXEC
         : PROFILE_TYPES.ATTENDEE
     );
-    callback(null, response);
     return response;
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
 // deprecated, will be done in another pr
-export const createPartialPartnerProfile = async (event, ctx, callback) => {
+export const createPartialPartnerProfile = async (event, ctx) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -162,22 +160,18 @@ export const createPartialPartnerProfile = async (event, ctx, callback) => {
       db.create(nfc, QRS_TABLE)
     ]);
 
-    const response = helpers.createResponse(201, {
+    return helpers.createResponse(201, {
       message: `Created partial partner profile and NFC for ${email} for event ${eventIDAndYear}`,
       profile,
       nfc
     });
-
-    callback(null, response);
-    return response;
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
-export const updatePublicProfile = async (event, ctx, callback) => {
+export const updatePublicProfile = async (event, ctx) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
     const body = JSON.parse(event.body);
@@ -259,20 +253,17 @@ export const updatePublicProfile = async (event, ctx, callback) => {
     );
 
     const data = await db.updateDBCustom(updateProfileParam);
-    const response = helpers.createResponse(200, {
+    return helpers.createResponse(200, {
       message: `successfully updated profile: ${userID}`,
       data
     });
-    callback(null, response);
-    return response;
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
-export const getPublicProfile = async (event, ctx, callback) => {
+export const getPublicProfile = async (event, ctx) => {
   try {
     if (!event.pathParameters || !event.pathParameters.profileID) {
       throw helpers.missingPathParamResponse("profileID");
@@ -298,17 +289,14 @@ export const getPublicProfile = async (event, ctx, callback) => {
     // Filter to only include public fields
     const publicProfile = filterPublicProfileFields(result);
 
-    const response = helpers.createResponse(200, publicProfile);
-    callback(null, response);
-    return response;
+    return helpers.createResponse(200, publicProfile);
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
-export const getUserProfile = async (event, ctx, callback) => {
+export const getUserProfile = async (event, ctx) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
 
@@ -334,18 +322,15 @@ export const getUserProfile = async (event, ctx, callback) => {
       throw helpers.notFoundResponse("Profile", profileID);
     }
 
-    const response = helpers.createResponse(200, result);
-    callback(null, response);
-    return response;
+    return helpers.createResponse(200, result);
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
 // deprecated, will be done in another pr
-export const createCompanyProfile = async (event, ctx, callback) => {
+export const createCompanyProfile = async (event, ctx) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -443,32 +428,26 @@ export const createCompanyProfile = async (event, ctx, callback) => {
       db.create(qr, QRS_TABLE)
     ]);
 
-    const response = helpers.createResponse(201, {
+    return helpers.createResponse(201, {
       message: `Created company profile and QR for ${name}`,
       profile: companyProfile,
       qr
     });
-
-    callback(null, response);
-    return response;
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
-export const createProfilePicUploadUrl = async (event, ctx, callback) => {
+export const createProfilePicUploadUrl = async (event, ctx) => {
   try {
     const claims = event.requestContext?.authorizer?.claims || {
     };
     const userEmail = claims.email?.toLowerCase();
     if (!userEmail) {
-      const res = helpers.createResponse(401, {
+      return helpers.createResponse(401, {
         message: "Unauthorized"
       });
-      callback?.(null, res);
-      return res;
     }
 
     let profileId = event.queryStringParameters?.profileId;
@@ -477,30 +456,24 @@ export const createProfilePicUploadUrl = async (event, ctx, callback) => {
       profileId = member?.profileID;
     }
     if (!profileId) {
-      const res = helpers.createResponse(400, {
+      return helpers.createResponse(400, {
         message: "Missing profileId"
       });
-      callback?.(null, res);
-      return res;
     }
 
     const {
       fileType, fileName, prefix
     } = JSON.parse(event.body || "{}");
     if (!fileType || !fileName) {
-      const res = helpers.createResponse(400, {
+      return helpers.createResponse(400, {
         message: "Missing fileType or fileName"
       });
-      callback?.(null, res);
-      return res;
     }
 
     if (!fileType.startsWith("image/")) {
-      const res = helpers.createResponse(400, {
+      return helpers.createResponse(400, {
         message: "Only image uploads are allowed"
       });
-      callback?.(null, res);
-      return res;
     }
 
     const safeExt = (fileName.split(".").pop() || "jpg")
@@ -526,24 +499,20 @@ export const createProfilePicUploadUrl = async (event, ctx, callback) => {
     });
     const publicUrl = `https://${PROFILE_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
 
-    const res = helpers.createResponse(200, {
+    return helpers.createResponse(200, {
       uploadUrl,
       key,
       publicUrl
     });
-    callback?.(null, res);
-    return res;
   } catch (err) {
     console.error("getProfilePicUploadUrl error", err);
-    const res = helpers.createResponse(500, {
+    return helpers.createResponse(500, {
       message: "Failed to get upload URL"
     });
-    callback(null, res);
-    return res;
   }
 };
 
-export const linkPartnerToCompany = async (event, ctx, callback) => {
+export const linkPartnerToCompany = async (event, ctx) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -651,22 +620,18 @@ export const linkPartnerToCompany = async (event, ctx, callback) => {
       db.updateDBCustom(companyUpdateParams)
     ]);
 
-    const response = helpers.createResponse(200, {
+    return helpers.createResponse(200, {
       message: `Linked partner ${partnerProfileID} to company ${companyProfileID}`,
       companyProfile,
       partnerProfile
     });
-
-    callback(null, response);
-    return response;
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
-export const syncPartnerData = async (event, ctx, callback) => {
+export const syncPartnerData = async (event, ctx) => {
   try {
     // Get all partner profiles
     const partnerProfiles = await db.scan(PROFILES_TABLE, {
@@ -680,11 +645,9 @@ export const syncPartnerData = async (event, ctx, callback) => {
     });
 
     if (!partnerProfiles || partnerProfiles.length === 0) {
-      const response = helpers.createResponse(200, {
+      return helpers.createResponse(200, {
         message: "No partner profiles found to sync"
       });
-      callback(null, response);
-      return response;
     }
 
     const results = await Promise.all(
@@ -786,16 +749,12 @@ export const syncPartnerData = async (event, ctx, callback) => {
       })
     );
 
-    const response = helpers.createResponse(200, {
+    return helpers.createResponse(200, {
       message: `Synced ${results.length} partner profiles`,
       results
     });
-
-    callback(null, response);
-    return response;
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };

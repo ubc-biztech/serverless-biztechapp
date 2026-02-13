@@ -18,16 +18,15 @@ import {
 */
 
 // Endpoint: POST /qr
-export const post = async (event, ctx, callback) => {
+export const post = async (event, ctx) => {
   /* Processes a QR code scan and tries to update the user's points in the Registrations database
 
   Args:
     event (object): object containing the request body, params, headers, etc. (refer to checkPayloadProps)
     ctx (object): object containing the context of the request
-    callback (function): callback function to return the response
 
   Returns:
-      response (object): object containing the response body, params, headers (status code), etc.
+       response (object): object containing the response body, params, headers (status code), etc.
    */
 
   try {
@@ -73,7 +72,6 @@ export const post = async (event, ctx, callback) => {
               response: res
             });
 
-            callback(null, response_fail);
             return response_fail;
           }
           const response_fail = helpers.createResponse(403, {
@@ -81,7 +79,6 @@ export const post = async (event, ctx, callback) => {
             response: res
           });
 
-          callback(null, response_fail);
           return response_fail;
         } else {
           try {
@@ -93,37 +90,32 @@ export const post = async (event, ctx, callback) => {
             message: "Successfully scanned QR code.",
             response: res
           });
-          callback(null, response_success);
           return response_success;
         }
       })
       .catch((err) => {
         console.error(err);
-        callback(null, err);
-        return null;
+        return helpers.createResponse(500, { message: err.message || err });
       });
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
-export const get = async (event, ctx, callback) => {
+export const get = async (event, ctx) => {
   try {
     const qrs = await db.scan(QRS_TABLE, {
     });
     const response = helpers.createResponse(200, qrs);
-    callback(null, response);
     return response;
   } catch (err) {
     console.log(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
-export const getOne = async (event, ctx, callback) => {
+export const getOne = async (event, ctx) => {
   try {
     if (
       !event.pathParameters ||
@@ -140,16 +132,14 @@ export const getOne = async (event, ctx, callback) => {
       "eventID;year": eventIDAndYear
     });
     const response = helpers.createResponse(200, qr);
-    callback(null, response);
     return response;
   } catch (err) {
     console.log(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
-export const create = async (event, ctx, callback) => {
+export const create = async (event, ctx) => {
   try {
     const timestamp = new Date().getTime();
     const data = JSON.parse(event.body);
@@ -212,16 +202,14 @@ export const create = async (event, ctx, callback) => {
       item
     });
 
-    callback(null, response);
-    return null;
+    return response;
   } catch (err) {
     console.log(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
-export const update = async (event, ctx, callback) => {
+export const update = async (event, ctx) => {
   try {
     if (
       !event.pathParameters ||
@@ -272,16 +260,14 @@ export const update = async (event, ctx, callback) => {
       response: res
     });
 
-    callback(null, response);
-    return null;
+    return response;
   } catch (err) {
     console.log(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
-export const del = async (event, ctx, callback) => {
+export const del = async (event, ctx) => {
   try {
     if (
       !event.pathParameters ||
@@ -310,11 +296,9 @@ export const del = async (event, ctx, callback) => {
       response: res
     });
 
-    callback(null, response);
-    return null;
+    return response;
   } catch (err) {
     console.log(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
