@@ -229,7 +229,7 @@ export const getTeamFromUserID = async (event, ctx) => {
 
   try {
     const res = await teamHelpers._getTeamFromUserRegistration(data.user_id, data.eventID, data.year);
-    
+
     if (res) {
       return helpers.createResponse(200, {
         message: "Successfully retrieved team.",
