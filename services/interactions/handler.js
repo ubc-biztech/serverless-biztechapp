@@ -205,7 +205,7 @@ export const getAllConnections = async (event, ctx) => {
   }
 };
 
-export const getWallSnapshot = async (event) => {
+export const getWallSnapshot = async (event, ctx, callback) => {
   try {
     const qs = event.queryStringParameters || {
     };
@@ -268,7 +268,7 @@ export const getWallSnapshot = async (event) => {
 };
 
 // WebSocket connect
-export const wsConnect = async (event) => {
+export const wsConnect = async (event, ctx, callback) => {
   try {
     console.log("[WS] $connect", event.requestContext?.connectionId);
     const connectionId = event.requestContext.connectionId;
@@ -292,7 +292,7 @@ export const wsConnect = async (event) => {
 };
 
 // WebSocket disconnect
-export const wsDisconnect = async (event) => {
+export const wsDisconnect = async (event, ctx, callback) => {
   try {
     const connectionId = event.requestContext.connectionId;
     await removeSocketConnection({
@@ -311,7 +311,7 @@ export const wsDisconnect = async (event) => {
   }
 };
 
-export const wsSubscribe = async (event) => {
+export const wsSubscribe = async (event, ctx, callback) => {
   try {
     const connectionId = event.requestContext.connectionId;
     const body = JSON.parse(event.body || "{}");
