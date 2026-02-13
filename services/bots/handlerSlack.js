@@ -18,11 +18,10 @@ export const shortcutHandler = async (event, ctx, callback) => {
   let body;
 
   if (event.headers["X-Slack-Retry-Num"]) {
-    callback(null, {
+    return {
       statusCode: 200,
       body: ""
-    });
-    return;
+    };
   }
 
   if (event.headers["Content-Type"] === "application/x-www-form-urlencoded") {
@@ -38,7 +37,8 @@ export const shortcutHandler = async (event, ctx, callback) => {
   }
 
   if (body.command === "/summarize") {
-    callback(null, {
+    summarizeRecentMessages(body);
+    return {
       statusCode: 200,
       headers: {
         "Content-Type": "application/json"
@@ -47,10 +47,7 @@ export const shortcutHandler = async (event, ctx, callback) => {
         response_type: "ephemeral",
         text: "Generating summary..."
       })
-    });
-
-    summarizeRecentMessages(body);
-    return;
+    };
   }
 
   if (
@@ -58,8 +55,6 @@ export const shortcutHandler = async (event, ctx, callback) => {
     body.event &&
     body.event.type === "app_mention"
   ) {
-    callback(null, ack);
-
     const event = body.event;
     const BOT_USER_ID = process.env.BOT_USER_ID;
 
@@ -100,60 +95,55 @@ export const shortcutHandler = async (event, ctx, callback) => {
 
   if (!body || !body.type) {
     console.error("Invalid request body", body);
-    callback(null, {
+    return {
       statusCode: 400,
       body: JSON.stringify({
         error: "Invalid request body"
       })
-    });
-    return;
+    };
   }
 
   // url verification
   if (body.type === "url_verification") {
-    callback(null, {
+    return {
       statusCode: 200,
       body: JSON.stringify({
         challenge: body.challenge
       })
-    });
-    return;
+    };
   }
 
   // ping shortcut
   if (body.type === "message_action" && body.callback_id === "ping") {
-    callback(null, ack);
     openPingShortcut(body);
-    return;
+    return ack;
   }
 
   if (
     body.type === "message_action" &&
     body.callback_id === "summarize_thread"
   ) {
-    callback(null, ack);
     await summarizeRecentMessages({
       channel_id: body.channel.id,
       thread_ts: body.message.thread_ts || body.message_ts, // handle both
       response_url: body.response_url
     });
-    return;
+    return ack;
   }
 
   if (
     body.type === "view_submission" &&
     body.view.callback_id === "ping_modal_submit"
   ) {
-    callback(null, ack);
     submitPingShortcut(body);
-    return;
+    return ack;
   }
 
-  callback(null, ack);
+  return ack;
 };
 
 export const slackGithubReminder = async (event, ctx, callback) => {
   const projectBoard = await getProjectBoard();
   sendIssueReminders(projectBoard);
-  callback(null, ack);
+  return ack;
 };

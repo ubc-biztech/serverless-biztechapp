@@ -365,30 +365,21 @@ export const post = async (event, ctx, callback) => {
     if (existingReg) {
       if (existingReg.registrationStatus === "incomplete") {
         await updateHelper(data, false, data.email, data.fname);
-        const response = helpers.createResponse(200, {
+        return helpers.createResponse(200, {
           message: "Redirect to link",
           url: existingReg.checkoutLink
         });
-
-        callback(null, response);
-        return response;
       } else {
-        const response = helpers.createResponse(400, {
+        return helpers.createResponse(400, {
           message: "You are already registered for this event!"
         });
-
-        callback(null, response);
-        return response;
       }
     } else {
-      const response = await updateHelper(data, true, data.email, data.fname);
-      callback(null, response);
-      return null;
+      return await updateHelper(data, true, data.email, data.fname);
     }
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
@@ -480,12 +471,10 @@ export const put = async (event, ctx, callback) => {
       event.pathParameters.fname
     );
 
-    callback(null, response);
-    return null;
+    return response;
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
@@ -532,20 +521,14 @@ export async function massUpdate(event, ctx, callback) {
       })
     );
 
-    callback(
-      null,
-      helpers.createResponse(200, {
-        results
-      })
-    );
+    return helpers.createResponse(200, {
+      results
+    });
   } catch (error) {
     console.error("Mass update failed", error);
-    callback(
-      null,
-      helpers.createResponse(500, {
-        error: "Internal server error"
-      })
-    );
+    return helpers.createResponse(500, {
+      error: "Internal server error"
+    });
   }
 }
 
@@ -612,17 +595,13 @@ export const get = async (event, ctx, callback) => {
       );
     }
 
-    const response = helpers.createResponse(200, {
+    return helpers.createResponse(200, {
       size: registrations.length,
       data: registrations
     });
-
-    callback(null, response);
-    return null;
   } catch (err) {
     console.error("Error in get handler:", err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
@@ -654,16 +633,12 @@ export const del = async (event, ctx, callback) => {
       ["eventID;year"]: eventIDAndYear
     });
 
-    const response = helpers.createResponse(200, {
+    return helpers.createResponse(200, {
       message: "Registration entry Deleted!",
       response: res
     });
-
-    callback(null, response);
-    return null;
   } catch (err) {
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
@@ -709,16 +684,12 @@ export const delMany = async (event, ctx, callback) => {
 
     const res = await db.batchDelete(itemsToDelete, USER_REGISTRATIONS_TABLE);
 
-    const response = helpers.createResponse(200, {
+    return helpers.createResponse(200, {
       message: "Registration entry Deleted!",
       response: res
     });
-
-    callback(null, response);
-    return null;
   } catch (err) {
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 

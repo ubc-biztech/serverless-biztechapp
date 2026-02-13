@@ -28,7 +28,6 @@ export const create = async (event, ctx, callback) => {
   try {
     const timestamp = new Date().getTime();
     const data = JSON.parse(event.body);
-
     helpers.checkPayloadProps(data, {
       id: {
         required: true
@@ -98,12 +97,10 @@ export const create = async (event, ctx, callback) => {
       item
     });
 
-    callback(null, response);
-    return null;
+    return response;
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
@@ -137,12 +134,10 @@ export const del = async (event, ctx, callback) => {
       response: res
     });
 
-    callback(null, response);
-    return null;
+    return response;
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
@@ -170,12 +165,10 @@ export const getAll = async (event, ctx, callback) => {
     events.sort(alphabeticalComparer("startDate"));
 
     const response = helpers.createResponse(200, events);
-    callback(null, response);
-    return null;
+    return response;
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
@@ -253,12 +246,10 @@ export const update = async (event, ctx, callback) => {
       response: res
     });
 
-    callback(null, response);
-    return null;
+    return response;
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
@@ -287,7 +278,6 @@ export const createThumbnailPicUploadUrl = async (event, ctx, callback) => {
       const res = helpers.createResponse(400, {
         message: "Missing fileType or fileName"
       });
-      callback?.(null, res);
       return res;
     }
 
@@ -295,7 +285,6 @@ export const createThumbnailPicUploadUrl = async (event, ctx, callback) => {
       const res = helpers.createResponse(400, {
         message: "Only image uploads are allowed"
       });
-      callback?.(null, res);
       return res;
     }
 
@@ -328,14 +317,12 @@ export const createThumbnailPicUploadUrl = async (event, ctx, callback) => {
       key,
       publicUrl
     });
-    callback?.(null, res);
     return res;
   } catch (err) {
     console.error("createThumbnail error", err);
     const res = helpers.createResponse(500, {
       message: "Failed to get upload URL"
     });
-    callback(null, res);
     return res;
   }
 };
@@ -373,8 +360,7 @@ export const get = async (event, ctx, callback) => {
       const counts = await eventHelpers.getEventCounts(id,year);
 
       const response = helpers.createResponse(200, counts);
-      callback(null, response);
-      return null;
+      return response;
     } else if (queryString && queryString.users === "true") {
       let registrationList = [];
 
@@ -389,16 +375,6 @@ export const get = async (event, ctx, callback) => {
           }
         };
 
-        /**
-       * Get user registrations
-       * Example of a registration object:
-        {
-          eventID: 'blueprint',
-          email: test@gmail.com,
-          updatedAt: 1580007893340,
-          registrationStatus: 'registered'
-        }
-       */
         registrationList = await db.scan(USER_REGISTRATIONS_TABLE, filters);
       } catch (err) {
         throw helpers.createResponse(500, {
@@ -430,7 +406,6 @@ export const get = async (event, ctx, callback) => {
         )
       );
 
-      // extract what's inside
       const flattenResults = result.flatMap(
         (batchResult) =>
           batchResult.Responses[
@@ -443,7 +418,6 @@ export const get = async (event, ctx, callback) => {
       const resultsWithRegistrationStatus = flattenResults.map((item) => {
         const registrationObj = registrationList.filter(
           (registrationObject) => {
-            // find the same user in 'registrationList' and attach the registrationStatus
             return registrationObject.id === item.id;
           }
         );
@@ -459,8 +433,7 @@ export const get = async (event, ctx, callback) => {
         200,
         resultsWithRegistrationStatus
       );
-      callback(null, response);
-      return null;
+      return response;
     } else {
       // if none of the optional params are true, then return the event
       const event = await db.getOne(id, EVENTS_TABLE, {
@@ -470,19 +443,16 @@ export const get = async (event, ctx, callback) => {
       if (isEmpty(event)) throw helpers.notFoundResponse("event", id, year);
 
       const response = helpers.createResponse(200, event);
-      callback(null, response);
-      return null;
+      return response;
     }
   } catch (err) {
     console.error(err);
 
-    // need a way to come up with a proper response in case any logic throws errors
     let response = err;
     if (!response || !response.statusCode || !response.headers)
-      response = helpers.createResponse(502);
+      response = helpers.createResponse(502, { message: err.message || err });
 
-    callback(null, err);
-    return null;
+    return response;
   }
 };
 
@@ -508,11 +478,9 @@ export const getActiveEvent = async (event, ctx, callback) => {
       200,
       activeEvent
     );
-    callback(null, response);
-    return null;
+    return response;
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };

@@ -48,12 +48,9 @@ export const getAll = async (event, ctx, callback) => {
 
     const response = helpers.createResponse(200, items);
 
-    // return the response object
-    callback(null, response);
-    return null;
+    return response;
   } catch(err) {
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
@@ -116,11 +113,8 @@ export const create = async (event, ctx, callback) => {
       item
     });
 
-    // return the response object
-    callback(null, response);
-    return null;
+    return response;
   } catch(err) {
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };

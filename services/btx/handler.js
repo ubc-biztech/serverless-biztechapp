@@ -26,7 +26,7 @@ const helpers = helpersLib;
 
 // HTTP handlers
 
-export const getProjects = async (event) => {
+export const getProjects = async (event, ctx, callback) => {
   try {
     const qs = event.queryStringParameters || {};
     const eventId = qs.eventId || DEFAULT_EVENT_ID;
@@ -45,7 +45,7 @@ export const getProjects = async (event) => {
   }
 };
 
-export const getMarketSnapshot = async (event) => {
+export const getMarketSnapshot = async (event, ctx, callback) => {
   try {
     const qs = event.queryStringParameters || {};
     const eventId = qs.eventId || DEFAULT_EVENT_ID;
@@ -84,7 +84,7 @@ export const getMarketSnapshot = async (event) => {
   }
 };
 
-export const postBuy = async (event) => {
+export const postBuy = async (event, ctx, callback) => {
   try {
     const isOffline = process.env.IS_OFFLINE === "true";
 
@@ -134,7 +134,7 @@ export const postBuy = async (event) => {
   }
 };
 
-export const postSell = async (event) => {
+export const postSell = async (event, ctx, callback) => {
   try {
     const isOffline = process.env.IS_OFFLINE === "true";
 
@@ -184,7 +184,7 @@ export const postSell = async (event) => {
   }
 };
 
-export const getPortfolio = async (event) => {
+export const getPortfolio = async (event, ctx, callback) => {
   try {
     const isOffline = process.env.IS_OFFLINE === "true";
 
@@ -219,7 +219,7 @@ export const getPortfolio = async (event) => {
   }
 };
 
-export const getRecentTradesHandler = async (event) => {
+export const getRecentTradesHandler = async (event, ctx, callback) => {
   try {
     const qs = event.queryStringParameters || {};
     if (!qs.projectId) {
@@ -244,7 +244,7 @@ export const getRecentTradesHandler = async (event) => {
   }
 };
 
-export const getPriceHistory = async (event) => {
+export const getPriceHistory = async (event, ctx, callback) => {
   try {
     const qs = event.queryStringParameters || {};
     const projectId = qs.projectId;
@@ -310,11 +310,9 @@ export const postAdminProject = async (event, ctx, callback) => {
       });
     } catch (error) {
       console.warn("[BTX admin] payload validation error:", error);
-      if (callback) {
-        callback(null, error);
-        return null;
-      }
-      return error;
+      return helpers.createResponse(400, {
+        message: error.message || error
+      });
     }
 
     const { projectId, eventId, ticker, name, description, seedAmount } = body;
@@ -335,25 +333,16 @@ export const postAdminProject = async (event, ctx, callback) => {
 
     console.log("[BTX admin] SUCCESS", response);
 
-    if (callback) {
-      callback(null, response);
-      return null;
-    }
     return response;
   } catch (err) {
     console.error("[BTX admin] postAdminProject error", err);
-    const resp = handlerHelpers.createResponse(500, {
+    return handlerHelpers.createResponse(500, {
       message: "Internal server error (BTX admin project)"
     });
-    if (callback) {
-      callback(null, resp);
-      return null;
-    }
-    return resp;
   }
 };
 
-export const postAdminSeedUpdate = async (event) => {
+export const postAdminSeedUpdate = async (event, ctx, callback) => {
   try {
     const body = JSON.parse(event.body || "{}");
 
@@ -385,7 +374,7 @@ export const postAdminSeedUpdate = async (event) => {
   }
 };
 
-export const postAdminPhaseBump = async (event) => {
+export const postAdminPhaseBump = async (event, ctx, callback) => {
   try {
     const body = JSON.parse(event.body || "{}");
 
@@ -419,7 +408,7 @@ export const postAdminPhaseBump = async (event) => {
   }
 };
 
-export const getLeaderboard = async (event) => {
+export const getLeaderboard = async (event, ctx, callback) => {
   try {
     const qs = event.queryStringParameters || {};
     const eventId = qs.eventId || DEFAULT_EVENT_ID;
@@ -445,7 +434,7 @@ export const getLeaderboard = async (event) => {
 
 // WebSocket handlers
 
-export const wsConnect = async (event) => {
+export const wsConnect = async (event, ctx, callback) => {
   try {
     const connectionId = event.requestContext.connectionId;
     await saveSocketConnection({
@@ -466,7 +455,7 @@ export const wsConnect = async (event) => {
   }
 };
 
-export const wsDisconnect = async (event) => {
+export const wsDisconnect = async (event, ctx, callback) => {
   try {
     const connectionId = event.requestContext.connectionId;
     await removeSocketConnection({ connectionId });
@@ -483,7 +472,7 @@ export const wsDisconnect = async (event) => {
   }
 };
 
-export const wsSubscribe = async (event) => {
+export const wsSubscribe = async (event, ctx, callback) => {
   try {
     const connectionId = event.requestContext.connectionId;
     const body = JSON.parse(event.body || "{}");
@@ -509,7 +498,7 @@ export const wsSubscribe = async (event) => {
   }
 };
 
-export const postInvestmentImpact = async (event) => {
+export const postInvestmentImpact = async (event, ctx, callback) => {
   try {
     const body = JSON.parse(event.body || "{}");
 

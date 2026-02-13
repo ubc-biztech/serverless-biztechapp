@@ -101,7 +101,7 @@ export const webhook = async (event, ctx, callback) => {
           "Internal Server Error occurred"
         );
       }
-      callback(null, response);
+      return response;
     }
 
     try {
@@ -126,13 +126,13 @@ export const webhook = async (event, ctx, callback) => {
           "Internal Server Error occurred"
         );
       }
-      callback(null, response);
+      return response;
     }
 
     const response = helpers.createResponse(201, {
       message: "Created user and member!"
     });
-    callback(null, response);
+    return response;
   };
   const userMemberSignup = async (data) => {
     const cognito = new CognitoIdentityProvider({
@@ -231,7 +231,7 @@ export const webhook = async (event, ctx, callback) => {
         `User could not be updated: ${error}`
       );
 
-      callback(null, response);
+      return response;
     });
 
     await db.put(memberParams, MEMBERS2026_TABLE, true).catch((error) => {
@@ -247,7 +247,7 @@ export const webhook = async (event, ctx, callback) => {
           "Internal Server Error occurred"
         );
       }
-      callback(null, response);
+      return response;
     });
     await createProfile(
       email,
@@ -264,13 +264,13 @@ export const webhook = async (event, ctx, callback) => {
         `Profile for ${email} was not created, but member created and updated user!`
       );
 
-      callback(null, response);
+      return response;
     });
 
     const response = helpers.createResponse(201, {
       message: "Created member and updated user!"
     });
-    callback(null, response);
+    return response;
   };
 
   const eventRegistration = async (data) => {
@@ -313,10 +313,10 @@ export const webhook = async (event, ctx, callback) => {
       const response = helpers.createResponse(200, {
         message: "Registered user after successful payment"
       });
-      callback(null, response);
+      return response;
     } catch (err) {
       console.log(err);
-      callback(err, null);
+      return helpers.createResponse(500, { message: err.message || err });
     }
   };
 
@@ -460,12 +460,10 @@ export const payment = async (event, ctx, callback) => {
     }
 
     let response = helpers.createResponse(200, session.url);
-    callback(null, response);
-    return null;
+    return response;
   } catch (err) {
     console.log(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
@@ -493,11 +491,9 @@ export const cancel = async (event, ctx, callback) => {
         response: {}
       });
 
-      callback(null, response);
-      return null;
+      return response;
     } catch (err) {
-      callback(null, err);
-      return null;
+      return helpers.createResponse(500, { message: err.message || err });
     }
   } else {
     return helpers.createResponse(400, {

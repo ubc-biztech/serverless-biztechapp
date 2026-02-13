@@ -584,8 +584,7 @@ export const defaultHandler = async (event, ctx, callback) => {
     });
   } catch (error) {
     console.error(error);
-    callback(null, error);
-    return null;
+    return createResponse(500, { message: error.message || error });
   }
   return {
     statusCode: 200
@@ -602,11 +601,9 @@ export const getScores = async (event, ctx, callback) => {
     res = await db.scan(SCORE_TABLE);
   } catch (error) {
     console.error(error);
-    res = createResponse(500, {
+    return createResponse(500, {
       message: "failed to fetch scores"
     });
-    callback(null, res);
-    return res;
   }
 
   let scoresMap = new Map();
@@ -627,7 +624,6 @@ export const getScores = async (event, ctx, callback) => {
     message: "All scores",
     data: result
   });
-  callback(null, res);
   return res;
 };
 
@@ -647,11 +643,9 @@ export const getScoresRoom = async (event, ctx, callback) => {
     });
   } catch (error) {
     console.error(error);
-    res = createResponse(500, {
+    return createResponse(500, {
       message: "failed to fetch scores"
     });
-    callback(null, res);
-    return res;
   }
 
   let scoresMap = new Map();
@@ -672,7 +666,6 @@ export const getScoresRoom = async (event, ctx, callback) => {
     message: `Scores for ${roomID}`,
     data: result
   });
-  callback(null, res);
   return res;
 };
 
@@ -702,18 +695,15 @@ export const getScoresTeam = async (event, ctx, callback) => {
   } catch (error) {
     let errResponse = db.dynamoErrorResponse(error);
     console.error(errResponse);
-    res = createResponse(502, {
+    return createResponse(502, {
       message: "Failed to fetch scores"
     });
-    callback(null, res);
-    return res;
   }
 
   res = createResponse(200, {
     message: `Scores for ${teamName}`,
     data: res
   });
-  callback(null, res);
   return res;
 };
 
@@ -726,11 +716,9 @@ export const getStickers = async (event, ctx, callback) => {
     res = await db.scan(STICKERS_TABLE + (process.env.ENVIRONMENT || ""));
   } catch (error) {
     console.error(error);
-    res = createResponse(500, {
+    return createResponse(500, {
       message: "failed to fetch scores"
     });
-    callback(null, res);
-    return res;
   }
 
   let stickersMap = new Map();
@@ -751,7 +739,6 @@ export const getStickers = async (event, ctx, callback) => {
     message: "All Stickers",
     data: result
   });
-  callback(null, res);
   return res;
 };
 
@@ -770,11 +757,9 @@ export const getStickersRoom = async (event, ctx, callback) => {
     });
   } catch (error) {
     console.error(error);
-    res = createResponse(500, {
+    return createResponse(500, {
       message: "failed to fetch scores"
     });
-    callback(null, res);
-    return res;
   }
 
   let stickersMap = new Map();
@@ -795,7 +780,6 @@ export const getStickersRoom = async (event, ctx, callback) => {
     message: `Stickers for ${roomID}`,
     data: result
   });
-  callback(null, res);
   return res;
 };
 
@@ -826,17 +810,14 @@ export const getStickersTeam = async (event, ctx, callback) => {
   } catch (error) {
     let errResponse = db.dynamoErrorResponse(error);
     console.error(errResponse);
-    res = createResponse(502, {
+    return createResponse(502, {
       message: "Failed to fetch stickers"
     });
-    callback(null, res);
-    return res;
   }
 
   let res = createResponse(200, {
     message: `Stickers for ${teamName}`,
     data: stickers
   });
-  callback(null, res);
   return res;
 };
