@@ -27,7 +27,7 @@ const stage = file.stage || "dev";
 // support running specific services
 const serviceArg = process.argv.slice(2);
 
-if (serviceArg) {
+if (serviceArg.length) {
   // validate the services first
   const availableServicesSet = new Set(availableServices.map(availableService => availableService.srvName));
   const invalidServices = serviceArg.filter(serv => !availableServicesSet.has(serv));
