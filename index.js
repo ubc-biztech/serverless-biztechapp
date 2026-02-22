@@ -40,7 +40,7 @@ if (serviceArg.length) {
   servicesToRun = servicesToRun.filter(serviceToRun => specificServices.has(serviceToRun.srvName));
 
   if (!servicesToRun.length) {
-    console.error(`No services specified to run`);
+    console.error("No services specified to run");
     process.exit(1);
   }
 }
