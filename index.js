@@ -18,11 +18,34 @@ const prefixColors = [
 
 const file = readConfigFile();
 
-const services = file.services;
+const availableServices = file.services;
+
+let servicesToRun = availableServices;
 const httpPort = file.port || 3000;
 const stage = file.stage || "dev";
 
-const commands = runServices(services, httpPort, stage, prefixColors);
+// support running specific services
+const serviceArg = process.argv.slice(2);
+
+if (serviceArg) {
+  // validate the services first
+  const availableServicesSet = new Set(availableServices.map(availableService => availableService.srvName));
+  const invalidServices = serviceArg.filter(serv => !availableServicesSet.has(serv));
+  if (invalidServices.length) {
+    console.error(`Invalid service name(s): ${invalidServices.join(", ")}. Please see sls-multi-gateways.yml`);
+    process.exit(1);
+  }
+
+  const specificServices = new Set(serviceArg);
+  servicesToRun = servicesToRun.filter(serviceToRun => specificServices.has(serviceToRun.srvName));
+
+  if (!servicesToRun.length) {
+    console.error(`No services specified to run`);
+    process.exit(1);
+  }
+}
+
+const commands = runServices(servicesToRun, httpPort, stage, prefixColors);
 
 const result = concurrently(commands, {
   killOthers: ["failure", "success"]
@@ -35,4 +58,4 @@ process.on("SIGINT", () => {
   process.exit(1);
 });
 
-runProxy(services, httpPort, stage);
+runProxy(servicesToRun, httpPort, stage);
