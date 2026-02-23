@@ -226,6 +226,116 @@ export const del = async (event, ctx, callback) => {
   }
 };
 
+
+// type CreateMemberRequest = {
+//   email: string,
+//   firstName: string,
+//   lastName: string,
+//   studentNumber?: string,
+//   education: string,
+//   pronouns: "He/Him/His" | "She/Her/Hers" | "They/Them/Theirs",
+//   levelOfStudy: string,
+//   faculty: string,
+//   major: string,
+//   internationalStudent: boolean,
+//   previousMember: boolean,
+//   dietaryRestrictions: string,
+//   referral: string,
+//   topics: string[],
+//   isMember: true,
+//   adminCreated: true,
+// };
+
+export const grantMembership = async (event, ctx, callback) => {
+  try {
+    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    if (!userID.endsWith("@ubcbiztech.com"))
+      throw helpers.createResponse(403, {
+        message: "unauthorized"
+      });
+
+    const data = JSON.parse(event.body);
+
+    const email = data.email.toLowerCase();
+    if (!isValidEmail(email)) {
+      throw helpers.inputError("Invalid email", email);
+    }
+
+    const timestamp = new Date().getTime();
+    const userYear = data.levelOfStudy || data.year || "";
+    const isBiztechAdmin = email.endsWith("@ubcbiztech.com");
+
+    const user = await db.getOne(email, USERS_TABLE);
+
+    if (isEmpty(user)) {
+      const userParams = {
+        id: email,
+        education: data.education,
+        studentId: data.studentNumber || "",
+        fname: data.firstName,
+        lname: data.lastName,
+        faculty: data.faculty,
+        major: data.major,
+        year: userYear,
+        gender: data.pronouns,
+        diet: data.dietaryRestrictions,
+        isMember: true,
+        admin: isBiztechAdmin
+      };
+      await db.put(userParams,USERS_TABLE,true);
+    } else {
+      await db.updateDB(email, userParams, USERS_TABLE);
+    }
+
+    const member = await db.getOne(email, MEMBERS2026_TABLE);
+
+    if (isEmpty(member)) {
+      const memberParams = {
+        id: email,
+        education: data.education,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        pronouns: data.pronouns,
+        studentNumber: data.studentNumber || "",
+        faculty: data.faculty,
+        year: userYear,
+        major: data.major,
+        prevMember: Boolean(data.previousMember),
+        international: Boolean(data.internationalStudent),
+        topics: data.topics,
+        diet: data.dietaryRestrictions,
+        heardFrom: data.referral,
+        university: data.education,
+        admin: isBiztechAdmin,
+        createdAt: timestamp,
+        updatedAt: timestamp
+      };
+      await db.put(memberParams, MEMBERS2026_TABLE, true);
+    }
+
+    const memberWithProfile = await db.getOne(email, MEMBERS2026_TABLE);
+    if (!memberWithProfile || !memberWithProfile.profileID) {
+      await createProfile(
+        email,
+        isBiztechAdmin
+          ? PROFILE_TYPES.EXEC
+          : PROFILE_TYPES.ATTENDEE
+      );
+    }
+
+    const response = helpers.createResponse(200, {
+      message: "Membership granted",
+    });
+    callback(null, response);
+    return null;
+
+  } catch (err) {
+    callback(null, err);
+    return null;
+  }
+
+};
+
 export const editMembership = async (event, ctx, callback) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
