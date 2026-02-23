@@ -266,9 +266,7 @@ export const grantMembership = async (event, ctx, callback) => {
     const isBiztechAdmin = email.endsWith("@ubcbiztech.com");
 
     const user = await db.getOne(email, USERS_TABLE);
-
-    if (isEmpty(user)) {
-      const userParams = {
+    const userParams = {
         id: email,
         education: data.education,
         studentId: data.studentNumber || "",
@@ -282,6 +280,8 @@ export const grantMembership = async (event, ctx, callback) => {
         isMember: true,
         admin: isBiztechAdmin
       };
+
+    if (isEmpty(user)) {
       await db.put(userParams,USERS_TABLE,true);
     } else {
       await db.updateDB(email, userParams, USERS_TABLE);
