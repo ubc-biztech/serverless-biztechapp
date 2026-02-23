@@ -135,17 +135,6 @@ functions:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
 
-  memberEditMembership:
-    handler: handler.editMembership
-    events:
-      - http:
-          path: members/membership
-          method: post
-          cors: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
-
   memberGrantMembership:
     handler: handler.grantMembership
     events:
