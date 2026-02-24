@@ -267,21 +267,21 @@ export const grantMembership = async (event, ctx, callback) => {
 
     const user = await db.getOne(email, USERS_TABLE);
     const userParams = {
-        id: email,
-        education: data.education,
-        studentId: data.studentNumber || "",
-        fname: data.firstName,
-        lname: data.lastName,
-        faculty: data.faculty,
-        major: data.major,
-        year: userYear,
-        gender: data.pronouns,
-        diet: data.dietaryRestrictions,
-        isMember: true,
-        admin: isBiztechAdmin,
-        createdAt: timestamp,
-        updatedAt: timestamp
-      };
+      id: email,
+      education: data.education,
+      studentId: data.studentNumber || "",
+      fname: data.firstName,
+      lname: data.lastName,
+      faculty: data.faculty,
+      major: data.major,
+      year: userYear,
+      gender: data.pronouns,
+      diet: data.dietaryRestrictions,
+      isMember: true,
+      admin: isBiztechAdmin,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
 
     if (isEmpty(user)) {
       await db.put(userParams,USERS_TABLE,true);
