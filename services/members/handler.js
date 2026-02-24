@@ -226,26 +226,46 @@ export const del = async (event, ctx, callback) => {
   }
 };
 
-
-// type CreateMemberRequest = {
-//   email: string,
-//   firstName: string,
-//   lastName: string,
-//   studentNumber?: string,
-//   education: string,
-//   pronouns: "He/Him/His" | "She/Her/Hers" | "They/Them/Theirs",
-//   levelOfStudy: string,
-//   faculty: string,
-//   major: string,
-//   internationalStudent: boolean,
-//   previousMember: boolean,
-//   dietaryRestrictions: string,
-//   referral: string,
-//   topics: string[],
-//   isMember: true,
-//   adminCreated: true,
-// };
-
+/**
+ * Grants Membership. Writes to User, Members, and Profile tables.
+ *
+ * event.body passed:
+ * 
+ * type CreateMemberRequest = {
+ * 
+ * email: string,
+ * 
+ * firstName: string,
+ * 
+ * lastName: string,
+ * 
+ * studentNumber?: string,
+ * 
+ * education: string,
+ * 
+ * pronouns: string,
+ * 
+ * levelOfStudy: string,
+ * 
+ * faculty: string,
+ * 
+ * major: string,
+ * 
+ * internationalStudent: boolean,
+ * 
+ * previousMember: boolean,
+ * 
+ * dietaryRestrictions: string,
+ * 
+ * referral: string,
+ * 
+ * topics: string[],
+ * 
+ * isMember: true,
+ * 
+ * adminCreated: true,
+};
+ */
 export const grantMembership = async (event, ctx, callback) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
@@ -278,7 +298,9 @@ export const grantMembership = async (event, ctx, callback) => {
         gender: data.pronouns,
         diet: data.dietaryRestrictions,
         isMember: true,
-        admin: isBiztechAdmin
+        admin: isBiztechAdmin,
+        createdAt: timestamp,
+        updatedAt: timestamp
       };
 
     if (isEmpty(user)) {
@@ -292,6 +314,8 @@ export const grantMembership = async (event, ctx, callback) => {
     if (isEmpty(member)) {
       const memberParams = {
         id: email,
+        admin: isBiztechAdmin,
+        cardCount: 0,
         education: data.education,
         firstName: data.firstName,
         lastName: data.lastName,
@@ -306,7 +330,6 @@ export const grantMembership = async (event, ctx, callback) => {
         diet: data.dietaryRestrictions,
         heardFrom: data.referral,
         university: data.education,
-        admin: isBiztechAdmin,
         createdAt: timestamp,
         updatedAt: timestamp
       };
