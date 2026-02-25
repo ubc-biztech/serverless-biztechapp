@@ -80,9 +80,30 @@ export async function createProfile(email, profileType) {
     ConditionExpression: "attribute_exists(id)"
   };
 
-  await Promise.all([
-    db.create(profile, PROFILES_TABLE),
-    db.updateDBCustom(params)
+  const {
+    ReturnValues,
+    TableName,
+    Key,
+    ...updateParams
+  } = params;
+
+  await db.writeMultiple([
+    {
+      Put: {
+        TableName: PROFILES_TABLE,
+        Item: profile,
+        ConditionExpression: "attribute_not_exists(id)"
+      }
+    },
+    {
+      Update: {
+        ...updateParams,
+        TableName: MEMBERS2026_TABLE,
+        Key: {
+          id: email
+        }
+      }
+    }
   ]);
 
   const response = helpers.createResponse(201, {
