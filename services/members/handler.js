@@ -293,7 +293,7 @@ export const grantMembership = async (event, ctx, callback) => {
 
     const member = await db.getOne(email, MEMBERS2026_TABLE);
 
-    if (!member) {
+    if (isEmpty(member)) {
       const memberParams = {
         id: email,
         admin: isBiztechAdmin,
