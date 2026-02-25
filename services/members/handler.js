@@ -226,46 +226,26 @@ export const del = async (event, ctx, callback) => {
   }
 };
 
-/**
- * Grants Membership. Writes to User, Members, and Profile tables.
- *
- * event.body passed:
- * 
- * type CreateMemberRequest = {
- * 
- * email: string,
- * 
- * firstName: string,
- * 
- * lastName: string,
- * 
- * studentNumber?: string,
- * 
- * education: string,
- * 
- * pronouns: string,
- * 
- * levelOfStudy: string,
- * 
- * faculty: string,
- * 
- * major: string,
- * 
- * internationalStudent: boolean,
- * 
- * previousMember: boolean,
- * 
- * dietaryRestrictions: string,
- * 
- * referral: string,
- * 
- * topics: string[],
- * 
- * isMember: true,
- * 
- * adminCreated: true,
-};
- */
+
+// type CreateMemberRequest = {
+//   email: string,
+//   firstName: string,
+//   lastName: string,
+//   studentNumber?: string,
+//   education: string,
+//   pronouns: "He/Him/His" | "She/Her/Hers" | "They/Them/Theirs",
+//   levelOfStudy: string,
+//   faculty: string,
+//   major: string,
+//   internationalStudent: boolean,
+//   previousMember: boolean,
+//   dietaryRestrictions: string,
+//   referral: string,
+//   topics: string[],
+//   isMember: true,
+//   adminCreated: true,
+// };
+
 export const grantMembership = async (event, ctx, callback) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
@@ -311,7 +291,7 @@ export const grantMembership = async (event, ctx, callback) => {
 
     const member = await db.getOne(email, MEMBERS2026_TABLE);
 
-    if (isEmpty(member)) {
+    if (!member) {
       const memberParams = {
         id: email,
         admin: isBiztechAdmin,
@@ -330,6 +310,7 @@ export const grantMembership = async (event, ctx, callback) => {
         diet: data.dietaryRestrictions,
         heardFrom: data.referral,
         university: data.education,
+	admin: isBiztechAdmin,
         createdAt: timestamp,
         updatedAt: timestamp
       };
@@ -349,12 +330,9 @@ export const grantMembership = async (event, ctx, callback) => {
     const response = helpers.createResponse(200, {
       message: "Membership granted",
     });
-    callback(null, response);
-    return null;
-
+    return response;
   } catch (err) {
-    callback(null, err);
-    return null;
+    console.log(err)
+    return err;
   }
-
 };
