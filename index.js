@@ -56,6 +56,7 @@ result.then();
 const proxyServer = runProxy(selectedServices, basePort, stage);
 
 process.on("SIGINT", () => {
-  console.log("");
-  proxyServer.close(() => process.exit(1));
+  proxyServer.close(() => {
+  	console.log("\nReceived SIGINT: Goodbye!");
+	process.exit(1)});
 });
