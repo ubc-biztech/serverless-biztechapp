@@ -16,36 +16,36 @@ const prefixColors = [
   "red"
 ];
 
-const file = readConfigFile();
+const config = readConfigFile();
 
-const availableServices = file.services;
+const allServices = config.services;
 
-let servicesToRun = availableServices;
-const httpPort = file.port || 3000;
-const stage = file.stage || "dev";
+let selectedServices = allServices;
+const basePort = config.port || 3000;
+const stage = config.stage || "dev";
 
 // support running specific services
-const serviceArg = process.argv.slice(2);
+const serviceArgs = process.argv.slice(2);
 
-if (serviceArg.length) {
+if (serviceArgs.length) {
   // validate the services first
-  const availableServicesSet = new Set(availableServices.map(availableService => availableService.srvName));
-  const invalidServices = serviceArg.filter(serv => !availableServicesSet.has(serv));
+  const allServiceNames = new Set(allServices.map(service => service.srvName));
+  const invalidServices = serviceArgs.filter(name => !allServiceNames.has(name));
   if (invalidServices.length) {
     console.error(`Invalid service name(s): ${invalidServices.join(", ")}. Please see sls-multi-gateways.yml`);
     process.exit(1);
   }
 
-  const specificServices = new Set(serviceArg);
-  servicesToRun = servicesToRun.filter(serviceToRun => specificServices.has(serviceToRun.srvName));
+  const requestedServiceNames = new Set(serviceArgs);
+  selectedServices = allServices.filter(service => requestedServiceNames.has(service.srvName));
 
-  if (!servicesToRun.length) {
+  if (!selectedServices.length) {
     console.error("No services specified to run");
     process.exit(1);
   }
 }
 
-const commands = runServices(servicesToRun, httpPort, stage, prefixColors);
+const commands = runServices(selectedServices, basePort, stage, prefixColors);
 
 const result = concurrently(commands, {
   killOthers: ["failure", "success"]
@@ -53,9 +53,9 @@ const result = concurrently(commands, {
 
 result.then();
 
+const proxyServer = runProxy(selectedServices, basePort, stage);
+
 process.on("SIGINT", () => {
   console.log("");
-  process.exit(1);
+  proxyServer.close(() => process.exit(1));
 });
-
-runProxy(servicesToRun, httpPort, stage);
