@@ -296,7 +296,6 @@ export const grantMembership = async (event, ctx, callback) => {
     if (isEmpty(member)) {
       const memberParams = {
         id: email,
-        admin: isBiztechAdmin,
         cardCount: 0,
         education: data.education,
         firstName: data.firstName,
@@ -312,7 +311,7 @@ export const grantMembership = async (event, ctx, callback) => {
         diet: data.dietaryRestrictions,
         heardFrom: data.referral,
         university: data.education,
-	admin: isBiztechAdmin,
+        admin: isBiztechAdmin,
         createdAt: timestamp,
         updatedAt: timestamp
       };
@@ -334,7 +333,7 @@ export const grantMembership = async (event, ctx, callback) => {
     });
     return response;
   } catch (err) {
-    console.error(err)
+    console.error(err);
     return err;
   }
 };
