@@ -226,7 +226,6 @@ export const del = async (event, ctx, callback) => {
   }
 };
 
-
 // type CreateMemberRequest = {
 //   email: string,
 //   firstName: string,
