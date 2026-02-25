@@ -248,16 +248,19 @@ export const del = async (event, ctx, callback) => {
 export const grantMembership = async (event, ctx, callback) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
-    if (!userID.endsWith("@ubcbiztech.com"))
-      throw helpers.createResponse(403, {
+    if (!userID.endsWith("@ubcbiztech.com")) {
+      callback(null, helpers.createResponse(403, {
         message: "unauthorized"
-      });
+      }));
+      return null;
+    }
 
     const data = JSON.parse(event.body);
 
-    const email = data.email.toLowerCase();
+    const email = data?.email?.toLowerCase();
     if (!isValidEmail(email)) {
-      throw helpers.inputError("Invalid email", email);
+      callback(null, helpers.inputError("Invalid email", email));
+      return null;
     }
 
     const timestamp = new Date().getTime();
@@ -331,7 +334,7 @@ export const grantMembership = async (event, ctx, callback) => {
     });
     return response;
   } catch (err) {
-    console.log(err)
+    console.error(err)
     return err;
   }
 };
