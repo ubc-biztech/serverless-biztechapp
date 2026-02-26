@@ -377,18 +377,10 @@ export const addQRScan = async (event, ctx, callback) => {
     const points = data.points ? data.points : 0;
 
     const res = await teamHelpers.addQRScan(data.user_id, data.qr_code_id, data.eventID, data.year, points);
-
-    if (res) {
-      return helpers.createResponse(200, {
-        message: "Successfully added QR code to scannedQRs array of team.",
-        response: res
-      });
-    } else {
-      return helpers.createResponse(403, {
-        message: "Could not add QR code to scannedQRs array of team.",
-        response: res
-      });
-    }
+    return helpers.createResponse(200, {
+      message: "Successfully added QR code to scannedQRs array of team.",
+      response: res
+    });
   } catch (err) {
     console.error(err);
     return helpers.createResponse(500, {
