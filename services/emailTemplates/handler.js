@@ -1,69 +1,143 @@
+import client from "../../lib/sesV2Client.js";
+import helpers from "../../lib/handlerHelpers.js";
 import {
-  SESV2Client,
   GetEmailTemplateCommand,
   CreateEmailTemplateCommand,
   UpdateEmailTemplateCommand,
   DeleteEmailTemplateCommand
 } from "@aws-sdk/client-sesv2";
 
-const client = new SESV2Client({
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  },
-  region: "us-west-2",
-});
-
-export async function getEmailTemplate(templateName) {
+export const getEmailTemplate = async (event, ctx, callback) => {
   try {
+    const templateName = event.pathParameters?.templateName;
+
+    if (!templateName) {
+      callback(null, helpers.missingPathParamResponse("template", "templateName"));
+      return;
+    }
+
     const command = new GetEmailTemplateCommand({ TemplateName: templateName });
     const response = await client.send(command);
-    return response;
+
+    callback(null, helpers.createResponse(200, response));
   } catch (error) {
     console.error("Error getting email template:", error);
-    throw error;
+    callback(null, helpers.createResponse(500, {
+      message: "Error getting email template",
+      error: error.message
+    }));
   }
-}
+};
 
-export async function createEmailTemplate({ templateName, subject, html, text }) {
+export const createEmailTemplate = async (event, ctx, callback) => {
   try {
+    const data = JSON.parse(event.body);
+
+    helpers.checkPayloadProps(data, {
+      templateName: {
+        required: true,
+        type: "string"
+      },
+      subject: {
+        required: true,
+        type: "string"
+      },
+      html: {
+        required: true,
+        type: "string"
+      },
+      text: {
+        required: true,
+        type: "string"
+      },
+    });
+
     const command = new CreateEmailTemplateCommand({
-      TemplateName: templateName,
-      Subject: subject,
-      Html: html,
-      TextPart: text,
+      TemplateName: data.templateName,
+      Subject: data.subject,
+      Html: data.html,
+      TextPart: data.text,
     });
     const response = await client.send(command);
-    return response;
+
+    callback(null, helpers.createResponse(201, {
+      message: "Email template created",
+      response
+    }));
   } catch (error) {
     console.error("Error creating email template:", error);
-    throw error;
+    callback(null, helpers.createResponse(500, {
+      message: "Error creating email template",
+      error: error.message
+    }));
   }
-}
+};
 
-export async function updateEmailTemplate({ templateName, subject, html, text }) {
+export const updateEmailTemplate = async (event, ctx, callback) => {
   try {
+    const data = JSON.parse(event.body);
+
+    helpers.checkPayloadProps(data, {
+      templateName: {
+        required: true,
+        type: "string"
+      },
+      subject: {
+        required: true,
+        type: "string"
+      },
+      html: {
+        required: true,
+        type: "string"
+      },
+      text: {
+        required: true,
+        type: "string"
+      },
+    });
+
     const command = new UpdateEmailTemplateCommand({
-      TemplateName: templateName,
-      Subject: subject,
-      Html: html,
-      TextPart: text,
+      TemplateName: data.templateName,
+      Subject: data.subject,
+      Html: data.html,
+      TextPart: data.text,
     });
     const response = await client.send(command);
-    return response;
+
+    callback(null, helpers.createResponse(200, {
+      message: "Email template updated",
+      response
+    }));
   } catch (error) {
     console.error("Error updating email template:", error);
-    throw error;
+    callback(null, helpers.createResponse(500, {
+      message: "Error updating email template",
+      error: error.message
+    }));
   }
-}
+};
 
-export async function deleteEmailTemplate(templateName) {
+export const deleteEmailTemplate = async (event, ctx, callback) => {
   try {
+    const templateName = event.pathParameters?.templateName;
+
+    if (!templateName) {
+      callback(null, helpers.missingPathParamResponse("template", "templateName"));
+      return;
+    }
+
     const command = new DeleteEmailTemplateCommand({ TemplateName: templateName });
     const response = await client.send(command);
-    return response;
+
+    callback(null, helpers.createResponse(200, {
+      message: "Email template deleted",
+      response
+    }));
   } catch (error) {
     console.error("Error deleting email template:", error);
-    throw error;
+    callback(null, helpers.createResponse(500, {
+      message: "Error deleting email template",
+      error: error.message
+    }));
   }
-}
+};

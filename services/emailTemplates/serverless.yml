@@ -1,0 +1,78 @@
+service: biztechApi-emailTemplates
+tenant: ianmh
+app: biztechapp
+
+frameworkVersion: 3.40.0
+
+plugins:
+  - serverless-offline
+  - serverless-domain-manager
+  - serverless-bundle
+  - serverless-prune-plugin
+
+provider:
+  name: aws
+  stage: ${file(../../serverless.common.yml):provider.stage}
+  runtime: ${file(../../serverless.common.yml):provider.runtime}
+  region: ${file(../../serverless.common.yml):provider.region}
+  cfLogs: true
+  environment:
+    ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
+    NODE_ENV: ${env:NODE_ENV}
+
+  apiGateway:
+    restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
+    restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
+
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - ses:GetEmailTemplate
+        - ses:CreateEmailTemplate
+        - ses:UpdateEmailTemplate
+        - ses:DeleteEmailTemplate
+      Resource: "*"
+
+custom: ${file(../../serverless.common.yml):custom}
+
+functions:
+  getEmailTemplate:
+    handler: handler.getEmailTemplate
+    events:
+      - http:
+          path: email-templates/{templateName}
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  createEmailTemplate:
+    handler: handler.createEmailTemplate
+    events:
+      - http:
+          path: email-templates/
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  updateEmailTemplate:
+    handler: handler.updateEmailTemplate
+    events:
+      - http:
+          path: email-templates/
+          method: put
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  deleteEmailTemplate:
+    handler: handler.deleteEmailTemplate
+    events:
+      - http:
+          path: email-templates/{templateName}
+          method: delete
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
