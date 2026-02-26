@@ -19,13 +19,13 @@ export const getEmailTemplate = async (event, ctx, callback) => {
     const command = new GetEmailTemplateCommand({ TemplateName: templateName });
     const response = await client.send(command);
 
-    callback(null, helpers.createResponse(200, response));
+    return helpers.createResponse(200, response);
   } catch (error) {
     console.error("Error getting email template:", error);
-    callback(null, helpers.createResponse(500, {
+    return helpers.createResponse(500, {
       message: "Error getting email template",
       error: error.message
-    }));
+    });
   }
 };
 
@@ -60,16 +60,16 @@ export const createEmailTemplate = async (event, ctx, callback) => {
     });
     const response = await client.send(command);
 
-    callback(null, helpers.createResponse(201, {
+    return helpers.createResponse(200, {
       message: "Email template created",
       response
-    }));
+    });
   } catch (error) {
     console.error("Error creating email template:", error);
-    callback(null, helpers.createResponse(500, {
+    return helpers.createResponse(500, {
       message: "Error creating email template",
       error: error.message
-    }));
+    });
   }
 };
 
@@ -104,16 +104,16 @@ export const updateEmailTemplate = async (event, ctx, callback) => {
     });
     const response = await client.send(command);
 
-    callback(null, helpers.createResponse(200, {
+    return helpers.createResponse(200, {
       message: "Email template updated",
       response
-    }));
+    });
   } catch (error) {
     console.error("Error updating email template:", error);
-    callback(null, helpers.createResponse(500, {
+    return helpers.createResponse(500, {
       message: "Error updating email template",
       error: error.message
-    }));
+    });
   }
 };
 
@@ -129,15 +129,15 @@ export const deleteEmailTemplate = async (event, ctx, callback) => {
     const command = new DeleteEmailTemplateCommand({ TemplateName: templateName });
     const response = await client.send(command);
 
-    callback(null, helpers.createResponse(200, {
+    return helpers.createResponse(200, {
       message: "Email template deleted",
       response
-    }));
+    });
   } catch (error) {
     console.error("Error deleting email template:", error);
-    callback(null, helpers.createResponse(500, {
+    return helpers.createResponse(500, {
       message: "Error deleting email template",
       error: error.message
-    }));
+    });
   }
 };
