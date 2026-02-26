@@ -38,19 +38,19 @@ export const updateTeamPoints = async (event, ctx, callback) => {
       user_id: {
         required: true,
         type: "string"
-      },
+      }, // User ID
       eventID: {
         required: true,
         type: "string"
-      },
+      }, // Event identifier
       year: {
         required: true,
         type: "number"
-      },
+      }, // Event year
       change_points: {
         required: true,
         type: "number"
-      }
+      } // Points to add/subtract
     });
 
     const team = await teamHelpers._getTeamFromUserRegistration(
