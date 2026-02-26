@@ -182,17 +182,16 @@ export const makeTeam = async (event, ctx, callback) => {
       }
     });
 
-    const res = await teamHelpers.makeTeam(data.team_name, data.eventID, data.year, data.memberIDs);
-
-    if (res) {
+    try {
+      await teamHelpers.makeTeam(data.team_name, data.eventID, data.year, data.memberIDs);
       return helpers.createResponse(200, {
         message: "Successfully created new team.",
         response: res
       });
-    } else {
+    } catch (err) {
       return helpers.createResponse(403, {
         message: "Could not create team.",
-        response: res
+        response: err
       });
     }
   } catch (err) {
