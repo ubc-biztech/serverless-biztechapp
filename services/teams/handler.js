@@ -182,18 +182,11 @@ export const makeTeam = async (event, ctx, callback) => {
       } // 'object' means array in this case
     });
 
-    try {
-      await teamHelpers.makeTeam(data.team_name, data.eventID, data.year, data.memberIDs);
-      return helpers.createResponse(200, {
-        message: "Successfully created new team.",
-        response: res
-      });
-    } catch (err) {
-      return helpers.createResponse(403, {
-        message: "Could not create team.",
-        response: err
-      });
-    }
+    const res = await teamHelpers.makeTeam(data.team_name, data.eventID, data.year, data.memberIDs);
+    return helpers.createResponse(200, {
+      message: "Successfully created new team.",
+      response: res
+    });
   } catch (err) {
     console.error(err);
     return helpers.createResponse(500, {
@@ -325,18 +318,10 @@ export const changeTeamName = async (event, ctx, callback) => {
     });
 
     const res = await teamHelpers.changeTeamName(data.user_id, data.eventID, data.year, data.team_name);
-
-    if (res) {
-      return helpers.createResponse(200, {
-        message: "Successfully changed team name.",
-        response: res
-      });
-    } else {
-      return helpers.createResponse(403, {
-        message: "Could not change team name.",
-        response: res
-      });
-    }
+    return helpers.createResponse(200, {
+      message: "Successfully changed team name.",
+      response: res
+    });
   } catch (err) {
     console.error(err);
     return helpers.createResponse(500, {
