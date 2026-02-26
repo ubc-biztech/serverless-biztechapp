@@ -12,8 +12,7 @@ export const getEmailTemplate = async (event, ctx, callback) => {
     const templateName = event.pathParameters?.templateName;
 
     if (!templateName) {
-      callback(null, helpers.missingPathParamResponse("template", "templateName"));
-      return;
+      return helpers.missingPathParamResponse("template", "templateName");
     }
 
     const command = new GetEmailTemplateCommand({ TemplateName: templateName });
@@ -60,7 +59,7 @@ export const createEmailTemplate = async (event, ctx, callback) => {
     });
     const response = await client.send(command);
 
-    return helpers.createResponse(200, {
+    return helpers.createResponse(201, {
       message: "Email template created",
       response
     });
@@ -122,8 +121,7 @@ export const deleteEmailTemplate = async (event, ctx, callback) => {
     const templateName = event.pathParameters?.templateName;
 
     if (!templateName) {
-      callback(null, helpers.missingPathParamResponse("template", "templateName"));
-      return;
+      return helpers.missingPathParamResponse("template", "templateName");
     }
 
     const command = new DeleteEmailTemplateCommand({ TemplateName: templateName });
