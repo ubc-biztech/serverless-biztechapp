@@ -179,7 +179,7 @@ export const makeTeam = async (event, ctx, callback) => {
       memberIDs: {
         required: true,
         type: "object"
-      }
+      } // 'object' means array in this case
     });
 
     try {
