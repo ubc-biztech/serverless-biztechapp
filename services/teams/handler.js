@@ -433,18 +433,11 @@ export const addMultipleQuestions = async (event, ctx, callback) => {
       points
     );
 
-    if (res) {
-      return helpers.createResponse(200, {
-        message:
-          "Successfully added questions to scannedQRs array of team.",
-        response: res
-      });
-    } else {
-      return helpers.createResponse(403, {
-        message: "Could not add questions to scannedQRs array of team.",
-        response: res
-      });
-    }
+    return helpers.createResponse(200, {
+      message:
+        "Successfully added questions to scannedQRs array of team.",
+      response: res
+    });
   } catch (err) {
     console.error(err);
     return helpers.createResponse(500, {
