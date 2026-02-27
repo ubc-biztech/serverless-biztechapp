@@ -5,10 +5,12 @@ app: biztechapp
 frameworkVersion: 3.40.0
 
 plugins:
+  - serverless-dynamodb
   - serverless-offline
   - serverless-domain-manager
   - serverless-bundle
   - serverless-prune-plugin
+  - serverless-mocha-plugin
 
 provider:
   name: aws
