@@ -71,8 +71,7 @@ export const postInteraction = async (event, ctx, callback) => {
         }
       });
     } catch (error) {
-      callback(null, error);
-      return null;
+      return error;
     }
 
     const timestamp = new Date().getTime();
@@ -87,14 +86,11 @@ export const postInteraction = async (event, ctx, callback) => {
     }
 
     const response = await handleConnection(userID, eventParam, timestamp);
-    callback(null, response);
+    return response;
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return err;
+    return helpers.createResponse(500, { message: err.message || err });
   }
-
-  return null;
 };
 
 export const checkConnection = async (event, ctx, callback) => {
@@ -200,19 +196,16 @@ export const getAllConnections = async (event, ctx, callback) => {
       data
     });
 
-    callback(null, response);
+    return response;
   } catch (err) {
     console.error(err);
-    callback(
-      null,
-      handlerHelpers.createResponse(500, {
-        message: "Internal server error"
-      })
-    );
+    return handlerHelpers.createResponse(500, {
+      message: "Internal server error"
+    });
   }
 };
 
-export const getWallSnapshot = async (event) => {
+export const getWallSnapshot = async (event, ctx, callback) => {
   try {
     const qs = event.queryStringParameters || {
     };
@@ -275,7 +268,7 @@ export const getWallSnapshot = async (event) => {
 };
 
 // WebSocket connect
-export const wsConnect = async (event) => {
+export const wsConnect = async (event, ctx, callback) => {
   try {
     console.log("[WS] $connect", event.requestContext?.connectionId);
     const connectionId = event.requestContext.connectionId;
@@ -299,7 +292,7 @@ export const wsConnect = async (event) => {
 };
 
 // WebSocket disconnect
-export const wsDisconnect = async (event) => {
+export const wsDisconnect = async (event, ctx, callback) => {
   try {
     const connectionId = event.requestContext.connectionId;
     await removeSocketConnection({
@@ -318,7 +311,7 @@ export const wsDisconnect = async (event) => {
   }
 };
 
-export const wsSubscribe = async (event) => {
+export const wsSubscribe = async (event, ctx, callback) => {
   try {
     const connectionId = event.requestContext.connectionId;
     const body = JSON.parse(event.body || "{}");
