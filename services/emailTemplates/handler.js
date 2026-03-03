@@ -54,9 +54,11 @@ export const createEmailTemplate = async (event, ctx, callback) => {
 
     const command = new CreateEmailTemplateCommand({
       TemplateName: data.templateName,
-      Subject: data.subject,
-      Html: data.html,
-      TextPart: data.text,
+      TemplateContent: {
+        Subject: data.subject,
+        Html: data.html,
+        Text: data.text,
+      },
     });
     const response = await client.send(command);
 
