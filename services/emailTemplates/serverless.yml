@@ -1,4 +1,4 @@
-service: biztechApi-emailTemplates
+service: biztechApi-emailtemplates
 tenant: ianmh
 app: biztechapp
 
