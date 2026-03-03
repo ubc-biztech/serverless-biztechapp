@@ -33,6 +33,7 @@ provider:
         - ses:CreateEmailTemplate
         - ses:UpdateEmailTemplate
         - ses:DeleteEmailTemplate
+        - ses:ListEmailTemplates
       Resource: "*"
 
 custom: ${file(../../serverless.common.yml):custom}
@@ -74,6 +75,16 @@ functions:
       - http:
           path: email-templates/{templateName}
           method: delete
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  listEmailTemplates:
+    handler: handler.listEmailTemplates
+    events:
+      - http:
+          path: email-templates
+          method: get
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS

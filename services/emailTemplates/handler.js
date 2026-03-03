@@ -4,7 +4,8 @@ import {
   GetEmailTemplateCommand,
   CreateEmailTemplateCommand,
   UpdateEmailTemplateCommand,
-  DeleteEmailTemplateCommand
+  DeleteEmailTemplateCommand,
+  ListEmailTemplatesCommand
 } from "@aws-sdk/client-sesv2";
 
 export const getEmailTemplate = async (event, ctx, callback) => {
@@ -136,6 +137,21 @@ export const deleteEmailTemplate = async (event, ctx, callback) => {
     return helpers.createResponse(500, {
       message: "Error deleting email template",
       error: error.message
+    });
+  }
+};
+
+export const listEmailTemplates = async (event, ctx, callback) => {
+  try {
+    const command = new ListEmailTemplatesCommand({});
+    const response = await client.send(command);
+
+    return helpers.createResponse(200, response);
+  } catch (error) {
+    console.error("Error listing email templates:", error);
+    return helpers.createResponse(500, {
+      message: "Error listing email templates",
+      error: error.message,
     });
   }
 };
