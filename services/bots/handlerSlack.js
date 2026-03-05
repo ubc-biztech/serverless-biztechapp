@@ -115,7 +115,7 @@ export const shortcutHandler = async (event, ctx, callback) => {
 
   // ping shortcut
   if (body.type === "message_action" && body.callback_id === "ping") {
-    openPingShortcut(body);
+    await openPingShortcut(body);
     return ack;
   }
 
