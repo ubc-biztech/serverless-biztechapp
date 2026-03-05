@@ -79,7 +79,7 @@ functions:
           request:
             parameters:
               path:
-                email: true
+                id: true
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS
@@ -116,7 +116,7 @@ functions:
           method: patch
           request:
             path:
-              email: true
+              id: true
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS
@@ -129,7 +129,7 @@ functions:
           method: delete
           request:
             path:
-              email: true
+              id: true
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS
