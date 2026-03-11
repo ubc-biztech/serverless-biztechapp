@@ -135,7 +135,7 @@ export const shortcutHandler = async (event, ctx, callback) => {
     body.type === "view_submission" &&
     body.view.callback_id === "ping_modal_submit"
   ) {
-    submitPingShortcut(body);
+    await submitPingShortcut(body);
     return ack;
   }
 
