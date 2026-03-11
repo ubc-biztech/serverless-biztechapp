@@ -37,11 +37,15 @@ export const getDefaultApplicationTemplate = (emailParams) => {
   return `<div style="font-size: 15px; text-align: left;">
       <div>
           <p>Hello ${fname},</p>
-          <p>Thank you for registering for ProduHacks 2026! We are excited for you to join us at UBC BizTech's flagship Hackathon. </p>
-          <p>Please reach out to our Event Director at allison@ubcbiztech.com if this was a mistake!</p>
+          <p>Thank you for registering for ProduHacks 2026! We’re excited to receive your application and will be reviewing it shortly.</p>
+          <p>If you have any questions or concerns about your application, please reach out to our Event Director at <a href="mailto:allison@ubcbiztech.com">allison@ubcbiztech.com</a>.</p>
+          <p>We’ll be in touch by email once the applicant review process is complete.</p>
+          <p>Best,<br>BizTech Team</p>
       </div>
+
       <img src="${logoBase64}" width="40" height="40" alt="BizTech Logo">
       <br>
+
       <div style="font-size: 8px;">
           <div>
               <p>UBC BizTech • 445-2053 Main Mall • Vancouver, BC V6T 1Z2</p>
