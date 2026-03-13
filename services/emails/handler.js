@@ -201,4 +201,4 @@ export const listEmailTemplates = async (event, ctx, callback) => {
       error: error.message,
     });
   }
-}
+};
