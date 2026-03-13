@@ -1,4 +1,4 @@
-service: biztechApi-emailtemplates
+service: biztechApi-emails
 tenant: ianmh
 app: biztechapp
 
@@ -64,7 +64,7 @@ functions:
     events:
       - http:
           path: email-templates/
-          method: put
+          method: patch
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS

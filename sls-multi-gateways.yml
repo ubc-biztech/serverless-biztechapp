@@ -58,6 +58,6 @@ services:
   - srvName: investments
     srvPath: investments
     srvSource: services/investments
-  - srvName: emailtemplates
-    srvPath: emailtemplates
-    srvSource: services/emailtemplates
+  - srvName: emails
+    srvPath: emails
+    srvSource: services/emails
