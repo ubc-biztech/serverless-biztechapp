@@ -36,6 +36,7 @@
     "path": "^0.12.7",
     "qrcode": "^1.5.3",
     "serverless-apigateway-plugin": "^0.0.6",
+    "serverless-esbuild": "^1.57.0",
     "stripe": "^8.160.0",
     "tweetnacl": "^1.0.3",
     "uuid": "^8.3.1",

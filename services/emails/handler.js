@@ -183,12 +183,12 @@ export const listEmailTemplates = async (event, ctx, callback) => {
     const emailTemplates = [];
     let input = {};
 
-    const { TemplatesMetadata, NextToken } = await sesClient.send(new ListEmailTemplatesCommand(input));
+    let { TemplatesMetadata, NextToken } = await sesClient.send(new ListEmailTemplatesCommand(input));
     emailTemplates.push(...(TemplatesMetadata ?? []));
     input.NextToken = NextToken;
 
     while (input.NextToken) {
-      const { TemplatesMetadata, NextToken } = await sesClient.send(new ListEmailTemplatesCommand(input));
+      let { TemplatesMetadata, NextToken } = await sesClient.send(new ListEmailTemplatesCommand(input));
       emailTemplates.push(...(TemplatesMetadata ?? []));
       input.NextToken = NextToken;
     }
