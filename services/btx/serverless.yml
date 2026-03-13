@@ -9,7 +9,7 @@ plugins:
   - serverless-dynamodb
   - serverless-offline
   - serverless-domain-manager
-  - serverless-bundle
+  - serverless-esbuild
   - serverless-prune-plugin
   - serverless-mocha-plugin
 
@@ -17,6 +17,7 @@ provider:
   name: aws
   stage: ${file(../../serverless.common.yml):provider.stage}
   region: ${file(../../serverless.common.yml):provider.region}
+  runtime: ${file(../../serverless.common.yml):provider.runtime}
   cfLogs: true
   timeout: 15
 

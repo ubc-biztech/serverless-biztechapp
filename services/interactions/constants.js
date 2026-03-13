@@ -1,5 +1,6 @@
 export const CURRENT_EVENT = "kickstart-2025";
 
+export const EXEC = "Exec";
 export const PARTNER = "Partner";
 
 export const QUEST_TOTAL_CONNECTIONS = "QUEST_TOTAL_CONNECTIONS";
