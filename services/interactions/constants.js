@@ -1,5 +1,6 @@
 export const CURRENT_EVENT = "blueprint-2026";
 
+export const EXEC = "Exec";
 export const PARTNER = "Partner";
 
 export const QUEST_TOTAL_CONNECTIONS = "QUEST_TOTAL_CONNECTIONS";

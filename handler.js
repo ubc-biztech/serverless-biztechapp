@@ -9,29 +9,29 @@ import {
 } from "http-proxy-middleware";
 
 // reads and parses config file
-const readConfigFile = () => {
-  const file = readFileSync(
+export const readConfigFile = () => {
+  const config = readFileSync(
     path.join(process.cwd(), "sls-multi-gateways.yml"),
     "utf8"
   );
-  return YAML.parse(file);
+  return YAML.parse(config);
 };
 
-// runs each services
-const runServices = (services, httpPort, stage, prefixColors) => {
+// builds concurrently commands for each service
+export const runServices = (serviceConfigs, basePort, stage, prefixColors) => {
   const commands = [];
 
-  for (let i = 0; i < services.length; i++) {
-    const execCommand = `
-            cd  ${process.cwd()}/${services[i].srvSource};
+  for (let i = 0; i < serviceConfigs.length; i++) {
+    const command = `
+            cd  ${process.cwd()}/${serviceConfigs[i].srvSource};
             sls offline --stage ${stage} --httpPort ${
-  httpPort + i
-} --lambdaPort ${httpPort + i + 1000}
+  basePort + i
+} --lambdaPort ${basePort + i + 1000}
         `;
 
     commands.push({
-      command: execCommand,
-      name: services[i].srvName,
+      command,
+      name: serviceConfigs[i].srvName,
       prefixColor: i < prefixColors.length ? prefixColors[i] : "gray",
     });
   }
@@ -40,12 +40,12 @@ const runServices = (services, httpPort, stage, prefixColors) => {
 };
 
 // proxy each service
-const runProxy = (services, httpPort, stage) => {
+export const runProxy = (serviceConfigs, basePort, stage) => {
   const app = express();
 
-  for (let i = 0; i < services.length; i++) {
-    const proxyPath = `/${services[i].srvPath}`;
-    const stripBasePath = services[i].stripBasePath;
+  for (let i = 0; i < serviceConfigs.length; i++) {
+    const proxyPath = `/${serviceConfigs[i].srvPath}`;
+    const stripBasePath = serviceConfigs[i].stripBasePath;
 
     app.use(
       proxyPath,
@@ -53,15 +53,11 @@ const runProxy = (services, httpPort, stage) => {
         pathRewrite: (path) => {
           return stripBasePath ? path.replace(proxyPath, "/") : path;
         },
-        target: `http://localhost:${httpPort + i}/${stage}/`,
+        target: `http://localhost:${basePort + i}/${stage}/`,
         changeOrigin: true,
       })
     );
   }
 
-  app.listen(4000);
-};
-
-export {
-  readConfigFile, runServices, runProxy
+  return app.listen(4000);
 };
