@@ -18,12 +18,12 @@ export const interactions = (event, ctx, callback) => {
   // reject if request is not valid
   if (!verifyRequestSignature(event)) {
     console.error("Invalid request signature");
-    return callback(null, {
+    return {
       statusCode: 401,
       body: JSON.stringify({
         error: "Invalid request signature"
       })
-    });
+    };
   }
 
   handlerHelpers.checkPayloadProps(body, {
@@ -44,19 +44,19 @@ export const interactions = (event, ctx, callback) => {
   // ping-pong interaction for verification
   if (type === InteractionType.PING) {
     console.log("Received PING interaction");
-    return callback(null, {
+    return {
       statusCode: 200,
       body: JSON.stringify({
         type: InteractionResponseType.PONG
       })
-    });
+    };
   }
 
   // application command interactions ie: slash commands
   if (type === InteractionType.APPLICATION_COMMAND) {
     console.log("Received APPLICATION_COMMAND interaction");
     const response = applicationCommandRouter(data.name, body);
-    return callback(null, response);
+    return response;
   }
 };
 
@@ -82,12 +82,9 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
   const { discordId } = data;
 
   if (!email || !discordId) {
-    return callback(
-      null,
-      handlerHelpers.createResponse(400, {
-        message: "Missing email or discordId"
-      })
-    );
+    return handlerHelpers.createResponse(400, {
+      message: "Missing email or discordId"
+    });
   }
 
   try {
@@ -95,22 +92,16 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
     const exists = await db.getOne(email, MEMBERS2026_TABLE);
 
     if (!exists) {
-      return callback(
-        null,
-        handlerHelpers.createResponse(404, {
-          message: "Membership not found"
-        })
-      );
+      return handlerHelpers.createResponse(404, {
+        message: "Membership not found"
+      });
     }
 
     // guard to prevent overwriting existing ids, should require manual unlinking if necessary
     if (exists.discordId) {
-      return callback(
-        null,
-        handlerHelpers.createResponse(409, {
-          message: "Discord account has already been linked to this membership"
-        })
-      );
+      return handlerHelpers.createResponse(409, {
+        message: "Discord account has already been linked to this membership"
+      });
     }
 
     // update with new field
@@ -127,20 +118,14 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
       console.warn(`Failed to assign roles to ${email}:`, roleError.message);
     }
 
-    return callback(
-      null,
-      handlerHelpers.createResponse(200, {
-        message: "Successfully mapped Discord account to membership"
-      })
-    );
+    return handlerHelpers.createResponse(200, {
+      message: "Successfully mapped Discord account to membership"
+    });
   } catch (err) {
     console.error(db.dynamoErrorResponse(err));
-    callback(
-      null,
-      handlerHelpers.createResponse(500, {
-        message: "Internal server error"
-      })
-    );
+    return handlerHelpers.createResponse(500, {
+      message: err.message || err
+    });
   }
 };
 
@@ -166,32 +151,23 @@ export const assignRoles = async (event, ctx, callback) => {
     const { userID, membershipTier, eventID } = data;
 
     if (!membershipTier && !eventID) {
-      return callback(
-        null,
-        handlerHelpers.createResponse(400, {
-          message: "Either membershipTier or eventID is required"
-        })
-      );
+      return handlerHelpers.createResponse(400, {
+        message: "Either membershipTier or eventID is required"
+      });
     }
 
     const result = await assignUserRoles(userID, membershipTier, eventID);
 
-    callback(
-      null,
-      handlerHelpers.createResponse(200, {
-        message: "Roles assigned successfully",
-        result
-      })
-    );
+    return handlerHelpers.createResponse(200, {
+      message: "Roles assigned successfully",
+      result
+    });
   } catch (error) {
     console.error("Role assignment failed:", error);
-    callback(
-      null,
-      handlerHelpers.createResponse(500, {
-        message: "Failed to assign roles",
-        error: error.message
-      })
-    );
+    return handlerHelpers.createResponse(500, {
+      message: "Failed to assign roles",
+      error: error.message
+    });
   }
 };
 
@@ -217,32 +193,23 @@ export const removeRoles = async (event, ctx, callback) => {
     const { userID, membershipTier, eventID } = data;
 
     if (!membershipTier && !eventID) {
-      return callback(
-        null,
-        handlerHelpers.createResponse(400, {
-          message: "Either membershipTier or eventID is required"
-        })
-      );
+      return handlerHelpers.createResponse(400, {
+        message: "Either membershipTier or eventID is required"
+      });
     }
 
     const result = await removeUserRoles(userID, membershipTier, eventID);
 
-    callback(
-      null,
-      handlerHelpers.createResponse(200, {
-        message: "Roles removed successfully",
-        result
-      })
-    );
+    return handlerHelpers.createResponse(200, {
+      message: "Roles removed successfully",
+      result
+    });
   } catch (error) {
     console.error("Role removal failed:", error);
-    callback(
-      null,
-      handlerHelpers.createResponse(500, {
-        message: "Failed to remove roles",
-        error: error.message
-      })
-    );
+    return handlerHelpers.createResponse(500, {
+      message: "Failed to remove roles",
+      error: error.message
+    });
   }
 };
 
@@ -255,15 +222,14 @@ export const backfillRoles = async (event, ctx, callback) => {
     const { userID } = event.pathParameters;
     const result = await backfillUserRoles(userID);
 
-    callback(
-      null,
-      handlerHelpers.createResponse(200, {
-        message: "User roles backfilled successfully",
-        result
-      })
-    );
+    return handlerHelpers.createResponse(200, {
+      message: "User roles backfilled successfully",
+      result
+    });
   } catch (error) {
     console.error("Backfill failed:", error);
-    callback(null, error);
+    return handlerHelpers.createResponse(500, {
+      message: error.message || error
+    });
   }
 };
