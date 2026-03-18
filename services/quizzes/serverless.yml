@@ -7,7 +7,7 @@ frameworkVersion: 3.40.0
 plugins:
   - serverless-dynamodb
   - serverless-offline
-  - serverless-bundle
+  - serverless-esbuild
   - serverless-domain-manager
   - serverless-prune-plugin
   - serverless-mocha-plugin

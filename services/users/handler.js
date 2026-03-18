@@ -47,28 +47,22 @@ export const create = async (event, ctx, callback) => {
   ) {
     let favedEventsArray = data.favedEventsArray;
     if (!favedEventsArray.length === 0) {
-      callback(null, helpers.inputError("the favedEventsArray is empty", data));
+      return helpers.inputError("the favedEventsArray is empty", data);
     }
     if (
       !favedEventsArray.every(
         (eventIDAndYear) => typeof eventIDAndYear === "string"
       )
     ) {
-      callback(
-        null,
-        helpers.inputError(
-          "the favedEventsArray contains non-string element(s)",
-          data
-        )
+      return helpers.inputError(
+        "the favedEventsArray contains non-string element(s)",
+        data
       );
     }
     if (favedEventsArray.length !== new Set(favedEventsArray).size) {
-      callback(
-        null,
-        helpers.inputError(
-          "the favedEventsArray contains duplicate elements",
-          data
-        )
+      return helpers.inputError(
+        "the favedEventsArray contains duplicate elements",
+        data
       );
     }
     //if all conditions met, add favedEventsArray as a Set to userParams
@@ -125,7 +119,7 @@ export const create = async (event, ctx, callback) => {
       message: "Created!",
       params: userParams
     });
-    callback(null, response);
+    return response;
   } catch (error) {
     let response;
     if (error.type === "ConditionalCheckFailedException") {
@@ -136,7 +130,7 @@ export const create = async (event, ctx, callback) => {
     } else {
       response = helpers.createResponse(502, "Internal Server Error occurred");
     }
-    callback(null, response);
+    return response;
   }
 };
 
@@ -145,14 +139,12 @@ export const checkUser = async (event, ctx, callback) => {
     const email = event.pathParameters.email;
     const user = await db.getOne(email, USERS_TABLE);
     if (isEmpty(user)) {
-      callback(null, helpers.createResponse(200, false));
+      return helpers.createResponse(200, false);
     } else {
-      callback(null, helpers.createResponse(200, true));
+      return helpers.createResponse(200, true);
     }
-    return null;
   } catch (err) {
-    callback(null, helpers.createResponse(400, err));
-    return null;
+    return helpers.createResponse(400, err);
   }
 };
 
@@ -162,14 +154,12 @@ export const checkUserMembership = async (event, ctx, callback) => {
     const email = event.pathParameters.email;
     const user = await db.getOne(email, USERS_TABLE);
     if (isEmpty(user)) {
-      callback(null, helpers.createResponse(200, false));
+      return helpers.createResponse(200, false);
     } else {
-      callback(null, helpers.createResponse(200, user.isMember));
+      return helpers.createResponse(200, user.isMember);
     }
-    return null;
   } catch (err) {
-    callback(null, helpers.createResponse(400, err));
-    return null;
+    return helpers.createResponse(400, err);
   }
 };
 
@@ -186,24 +176,18 @@ export const get = async (event, ctx, callback) => {
       email = event.pathParameters.email;
 
     if (!isValidEmail(email)) {
-      const response = helpers.inputError("Invalid email", email);
-      callback(null, response);
-      return null;
+      return helpers.inputError("Invalid email", email);
     }
     const user = await db.getOne(email, USERS_TABLE);
     if (isEmpty(user)) {
-      const response = helpers.notFoundResponse("user", email);
-      callback(null, response);
-      return null;
+      return helpers.notFoundResponse("user", email);
     }
 
     const response = helpers.createResponse(200, user);
-    callback(null, response);
-    return null;
+    return response;
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
@@ -232,12 +216,10 @@ export const update = async (event, ctx, callback) => {
       response: res
     });
 
-    callback(null, response);
-    return null;
+    return response;
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(err.statusCode || 500, { message: err.message || err });
   }
 };
 
@@ -245,15 +227,12 @@ export const getAll = async (event, ctx, callback) => {
   try {
     const users = await db.scan(USERS_TABLE);
 
-    // create the response
     const response = helpers.createResponse(200, users);
 
-    callback(null, response);
-    return null;
+    return response;
   } catch (err) {
     console.error(err);
-    callback(null, err);
-    return null;
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
@@ -321,14 +300,10 @@ export const favouriteEvent = async (event, ctx, callback) => {
       let successMsg =
         "Already " + (isFavourite ? "favourited" : "unfavourited");
       successMsg += ` event with eventID ${eventID} for the year ${year}`;
-      callback(
-        null,
-        helpers.createResponse(200, {
-          message: successMsg,
-          response: {}
-        })
-      );
-      return null;
+      return helpers.createResponse(200, {
+        message: successMsg,
+        response: {}
+      });
     }
 
     let expressionAttributeNames;
@@ -358,19 +333,14 @@ export const favouriteEvent = async (event, ctx, callback) => {
 
     let successMsg = isFavourite ? "Favourited" : "Unfavourited";
     successMsg += ` event with eventID ${eventID} for the year ${year}`;
-    callback(
-      null,
-      helpers.createResponse(200, {
-        message: successMsg,
-        response: res
-      })
-    );
-    return null;
+    return helpers.createResponse(200, {
+      message: successMsg,
+      response: res
+    });
   } catch (err) {
     console.error(err);
-    const response = helpers.createResponse(err.statusCode || 500, err);
-    callback(null, response);
-    return null;
+    const response = helpers.createResponse(err.statusCode || 500, { message: err.message || err });
+    return response;
   }
 };
 
@@ -392,10 +362,8 @@ export const del = async (event, ctx, callback) => {
       response: res
     });
 
-    callback(null, response);
-    return null;
+    return response;
   } catch (err) {
-    callback(null, err);
-    return null;
+    return helpers.createResponse(err.statusCode || 500, { message: err.message || err });
   }
 };

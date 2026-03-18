@@ -6,6 +6,7 @@ services/*/package-lock.json
 
 # Serverless directories
 .serverless
+.esbuild
 
 
 
