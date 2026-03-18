@@ -34,8 +34,7 @@ provider:
         - ses:UpdateEmailTemplate
         - ses:DeleteEmailTemplate
         - ses:ListEmailTemplates
-      Resource:
-        - "*"
+      Resource: "*"
 
 custom: ${file(../../serverless.common.yml):custom}
 
