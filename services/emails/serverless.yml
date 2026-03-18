@@ -29,12 +29,18 @@ provider:
   iamRoleStatements:
     - Effect: Allow
       Action:
-        - ses:GetEmailTemplate
-        - ses:CreateEmailTemplate
-        - ses:UpdateEmailTemplate
-        - ses:DeleteEmailTemplate
-        - ses:ListEmailTemplates
+        - ses:GetTemplate
+        - ses:CreateTemplate
+        - ses:UpdateTemplate
+        - ses:DeleteTemplate
+        - ses:ListTemplates
       Resource: "*"
+    - Effect: Allow
+      Action:
+        - ses:SendRawEmail
+      Resource:
+        - "arn:aws:ses:us-west-2:432714361962:identity/dev@ubcbiztech.com"
+        - "arn:aws:ses:us-west-2:432714361962:configuration-set/my-first-configuration-set"
 
 custom: ${file(../../serverless.common.yml):custom}
 
