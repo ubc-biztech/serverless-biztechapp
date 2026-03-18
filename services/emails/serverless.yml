@@ -43,7 +43,7 @@ functions:
     handler: handler.getEmailTemplate
     events:
       - http:
-          path: email-templates/{templateName}
+          path: emails/{templateName}
           method: get
           cors: true
           authorizer:
@@ -53,7 +53,7 @@ functions:
     handler: handler.createEmailTemplate
     events:
       - http:
-          path: email-templates/
+          path: emails/
           method: post
           cors: true
           authorizer:
@@ -63,7 +63,7 @@ functions:
     handler: handler.updateEmailTemplate
     events:
       - http:
-          path: email-templates/
+          path: emails/
           method: patch
           cors: true
           authorizer:
@@ -73,7 +73,7 @@ functions:
     handler: handler.deleteEmailTemplate
     events:
       - http:
-          path: email-templates/{templateName}
+          path: emails/{templateName}
           method: delete
           cors: true
           authorizer:
@@ -83,7 +83,7 @@ functions:
     handler: handler.listEmailTemplates
     events:
       - http:
-          path: email-templates
+          path: emails
           method: get
           cors: true
           authorizer:
