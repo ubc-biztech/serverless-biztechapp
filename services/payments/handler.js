@@ -382,37 +382,13 @@ export const payment = async (event, ctx, callback) => {
         throw helpers.notFoundResponse("event", data.eventID);
       }
 
-      // Special tiered pricing for blueprint;2026
-      // https://github.com/ubc-biztech/serverless-biztechapp/pull/631
-      // Remove from codebase after blueprint 2026 (REVERT PR #631)
-      if (data.eventID === "blueprint" && Number(data.year) === 2026) {
-        const counts = await registrationHelpers.getEventCounts(
-          data.eventID,
-          Number(data.year)
-        );
-        const registered = counts?.registeredCount ?? 0;
-        // Early Bird $15 - first 30
-        // Regular $25  - next 150 (up to 180)
-        // Last Min $35 - next 50  (up to 230)
-        if (registered < 30) {
-          unit_amount = 1500; // cents
-          data.paymentName = `${event.ename} (Early Bird)`;
-        } else if (registered < 180) {
-          unit_amount = 2500;
-          data.paymentName = `${event.ename} (Regular)`;
-        } else {
-          unit_amount = 3500;
-          data.paymentName = `${event.ename} (Last Minute)`;
-        }
-      } else {
-        const isMember = !isEmpty(user) && user.isMember;
-        const samePricing = event.pricing.members === event.pricing.nonMembers;
-        unit_amount =
+      const isMember = !isEmpty(user) && user.isMember;
+      const samePricing = event.pricing.members === event.pricing.nonMembers;
+      unit_amount =
           (isMember ? event.pricing.members : event.pricing.nonMembers) * 100;
-        data.paymentName = `${event.ename} ${
-          isMember || samePricing ? "" : "(Non-member)"
-        }`;
-      }
+      data.paymentName = `${event.ename} ${
+        isMember || samePricing ? "" : "(Non-member)"
+      }`;
 
       data = {
         ...data,
