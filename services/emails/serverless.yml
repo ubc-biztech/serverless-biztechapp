@@ -83,7 +83,7 @@ functions:
     handler: handler.listEmailTemplates
     events:
       - http:
-          path: emails
+          path: emails/
           method: get
           cors: true
           authorizer:
