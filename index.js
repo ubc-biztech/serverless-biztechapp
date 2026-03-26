@@ -16,13 +16,36 @@ const prefixColors = [
   "red"
 ];
 
-const file = readConfigFile();
+const config = readConfigFile();
 
-const services = file.services;
-const httpPort = file.port || 3000;
-const stage = file.stage || "dev";
+const allServices = config.services;
 
-const commands = runServices(services, httpPort, stage, prefixColors);
+let selectedServices = allServices;
+const basePort = config.port || 3000;
+const stage = config.stage || "dev";
+
+// support running specific services
+const serviceArgs = process.argv.slice(2);
+
+if (serviceArgs.length) {
+  // validate the services first
+  const allServiceNames = new Set(allServices.map(service => service.srvName));
+  const invalidServices = serviceArgs.filter(name => !allServiceNames.has(name));
+  if (invalidServices.length) {
+    console.error(`Invalid service name(s): ${invalidServices.join(", ")}. Please see sls-multi-gateways.yml`);
+    process.exit(1);
+  }
+
+  const requestedServiceNames = new Set(serviceArgs);
+  selectedServices = allServices.filter(service => requestedServiceNames.has(service.srvName));
+
+  if (!selectedServices.length) {
+    console.error("No services specified to run");
+    process.exit(1);
+  }
+}
+
+const commands = runServices(selectedServices, basePort, stage, prefixColors);
 
 const result = concurrently(commands, {
   killOthers: ["failure", "success"]
@@ -30,9 +53,10 @@ const result = concurrently(commands, {
 
 result.then();
 
-process.on("SIGINT", () => {
-  console.log("");
-  process.exit(1);
-});
+const proxyServer = runProxy(selectedServices, basePort, stage);
 
-runProxy(services, httpPort, stage);
+process.on("SIGINT", () => {
+  proxyServer.close(() => {
+    console.log("\nReceived SIGINT: Goodbye!");
+    process.exit(1);});
+});

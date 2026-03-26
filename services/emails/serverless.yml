@@ -1,4 +1,4 @@
-service: biztech-investments
+service: biztechApi-emails
 tenant: ianmh
 app: biztechapp
 
@@ -7,8 +7,8 @@ frameworkVersion: 3.40.0
 plugins:
   - serverless-dynamodb
   - serverless-offline
-  - serverless-esbuild
   - serverless-domain-manager
+  - serverless-esbuild
   - serverless-prune-plugin
   - serverless-mocha-plugin
 
@@ -21,73 +21,71 @@ provider:
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
-  timeout: 15 # in seconds
+
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
     restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
+
   iamRoleStatements:
     - Effect: Allow
       Action:
-        - dynamodb:Scan
-        - dynamodb:Query
-        - dynamodb:GetItem
-        - dynamodb:PutItem
-        - dynamodb:UpdateItem
-        - dynamodb:DeleteItem
-      Resource:
-        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechInvestments${self:provider.environment.ENVIRONMENT}"
-        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechTeams${self:provider.environment.ENVIRONMENT}"
-        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechRegistrations${self:provider.environment.ENVIRONMENT}"
-        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechInvestments${self:provider.environment.ENVIRONMENT}/index/team-investments"
-        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechInvestments${self:provider.environment.ENVIRONMENT}/index/investor-investments"
+        - ses:GetEmailTemplate
+        - ses:CreateEmailTemplate
+        - ses:UpdateEmailTemplate
+        - ses:DeleteEmailTemplate
+        - ses:ListEmailTemplates
+      Resource: "*"
 
 custom: ${file(../../serverless.common.yml):custom}
 
 functions:
-  invest:
-    handler: handler.invest
+  getEmailTemplate:
+    handler: handler.getEmailTemplate
     events:
       - http:
-          path: investments/invest
+          path: emails/templates/{templateName}
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  createEmailTemplate:
+    handler: handler.createEmailTemplate
+    events:
+      - http:
+          path: emails/templates/
           method: post
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
-  teamStatus:
-    handler: handler.teamStatus
+  updateEmailTemplate:
+    handler: handler.updateEmailTemplate
     events:
       - http:
-          path: investments/teamStatus/{teamId}
-          method: get
-          request:
-            path:
-              teamId: true
+          path: emails/templates/
+          method: patch
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
-  investorStatus:
-    handler: handler.investorStatus
+  deleteEmailTemplate:
+    handler: handler.deleteEmailTemplate
     events:
       - http:
-          path: investments/investorStatus/{investorId}
-          method: get
-          request:
-            path:
-              investorId: true
+          path: emails/templates/{templateName}
+          method: delete
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
-  investments:
-    handler: handler.investments
+  listEmailTemplates:
+    handler: handler.listEmailTemplates
     events:
       - http:
-          path: investments
+          path: emails/templates/
           method: get
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
-

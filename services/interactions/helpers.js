@@ -15,11 +15,7 @@ import handlerHelpers from "../../lib/handlerHelpers";
 import docClient from "../../lib/docClient";
 import {
   CURRENT_EVENT,
-  EXEC,
-  QUEST_WORKSHOP,
-  WORKSHOP_TWO,
-  WORKSHOP_TWO_PARTICIPANT,
-  QUEST_WORKSHOP_TWO_PARTICIPANT
+  EXEC
 } from "./constants";
 import {
   PROFILE_TYPES, TYPES

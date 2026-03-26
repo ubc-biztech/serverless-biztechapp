@@ -12,10 +12,6 @@ import fetch from "node-fetch";
 export async function slackApi(method, endpoint, body) {
   const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
   try {
-    console.log(
-      "Token Slice:",
-      SLACK_BOT_TOKEN ? "Token exists" : "token doesnt exist"
-    );
     const res = await fetch(`https://slack.com/api/${endpoint}`, {
       method,
       headers: {
@@ -36,7 +32,6 @@ export async function slackApi(method, endpoint, body) {
 }
 
 export async function openPingShortcut(body) {
-  console.log("Opening ping shortcut modal", body);
   if (body.type !== "message_action" || body.callback_id !== "ping") {
     console.error("Invalid shortcut call:", body);
     return;
