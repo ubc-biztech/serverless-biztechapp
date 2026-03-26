@@ -73,7 +73,8 @@ export const create = async (event, ctx, callback) => {
       unrequiredCheckBoxFields: data.unrequiredCheckBoxFields,
       isPublished: data.isPublished,
       feedback: data.feedback,
-      isApplicationBased: data.isApplicationBased
+      isApplicationBased: data.isApplicationBased,
+      nonBiztechAllowed: data.nonBiztechAllowed
     };
 
     if (Array.isArray(data.registrationQuestions)) {
