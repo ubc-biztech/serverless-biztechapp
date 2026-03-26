@@ -74,7 +74,7 @@ export const create = async (event, ctx, callback) => {
       isPublished: data.isPublished,
       feedback: data.feedback,
       isApplicationBased: data.isApplicationBased,
-      nonBiztechAllowed: data.nonBiztechAllowed
+      nonBizTechAllowed: data.nonBizTechAllowed
     };
 
     if (Array.isArray(data.registrationQuestions)) {
