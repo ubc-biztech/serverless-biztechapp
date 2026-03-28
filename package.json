@@ -24,7 +24,7 @@
     "csv-parser": "^3.0.0",
     "discord-interactions": "^4.3.0",
     "dotenv": "^16.0.3",
-    "express": "^4.17.1",
+    "express": "^4.22.1",
     "express-http-proxy": "^1.6.2",
     "fs": "0.0.1-security",
     "http-proxy-middleware": "^3.0.0",
