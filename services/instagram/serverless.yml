@@ -1,0 +1,100 @@
+service: biztechApi-instagram
+app: biztechapp
+
+frameworkVersion: 3.40.0
+
+plugins:
+  - serverless-dynamodb
+  - serverless-offline
+  - serverless-domain-manager
+  - serverless-esbuild
+  - serverless-prune-plugin
+  - serverless-mocha-plugin
+
+provider:
+  name: aws
+  stage: ${file(../../serverless.common.yml):provider.stage}
+  runtime: ${file(../../serverless.common.yml):provider.runtime}
+  region: ${file(../../serverless.common.yml):provider.region}
+  cfLogs: true
+  timeout: 29
+  environment:
+    ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
+    NODE_ENV: ${env:NODE_ENV}
+    IG_ACCESS_TOKEN: ${env:IG_ACCESS_TOKEN, ''}
+    IG_DEFAULT_START_DATE: ${env:IG_DEFAULT_START_DATE, '2025-08-01'}
+    IG_REFRESH_LEAD_DAYS: ${env:IG_REFRESH_LEAD_DAYS, '10'}
+
+  apiGateway:
+    restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
+    restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
+
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechInstagramAuth${self:provider.environment.ENVIRONMENT}"
+
+custom: ${file(../../serverless.common.yml):custom}
+
+functions:
+  instagramGetAnalytics:
+    handler: handler.getAnalytics
+    events:
+      - http:
+          path: instagram/analytics
+          method: get
+          cors: true
+          request:
+            parameters:
+              querystrings:
+                since: false
+                until: false
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  instagramRefreshTokenManual:
+    handler: handler.refreshTokenManual
+    events:
+      - http:
+          path: instagram/token/refresh
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  instagramGetTokenStatus:
+    handler: handler.getTokenStatus
+    events:
+      - http:
+          path: instagram/token/status
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  instagramRefreshTokenScheduled:
+    handler: handler.refreshTokenScheduled
+    events:
+      - schedule:
+          rate: rate(1 day)
+          enabled: true
+
+resources:
+  Resources:
+    BiztechInstagramAuth:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: biztechInstagramAuth${self:provider.environment.ENVIRONMENT}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
