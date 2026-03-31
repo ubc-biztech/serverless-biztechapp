@@ -21,16 +21,16 @@ services:
     srvSource: services/qr
   - srvName: quests
     srvPath: quests
-    srvSource: services/quests 
+    srvSource: services/quests
   - srvName: qr
     srvPath: qrscan
     srvSource: services/qr
   - srvName: registrations
     srvPath: registrations
     srvSource: services/registrations
-  - srvName: stickers
-    srvPath: stickers
-    srvSource: services/stickers
+  # - srvName: stickers
+  #   srvPath: stickers
+  #   srvSource: services/stickers
   - srvName: interactions
     srvPath: interactions
     srvSource: services/interactions
@@ -61,3 +61,6 @@ services:
   - srvName: emails
     srvPath: emails
     srvSource: services/emails
+  - srvName: instagram
+    srvPath: instagram
+    srvSource: services/instagram
