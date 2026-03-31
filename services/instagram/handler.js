@@ -218,9 +218,9 @@ const getAllMedia = async (igUserId, sinceDate, accessToken) => {
     const requestParams = nextUrl.includes("?")
       ? null
       : {
-          fields: "id,caption,media_type,timestamp,permalink",
-          limit: 50
-        };
+        fields: "id,caption,media_type,timestamp,permalink",
+        limit: 50
+      };
 
     const response = await makeRequest(nextUrl, requestParams, accessToken);
 
