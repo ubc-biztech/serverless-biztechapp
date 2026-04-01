@@ -2,13 +2,14 @@ import eventHelpers from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
 import {
-  alphabeticalComparer, dateComparer, isEmpty
+  alphabeticalComparer, dateComparer, isEmpty, isValidEmail
 } from "../../lib/utils";
 import {
   MAX_BATCH_ITEM_COUNT
 } from "../../constants/dynamodb";
 import {
   EVENTS_TABLE,
+  EVENT_FEEDBACK_TABLE,
   USERS_TABLE,
   USER_REGISTRATIONS_TABLE
 } from "../../constants/tables";
@@ -17,17 +18,442 @@ import {
   PutObjectCommand
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { v4 as uuidv4 } from "uuid";
 
 const S3 = new S3Client({
   region: "us-west-2"
 });
 
 const THUMBNAIL_BUCKET = "biztech-event-images";
+const FEEDBACK_FORM_TYPES = new Set(["attendee", "partner"]);
+const FEEDBACK_QUESTION_TYPES = new Set([
+  "SHORT_TEXT",
+  "LONG_TEXT",
+  "MULTIPLE_CHOICE",
+  "CHECKBOXES",
+  "LINEAR_SCALE"
+]);
+const FEEDBACK_TEXT_LIMITS = {
+  SHORT_TEXT: 280,
+  LONG_TEXT: 4000
+};
+const MAX_FEEDBACK_QUESTIONS_PER_FORM = 50;
+const OVERALL_RATING_QUESTION_ID = "overall-rating";
+const DEFAULT_OVERALL_RATING_QUESTION = {
+  questionId: OVERALL_RATING_QUESTION_ID,
+  type: "LINEAR_SCALE",
+  label: "How would you rate this event overall?",
+  required: true,
+  scaleMin: 1,
+  scaleMax: 10,
+  scaleMinLabel: "Poor",
+  scaleMaxLabel: "Excellent"
+};
+
+const parseFormType = (raw) => {
+  if (!raw || typeof raw !== "string") return null;
+  const normalized = raw.toLowerCase();
+  if (!FEEDBACK_FORM_TYPES.has(normalized)) return null;
+  return normalized;
+};
+
+const ensureDefaultOverallRatingQuestion = (questions) => {
+  const otherQuestions = (Array.isArray(questions) ? questions : []).filter(
+    (question) => question && question.questionId !== OVERALL_RATING_QUESTION_ID
+  );
+  return [
+    { ...DEFAULT_OVERALL_RATING_QUESTION },
+    ...otherQuestions
+  ];
+};
+
+const getFeedbackQuestionsForType = (eventItem, formType) => {
+  const questions = formType === "partner"
+    ? Array.isArray(eventItem?.partnerFeedbackQuestions)
+      ? eventItem.partnerFeedbackQuestions
+      : []
+    : Array.isArray(eventItem?.attendeeFeedbackQuestions)
+      ? eventItem.attendeeFeedbackQuestions
+      : [];
+
+  return ensureDefaultOverallRatingQuestion(questions);
+};
+
+const isFeedbackEnabledForType = (eventItem, formType) => {
+  if (formType === "partner")
+    return Boolean(eventItem?.partnerFeedbackEnabled);
+  return Boolean(eventItem?.attendeeFeedbackEnabled);
+};
+
+const normalizeChoices = (choicesValue) => {
+  if (Array.isArray(choicesValue)) {
+    return choicesValue
+      .map((choice) => normalizeText(choice))
+      .filter(Boolean);
+  }
+
+  if (typeof choicesValue !== "string") return [];
+  return choicesValue
+    .split(",")
+    .map((choice) => choice.trim())
+    .filter(Boolean);
+};
+
+const normalizeText = (value) => {
+  if (typeof value !== "string") return "";
+  return value.trim();
+};
+
+const normalizeFeedbackQuestions = (rawQuestions, formType) => {
+  if (!Array.isArray(rawQuestions)) {
+    return {
+      isValid: false,
+      error: `${formType}FeedbackQuestions must be an array.`
+    };
+  }
+
+  if (rawQuestions.length > MAX_FEEDBACK_QUESTIONS_PER_FORM) {
+    return {
+      isValid: false,
+      error: `${formType}FeedbackQuestions cannot exceed ${MAX_FEEDBACK_QUESTIONS_PER_FORM} questions.`
+    };
+  }
+
+  const normalizedQuestions = [];
+  const questionIdSet = new Set();
+
+  for (let index = 0; index < rawQuestions.length; index++) {
+    const rawQuestion = rawQuestions[index];
+    if (!rawQuestion || typeof rawQuestion !== "object" || Array.isArray(rawQuestion)) {
+      return {
+        isValid: false,
+        error: `${formType}FeedbackQuestions[${index}] is invalid.`
+      };
+    }
+
+    const type = normalizeText(rawQuestion.type).toUpperCase();
+    if (!FEEDBACK_QUESTION_TYPES.has(type)) {
+      return {
+        isValid: false,
+        error: `${formType}FeedbackQuestions[${index}] has unsupported type '${rawQuestion.type}'.`
+      };
+    }
+
+    const label = normalizeText(rawQuestion.label || rawQuestion.question);
+    if (!label) {
+      return {
+        isValid: false,
+        error: `${formType}FeedbackQuestions[${index}] is missing a question label.`
+      };
+    }
+
+    if (label.length > 500) {
+      return {
+        isValid: false,
+        error: `${formType}FeedbackQuestions[${index}] exceeds 500 characters.`
+      };
+    }
+
+    const rawQuestionId = normalizeText(
+      rawQuestion.questionId || rawQuestion.id
+    );
+    const questionId = rawQuestionId || uuidv4();
+    if (questionIdSet.has(questionId)) {
+      return {
+        isValid: false,
+        error: `${formType}FeedbackQuestions contains duplicate questionId '${questionId}'.`
+      };
+    }
+    questionIdSet.add(questionId);
+
+    const question = {
+      questionId,
+      type,
+      label,
+      required: Boolean(rawQuestion.required)
+    };
+
+    if (type === "MULTIPLE_CHOICE" || type === "CHECKBOXES") {
+      const options = [...new Set(normalizeChoices(
+        rawQuestion.choices || rawQuestion.options
+      ))];
+      if (options.length === 0) {
+        return {
+          isValid: false,
+          error: `${formType}FeedbackQuestions[${index}] must include at least one option.`
+        };
+      }
+
+      const invalidOption = options.find((option) => option.length > 200);
+      if (invalidOption) {
+        return {
+          isValid: false,
+          error: `${formType}FeedbackQuestions[${index}] has an option longer than 200 characters.`
+        };
+      }
+
+      question.choices = options.join(",");
+    }
+
+    if (type === "LINEAR_SCALE") {
+      const parsedMin = Number(rawQuestion.scaleMin);
+      const parsedMax = Number(rawQuestion.scaleMax);
+      const scaleMin = Number.isFinite(parsedMin) ? parsedMin : 1;
+      const scaleMax = Number.isFinite(parsedMax) ? parsedMax : 5;
+
+      if (!Number.isInteger(scaleMin) || !Number.isInteger(scaleMax)) {
+        return {
+          isValid: false,
+          error: `${formType}FeedbackQuestions[${index}] scale bounds must be integers.`
+        };
+      }
+
+      if (scaleMin >= scaleMax) {
+        return {
+          isValid: false,
+          error: `${formType}FeedbackQuestions[${index}] scaleMin must be less than scaleMax.`
+        };
+      }
+
+      if (scaleMin < 0 || scaleMax > 20) {
+        return {
+          isValid: false,
+          error: `${formType}FeedbackQuestions[${index}] scale bounds must be between 0 and 20.`
+        };
+      }
+
+      const scaleMinLabel = normalizeText(rawQuestion.scaleMinLabel);
+      const scaleMaxLabel = normalizeText(rawQuestion.scaleMaxLabel);
+      if (scaleMinLabel.length > 120 || scaleMaxLabel.length > 120) {
+        return {
+          isValid: false,
+          error: `${formType}FeedbackQuestions[${index}] scale labels cannot exceed 120 characters.`
+        };
+      }
+
+      question.scaleMin = scaleMin;
+      question.scaleMax = scaleMax;
+      question.scaleMinLabel = scaleMinLabel || "";
+      question.scaleMaxLabel = scaleMaxLabel || "";
+    }
+
+    normalizedQuestions.push(question);
+  }
+
+  return {
+    isValid: true,
+    questions: normalizedQuestions
+  };
+};
+
+const validateFeedbackPayload = (questions, rawResponses) => {
+  if (!rawResponses || typeof rawResponses !== "object" || Array.isArray(rawResponses)) {
+    return {
+      isValid: false,
+      error: "Feedback responses must be an object keyed by questionId."
+    };
+  }
+
+  const responses = rawResponses || {};
+  const allowedIds = new Set(questions.map((q) => q.questionId));
+  const normalized = {};
+
+  for (const key of Object.keys(responses)) {
+    if (!allowedIds.has(key)) {
+      return {
+        isValid: false,
+        error: `Unknown questionId '${key}' in responses.`
+      };
+    }
+  }
+
+  for (const question of questions) {
+    const {
+      questionId, type, required = false
+    } = question;
+    if (!FEEDBACK_QUESTION_TYPES.has(type)) {
+      return {
+        isValid: false,
+        error: `Unsupported feedback question type '${type}' for question '${questionId}'.`
+      };
+    }
+
+    const answer = responses[questionId];
+
+    if (type === "SHORT_TEXT" || type === "LONG_TEXT") {
+      const maxLength = FEEDBACK_TEXT_LIMITS[type];
+      const text = normalizeText(answer);
+      if (!text && required) {
+        return {
+          isValid: false,
+          error: `Question '${questionId}' is required.`
+        };
+      }
+      if (!text) continue;
+      if (text.length > maxLength) {
+        return {
+          isValid: false,
+          error: `Question '${questionId}' exceeds max length of ${maxLength}.`
+        };
+      }
+      normalized[questionId] = text;
+      continue;
+    }
+
+    if (type === "MULTIPLE_CHOICE") {
+      const options = normalizeChoices(question.choices);
+      const text = normalizeText(answer);
+      if (!text && required) {
+        return {
+          isValid: false,
+          error: `Question '${questionId}' is required.`
+        };
+      }
+      if (!text) continue;
+      if (!options.includes(text)) {
+        return {
+          isValid: false,
+          error: `Invalid choice for question '${questionId}'.`
+        };
+      }
+      normalized[questionId] = text;
+      continue;
+    }
+
+    if (type === "CHECKBOXES") {
+      const options = normalizeChoices(question.choices);
+      let selected = [];
+      if (Array.isArray(answer)) {
+        selected = answer.map((item) => normalizeText(item)).filter(Boolean);
+      } else if (typeof answer === "string") {
+        selected = answer.split(",").map((item) => item.trim()).filter(Boolean);
+      } else if (answer != null) {
+        return {
+          isValid: false,
+          error: `Invalid checkbox response for question '${questionId}'.`
+        };
+      }
+
+      const deduped = [...new Set(selected)];
+      if (required && deduped.length === 0) {
+        return {
+          isValid: false,
+          error: `Question '${questionId}' is required.`
+        };
+      }
+      if (deduped.length === 0) continue;
+
+      const invalidChoices = deduped.filter((item) => !options.includes(item));
+      if (invalidChoices.length > 0) {
+        return {
+          isValid: false,
+          error: `Invalid checkbox selection for question '${questionId}'.`
+        };
+      }
+      normalized[questionId] = deduped;
+      continue;
+    }
+
+    if (type === "LINEAR_SCALE") {
+      const min = Number.isFinite(Number(question.scaleMin))
+        ? Number(question.scaleMin)
+        : 1;
+      const max = Number.isFinite(Number(question.scaleMax))
+        ? Number(question.scaleMax)
+        : 5;
+      if ((answer === "" || answer == null) && required) {
+        return {
+          isValid: false,
+          error: `Question '${questionId}' is required.`
+        };
+      }
+      if (answer === "" || answer == null) continue;
+      const numericValue = Number(answer);
+      if (
+        !Number.isFinite(numericValue) ||
+        !Number.isInteger(numericValue) ||
+        numericValue < min ||
+        numericValue > max
+      ) {
+        return {
+          isValid: false,
+          error: `Scale response for question '${questionId}' must be a whole number between ${min} and ${max}.`
+        };
+      }
+      normalized[questionId] = numericValue;
+    }
+  }
+
+  return {
+    isValid: true,
+    responses: normalized
+  };
+};
 
 export const create = async (event, ctx, callback) => {
   try {
     const timestamp = new Date().getTime();
     const data = JSON.parse(event.body);
+    if (data.hasOwnProperty("attendeeFeedbackQuestions") &&
+      !Array.isArray(data.attendeeFeedbackQuestions)) {
+      return helpers.createResponse(406, {
+        message: "attendeeFeedbackQuestions must be an array."
+      });
+    }
+    if (data.hasOwnProperty("partnerFeedbackQuestions") &&
+      !Array.isArray(data.partnerFeedbackQuestions)) {
+      return helpers.createResponse(406, {
+        message: "partnerFeedbackQuestions must be an array."
+      });
+    }
+
+    const attendeeFeedbackQuestions = Array.isArray(data.attendeeFeedbackQuestions)
+      ? data.attendeeFeedbackQuestions
+      : [];
+    const partnerFeedbackQuestions = Array.isArray(data.partnerFeedbackQuestions)
+      ? data.partnerFeedbackQuestions
+      : [];
+
+    const attendeeQuestionValidation = normalizeFeedbackQuestions(
+      attendeeFeedbackQuestions,
+      "attendee"
+    );
+    if (!attendeeQuestionValidation.isValid) {
+      return helpers.createResponse(406, {
+        message: attendeeQuestionValidation.error
+      });
+    }
+
+    const partnerQuestionValidation = normalizeFeedbackQuestions(
+      partnerFeedbackQuestions,
+      "partner"
+    );
+    if (!partnerQuestionValidation.isValid) {
+      return helpers.createResponse(406, {
+        message: partnerQuestionValidation.error
+      });
+    }
+
+    const normalizedAttendeeQuestions = ensureDefaultOverallRatingQuestion(
+      attendeeQuestionValidation.questions
+    );
+    const normalizedPartnerQuestions = ensureDefaultOverallRatingQuestion(
+      partnerQuestionValidation.questions
+    );
+
+    const attendeeFeedbackEnabled = Boolean(data.attendeeFeedbackEnabled);
+    const partnerFeedbackEnabled = Boolean(data.partnerFeedbackEnabled);
+    if (attendeeFeedbackEnabled && normalizedAttendeeQuestions.length === 0) {
+      return helpers.createResponse(406, {
+        message: "Enable attendee feedback only after adding at least one attendee feedback question."
+      });
+    }
+    if (partnerFeedbackEnabled && normalizedPartnerQuestions.length === 0) {
+      return helpers.createResponse(406, {
+        message: "Enable partner feedback only after adding at least one partner feedback question."
+      });
+    }
+
     helpers.checkPayloadProps(data, {
       id: {
         required: true
@@ -74,7 +500,11 @@ export const create = async (event, ctx, callback) => {
       isPublished: data.isPublished,
       feedback: data.feedback,
       isApplicationBased: data.isApplicationBased,
-      nonBizTechAllowed: data.nonBizTechAllowed
+      nonBizTechAllowed: data.nonBizTechAllowed,
+      attendeeFeedbackEnabled,
+      partnerFeedbackEnabled,
+      attendeeFeedbackQuestions: normalizedAttendeeQuestions,
+      partnerFeedbackQuestions: normalizedPartnerQuestions
     };
 
     if (Array.isArray(data.registrationQuestions)) {
@@ -195,6 +625,19 @@ export const update = async (event, ctx, callback) => {
     if (isEmpty(existingEvent))
       throw helpers.notFoundResponse("event", id, year);
     const data = JSON.parse(event.body);
+    if (data.hasOwnProperty("attendeeFeedbackQuestions") &&
+      !Array.isArray(data.attendeeFeedbackQuestions)) {
+      return helpers.createResponse(406, {
+        message: "attendeeFeedbackQuestions must be an array."
+      });
+    }
+    if (data.hasOwnProperty("partnerFeedbackQuestions") &&
+      !Array.isArray(data.partnerFeedbackQuestions)) {
+      return helpers.createResponse(406, {
+        message: "partnerFeedbackQuestions must be an array."
+      });
+    }
+
     if (Array.isArray(data.registrationQuestions)) {
       for (let i = 0; i < data.registrationQuestions.length; i++) {
         if (!data.registrationQuestions[i].questionId) {
@@ -215,6 +658,74 @@ export const update = async (event, ctx, callback) => {
             ])[0];
         }
       }
+    }
+
+    if (Array.isArray(data.partnerFeedbackQuestions)) {
+      const partnerQuestionValidation = normalizeFeedbackQuestions(
+        data.partnerFeedbackQuestions,
+        "partner"
+      );
+      if (!partnerQuestionValidation.isValid) {
+        return helpers.createResponse(406, {
+          message: partnerQuestionValidation.error
+        });
+      }
+      data.partnerFeedbackQuestions = ensureDefaultOverallRatingQuestion(
+        partnerQuestionValidation.questions
+      );
+    }
+
+    if (Array.isArray(data.attendeeFeedbackQuestions)) {
+      const attendeeQuestionValidation = normalizeFeedbackQuestions(
+        data.attendeeFeedbackQuestions,
+        "attendee"
+      );
+      if (!attendeeQuestionValidation.isValid) {
+        return helpers.createResponse(406, {
+          message: attendeeQuestionValidation.error
+        });
+      }
+      data.attendeeFeedbackQuestions = ensureDefaultOverallRatingQuestion(
+        attendeeQuestionValidation.questions
+      );
+    }
+
+    const resolvedAttendeeFeedbackEnabled = data.hasOwnProperty("attendeeFeedbackEnabled")
+      ? Boolean(data.attendeeFeedbackEnabled)
+      : Boolean(existingEvent.attendeeFeedbackEnabled);
+    const resolvedPartnerFeedbackEnabled = data.hasOwnProperty("partnerFeedbackEnabled")
+      ? Boolean(data.partnerFeedbackEnabled)
+      : Boolean(existingEvent.partnerFeedbackEnabled);
+
+    const resolvedAttendeeQuestions = ensureDefaultOverallRatingQuestion(
+      data.hasOwnProperty("attendeeFeedbackQuestions")
+        ? data.attendeeFeedbackQuestions
+        : Array.isArray(existingEvent.attendeeFeedbackQuestions)
+          ? existingEvent.attendeeFeedbackQuestions
+          : []
+    );
+
+    const resolvedPartnerQuestions = ensureDefaultOverallRatingQuestion(
+      data.hasOwnProperty("partnerFeedbackQuestions")
+        ? data.partnerFeedbackQuestions
+        : Array.isArray(existingEvent.partnerFeedbackQuestions)
+          ? existingEvent.partnerFeedbackQuestions
+          : []
+    );
+
+    data.attendeeFeedbackQuestions = resolvedAttendeeQuestions;
+    data.partnerFeedbackQuestions = resolvedPartnerQuestions;
+
+    if (resolvedAttendeeFeedbackEnabled && resolvedAttendeeQuestions.length === 0) {
+      return helpers.createResponse(406, {
+        message: "Enable attendee feedback only after adding at least one attendee feedback question."
+      });
+    }
+
+    if (resolvedPartnerFeedbackEnabled && resolvedPartnerQuestions.length === 0) {
+      return helpers.createResponse(406, {
+        message: "Enable partner feedback only after adding at least one partner feedback question."
+      });
     }
     const {
       updateExpression,
@@ -454,6 +965,209 @@ export const get = async (event, ctx, callback) => {
       response = helpers.createResponse(502, { message: err.message || err });
 
     return response;
+  }
+};
+
+// GET events/{id}/{year}/feedback/{formType}
+export const getFeedbackForm = async (event, ctx, callback) => {
+  try {
+    if (!event.pathParameters || !event.pathParameters.id)
+      throw helpers.missingIdQueryResponse("event");
+    const id = event.pathParameters.id;
+    const formType = parseFormType(event.pathParameters.formType);
+    if (!formType) {
+      return helpers.createResponse(400, {
+        message: "Feedback formType must be either 'attendee' or 'partner'."
+      });
+    }
+    if (!event.pathParameters.year)
+      throw helpers.missingPathParamResponse("event", "year");
+
+    const year = parseInt(event.pathParameters.year, 10);
+    if (isNaN(year))
+      throw helpers.inputError(
+        "Year path parameter must be a number",
+        event.pathParameters
+      );
+
+    const eventItem = await db.getOne(id, EVENTS_TABLE, {
+      year
+    });
+
+    if (isEmpty(eventItem)) throw helpers.notFoundResponse("event", id, year);
+
+    const feedbackQuestions = getFeedbackQuestionsForType(eventItem, formType);
+    const enabled = isFeedbackEnabledForType(eventItem, formType);
+
+    return helpers.createResponse(200, {
+      event: {
+        id: eventItem.id,
+        year: eventItem.year,
+        ename: eventItem.ename,
+        description: eventItem.description,
+        partnerDescription: eventItem.partnerDescription,
+        imageUrl: eventItem.imageUrl,
+        endDate: eventItem.endDate,
+        isCompleted: eventItem.isCompleted
+      },
+      formType,
+      enabled,
+      feedbackQuestions
+    });
+  } catch (err) {
+    console.error(err);
+    return helpers.createResponse(500, { message: err.message || err });
+  }
+};
+
+// POST events/{id}/{year}/feedback/{formType}
+export const submitFeedback = async (event, ctx, callback) => {
+  try {
+    if (!event.pathParameters || !event.pathParameters.id)
+      throw helpers.missingIdQueryResponse("event");
+    if (!event.pathParameters.year)
+      throw helpers.missingPathParamResponse("event", "year");
+    const id = event.pathParameters.id;
+    const year = parseInt(event.pathParameters.year, 10);
+    if (isNaN(year))
+      throw helpers.inputError(
+        "Year path parameter must be a number",
+        event.pathParameters
+      );
+    const formType = parseFormType(event.pathParameters.formType);
+    if (!formType) {
+      return helpers.createResponse(400, {
+        message: "Feedback formType must be either 'attendee' or 'partner'."
+      });
+    }
+
+    const data = JSON.parse(event.body || "{}");
+    const eventItem = await db.getOne(id, EVENTS_TABLE, {
+      year
+    });
+    if (isEmpty(eventItem)) throw helpers.notFoundResponse("event", id, year);
+
+    if (!isFeedbackEnabledForType(eventItem, formType)) {
+      return helpers.createResponse(403, {
+        message: `The ${formType} feedback form is not enabled for this event.`
+      });
+    }
+
+    const eventEndDate = Date.parse(eventItem.endDate);
+    if (Number.isFinite(eventEndDate) && Date.now() < eventEndDate) {
+      return helpers.createResponse(409, {
+        message: "Feedback form submissions open after the event ends."
+      });
+    }
+
+    const feedbackQuestions = getFeedbackQuestionsForType(eventItem, formType);
+    if (!feedbackQuestions.length) {
+      return helpers.createResponse(406, {
+        message: `No ${formType} feedback questions are configured for this event.`
+      });
+    }
+
+    const validation = validateFeedbackPayload(feedbackQuestions, data.responses);
+    if (!validation.isValid) {
+      return helpers.createResponse(406, {
+        message: validation.error
+      });
+    }
+
+    const respondentName = normalizeText(data.respondentName);
+    if (respondentName.length > 120) {
+      return helpers.createResponse(406, {
+        message: "respondentName cannot exceed 120 characters."
+      });
+    }
+
+    const respondentEmail = normalizeText(data.respondentEmail).toLowerCase();
+    if (respondentEmail && !isValidEmail(respondentEmail)) {
+      return helpers.createResponse(406, {
+        message: "respondentEmail must be a valid email address."
+      });
+    }
+
+    const submittedAt = Date.now();
+    const feedbackItem = {
+      id: uuidv4(),
+      eventID: id,
+      year,
+      formType,
+      eventIDYear: `${id};${year}`,
+      eventFormKey: `${id};${year};${formType}`,
+      submittedAt,
+      responses: validation.responses,
+      respondentName: respondentName || undefined,
+      respondentEmail: respondentEmail || undefined,
+      createdAt: submittedAt,
+      updatedAt: submittedAt
+    };
+
+    await db.put(feedbackItem, EVENT_FEEDBACK_TABLE, true);
+
+    return helpers.createResponse(201, {
+      message: "Feedback submitted successfully.",
+      id: feedbackItem.id
+    });
+  } catch (err) {
+    console.error(err);
+    return helpers.createResponse(500, { message: err.message || err });
+  }
+};
+
+// GET events/{id}/{year}/feedback/{formType}/submissions
+export const getFeedbackSubmissions = async (event, ctx, callback) => {
+  try {
+    if (!event.pathParameters || !event.pathParameters.id)
+      throw helpers.missingIdQueryResponse("event");
+    if (!event.pathParameters.year)
+      throw helpers.missingPathParamResponse("event", "year");
+
+    const id = event.pathParameters.id;
+    const year = parseInt(event.pathParameters.year, 10);
+    if (isNaN(year))
+      throw helpers.inputError(
+        "Year path parameter must be a number",
+        event.pathParameters
+      );
+    const formType = parseFormType(event.pathParameters.formType);
+    if (!formType) {
+      return helpers.createResponse(400, {
+        message: "Feedback formType must be either 'attendee' or 'partner'."
+      });
+    }
+
+    const existingEvent = await db.getOne(id, EVENTS_TABLE, { year });
+    if (isEmpty(existingEvent))
+      throw helpers.notFoundResponse("event", id, year);
+
+    const eventFormKey = `${id};${year};${formType}`;
+    const submissions = await db.query(
+      EVENT_FEEDBACK_TABLE,
+      "event-form-query",
+      {
+        expression: "#eventFormKey = :eventFormKey",
+        expressionNames: {
+          "#eventFormKey": "eventFormKey"
+        },
+        expressionValues: {
+          ":eventFormKey": eventFormKey
+        }
+      }
+    );
+
+    const sortedSubmissions = submissions
+      .slice()
+      .sort((a, b) => (b.submittedAt || 0) - (a.submittedAt || 0));
+
+    return helpers.createResponse(200, {
+      count: sortedSubmissions.length,
+      submissions: sortedSubmissions
+    });
+  } catch (err) {
+    console.error(err);
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 

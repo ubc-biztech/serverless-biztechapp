@@ -1,6 +1,7 @@
 export const CONNECTIONS_TABLE = "bizConnections";
 export const EVENTS_TABLE = "biztechEvents";
 export const FEEDBACK_TABLE = "bizFeedback";
+export const EVENT_FEEDBACK_TABLE = "biztechEventFeedback";
 export const JUDGING_TABLE = "bizJudge";
 export const MEMBERSHIPS2021_TABLE = "biztechMemberships2021";
 export const MEMBERS2022_TABLE = "biztechMembers2022";
