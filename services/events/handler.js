@@ -699,13 +699,6 @@ export const submitFeedback = async (event, ctx, callback) => {
       });
     }
 
-    const eventEndDate = Date.parse(eventItem.endDate);
-    if (Number.isFinite(eventEndDate) && Date.now() < eventEndDate) {
-      return helpers.createResponse(409, {
-        message: "Feedback form submissions open after the event ends."
-      });
-    }
-
     const feedbackQuestions = getFeedbackQuestionsForType(eventItem, formType);
     if (!feedbackQuestions.length) {
       return helpers.createResponse(406, {
