@@ -9,7 +9,10 @@ const servicesDir = path.join(process.cwd(), "services");
 const runTest = (cwd, extraArgs = "") => {
   const cmd = `serverless invoke test --compilers js:babel-core/register${extraArgs}`;
   console.log(`\n> [${path.basename(cwd)}] ${cmd}`);
-  execSync(cmd, { cwd, stdio: "inherit" });
+  execSync(cmd, {
+    cwd,
+    stdio: "inherit"
+  });
 };
 
 if (service === "all") {

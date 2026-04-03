@@ -10,7 +10,10 @@ for (const entry of readdirSync(servicesDir, { withFileTypes: true })) {
   const cwd = path.join(servicesDir, entry.name);
   console.log(`\n> [${entry.name}] ${cmd}`);
   try {
-    execSync(cmd, { cwd, stdio: "inherit" });
+    execSync(cmd, {
+      cwd,
+      stdio: "inherit"
+    });
   } catch {
     // continue to next service on failure
   }
