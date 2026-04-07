@@ -64,3 +64,6 @@ services:
   - srvName: instagram
     srvPath: instagram
     srvSource: services/instagram
+  - srvName: partnerships
+    srvPath: partnerships
+    srvSource: services/partnerships

@@ -27,6 +27,7 @@
     "express": "^4.17.1",
     "express-http-proxy": "^1.6.2",
     "fs": "0.0.1-security",
+    "googleapis": "^144.0.0",
     "http-proxy-middleware": "^3.0.0",
     "human-id": "^4.1.1",
     "ics": "^2.40.0",
