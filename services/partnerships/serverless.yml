@@ -246,6 +246,7 @@ functions:
 
   partnershipsListPartnerDocuments:
     handler: handler.listPartnerDocuments
+    name: ptn-${sls:stage}-list-partner-docs
     events:
       - http:
           path: partnerships/partners/{partnerId}/documents
@@ -257,6 +258,7 @@ functions:
 
   partnershipsCreatePartnerDocument:
     handler: handler.createPartnerDocument
+    name: ptn-${sls:stage}-create-partner-doc
     events:
       - http:
           path: partnerships/partners/{partnerId}/documents
@@ -268,6 +270,7 @@ functions:
 
   partnershipsUpdatePartnerDocument:
     handler: handler.updatePartnerDocument
+    name: ptn-${sls:stage}-update-partner-doc
     events:
       - http:
           path: partnerships/partner-documents/{documentId}
@@ -279,6 +282,7 @@ functions:
 
   partnershipsDeletePartnerDocument:
     handler: handler.deletePartnerDocument
+    name: ptn-${sls:stage}-delete-partner-doc
     events:
       - http:
           path: partnerships/partner-documents/{documentId}
@@ -290,6 +294,7 @@ functions:
 
   partnershipsListPartnerCommunications:
     handler: handler.listPartnerCommunications
+    name: ptn-${sls:stage}-list-partner-comms
     events:
       - http:
           path: partnerships/partners/{partnerId}/communications
@@ -301,6 +306,7 @@ functions:
 
   partnershipsCreatePartnerCommunication:
     handler: handler.createPartnerCommunication
+    name: ptn-${sls:stage}-create-partner-comm
     events:
       - http:
           path: partnerships/partners/{partnerId}/communications
@@ -312,6 +318,7 @@ functions:
 
   partnershipsUpdatePartnerCommunication:
     handler: handler.updatePartnerCommunication
+    name: ptn-${sls:stage}-update-partner-comm
     events:
       - http:
           path: partnerships/partner-communications/{communicationId}
@@ -323,6 +330,7 @@ functions:
 
   partnershipsDeletePartnerCommunication:
     handler: handler.deletePartnerCommunication
+    name: ptn-${sls:stage}-delete-partner-comm
     events:
       - http:
           path: partnerships/partner-communications/{communicationId}
@@ -378,6 +386,7 @@ functions:
 
   partnershipsListMassEmailTemplates:
     handler: handler.listMassEmailTemplatesHandler
+    name: ptn-${sls:stage}-list-email-templates
     events:
       - http:
           path: partnerships/email/templates
@@ -389,6 +398,7 @@ functions:
 
   partnershipsCreateMassEmailTemplate:
     handler: handler.createMassEmailTemplateHandler
+    name: ptn-${sls:stage}-create-email-template
     events:
       - http:
           path: partnerships/email/templates
@@ -400,6 +410,7 @@ functions:
 
   partnershipsUpdateMassEmailTemplate:
     handler: handler.updateMassEmailTemplateHandler
+    name: ptn-${sls:stage}-update-email-template
     events:
       - http:
           path: partnerships/email/templates/{templateId}
@@ -411,6 +422,7 @@ functions:
 
   partnershipsDeleteMassEmailTemplate:
     handler: handler.deleteMassEmailTemplateHandler
+    name: ptn-${sls:stage}-delete-email-template
     events:
       - http:
           path: partnerships/email/templates/{templateId}

@@ -57,7 +57,8 @@
     "populate-quests": "cd scripts && node ./generateQuestsForEventRegistrations.js",
     "migrate-judges": "cd scripts && node ./migratePartnerRegistrationsToJudges.js",
     "judge-rooms": "cd scripts && node ./generateRoomLinks.js",
-    "discord-create-cmd": "cd scripts && node ./registerDiscordCommand.js"
+    "discord-create-cmd": "cd scripts && node ./registerDiscordCommand.js",
+    "build:slack-docs-index": "node ./scripts/generateSlackDocsIndex.js"
   },
   "devDependencies": {
     "artillery": "^2.0.21",

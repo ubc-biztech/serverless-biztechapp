@@ -6,8 +6,311 @@ import {
   btFields,
   btDevs
 } from "./constants.js";
+import { docsBaseUrl, docsChunks } from "./docsIndex.js";
 import jwt from "jsonwebtoken";
 import fetch from "node-fetch";
+
+const DOCS_QA_MODEL = process.env.OPENAI_DOCS_MODEL || "gpt-5.4-mini";
+const DOCS_MAX_CONTEXT_SOURCES = 8;
+const DOCS_MIN_TOP_SCORE = 4;
+const DOCS_REPLY_FALLBACK = "Sorry, I couldn't verify that in BizWiki docs.";
+const DOCS_STOPWORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "are",
+  "as",
+  "at",
+  "be",
+  "by",
+  "can",
+  "do",
+  "for",
+  "from",
+  "how",
+  "i",
+  "in",
+  "is",
+  "it",
+  "of",
+  "on",
+  "or",
+  "that",
+  "the",
+  "this",
+  "to",
+  "we",
+  "what",
+  "when",
+  "where",
+  "which",
+  "who",
+  "why",
+  "with",
+  "you",
+  "your"
+]);
+
+function normalizeForSearch(text = "") {
+  return ` ${String(text)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()} `;
+}
+
+function tokenize(text = "") {
+  const tokens =
+    String(text)
+      .toLowerCase()
+      .match(/[a-z0-9]+/g) || [];
+  return tokens.filter(
+    (token) => token.length > 2 && !DOCS_STOPWORDS.has(token)
+  );
+}
+
+const preparedDocsChunks = docsChunks.map((chunk) => ({
+  ...chunk,
+  titleSearch: normalizeForSearch(chunk.title),
+  sectionSearch: normalizeForSearch(chunk.section)
+}));
+
+const tokenDocumentFrequency = new Map();
+for (const chunk of preparedDocsChunks) {
+  const uniqueTokens = new Set(tokenize(chunk.searchText));
+  for (const token of uniqueTokens) {
+    tokenDocumentFrequency.set(
+      token,
+      (tokenDocumentFrequency.get(token) || 0) + 1
+    );
+  }
+}
+
+const tokenIdf = new Map(
+  [...tokenDocumentFrequency.entries()].map(([token, df]) => [
+    token,
+    Math.log((1 + preparedDocsChunks.length) / (1 + df)) + 1
+  ])
+);
+
+function queryBigrams(tokens) {
+  const bigrams = [];
+  for (let i = 0; i < tokens.length - 1; i += 1) {
+    bigrams.push(`${tokens[i]} ${tokens[i + 1]}`);
+  }
+  return bigrams;
+}
+
+function routeIntentBoost(route, tokenSet) {
+  let boost = 0;
+
+  if (route === "/docs/getting-started") {
+    const setupIntent =
+      tokenSet.has("setup") ||
+      tokenSet.has("install") ||
+      tokenSet.has("run") ||
+      tokenSet.has("start") ||
+      tokenSet.has("local") ||
+      tokenSet.has("locally");
+
+    if (setupIntent) boost += 10;
+    if (tokenSet.has("backend")) boost += 6;
+    if (tokenSet.has("frontend")) boost += 6;
+  }
+
+  return boost;
+}
+
+function scoreChunkForQuestion(chunk, queryNorm, queryTokens, bigrams) {
+  const queryPhrase = queryNorm.trim();
+  const searchable = chunk.searchText || normalizeForSearch(chunk.content);
+  const tokenSet = new Set(queryTokens);
+
+  let score = 0;
+  if (queryPhrase.length >= 10 && searchable.includes(queryPhrase)) {
+    score += 12;
+  }
+
+  for (const token of tokenSet) {
+    const weight = tokenIdf.get(token) || 1;
+    const needle = ` ${token} `;
+    if (chunk.titleSearch.includes(needle)) score += 6 * weight;
+    if (chunk.sectionSearch.includes(needle)) score += 3 * weight;
+    if (searchable.includes(needle)) score += weight;
+  }
+
+  for (const bigram of bigrams) {
+    const phrase = ` ${bigram} `;
+    if (chunk.titleSearch.includes(phrase)) score += 8;
+    if (chunk.sectionSearch.includes(phrase)) score += 4;
+    if (searchable.includes(phrase)) score += 2;
+  }
+
+  if (/\//.test(queryNorm) && /\//.test(chunk.content)) {
+    score += 2;
+  }
+
+  score += routeIntentBoost(chunk.route, tokenSet);
+
+  return score;
+}
+
+function retrieveTopDocsChunks(question, limit = DOCS_MAX_CONTEXT_SOURCES) {
+  const queryNorm = normalizeForSearch(question);
+  const queryTokens = tokenize(question);
+  const bigrams = queryBigrams(queryTokens);
+
+  if (!queryNorm.trim() && queryTokens.length === 0) return [];
+
+  const scored = preparedDocsChunks
+    .map((chunk) => ({
+      ...chunk,
+      score: scoreChunkForQuestion(chunk, queryNorm, queryTokens, bigrams)
+    }))
+    .filter((chunk) => chunk.score > 0)
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.id.localeCompare(b.id);
+    });
+
+  const selected = [];
+  const perRouteCount = new Map();
+
+  for (const chunk of scored) {
+    const routeCount = perRouteCount.get(chunk.route) || 0;
+    if (routeCount >= 2) continue;
+    selected.push(chunk);
+    perRouteCount.set(chunk.route, routeCount + 1);
+    if (selected.length >= limit) break;
+  }
+
+  return selected;
+}
+
+function formatDocsContext(sources) {
+  return sources
+    .map((source, index) => {
+      const excerpt =
+        source.content.length > 1200
+          ? `${source.content.slice(0, 1197)}...`
+          : source.content;
+      return `[${index + 1}] ${source.title} — ${source.section}\nURL: ${
+        source.url
+      }\n${excerpt}`;
+    })
+    .join("\n\n---\n\n");
+}
+
+function extractCitationIndexes(text, maxIndex) {
+  const matches = String(text).match(/\[(\d+)\]/g) || [];
+  const indexes = matches
+    .map((match) => Number(match.replace(/[^\d]/g, "")))
+    .filter((n) => Number.isInteger(n) && n >= 1 && n <= maxIndex);
+
+  return [...new Set(indexes)];
+}
+
+function buildNoConfidenceReply(sources = []) {
+  const suggested = sources
+    .slice(0, 3)
+    .map((source) => `• <${source.url}|${source.title}>`)
+    .join("\n");
+
+  if (!suggested) {
+    return `${DOCS_REPLY_FALLBACK}\n\nBrowse BizWiki directly: <${docsBaseUrl}|${docsBaseUrl}>`;
+  }
+
+  return `${DOCS_REPLY_FALLBACK}\n\nClosest docs:\n${suggested}\n\nBrowse BizWiki directly: <${docsBaseUrl}|${docsBaseUrl}>`;
+}
+
+async function getDocsAnswerFromOpenAI(question, sources) {
+  const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+  if (!OPENAI_API_KEY) {
+    return {
+      answer: "",
+      error: "Missing OPENAI_API_KEY"
+    };
+  }
+
+  const systemPrompt = [
+    "You are BizWiki assistant for Slack.",
+    "Use only the provided DOCUMENTATION EXCERPTS.",
+    `If the excerpts do not support an answer, reply with exactly: "${DOCS_REPLY_FALLBACK}"`,
+    "Every factual sentence must include citation markers like [1], [2].",
+    "Citations must reference only the provided source numbers.",
+    "Do not include a separate Sources section."
+  ].join(" ");
+
+  const userPrompt = `Question:\n${question}\n\nDOCUMENTATION EXCERPTS:\n${formatDocsContext(
+    sources
+  )}`;
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${OPENAI_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: DOCS_QA_MODEL,
+        temperature: 0,
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt
+          },
+          {
+            role: "user",
+            content: userPrompt
+          }
+        ]
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return {
+        answer: "",
+        error: `OpenAI error: ${
+          data?.error?.message ? data.error.message : "Unknown error"
+        }`
+      };
+    }
+
+    return {
+      answer: data?.choices?.[0]?.message?.content?.trim() || "",
+      error: ""
+    };
+  } catch (error) {
+    return {
+      answer: "",
+      error: "Failed to call OpenAI for docs QA."
+    };
+  }
+}
+
+function buildDocsReply(answer, sources) {
+  if (!answer) return buildNoConfidenceReply(sources);
+
+  if (answer.trim() === DOCS_REPLY_FALLBACK) {
+    return buildNoConfidenceReply(sources);
+  }
+
+  const citedIndexes = extractCitationIndexes(answer, sources.length);
+  if (!citedIndexes.length) {
+    return buildNoConfidenceReply(sources);
+  }
+
+  const sourceLines = citedIndexes
+    .map((index) => {
+      const source = sources[index - 1];
+      return `• [${index}] <${source.url}|${source.title}>`;
+    })
+    .join("\n");
+
+  return `📚 *Answer from BizWiki docs*\n${answer}\n\n*Sources*\n${sourceLines}`;
+}
 
 export async function slackApi(method, endpoint, body) {
   const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
@@ -15,7 +318,7 @@ export async function slackApi(method, endpoint, body) {
     const res = await fetch(`https://slack.com/api/${endpoint}`, {
       method,
       headers: {
-        Authorization: `Bearer ${SLACK_BOT_TOKEN}`,
+        "Authorization": `Bearer ${SLACK_BOT_TOKEN}`,
         "Content-Type": "application/json; charset=utf-8"
       },
       body: body ? JSON.stringify(body) : undefined
@@ -130,10 +433,69 @@ export async function submitPingShortcut(body) {
   }
 }
 
+export async function answerDocsQuestion(opts) {
+  const { channel_id, thread_ts, response_url, question } = opts;
+
+  const cleanQuestion = String(question || "").trim();
+  if (!cleanQuestion) {
+    const usageMessage =
+      "Ask me a docs question by tagging me, for example: `@bot how do I run the backend locally?`";
+    if (thread_ts) {
+      await slackApi("POST", "chat.postMessage", {
+        channel: channel_id,
+        thread_ts,
+        text: usageMessage
+      });
+    } else if (response_url) {
+      await respondToSlack(response_url, usageMessage);
+    }
+    return;
+  }
+
+  const relevantSources = retrieveTopDocsChunks(cleanQuestion);
+  if (
+    !relevantSources.length ||
+    relevantSources[0].score < DOCS_MIN_TOP_SCORE
+  ) {
+    const lowConfidenceReply = buildNoConfidenceReply(relevantSources);
+    if (thread_ts) {
+      await slackApi("POST", "chat.postMessage", {
+        channel: channel_id,
+        thread_ts,
+        text: lowConfidenceReply
+      });
+    } else if (response_url) {
+      await respondToSlack(response_url, lowConfidenceReply);
+    }
+    return;
+  }
+
+  const { answer, error } = await getDocsAnswerFromOpenAI(
+    cleanQuestion,
+    relevantSources
+  );
+
+  if (error) {
+    console.error("Docs QA error:", error);
+  }
+
+  const reply = error
+    ? `${DOCS_REPLY_FALLBACK}\n\nThe docs assistant is temporarily unavailable.`
+    : buildDocsReply(answer, relevantSources);
+
+  if (thread_ts) {
+    await slackApi("POST", "chat.postMessage", {
+      channel: channel_id,
+      thread_ts,
+      text: reply
+    });
+  } else if (response_url) {
+    await respondToSlack(response_url, reply);
+  }
+}
+
 export async function summarizeRecentMessages(opts) {
-  const {
-    channel_id, thread_ts, response_url
-  } = opts;
+  const { channel_id, thread_ts, response_url } = opts;
   const BOT_USER_ID = process.env.BOT_USER_ID;
 
   const messages = thread_ts
@@ -201,7 +563,7 @@ export async function getSummaryFromOpenAI(text) {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "Authorization": `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
@@ -289,8 +651,8 @@ async function getGithubToken() {
     {
       method: "POST",
       headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${token}`,
+        "Accept": "application/vnd.github+json",
+        "Authorization": `Bearer ${token}`,
         "X-GitHub-Api-Version": "2022-11-28"
       }
     }
@@ -310,7 +672,7 @@ export async function getProjectBoard() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
+        "Authorization": `Bearer ${token}`
       },
       body: JSON.stringify({
         query

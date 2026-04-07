@@ -1,4 +1,5 @@
 import {
+  answerDocsQuestion,
   getProjectBoard,
   openPingShortcut,
   slackApi,
@@ -60,11 +61,11 @@ export const shortcutHandler = async (event, ctx, callback) => {
 
     if (event.user === BOT_USER_ID) {
       // Bot is the author, ignoring to avoid loops
-      return;
+      return ack;
     }
 
     if (processedEventIds.has(body.event_id)) {
-      return;
+      return ack;
     }
     processedEventIds.add(body.event_id);
 
@@ -75,13 +76,7 @@ export const shortcutHandler = async (event, ctx, callback) => {
     }
 
     const wantsSummary = /summarize/i.test(event.text);
-    if (!wantsSummary) return;
-
-    const opts = {
-      channel_id: event.channel,
-      thread_ts: event.thread_ts,
-      response_url: null
-    };
+    const question = String(event.text || "").replace(/<@[^>]+>/g, "").trim();
 
     await slackApi("POST", "reactions.add", {
       channel: event.channel,
@@ -89,8 +84,22 @@ export const shortcutHandler = async (event, ctx, callback) => {
       timestamp: event.ts
     }).catch(() => {});
 
-    await summarizeRecentMessages(opts);
-    return;
+    if (wantsSummary) {
+      await summarizeRecentMessages({
+        channel_id: event.channel,
+        thread_ts: event.thread_ts,
+        response_url: null
+      });
+      return ack;
+    }
+
+    await answerDocsQuestion({
+      channel_id: event.channel,
+      thread_ts: event.thread_ts || event.ts,
+      response_url: null,
+      question
+    });
+    return ack;
   }
 
   if (!body || !body.type) {
