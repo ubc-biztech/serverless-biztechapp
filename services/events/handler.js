@@ -1,14 +1,16 @@
 import eventHelpers from "./helpers";
+import feedbackHelpers from "./feedbackHelpers";
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
 import {
-  alphabeticalComparer, dateComparer, isEmpty
+  alphabeticalComparer, dateComparer, isEmpty, isValidEmail
 } from "../../lib/utils";
 import {
   MAX_BATCH_ITEM_COUNT
 } from "../../constants/dynamodb";
 import {
   EVENTS_TABLE,
+  EVENT_FEEDBACK_TABLE,
   USERS_TABLE,
   USER_REGISTRATIONS_TABLE
 } from "../../constants/tables";
@@ -17,17 +19,87 @@ import {
   PutObjectCommand
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { v4 as uuidv4 } from "uuid";
 
 const S3 = new S3Client({
   region: "us-west-2"
 });
 
 const THUMBNAIL_BUCKET = "biztech-event-images";
+const {
+  parseFormType,
+  ensureDefaultOverallRatingQuestion,
+  getFeedbackQuestionsForType,
+  isFeedbackEnabledForType,
+  normalizeFeedbackQuestions,
+  validateFeedbackPayload,
+  normalizeText
+} = feedbackHelpers;
 
 export const create = async (event, ctx, callback) => {
   try {
     const timestamp = new Date().getTime();
     const data = JSON.parse(event.body);
+    if (data.hasOwnProperty("attendeeFeedbackQuestions") &&
+      !Array.isArray(data.attendeeFeedbackQuestions)) {
+      return helpers.createResponse(406, {
+        message: "attendeeFeedbackQuestions must be an array."
+      });
+    }
+    if (data.hasOwnProperty("partnerFeedbackQuestions") &&
+      !Array.isArray(data.partnerFeedbackQuestions)) {
+      return helpers.createResponse(406, {
+        message: "partnerFeedbackQuestions must be an array."
+      });
+    }
+
+    const attendeeFeedbackQuestions = Array.isArray(data.attendeeFeedbackQuestions)
+      ? data.attendeeFeedbackQuestions
+      : [];
+    const partnerFeedbackQuestions = Array.isArray(data.partnerFeedbackQuestions)
+      ? data.partnerFeedbackQuestions
+      : [];
+
+    const attendeeQuestionValidation = normalizeFeedbackQuestions(
+      attendeeFeedbackQuestions,
+      "attendee"
+    );
+    if (!attendeeQuestionValidation.isValid) {
+      return helpers.createResponse(406, {
+        message: attendeeQuestionValidation.error
+      });
+    }
+
+    const partnerQuestionValidation = normalizeFeedbackQuestions(
+      partnerFeedbackQuestions,
+      "partner"
+    );
+    if (!partnerQuestionValidation.isValid) {
+      return helpers.createResponse(406, {
+        message: partnerQuestionValidation.error
+      });
+    }
+
+    const normalizedAttendeeQuestions = ensureDefaultOverallRatingQuestion(
+      attendeeQuestionValidation.questions
+    );
+    const normalizedPartnerQuestions = ensureDefaultOverallRatingQuestion(
+      partnerQuestionValidation.questions
+    );
+
+    const attendeeFeedbackEnabled = Boolean(data.attendeeFeedbackEnabled);
+    const partnerFeedbackEnabled = Boolean(data.partnerFeedbackEnabled);
+    if (attendeeFeedbackEnabled && normalizedAttendeeQuestions.length === 0) {
+      return helpers.createResponse(406, {
+        message: "Enable attendee feedback only after adding at least one attendee feedback question."
+      });
+    }
+    if (partnerFeedbackEnabled && normalizedPartnerQuestions.length === 0) {
+      return helpers.createResponse(406, {
+        message: "Enable partner feedback only after adding at least one partner feedback question."
+      });
+    }
+
     helpers.checkPayloadProps(data, {
       id: {
         required: true
@@ -74,7 +146,11 @@ export const create = async (event, ctx, callback) => {
       isPublished: data.isPublished,
       feedback: data.feedback,
       isApplicationBased: data.isApplicationBased,
-      nonBizTechAllowed: data.nonBizTechAllowed
+      nonBizTechAllowed: data.nonBizTechAllowed,
+      attendeeFeedbackEnabled,
+      partnerFeedbackEnabled,
+      attendeeFeedbackQuestions: normalizedAttendeeQuestions,
+      partnerFeedbackQuestions: normalizedPartnerQuestions
     };
 
     if (Array.isArray(data.registrationQuestions)) {
@@ -195,6 +271,19 @@ export const update = async (event, ctx, callback) => {
     if (isEmpty(existingEvent))
       throw helpers.notFoundResponse("event", id, year);
     const data = JSON.parse(event.body);
+    if (data.hasOwnProperty("attendeeFeedbackQuestions") &&
+      !Array.isArray(data.attendeeFeedbackQuestions)) {
+      return helpers.createResponse(406, {
+        message: "attendeeFeedbackQuestions must be an array."
+      });
+    }
+    if (data.hasOwnProperty("partnerFeedbackQuestions") &&
+      !Array.isArray(data.partnerFeedbackQuestions)) {
+      return helpers.createResponse(406, {
+        message: "partnerFeedbackQuestions must be an array."
+      });
+    }
+
     if (Array.isArray(data.registrationQuestions)) {
       for (let i = 0; i < data.registrationQuestions.length; i++) {
         if (!data.registrationQuestions[i].questionId) {
@@ -215,6 +304,74 @@ export const update = async (event, ctx, callback) => {
             ])[0];
         }
       }
+    }
+
+    if (Array.isArray(data.partnerFeedbackQuestions)) {
+      const partnerQuestionValidation = normalizeFeedbackQuestions(
+        data.partnerFeedbackQuestions,
+        "partner"
+      );
+      if (!partnerQuestionValidation.isValid) {
+        return helpers.createResponse(406, {
+          message: partnerQuestionValidation.error
+        });
+      }
+      data.partnerFeedbackQuestions = ensureDefaultOverallRatingQuestion(
+        partnerQuestionValidation.questions
+      );
+    }
+
+    if (Array.isArray(data.attendeeFeedbackQuestions)) {
+      const attendeeQuestionValidation = normalizeFeedbackQuestions(
+        data.attendeeFeedbackQuestions,
+        "attendee"
+      );
+      if (!attendeeQuestionValidation.isValid) {
+        return helpers.createResponse(406, {
+          message: attendeeQuestionValidation.error
+        });
+      }
+      data.attendeeFeedbackQuestions = ensureDefaultOverallRatingQuestion(
+        attendeeQuestionValidation.questions
+      );
+    }
+
+    const resolvedAttendeeFeedbackEnabled = data.hasOwnProperty("attendeeFeedbackEnabled")
+      ? Boolean(data.attendeeFeedbackEnabled)
+      : Boolean(existingEvent.attendeeFeedbackEnabled);
+    const resolvedPartnerFeedbackEnabled = data.hasOwnProperty("partnerFeedbackEnabled")
+      ? Boolean(data.partnerFeedbackEnabled)
+      : Boolean(existingEvent.partnerFeedbackEnabled);
+
+    const resolvedAttendeeQuestions = ensureDefaultOverallRatingQuestion(
+      data.hasOwnProperty("attendeeFeedbackQuestions")
+        ? data.attendeeFeedbackQuestions
+        : Array.isArray(existingEvent.attendeeFeedbackQuestions)
+          ? existingEvent.attendeeFeedbackQuestions
+          : []
+    );
+
+    const resolvedPartnerQuestions = ensureDefaultOverallRatingQuestion(
+      data.hasOwnProperty("partnerFeedbackQuestions")
+        ? data.partnerFeedbackQuestions
+        : Array.isArray(existingEvent.partnerFeedbackQuestions)
+          ? existingEvent.partnerFeedbackQuestions
+          : []
+    );
+
+    data.attendeeFeedbackQuestions = resolvedAttendeeQuestions;
+    data.partnerFeedbackQuestions = resolvedPartnerQuestions;
+
+    if (resolvedAttendeeFeedbackEnabled && resolvedAttendeeQuestions.length === 0) {
+      return helpers.createResponse(406, {
+        message: "Enable attendee feedback only after adding at least one attendee feedback question."
+      });
+    }
+
+    if (resolvedPartnerFeedbackEnabled && resolvedPartnerQuestions.length === 0) {
+      return helpers.createResponse(406, {
+        message: "Enable partner feedback only after adding at least one partner feedback question."
+      });
     }
     const {
       updateExpression,
@@ -454,6 +611,202 @@ export const get = async (event, ctx, callback) => {
       response = helpers.createResponse(502, { message: err.message || err });
 
     return response;
+  }
+};
+
+// GET events/{id}/{year}/feedback/{formType}
+export const getFeedbackForm = async (event, ctx, callback) => {
+  try {
+    if (!event.pathParameters || !event.pathParameters.id)
+      throw helpers.missingIdQueryResponse("event");
+    const id = event.pathParameters.id;
+    const formType = parseFormType(event.pathParameters.formType);
+    if (!formType) {
+      return helpers.createResponse(400, {
+        message: "Feedback formType must be either 'attendee' or 'partner'."
+      });
+    }
+    if (!event.pathParameters.year)
+      throw helpers.missingPathParamResponse("event", "year");
+
+    const year = parseInt(event.pathParameters.year, 10);
+    if (isNaN(year))
+      throw helpers.inputError(
+        "Year path parameter must be a number",
+        event.pathParameters
+      );
+
+    const eventItem = await db.getOne(id, EVENTS_TABLE, {
+      year
+    });
+
+    if (isEmpty(eventItem)) throw helpers.notFoundResponse("event", id, year);
+
+    const feedbackQuestions = getFeedbackQuestionsForType(eventItem, formType);
+    const enabled = isFeedbackEnabledForType(eventItem, formType);
+
+    return helpers.createResponse(200, {
+      event: {
+        id: eventItem.id,
+        year: eventItem.year,
+        ename: eventItem.ename,
+        description: eventItem.description,
+        partnerDescription: eventItem.partnerDescription,
+        imageUrl: eventItem.imageUrl,
+        endDate: eventItem.endDate,
+        isCompleted: eventItem.isCompleted
+      },
+      formType,
+      enabled,
+      feedbackQuestions
+    });
+  } catch (err) {
+    console.error(err);
+    return helpers.createResponse(500, { message: err.message || err });
+  }
+};
+
+// POST events/{id}/{year}/feedback/{formType}
+export const submitFeedback = async (event, ctx, callback) => {
+  try {
+    if (!event.pathParameters || !event.pathParameters.id)
+      throw helpers.missingIdQueryResponse("event");
+    if (!event.pathParameters.year)
+      throw helpers.missingPathParamResponse("event", "year");
+    const id = event.pathParameters.id;
+    const year = parseInt(event.pathParameters.year, 10);
+    if (isNaN(year))
+      throw helpers.inputError(
+        "Year path parameter must be a number",
+        event.pathParameters
+      );
+    const formType = parseFormType(event.pathParameters.formType);
+    if (!formType) {
+      return helpers.createResponse(400, {
+        message: "Feedback formType must be either 'attendee' or 'partner'."
+      });
+    }
+
+    const data = JSON.parse(event.body || "{}");
+    const eventItem = await db.getOne(id, EVENTS_TABLE, {
+      year
+    });
+    if (isEmpty(eventItem)) throw helpers.notFoundResponse("event", id, year);
+
+    if (!isFeedbackEnabledForType(eventItem, formType)) {
+      return helpers.createResponse(403, {
+        message: `The ${formType} feedback form is not enabled for this event.`
+      });
+    }
+
+    const feedbackQuestions = getFeedbackQuestionsForType(eventItem, formType);
+    if (!feedbackQuestions.length) {
+      return helpers.createResponse(406, {
+        message: `No ${formType} feedback questions are configured for this event.`
+      });
+    }
+
+    const validation = validateFeedbackPayload(feedbackQuestions, data.responses);
+    if (!validation.isValid) {
+      return helpers.createResponse(406, {
+        message: validation.error
+      });
+    }
+
+    const respondentName = normalizeText(data.respondentName);
+    if (respondentName.length > 120) {
+      return helpers.createResponse(406, {
+        message: "respondentName cannot exceed 120 characters."
+      });
+    }
+
+    const respondentEmail = normalizeText(data.respondentEmail).toLowerCase();
+    if (respondentEmail && !isValidEmail(respondentEmail)) {
+      return helpers.createResponse(406, {
+        message: "respondentEmail must be a valid email address."
+      });
+    }
+
+    const submittedAt = Date.now();
+    const feedbackItem = {
+      id: uuidv4(),
+      eventID: id,
+      year,
+      formType,
+      eventIDYear: `${id};${year}`,
+      eventFormKey: `${id};${year};${formType}`,
+      submittedAt,
+      responses: validation.responses,
+      respondentName: respondentName || undefined,
+      respondentEmail: respondentEmail || undefined,
+      createdAt: submittedAt,
+      updatedAt: submittedAt
+    };
+
+    await db.put(feedbackItem, EVENT_FEEDBACK_TABLE, true);
+
+    return helpers.createResponse(201, {
+      message: "Feedback submitted successfully.",
+      id: feedbackItem.id
+    });
+  } catch (err) {
+    console.error(err);
+    return helpers.createResponse(500, { message: err.message || err });
+  }
+};
+
+// GET events/{id}/{year}/feedback/{formType}/submissions
+export const getFeedbackSubmissions = async (event, ctx, callback) => {
+  try {
+    if (!event.pathParameters || !event.pathParameters.id)
+      throw helpers.missingIdQueryResponse("event");
+    if (!event.pathParameters.year)
+      throw helpers.missingPathParamResponse("event", "year");
+
+    const id = event.pathParameters.id;
+    const year = parseInt(event.pathParameters.year, 10);
+    if (isNaN(year))
+      throw helpers.inputError(
+        "Year path parameter must be a number",
+        event.pathParameters
+      );
+    const formType = parseFormType(event.pathParameters.formType);
+    if (!formType) {
+      return helpers.createResponse(400, {
+        message: "Feedback formType must be either 'attendee' or 'partner'."
+      });
+    }
+
+    const existingEvent = await db.getOne(id, EVENTS_TABLE, { year });
+    if (isEmpty(existingEvent))
+      throw helpers.notFoundResponse("event", id, year);
+
+    const eventFormKey = `${id};${year};${formType}`;
+    const submissions = await db.query(
+      EVENT_FEEDBACK_TABLE,
+      "event-form-query",
+      {
+        expression: "#eventFormKey = :eventFormKey",
+        expressionNames: {
+          "#eventFormKey": "eventFormKey"
+        },
+        expressionValues: {
+          ":eventFormKey": eventFormKey
+        }
+      }
+    );
+
+    const sortedSubmissions = submissions
+      .slice()
+      .sort((a, b) => (b.submittedAt || 0) - (a.submittedAt || 0));
+
+    return helpers.createResponse(200, {
+      count: sortedSubmissions.length,
+      submissions: sortedSubmissions
+    });
+  } catch (err) {
+    console.error(err);
+    return helpers.createResponse(500, { message: err.message || err });
   }
 };
 

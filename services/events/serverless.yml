@@ -40,6 +40,16 @@ provider:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechEvents${self:provider.environment.ENVIRONMENT}/index/event-overview"
     - Effect: Allow
       Action:
+        - dynamodb:Scan
+        - dynamodb:Query
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechEventFeedback${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechEventFeedback${self:provider.environment.ENVIRONMENT}/index/event-form-query"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechEventFeedback${self:provider.environment.ENVIRONMENT}/index/event-year-query"
+    - Effect: Allow
+      Action:
         - dynamodb:Query
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechRegistrations${self:provider.environment.ENVIRONMENT}/index/event-query"
@@ -155,5 +165,83 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  eventGetFeedbackForm:
+    handler: handler.getFeedbackForm
+    events:
+      - http:
+          path: events/{id}/{year}/feedback/{formType}
+          method: get
+          request:
+            parameters:
+              path:
+                id: true
+                year: true
+                formType: true
+          cors: true
+  eventSubmitFeedback:
+    handler: handler.submitFeedback
+    events:
+      - http:
+          path: events/{id}/{year}/feedback/{formType}
+          method: post
+          request:
+            parameters:
+              path:
+                id: true
+                year: true
+                formType: true
+          cors: true
+  eventGetFeedbackSubmissions:
+    handler: handler.getFeedbackSubmissions
+    events:
+      - http:
+          path: events/{id}/{year}/feedback/{formType}/submissions
+          method: get
+          request:
+            parameters:
+              path:
+                id: true
+                year: true
+                formType: true
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
 
+resources:
+  Resources:
+    BiztechEventFeedback:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: biztechEventFeedback${self:provider.environment.ENVIRONMENT}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: eventFormKey
+            AttributeType: S
+          - AttributeName: submittedAt
+            AttributeType: N
+          - AttributeName: eventIDYear
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: event-form-query
+            KeySchema:
+              - AttributeName: eventFormKey
+                KeyType: HASH
+              - AttributeName: submittedAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+          - IndexName: event-year-query
+            KeySchema:
+              - AttributeName: eventIDYear
+                KeyType: HASH
+              - AttributeName: submittedAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
 

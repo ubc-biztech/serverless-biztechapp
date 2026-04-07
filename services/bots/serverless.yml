@@ -28,6 +28,7 @@ provider:
     GH_CLIENT_ID: ${env:GH_CLIENT_ID,""}
     GH_PRIVATE_KEY: ${env:GH_PRIVATE_KEY,""}
     OPENAI_API_KEY: ${env:OPENAI_API_KEY,""}
+    OPENAI_DOCS_MODEL: ${env:OPENAI_DOCS_MODEL,"gpt-5.4-mini"}
     SLACK_BOT_TOKEN: ${env:SLACK_BOT_TOKEN,""}
   timeout: 15 # in seconds
 

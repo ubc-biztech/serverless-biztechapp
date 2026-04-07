@@ -1,0 +1,588 @@
+service: biztechApi-partnerships
+app: biztechapp
+
+frameworkVersion: 3.40.0
+useDotenv: true
+
+plugins:
+  - serverless-dynamodb
+  - serverless-offline
+  - serverless-domain-manager
+  - serverless-esbuild
+  - serverless-prune-plugin
+  - serverless-mocha-plugin
+
+provider:
+  name: aws
+  stage: ${file(../../serverless.common.yml):provider.stage}
+  runtime: ${file(../../serverless.common.yml):provider.runtime}
+  region: ${file(../../serverless.common.yml):provider.region}
+  timeout: 20
+  environment:
+    ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
+    NODE_ENV: ${env:NODE_ENV}
+    PARTNERSHIPS_GSHEETS_ENABLED: ${env:PARTNERSHIPS_GSHEETS_ENABLED, ''}
+    PARTNERSHIPS_GSHEETS_AUTO_SYNC: ${env:PARTNERSHIPS_GSHEETS_AUTO_SYNC, ''}
+    PARTNERSHIPS_GSHEETS_SPREADSHEET_ID: ${env:PARTNERSHIPS_GSHEETS_SPREADSHEET_ID, ''}
+    PARTNERSHIPS_GSHEETS_SHEET_NAME: ${env:PARTNERSHIPS_GSHEETS_SHEET_NAME, ''}
+    PARTNERSHIPS_GSHEETS_SERVICE_ACCOUNT_JSON: ${env:PARTNERSHIPS_GSHEETS_SERVICE_ACCOUNT_JSON, ''}
+    PARTNERSHIPS_GSHEETS_SERVICE_ACCOUNT_EMAIL: ${env:PARTNERSHIPS_GSHEETS_SERVICE_ACCOUNT_EMAIL, ''}
+    PARTNERSHIPS_GSHEETS_PRIVATE_KEY: ${env:PARTNERSHIPS_GSHEETS_PRIVATE_KEY, ''}
+    PARTNERSHIPS_EMAIL_SYNC_ENABLED: ${env:PARTNERSHIPS_EMAIL_SYNC_ENABLED, ''}
+    PARTNERSHIPS_EMAIL_SYNC_INGEST_URL: ${env:PARTNERSHIPS_EMAIL_SYNC_INGEST_URL, ''}
+    PARTNERSHIPS_EMAIL_SYNC_ALLOWED_DOMAINS: ${env:PARTNERSHIPS_EMAIL_SYNC_ALLOWED_DOMAINS, ''}
+  apiGateway:
+    restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
+    restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
+
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Scan
+        - dynamodb:Query
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechPartners${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechPartnerEventLinks${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechPartnershipEvents${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechPartnerDocuments${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechPartnerCommunications${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechPartnershipsMeta${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechPartnerEventLinks${self:provider.environment.ENVIRONMENT}/index/partner-query"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechPartnerEventLinks${self:provider.environment.ENVIRONMENT}/index/event-query"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechPartnerDocuments${self:provider.environment.ENVIRONMENT}/index/partner-query"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechPartnerCommunications${self:provider.environment.ENVIRONMENT}/index/partner-query"
+    - Effect: Allow
+      Action:
+        - dynamodb:Scan
+        - dynamodb:GetItem
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechEvents${self:provider.environment.ENVIRONMENT}"
+    - Effect: Allow
+      Action:
+        - ses:SendEmail
+      Resource:
+        - "arn:aws:ses:us-west-2:432714361962:identity/*"
+
+custom:
+  prune:
+    automatic: true
+    number: 3
+  bundle:
+    sourcemaps: false
+  serverless-offline:
+    port: 4000
+  serverless-mocha-plugin:
+    testTemplate: ../../lib/testTemplate.ejs
+  stage: ${opt:stage, self:provider.stage}
+  domains:
+    prod: api.ubcbiztech.com
+    staging: api-staging.ubcbiztech.com
+    dev: api-dev.ubcbiztech.com
+  customDomain:
+    domainName: ${self:custom.domains.${self:custom.stage}}
+    basePath: ""
+    stage: ${self:custom.stage}
+    certificateName: ${self:custom.customDomain.domainName}
+    createRoute53Record: true
+    endpointType: edge
+    apiType: rest
+    autoDomain: false
+  dynamodb:
+    start:
+      port: 8000
+      migrate: true
+      noStart: true
+      convertEmptyValues: true
+    stages:
+      - dev
+
+functions:
+  partnershipsDashboard:
+    handler: handler.getDashboard
+    events:
+      - http:
+          path: partnerships/dashboard
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsListPartners:
+    handler: handler.listPartners
+    events:
+      - http:
+          path: partnerships/partners
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsCreatePartner:
+    handler: handler.createPartner
+    events:
+      - http:
+          path: partnerships/partners
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsGetPartner:
+    handler: handler.getPartner
+    events:
+      - http:
+          path: partnerships/partners/{partnerId}
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsUpdatePartner:
+    handler: handler.updatePartner
+    events:
+      - http:
+          path: partnerships/partners/{partnerId}
+          method: patch
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsListEvents:
+    handler: handler.listEvents
+    events:
+      - http:
+          path: partnerships/events
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsGetEvent:
+    handler: handler.getEvent
+    events:
+      - http:
+          path: partnerships/events/{eventId}
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsCreateEvent:
+    handler: handler.createEvent
+    events:
+      - http:
+          path: partnerships/events
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsUpdateEvent:
+    handler: handler.updateEvent
+    events:
+      - http:
+          path: partnerships/events/{eventId}
+          method: patch
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsDeleteEvent:
+    handler: handler.deleteEvent
+    events:
+      - http:
+          path: partnerships/events/{eventId}
+          method: delete
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsCreatePartnerEvent:
+    handler: handler.createPartnerEvent
+    events:
+      - http:
+          path: partnerships/partners/{partnerId}/events
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsUpdatePartnerEvent:
+    handler: handler.updatePartnerEvent
+    events:
+      - http:
+          path: partnerships/partner-events/{linkId}
+          method: patch
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsDeletePartnerEvent:
+    handler: handler.deletePartnerEvent
+    events:
+      - http:
+          path: partnerships/partner-events/{linkId}
+          method: delete
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsListPartnerDocuments:
+    handler: handler.listPartnerDocuments
+    name: ptn-${sls:stage}-list-partner-docs
+    events:
+      - http:
+          path: partnerships/partners/{partnerId}/documents
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsCreatePartnerDocument:
+    handler: handler.createPartnerDocument
+    name: ptn-${sls:stage}-create-partner-doc
+    events:
+      - http:
+          path: partnerships/partners/{partnerId}/documents
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsUpdatePartnerDocument:
+    handler: handler.updatePartnerDocument
+    name: ptn-${sls:stage}-update-partner-doc
+    events:
+      - http:
+          path: partnerships/partner-documents/{documentId}
+          method: patch
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsDeletePartnerDocument:
+    handler: handler.deletePartnerDocument
+    name: ptn-${sls:stage}-delete-partner-doc
+    events:
+      - http:
+          path: partnerships/partner-documents/{documentId}
+          method: delete
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsListPartnerCommunications:
+    handler: handler.listPartnerCommunications
+    name: ptn-${sls:stage}-list-partner-comms
+    events:
+      - http:
+          path: partnerships/partners/{partnerId}/communications
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsCreatePartnerCommunication:
+    handler: handler.createPartnerCommunication
+    name: ptn-${sls:stage}-create-partner-comm
+    events:
+      - http:
+          path: partnerships/partners/{partnerId}/communications
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsUpdatePartnerCommunication:
+    handler: handler.updatePartnerCommunication
+    name: ptn-${sls:stage}-update-partner-comm
+    events:
+      - http:
+          path: partnerships/partner-communications/{communicationId}
+          method: patch
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsDeletePartnerCommunication:
+    handler: handler.deletePartnerCommunication
+    name: ptn-${sls:stage}-delete-partner-comm
+    events:
+      - http:
+          path: partnerships/partner-communications/{communicationId}
+          method: delete
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsExport:
+    handler: handler.exportPartners
+    events:
+      - http:
+          path: partnerships/export
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsGoogleSheetsStatus:
+    handler: handler.googleSheetsStatus
+    events:
+      - http:
+          path: partnerships/google-sheets/status
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsGoogleSheetsSync:
+    handler: handler.googleSheetsSync
+    events:
+      - http:
+          path: partnerships/google-sheets/sync
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsMassEmailConfig:
+    handler: handler.massEmailConfig
+    events:
+      - http:
+          path: partnerships/email/config
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsListMassEmailTemplates:
+    handler: handler.listMassEmailTemplatesHandler
+    name: ptn-${sls:stage}-list-email-templates
+    events:
+      - http:
+          path: partnerships/email/templates
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsCreateMassEmailTemplate:
+    handler: handler.createMassEmailTemplateHandler
+    name: ptn-${sls:stage}-create-email-template
+    events:
+      - http:
+          path: partnerships/email/templates
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsUpdateMassEmailTemplate:
+    handler: handler.updateMassEmailTemplateHandler
+    name: ptn-${sls:stage}-update-email-template
+    events:
+      - http:
+          path: partnerships/email/templates/{templateId}
+          method: patch
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsDeleteMassEmailTemplate:
+    handler: handler.deleteMassEmailTemplateHandler
+    name: ptn-${sls:stage}-delete-email-template
+    events:
+      - http:
+          path: partnerships/email/templates/{templateId}
+          method: delete
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsSendBulkMassEmail:
+    handler: handler.sendBulkMassEmailHandler
+    timeout: 120
+    events:
+      - http:
+          path: partnerships/email/send
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsEmailSyncStatus:
+    handler: handler.emailSyncStatus
+    events:
+      - http:
+          path: partnerships/email/sync/status
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  partnershipsEmailSyncIngest:
+    handler: handler.emailSyncIngest
+    timeout: 60
+    events:
+      - http:
+          path: partnerships/email/sync/ingest
+          method: post
+          cors: true
+
+resources:
+  Resources:
+    BiztechPartnersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: biztechPartners${self:provider.environment.ENVIRONMENT}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+
+    BiztechPartnerEventLinksTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: biztechPartnerEventLinks${self:provider.environment.ENVIRONMENT}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: partnerId
+            AttributeType: S
+          - AttributeName: eventIdYear
+            AttributeType: S
+          - AttributeName: updatedAt
+            AttributeType: N
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: partner-query
+            KeySchema:
+              - AttributeName: partnerId
+                KeyType: HASH
+              - AttributeName: updatedAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+          - IndexName: event-query
+            KeySchema:
+              - AttributeName: eventIdYear
+                KeyType: HASH
+              - AttributeName: updatedAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+    BiztechPartnershipEventsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: biztechPartnershipEvents${self:provider.environment.ENVIRONMENT}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+
+    BiztechPartnerDocumentsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: biztechPartnerDocuments${self:provider.environment.ENVIRONMENT}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: partnerId
+            AttributeType: S
+          - AttributeName: updatedAt
+            AttributeType: N
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: partner-query
+            KeySchema:
+              - AttributeName: partnerId
+                KeyType: HASH
+              - AttributeName: updatedAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+    BiztechPartnerCommunicationsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: biztechPartnerCommunications${self:provider.environment.ENVIRONMENT}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: partnerId
+            AttributeType: S
+          - AttributeName: updatedAt
+            AttributeType: N
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: partner-query
+            KeySchema:
+              - AttributeName: partnerId
+                KeyType: HASH
+              - AttributeName: updatedAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+    BiztechPartnershipsMetaTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: biztechPartnershipsMeta${self:provider.environment.ENVIRONMENT}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH

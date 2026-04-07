@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import "dotenv/config";
 import concurrently from "concurrently";
 import {
   readConfigFile, runProxy, runServices
