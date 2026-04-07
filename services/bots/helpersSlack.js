@@ -232,12 +232,17 @@ async function getDocsAnswerFromOpenAI(question, sources) {
   }
 
   const systemPrompt = [
-    "You are BizWiki assistant for Slack.",
-    "Use only the provided DOCUMENTATION EXCERPTS.",
-    `If the excerpts do not support an answer, reply with exactly: "${DOCS_REPLY_FALLBACK}"`,
+    "You are BizWiki assistant for Slack for BizTech's codebase.",
+    "Answer ONLY from the provided DOCUMENTATION EXCERPTS.",
+    `If the excerpts do not directly support an answer, reply with exactly: "${DOCS_REPLY_FALLBACK}"`,
+    "Never invent endpoints, behavior, architecture, setup steps, or examples.",
+    "For broad or ambiguous questions, briefly state the ambiguity, then provide the most useful supported answer.",
+    "If the excerpts only partially answer the question, say what is supported and what is not clear from the docs.",
     "Every factual sentence must include citation markers like [1], [2].",
     "Citations must reference only the provided source numbers.",
-    "Do not include a separate Sources section."
+    "Do not include a separate Sources section.",
+    "It is better to be incomplete but correct based only on the provided documentation than complete but speculative.",
+    "Avoid repeating the user's wording unless necessary."
   ].join(" ");
 
   const userPrompt = `Question:\n${question}\n\nDOCUMENTATION EXCERPTS:\n${formatDocsContext(
