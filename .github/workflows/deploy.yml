@@ -35,6 +35,25 @@ jobs:
           sls -v
           npm ci --legacy-peer-deps
 
+      - name: Checkout docs repository snapshot
+        if: github.event_name == 'repository_dispatch' && github.event.action == 'biztech_docs_updated'
+        uses: actions/checkout@v4
+        with:
+          repository: ubc-biztech/biztech-documentation
+          ref: ${{ github.event.client_payload.source_sha || 'main' }}
+          token: ${{ secrets.BIZTECH_DOCS_REPO_TOKEN || github.token }}
+          path: biztech-documentation
+
+      - name: Build Slack docs index
+        if: github.event_name == 'repository_dispatch' && github.event.action == 'biztech_docs_updated'
+        run: npm run build:slack-docs-index -- --docs-root ./biztech-documentation/biztech-docs/src/app
+
+      - name: Verify docs index build
+        if: github.event_name == 'repository_dispatch' && github.event.action == 'biztech_docs_updated'
+        run: |
+          test -f services/bots/docsIndex.js
+          echo "Docs index rebuilt at services/bots/docsIndex.js"
+
       - name: "Deploy Dev"
         if: github.ref == 'refs/heads/dev' || (github.event_name == 'repository_dispatch' && github.event.action == 'biztech_docs_updated')
         env:
