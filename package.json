@@ -33,7 +33,7 @@
     "ics": "^2.40.0",
     "jsonwebtoken": "^9.0.2",
     "node-fetch": "^3.3.2",
-    "nodemailer": "^6.9.7",
+    "nodemailer": "^8.0.4",
     "path": "^0.12.7",
     "qrcode": "^1.5.3",
     "serverless-apigateway-plugin": "^0.0.6",
