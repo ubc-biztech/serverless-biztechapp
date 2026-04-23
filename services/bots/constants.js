@@ -1,64 +1,59 @@
 export const groups = {
   "leads": [
-    "grace",
-    "pauline",
-    "ethanx",
-    "kevin",
-    "john",
-    "dhrishty",
-    "mikayla",
-    "lillian",
-    "lucas"
+    "chris",
+    "jay",
+    "jerryn",
+    "jimmy",
+    "karens"
   ],
-  "internal": ["mikayla", "erping", "ashley"],
+  "internal": ["rohan", "kailey", "hannah", "marcus"],
   "experiences": [
-    "pauline",
-    "angela",
-    "gautham",
-    "jack",
-    "allison",
+    "jay",
+    "john",
+    "jade",
+    "michele",
     "danielz",
-    "danielt",
-    "chris"
+    "evan",
+    "samantha",
+    "freya",
+    "julianna",
+    "pauline"
   ],
   "partnerships": [
-    "john",
-    "rohan",
-    "darius",
     "jimmy",
-    "keon",
     "karens",
-    "angelaf"
+    "amara",
+    "kash",
+    "keanan",
+    "allison",
+    "jack",
+    "maddisen",
+    "stella"
   ],
   "mmd": [
-    "emma",
-    "keira",
-    "dhrishty",
-    "emilyl",
+    "jerryn",
     "stephanie",
+    "emma",
+    "angela",
+    "sophie",
+    "brittany",
+    "daisy",
+    "tiger",
     "ali",
-    "yumin",
-    "indy",
-    "chelsea",
-    "julianna"
+    "dhrishty"
   ],
   "devs": [
-    "kevin",
-    "ali",
-    "jay",
-    "ethan",
     "elijah",
-    "brian",
-    "benny",
-    "kevinh",
-    "isaac",
-    "aurora",
-    "alexg"
+    "kevin",
+    "eliana",
+    "darius",
+    "timothy",
+    "shun",
+    "thomas",
+    "daniel",
+    "vi",
+    "isaac"
   ],
-  "fyr": ["michele", "sophia", "jade"],
-  "data": ["ethanx", "hiro", "elena", "janaye"],
-  "bizbot": ["alexg", "kevinh", "isaac", "jay", "kevin"],
-  "bt-web-v2": ["benny", "ethan", "aurora", "ali", "jay", "kevin"]
 };
 
 export const projects = [

@@ -513,7 +513,7 @@ export async function answerDocsQuestion(opts) {
 
 export async function summarizeRecentMessages(opts) {
   const { channel_id, thread_ts, response_url } = opts;
-  const BOT_USER_ID = process.env.BOT_USER_ID;
+  const BOT_USER_ID = process.env.SLACK_BOT_USER_ID;
 
   const messages = thread_ts
     ? await fetchThreadMessages(channel_id, thread_ts)
