@@ -30,6 +30,7 @@ provider:
     OPENAI_API_KEY: ${env:OPENAI_API_KEY,""}
     OPENAI_DOCS_MODEL: ${env:OPENAI_DOCS_MODEL,"gpt-5.4-mini"}
     SLACK_BOT_TOKEN: ${env:SLACK_BOT_TOKEN,""}
+    SLACK_BOT_USER_ID: ${env:SLACK_BOT_USER_ID,""}
   timeout: 15 # in seconds
 
   apiGateway:

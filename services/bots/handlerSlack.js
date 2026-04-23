@@ -57,7 +57,7 @@ export const shortcutHandler = async (event, ctx, callback) => {
     body.event.type === "app_mention"
   ) {
     const event = body.event;
-    const BOT_USER_ID = process.env.BOT_USER_ID;
+    const BOT_USER_ID = process.env.SLACK_BOT_USER_ID;
 
     if (event.user === BOT_USER_ID) {
       // Bot is the author, ignoring to avoid loops
