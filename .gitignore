@@ -8,7 +8,8 @@ services/*/package-lock.json
 .serverless
 .esbuild
 
-
+# typescript dist
+dist
 
 .env
 .vscode
@@ -21,4 +22,3 @@ scripts/data/*_judges.txt
 
 *.csv
 .openclaude-profile.json
-dist
