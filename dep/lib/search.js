@@ -1,5 +1,5 @@
-import { OPENSEARCH_INDEX_TOP_K } from "../constants/indexes.js";
-import { algoliaClient } from "./algoliaClient.js";
+import { OPENSEARCH_INDEX_TOP_K } from "../../constants/indexes.js";
+import { algoliaClient } from "../dep/algoliaClient.js/index.js";
 
 export default {
   /**

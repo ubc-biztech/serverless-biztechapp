@@ -20,3 +20,4 @@ scripts/data/*_judges.txt
 .DS_Store
 
 *.csv
+.openclaude-profile.json

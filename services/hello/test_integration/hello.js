@@ -1,7 +1,7 @@
 import chai from "chai";
 const expect = chai.expect;
 
-import helpers from "../../../lib/testHelpers";
+import helpers from "../../../dep/lib/testHelpers";
 
 const SERVICE = "";
 
