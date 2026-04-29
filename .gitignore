@@ -21,3 +21,4 @@ scripts/data/*_judges.txt
 
 *.csv
 .openclaude-profile.json
+dist
