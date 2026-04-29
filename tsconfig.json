@@ -13,7 +13,10 @@
     "skipLibCheck": true
   },
   "include": [
-    "services/hello/**/*.js",
-    "lib/**/*.js"
-, "dep/lib/algoliaClient.js", "dep/lib/search.js", "dep/lib/testHelpers.js"  ]
+    "services/**/*.js",
+    "services/**/*.ts",
+    "lib/**/*.js",
+    "lib/**/*.ts",
+    "constants/**/*.js"
+  ]
 }
