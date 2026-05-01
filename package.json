@@ -50,6 +50,7 @@
     "test": "npm run utest && npm run itest",
     "lint": "eslint . --fix",
     "pretty": "prettier --write \"./**/*.{js,jsx,ts,tsx,json}\"",
+    "build": "tsc -p tsconfig.json",
     "fix-sls-offline": "node ./scripts/run-in-services.js node ../../scripts/fix-sls-offline.js",
     "sls-offline-i": "node ./scripts/run-in-services.js serverless plugin install -n serverless-offline",
     "dev": "node ./index.js",
@@ -79,7 +80,8 @@
     "serverless-offline": "^13.9.0",
     "serverless-prune-plugin": "^2.0.2",
     "sinon": "^19.0.2",
-    "sinon-chai": "^4.0.0"
+    "sinon-chai": "^4.0.0",
+    "typescript": "^5.9.3"
   },
   "pre-commit": [],
   "babel": {
