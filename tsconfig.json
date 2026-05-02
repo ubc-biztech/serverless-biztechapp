@@ -18,5 +18,5 @@
     "lib/**/*.js",
     "lib/**/*.ts",
     "constants/**/*.js"
-  ]
+, "lib/handlerHelpers.js"  ]
 }

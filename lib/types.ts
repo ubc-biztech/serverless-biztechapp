@@ -72,7 +72,7 @@ export type LambdaHandler = (
   callback: LambdaCallback,
 ) => Promise<APIGatewayResponse | void>;
 
-// ─── Handler Helpers (lib/handlerHelpers) ────────────────────────────
+// ─── Helpers (lib/handlerHelpers, lib/responseHelpers) ────────────────────────────
 
 export interface PayloadCheckRule {
   required?: boolean;
@@ -80,19 +80,35 @@ export interface PayloadCheckRule {
 }
 
 export type PayloadCheck = Record<string, PayloadCheckRule>;
+export type PayloadSchema = Record<string, { required?: boolean; type?: "string" | "number" | "boolean" | "object" }>;
+
+export type InferredPayload<T extends PayloadSchema> = {
+  [K in keyof T]: T[K]["type"] extends "string" ? string
+  : T[K]["type"] extends "number" ? number
+  : T[K]["type"] extends "boolean" ? boolean
+  : T[K]["type"] extends "object" ? object
+  : unknown;
+}
+
 
 export interface HandlerHelpers {
-  createResponse(statusCode: number, body: unknown): APIGatewayResponse;
   missingIdQueryResponse(type: string): APIGatewayResponse;
   missingPathParamResponse(type: string, paramName: string): APIGatewayResponse;
-  notFoundResponse(
-    type?: string | null,
-    id?: string | null,
-    secondaryKey?: string | null,
-  ): APIGatewayResponse;
   duplicateResponse(prop: string, data: unknown): APIGatewayResponse;
-  inputError(message: string, data: unknown): APIGatewayResponse;
   checkPayloadProps(payload: Record<string, unknown>, check: PayloadCheck): void;
+}
+
+export interface ResponseHelpers {
+  send(statusCode: number, body?: unknown): APIGatewayResponse;
+  ok(data?: unknown): APIGatewayResponse;
+  created(data?: unknown): APIGatewayResponse;
+  noContent(): APIGatewayResponse;
+  badRequest(message: string, data?: unknown): APIGatewayResponse;
+  unauthorized(message: string);
+  notAcceptable(message: string, data?: unknown): APIGatewayResponse;
+  notFound(type?: string, id?: string, secondaryKey?: string): APIGatewayResponse;
+  conflict(prop: string, data?: unknown): APIGatewayResponse;
+  error(message: string, error?: unknown): APIGatewayResponse;
 }
 
 // ─── DynamoDB Helpers (lib/db) ───────────────────────────────────────
