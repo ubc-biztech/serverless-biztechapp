@@ -8,6 +8,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
+      SERVERLESS_LICENSE_KEY: ${{ secrets.SERVERLESS_LICENSE_KEY }}
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}
@@ -29,9 +32,16 @@ jobs:
             ${{ runner.os }}-build-
             ${{ runner.os }}-
 
+      - name: Validate Serverless auth secret is configured
+        run: |
+          if [ -z "${SERVERLESS_ACCESS_KEY}" ] && [ -z "${SERVERLESS_LICENSE_KEY}" ]; then
+            echo "Missing Serverless auth in CI. Set SERVERLESS_ACCESS_KEY or SERVERLESS_LICENSE_KEY in GitHub secrets."
+            exit 1
+          fi
+
       - name: Install Serverless CLI and dependencies
         run: |
-          sudo npm i -g serverless@3 --legacy-peer-deps
+          sudo npm i -g serverless@4 --legacy-peer-deps
           sls -v
           npm ci --legacy-peer-deps
 
