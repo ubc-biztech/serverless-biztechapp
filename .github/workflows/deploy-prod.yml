@@ -35,7 +35,7 @@ jobs:
       - name: Validate Serverless auth secret is configured
         run: |
           if [ -z "${SERVERLESS_ACCESS_KEY}" ] && [ -z "${SERVERLESS_LICENSE_KEY}" ]; then
-            echo "Missing Serverless auth in CI. Set SERVERLESS_ACCESS_KEY or SERVERLESS_LICENSE_KEY in GitHub secrets."
+            echo "Missing Serverless auth in CI. Set SERVERLESS_ACCESS_KEY or SERVERLESS_LICENSE_KEY."
             exit 1
           fi
 

@@ -1,7 +1,7 @@
 service: biztechApi-instagram
 app: biztechapp
 
-frameworkVersion: 3.40.0
+frameworkVersion: "^4.0.0"
 
 plugins:
   - serverless-dynamodb
