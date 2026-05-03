@@ -13,7 +13,7 @@ jobs:
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          node-version: "20.7"
+          node-version: "22.x"
 
       # https://help.github.com/en/actions/configuring-and-managing-workflows/caching-dependencies-to-speed-up-workflows
       - name: Cache node modules
@@ -31,7 +31,7 @@ jobs:
 
       - name: Install Serverless CLI and dependencies
         run: |
-          sudo npm i -g serverless@3 --legacy-peer-dep
+          sudo npm i -g serverless@3 --legacy-peer-deps
           sls -v
           npm ci --legacy-peer-deps
 

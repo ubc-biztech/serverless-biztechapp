@@ -2,7 +2,7 @@ provider:
   stage: ${opt:stage, 'dev'}
   apiKeys:
     - ${opt:stage, 'dev'}-api-key
-  runtime: nodejs20.x
+  runtime: nodejs22.x
   region: us-west-2
 
 custom:
@@ -36,4 +36,3 @@ custom:
 plugins:
   - serverless-dynamodb
   - serverless-offline
-

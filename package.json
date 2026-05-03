@@ -5,6 +5,9 @@
   "workspaces": [
     "services/*"
   ],
+  "engines": {
+    "node": ">=22 <23"
+  },
   "dependencies": {
     "@aws-sdk/client-apigatewaymanagementapi": "^3.664.0",
     "@aws-sdk/client-cognito-identity-provider": "^3.620.1",

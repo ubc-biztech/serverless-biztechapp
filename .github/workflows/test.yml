@@ -13,7 +13,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           cache: "npm"
-          node-version: "20.7"
+          node-version: "22.x"
 
       - name: Install Serverless CLI and dependencies
         run: |
