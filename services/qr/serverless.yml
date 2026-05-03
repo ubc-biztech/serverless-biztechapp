@@ -100,18 +100,18 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
-qrDelete:
-  handler: handler.del
-  events:
-    - http:
-        path: qr/{id}/{eventID}/{year}
-        method: delete
-        request:
-          path:
-            id: true
-            eventID: true
-            year: true
-        cors: true
-        authorizer:
-          type: COGNITO_USER_POOLS
-          authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  qrDelete:
+    handler: handler.del
+    events:
+      - http:
+          path: qr/{id}/{eventID}/{year}
+          method: delete
+          request:
+            path:
+              id: true
+              eventID: true
+              year: true
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
