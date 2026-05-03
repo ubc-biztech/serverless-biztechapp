@@ -4,21 +4,21 @@ app: biztechapp
 
 frameworkVersion: "^4.0.0"
 
+build:
+  esbuild: false
+
 plugins:
   - serverless-dynamodb
   - serverless-offline
   - serverless-domain-manager
   - serverless-esbuild
-  - serverless-prune-plugin
   - serverless-mocha-plugin
 
 provider:
   name: aws
   stage: ${file(../../serverless.common.yml):provider.stage}
-  apiKeys: ${file(../../serverless.common.yml):provider.apiKeys}
   runtime: ${file(../../serverless.common.yml):provider.runtime}
   region: ${file(../../serverless.common.yml):provider.region}
-  cfLogs: true
   environment:
     NODE_ENV: ${env:NODE_ENV}
 

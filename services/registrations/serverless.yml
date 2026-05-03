@@ -1,22 +1,23 @@
 service: biztechApi-registrations
-tenant: ianmh
+org: ianmh
 app: biztechapp
 
 frameworkVersion: "^4.0.0"
+
+build:
+  esbuild: false
 
 plugins:
   - serverless-dynamodb
   - serverless-offline
   - serverless-domain-manager
   - serverless-esbuild
-  - serverless-prune-plugin
   - serverless-mocha-plugin
 provider:
   name: aws
   stage: ${file(../../serverless.common.yml):provider.stage}
   runtime: ${file(../../serverless.common.yml):provider.runtime}
   region: ${file(../../serverless.common.yml):provider.region}
-  cfLogs: true
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
@@ -74,9 +75,10 @@ functions:
           path: registrations/{email}/{fname}
           method: put
           request:
-            path:
-              email: true
-              fname: true
+            parameters:
+              paths:
+                email: true
+                fname: true
           cors: true
   registrationGet:
     handler: handler.get
@@ -99,8 +101,9 @@ functions:
           path: registrations/{email}
           method: delete
           request:
-            path:
-              email: true
+            parameters:
+              paths:
+                email: true
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS

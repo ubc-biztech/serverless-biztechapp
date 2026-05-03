@@ -3,13 +3,15 @@ app: biztechapp
 
 frameworkVersion: "^4.0.0"
 
+build:
+  esbuild: false
+
 plugins:
   - serverless-dynamodb
   - serverless-offline
   - serverless-domain-manager
   - serverless-apigateway-plugin
   - serverless-esbuild
-  - serverless-prune-plugin
   - serverless-mocha-plugin
 
 provider:
@@ -112,8 +114,9 @@ functions:
       - http:
           path: scores/{roomID}
           request:
-            path:
-              roomID: true
+            parameters:
+              paths:
+                roomID: true
           method: get
           cors: true
   scoresGetTeam:
@@ -122,8 +125,9 @@ functions:
       - http:
           path: scores/team/{teamName}
           request:
-            path:
-              teamName: true
+            parameters:
+              paths:
+                teamName: true
           method: get
           cors: true
   stickersGetAll:
@@ -139,8 +143,9 @@ functions:
       - http:
           path: stickers/{roomID}
           request:
-            path:
-              roomID: true
+            parameters:
+              paths:
+                roomID: true
           method: get
           cors: true
   stickersGetTeam:
@@ -149,7 +154,8 @@ functions:
       - http:
           path: stickers/team/{teamName}
           request:
-            path:
-              teamName: true
+            parameters:
+              paths:
+                teamName: true
           method: get
           cors: true
