@@ -3,14 +3,16 @@
 service: biztechApi-btx
 app: biztechapp
 
-frameworkVersion: 3.40.0
+frameworkVersion: "^4.0.0"
+
+build:
+  esbuild: false
 
 plugins:
   - serverless-dynamodb
   - serverless-offline
   - serverless-domain-manager
   - serverless-esbuild
-  - serverless-prune-plugin
   - serverless-mocha-plugin
 
 provider:
@@ -18,7 +20,6 @@ provider:
   stage: ${file(../../serverless.common.yml):provider.stage}
   region: ${file(../../serverless.common.yml):provider.region}
   runtime: ${file(../../serverless.common.yml):provider.runtime}
-  cfLogs: true
   timeout: 15
 
   environment:

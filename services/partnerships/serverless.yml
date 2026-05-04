@@ -1,7 +1,10 @@
 service: biztechApi-partnerships
 app: biztechapp
 
-frameworkVersion: 3.40.0
+frameworkVersion: "^4.0.0"
+
+build:
+  esbuild: false
 useDotenv: true
 
 plugins:
@@ -9,7 +12,6 @@ plugins:
   - serverless-offline
   - serverless-domain-manager
   - serverless-esbuild
-  - serverless-prune-plugin
   - serverless-mocha-plugin
 
 provider:
