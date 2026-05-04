@@ -1,15 +1,17 @@
 service: biztechApi-events
-tenant: ianmh
+org: ianmh
 app: biztechapp
 
-frameworkVersion: 3.40.0
+frameworkVersion: "^4.0.0"
+
+build:
+  esbuild: false
 
 plugins:
   - serverless-dynamodb
   - serverless-offline
   - serverless-domain-manager
   - serverless-esbuild
-  - serverless-prune-plugin
   - serverless-mocha-plugin
 
 provider:
@@ -17,7 +19,6 @@ provider:
   stage: ${file(../../serverless.common.yml):provider.stage}
   runtime: ${file(../../serverless.common.yml):provider.runtime}
   region: ${file(../../serverless.common.yml):provider.region}
-  cfLogs: true
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
@@ -86,9 +87,10 @@ functions:
           path: events/{id}/{year}
           method: delete
           request:
-            path:
-              year: true
-              id: true
+            parameters:
+              paths:
+                year: true
+                id: true
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS
@@ -112,9 +114,10 @@ functions:
           path: events/{id}/{year}
           method: patch
           request:
-            path:
-              id: true
-              year: true
+            parameters:
+              paths:
+                id: true
+                year: true
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS
@@ -127,7 +130,7 @@ functions:
           method: get
           request:
             parameters:
-              path:
+              paths:
                 id: true
                 year: true
               querystrings:
@@ -173,7 +176,7 @@ functions:
           method: get
           request:
             parameters:
-              path:
+              paths:
                 id: true
                 year: true
                 formType: true
@@ -186,7 +189,7 @@ functions:
           method: post
           request:
             parameters:
-              path:
+              paths:
                 id: true
                 year: true
                 formType: true
@@ -199,7 +202,7 @@ functions:
           method: get
           request:
             parameters:
-              path:
+              paths:
                 id: true
                 year: true
                 formType: true
