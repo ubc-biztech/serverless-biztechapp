@@ -1,13 +1,17 @@
 service: biztechApi-quests
-tenant: ianmh
+org: ianmh
 app: biztechapp
+
+frameworkVersion: "^4.0.0"
+
+build:
+  esbuild: false
 
 plugins:
   - serverless-dynamodb
   - serverless-offline
   - serverless-domain-manager
   - serverless-esbuild
-  - serverless-prune-plugin
   - serverless-mocha-plugin
 
 provider:
@@ -15,7 +19,6 @@ provider:
   stage: ${file(../../serverless.common.yml):provider.stage}
   runtime: ${file(../../serverless.common.yml):provider.runtime}
   region: ${file(../../serverless.common.yml):provider.region}
-  cfLogs: true
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
@@ -55,7 +58,7 @@ functions:
           method: patch
           request:
             parameters:
-              path:
+              paths:
                 event_id: true
                 year: true
           cors: true
@@ -70,7 +73,7 @@ functions:
           method: get
           request:
             parameters:
-              path:
+              paths:
                 event_id: true
                 year: true
           cors: true
@@ -85,7 +88,7 @@ functions:
           method: get
           request:
             parameters:
-              path:
+              paths:
                 event_id: true
                 year: true
           cors: true
@@ -101,7 +104,7 @@ functions:
           method: get
           request:
             parameters:
-              path:
+              paths:
                 event_id: true
                 year: true
                 profileId: true

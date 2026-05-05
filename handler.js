@@ -46,7 +46,20 @@ export const runProxy = (serviceConfigs, basePort, stage) => {
       proxyPath,
       createProxyMiddleware({
         pathRewrite: (path) => {
-          return stripBasePath ? path.replace(proxyPath, "/") : path;
+          if (stripBasePath) {
+            return path;
+          }
+
+          // Express strips mount path from req.url; add it back for service routing.
+          if (path === "/") {
+            return proxyPath;
+          }
+
+          if (path.startsWith("/?")) {
+            return `${proxyPath}${path.slice(1)}`;
+          }
+
+          return `${proxyPath}${path}`;
         },
         target: `http://localhost:${basePort + i}/${stage}/`,
         changeOrigin: true,
