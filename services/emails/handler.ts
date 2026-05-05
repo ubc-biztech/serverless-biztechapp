@@ -86,10 +86,12 @@ export const updateEmailTemplate = async (
     const response = await sesClient.send(
       new UpdateEmailTemplateCommand({
         TemplateName: data.templateName,
-        Subject: data.subject,
-        Html: data.html,
-        TextPart: data.text,
-      } as any),
+        TemplateContent: {
+          Subject: data.subject,
+          Html: data.html,
+          Text: data.text,
+        },
+      }),
     );
 
     return res.ok({

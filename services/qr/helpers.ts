@@ -13,7 +13,7 @@ import {
 } from "../../constants/tables.js";
 import docClient from "../../lib/docClient.js";
 import db from "../../lib/db.js";
-import helpers from "../../lib/handlerHelpers";
+import res from "../../lib/responseHelpers";
 import { isValidEmail } from "../../lib/utils.js";
 import WebSocket from "ws";
 
@@ -56,10 +56,10 @@ const registrationHelpers = {
     id: string,
     eventIDAndYear: string,
   ): Promise<QrRecord | null> {
-    const res = await db.getOne(id, QRS_TABLE, {
+    const result = await db.getOne(id, QRS_TABLE, {
       "eventID;year": eventIDAndYear,
     });
-    return res as QrRecord | null;
+    return result as QrRecord | null;
   },
 
   async qrScanPostHelper(data: QrScanBody, email: string) {
@@ -72,7 +72,7 @@ const registrationHelpers = {
       Number.isNaN(year) ||
       !isValidEmail(email)
     ) {
-      throw helpers.inputError(
+      throw res.notAcceptable(
         "Incorrect types for eventID and year in registration.updateHelper",
         data,
       );
@@ -80,13 +80,13 @@ const registrationHelpers = {
 
     return this.checkValidQR(qrCodeID, eventIDAndYear).then(async (qr) => {
       if (qr === null) {
-        throw helpers.createResponse(403, {
+        throw res.send(403, {
           message: "Invalid QR code - not scannable for this BizTech event!",
           data,
         });
       }
       if (negativePointsConfirmed === false && qr.points < 0) {
-        throw helpers.createResponse(405, {
+        throw res.send(405, {
           message:
             "Please confirm with the user that they want to redeem a negative point QR code.",
           data,

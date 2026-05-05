@@ -92,16 +92,9 @@ export type InferredPayload<T extends PayloadSchema> = {
 
 
 export interface HandlerHelpers {
-  createResponse(statusCode: number, body?: unknown): APIGatewayResponse;
   missingIdQueryResponse(type: string): APIGatewayResponse;
   missingPathParamResponse(type: string, paramName: string): APIGatewayResponse;
-  notFoundResponse(
-    type?: string | null,
-    id?: string | null,
-    secondaryKey?: string | null,
-  ): APIGatewayResponse;
   duplicateResponse(prop: string, data: unknown): APIGatewayResponse;
-  inputError(message: string, data?: unknown): APIGatewayResponse;
   checkPayloadProps(payload: Record<string, unknown>, check: PayloadCheck): void;
 }
 
@@ -111,7 +104,7 @@ export interface ResponseHelpers {
   created(data?: unknown): APIGatewayResponse;
   noContent(): APIGatewayResponse;
   badRequest(message: string, data?: unknown): APIGatewayResponse;
-  unauthorized(message: string);
+  unauthorized(message: string): APIGatewayResponse;
   notAcceptable(message: string, data?: unknown): APIGatewayResponse;
   notFound(type?: string, id?: string, secondaryKey?: string): APIGatewayResponse;
   conflict(prop: string, data?: unknown): APIGatewayResponse;

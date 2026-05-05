@@ -1,57 +1,30 @@
 import type { APIGatewayResponse, HandlerHelpers, PayloadCheck } from "./types";
 import res from "./responseHelpers";
 
-/** Same contract as legacy `handlerHelpers.js`: CORS + JSON body via `responseHelpers.send`. */
-function createResponse(statusCode: number, body?: unknown): APIGatewayResponse {
-  return res.send(statusCode, body);
-}
-
-function inputError(message: string, data?: unknown): APIGatewayResponse {
-  const response = createResponse(406, {
-    message,
-    data,
-  });
-  console.error("INPUT ERROR", response);
-  return response;
-}
-
-function notFoundResponse(
-  type: string | null = null,
-  id: string | null = null,
-  secondaryKey: string | null = null,
-): APIGatewayResponse {
-  let message: string;
-
-  if (type && id) {
-    message = secondaryKey
-      ? `${type} with id '${id}' and secondaryKey '${secondaryKey}' could not be found. Make sure you have provided them correctly.`
-      : `${type} with id '${id}' could not be found. Make sure you have provided the correct id.`;
-  } else {
-    message = "No entries found";
-  }
-
-  return createResponse(404, { message });
-}
-
+/**
+ * Domain-level helpers for request validation and common error shapes.
+ *
+ * HTTP-response building (200/201/4xx/5xx envelopes, JSON body, CORS headers)
+ * lives in `responseHelpers`. Anything you'd previously have written via
+ * `helpers.createResponse(...)`, `helpers.inputError(...)`, or
+ * `helpers.notFoundResponse(...)` should use `res.send` / `res.notAcceptable` /
+ * `res.notFound` from `responseHelpers` directly.
+ */
 const handlerHelpers: HandlerHelpers = {
-  createResponse,
-
   missingIdQueryResponse(type: string): APIGatewayResponse {
-    return createResponse(400, {
+    return res.send(400, {
       message: `A(n) ${type} id was not provided. Check query params`,
     });
   },
 
   missingPathParamResponse(type: string, paramName: string): APIGatewayResponse {
-    return createResponse(400, {
+    return res.send(400, {
       message: `A(n) ${paramName} path parameter was not provided for this ${type}. Check path params`,
     });
   },
 
-  notFoundResponse,
-
   duplicateResponse(prop: string, data: unknown): APIGatewayResponse {
-    const response = createResponse(409, {
+    const response = res.send(409, {
       message: `A database entry with the same '${prop}' already exists!`,
       data,
     });
@@ -59,14 +32,13 @@ const handlerHelpers: HandlerHelpers = {
     return response;
   },
 
-  inputError,
-
   /**
-   * Check if the object passed matches the criteria
+   * Validate `payload` against `check`. Throws a 406 response (via
+   * `res.notAcceptable`) on the first violation; otherwise returns void.
+   *
    * @param payload - the object
-   * @param check - object containing the criteria for each property keyed by the property name
-   * The object criteria accepts the following properties:
-   * { required?: boolean, type?: string }
+   * @param check - object containing the criteria for each property keyed by
+   *   the property name. Accepts `{ required?: boolean, type?: string }`.
    */
   checkPayloadProps(
     payload: Record<string, unknown>,
@@ -84,7 +56,7 @@ const handlerHelpers: HandlerHelpers = {
         }
       });
     } catch (errMsg) {
-      throw inputError(errMsg as string, payload);
+      throw res.notAcceptable(errMsg as string, payload);
     }
   },
 };

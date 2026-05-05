@@ -1,9 +1,17 @@
 import { EVENTS_TABLE, QRS_TABLE } from "../../constants/tables.js";
 import db from "../../lib/db.js";
 import helpers from "../../lib/handlerHelpers";
+import res from "../../lib/responseHelpers";
 import type { APIGatewayEvent, LambdaCallback, LambdaContext } from "../../lib/types";
 import { isEmpty } from "../../lib/utils.js";
 import registrationHelpers from "./helpers";
+
+const errorMessage = (err: unknown): string =>
+  err instanceof Error
+    ? err.message
+    : typeof err === "object" && err !== null && "message" in err
+      ? String((err as { message: unknown }).message)
+      : String(err);
 
 /*
   Returns Status Code 200 when QR code is scanned successfully
@@ -48,51 +56,43 @@ export const post = async (
       },
     });
 
-    await registrationHelpers
-      .qrScanPostHelper(data as never, data.email as string)
-      .then(async (scanRes: Record<string, unknown>) => {
-        console.log(scanRes);
-        if (scanRes && Object.prototype.hasOwnProperty.call(scanRes, "errorMessage")) {
-          if (
-            scanRes.errorMessage === "Team scan would result in negative points"
-          ) {
-            return helpers.createResponse(406, {
-              message: "ERROR: " + scanRes.errorMessage,
-              response: scanRes,
-            });
-          }
-          return helpers.createResponse(403, {
-            message: "ERROR: " + scanRes.errorMessage,
-            response: scanRes,
-          });
-        }
-        try {
-          await registrationHelpers.logQRScan(
-            data.qrCodeID as string,
-            data.email as string,
-          );
-        } catch (logErr) {
-          console.error("Error logging QR scan:", logErr);
-        }
-        return helpers.createResponse(200, {
-          message: "Successfully scanned QR code.",
-          response: scanRes,
-        });
-      })
-      .catch((err: unknown) => {
-        console.error(err);
-        return helpers.createResponse(500, {
-          message:
-            err instanceof Error
-              ? err.message
-              : (err as { message?: string })?.message || err,
-        });
+    const scanRes = (await registrationHelpers.qrScanPostHelper(
+      data as never,
+      data.email as string,
+    )) as Record<string, unknown>;
+
+    console.log(scanRes);
+
+    if (
+      scanRes &&
+      Object.prototype.hasOwnProperty.call(scanRes, "errorMessage")
+    ) {
+      const status =
+        scanRes.errorMessage === "Team scan would result in negative points"
+          ? 406
+          : 403;
+      return res.send(status, {
+        message: "ERROR: " + scanRes.errorMessage,
+        response: scanRes,
       });
+    }
+
+    try {
+      await registrationHelpers.logQRScan(
+        data.qrCodeID as string,
+        data.email as string,
+      );
+    } catch (logErr) {
+      console.error("Error logging QR scan:", logErr);
+    }
+
+    return res.ok({
+      message: "Successfully scanned QR code.",
+      response: scanRes,
+    });
   } catch (err: unknown) {
     console.error(err);
-    return helpers.createResponse(500, {
-      message: err instanceof Error ? err.message : (err as { message?: string })?.message || err,
-    });
+    return res.send(500, { message: errorMessage(err) });
   }
 };
 
@@ -103,12 +103,10 @@ export const get = async (
 ) => {
   try {
     const qrs = await db.scan(QRS_TABLE, {});
-    return helpers.createResponse(200, qrs);
+    return res.ok(qrs);
   } catch (err: unknown) {
     console.log(err);
-    return helpers.createResponse(500, {
-      message: err instanceof Error ? err.message : err,
-    });
+    return res.send(500, { message: errorMessage(err) });
   }
 };
 
@@ -131,12 +129,10 @@ export const getOne = async (
     const qr = await db.getOne(id, QRS_TABLE, {
       "eventID;year": eventIDAndYear,
     });
-    return helpers.createResponse(200, qr);
+    return res.ok(qr);
   } catch (err: unknown) {
     console.log(err);
-    return helpers.createResponse(500, {
-      message: err instanceof Error ? err.message : err,
-    });
+    return res.send(500, { message: errorMessage(err) });
   }
 };
 
@@ -194,7 +190,7 @@ export const create = async (
       },
     );
     if (isEmpty(existingEvent)) {
-      throw helpers.inputError("Event does not exist", data);
+      throw res.notAcceptable("Event does not exist", data);
     }
 
     const item = {
@@ -213,16 +209,14 @@ export const create = async (
 
     const createRes = await db.create(item, QRS_TABLE);
 
-    return helpers.createResponse(201, {
+    return res.created({
       message: `Create QR with id ${(data as { id: string }).id} for the event ${eventIDAndYear}!`,
       response: createRes,
       item,
     });
   } catch (err: unknown) {
     console.log(err);
-    return helpers.createResponse(500, {
-      message: err instanceof Error ? err.message : err,
-    });
+    return res.send(500, { message: errorMessage(err) });
   }
 };
 
@@ -247,7 +241,7 @@ export const update = async (
       "eventID;year": eventIDAndYear,
     });
     if (isEmpty(existingQR)) {
-      throw helpers.notFoundResponse("QR", id, eventIDAndYear);
+      throw res.notFound("QR", id, eventIDAndYear);
     }
     const data = JSON.parse(event.body as string) as Record<string, unknown>;
 
@@ -276,15 +270,13 @@ export const update = async (
 
     const updateRes = await db.updateDBCustom(params);
 
-    return helpers.createResponse(200, {
+    return res.ok({
       message: `Updated QR with id ${id} and event ${eventIDAndYear}!`,
       response: updateRes,
     });
   } catch (err: unknown) {
     console.log(err);
-    return helpers.createResponse(500, {
-      message: err instanceof Error ? err.message : err,
-    });
+    return res.send(500, { message: errorMessage(err) });
   }
 };
 
@@ -309,21 +301,19 @@ export const del = async (
       "eventID;year": eventIDAndYear,
     });
     if (isEmpty(existingQR)) {
-      throw helpers.notFoundResponse("QR", id, eventIDAndYear);
+      throw res.notFound("QR", id, eventIDAndYear);
     }
 
     const deleteRes = await db.deleteOne(id, QRS_TABLE, {
       "eventID;year": eventIDAndYear,
     });
 
-    return helpers.createResponse(200, {
+    return res.ok({
       message: `Deleted QR with id ${id} and event ${eventIDAndYear}!`,
       response: deleteRes,
     });
   } catch (err: unknown) {
     console.log(err);
-    return helpers.createResponse(500, {
-      message: err instanceof Error ? err.message : err,
-    });
+    return res.send(500, { message: errorMessage(err) });
   }
 };
