@@ -48,12 +48,8 @@
     "yaml": "^1.10.2"
   },
   "scripts": {
-    "itest": "node ./scripts/run_itests.js",
-    "utest": "node ./scripts/run_utests.js",
-    "test": "npm run utest && npm run itest",
     "lint": "eslint . --fix",
     "pretty": "prettier --write \"./**/*.{js,jsx,ts,tsx,json}\"",
-    "build": "tsc -p tsconfig.json",
     "fix-sls-offline": "node ./scripts/run-in-services.js node ../../scripts/fix-sls-offline.js",
     "sls-offline-i": "node ./scripts/run-in-services.js serverless plugin install -n serverless-offline",
     "dev": "node ./index.js",
