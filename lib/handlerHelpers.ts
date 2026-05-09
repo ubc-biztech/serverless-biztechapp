@@ -11,6 +11,10 @@ import res from "./responseHelpers";
  * `res.notFound` from `responseHelpers` directly.
  */
 const handlerHelpers: HandlerHelpers = {
+  createResponse(statusCode: number, body?: unknown): APIGatewayResponse {
+    return res.send(statusCode, body);
+  },
+
   missingIdQueryResponse(type: string): APIGatewayResponse {
     return res.send(400, {
       message: `A(n) ${type} id was not provided. Check query params`,
@@ -23,6 +27,18 @@ const handlerHelpers: HandlerHelpers = {
     });
   },
 
+  notFoundResponse(
+    type?: string | null,
+    id?: string | null,
+    secondaryKey?: string | number | null,
+  ): APIGatewayResponse {
+    return res.notFound(
+      type ?? undefined,
+      id ?? undefined,
+      secondaryKey !== null && secondaryKey !== undefined ? String(secondaryKey) : undefined,
+    );
+  },
+
   duplicateResponse(prop: string, data: unknown): APIGatewayResponse {
     const response = res.send(409, {
       message: `A database entry with the same '${prop}' already exists!`,
@@ -30,6 +46,10 @@ const handlerHelpers: HandlerHelpers = {
     });
     console.error("DUPLICATE ERROR", response);
     return response;
+  },
+
+  inputError(message: string, data?: unknown): APIGatewayResponse {
+    return res.notAcceptable(message, data);
   },
 
   /**
