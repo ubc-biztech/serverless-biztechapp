@@ -20,9 +20,10 @@ export const readConfigFile = () => {
 // builds concurrently commands for each service
 export const runServices = (serviceConfigs, basePort, stage, prefixColors) => {
   const commands = [];
+  const localServerlessBin = path.join(process.cwd(), "node_modules", ".bin", "serverless");
 
   for (let i = 0; i < serviceConfigs.length; i++) {
-    const command = `cd "${process.cwd()}/${serviceConfigs[i].srvSource}" && serverless offline --stage ${stage} --httpPort ${basePort + i} --lambdaPort ${basePort + i + 1000}`;
+    const command = `cd "${process.cwd()}/${serviceConfigs[i].srvSource}" && "${localServerlessBin}" offline --stage ${stage} --httpPort ${basePort + i} --lambdaPort ${basePort + i + 1000}`;
 
     commands.push({
       command,
