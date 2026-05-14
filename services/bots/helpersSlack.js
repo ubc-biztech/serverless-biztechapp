@@ -4,9 +4,12 @@ import {
   installationID,
   reminderChannelID,
   btFields,
-  btDevs
+  btDevs,
+  scoreCommandAdmins
 } from "./constants.js";
 import { docsBaseUrl, docsChunks } from "./docsIndex.js";
+import db from "../../lib/db.js";
+import { STORY_POINTS_TABLE } from "../../constants/tables.js";
 import jwt from "jsonwebtoken";
 import fetch from "node-fetch";
 
@@ -348,6 +351,175 @@ export async function slackApi(method, endpoint, body) {
     return data;
   } catch (error) {
     console.error("Failed to call Slack API:", error);
+  }
+}
+
+function normalizeSlackUsername(username = "") {
+  return String(username).trim().toLowerCase().replace(/^@/, "");
+}
+
+async function lookupSlackUsernameById(userId) {
+  const userInfo = await slackApi("GET", `users.info?user=${userId}`);
+  if (!userInfo || !userInfo.user) {
+    return null;
+  }
+
+  const profile = userInfo.user.profile || {};
+  const candidates = [
+    userInfo.user.name,
+    profile.display_name,
+    profile.display_name_normalized,
+    profile.real_name
+  ];
+
+  for (const candidate of candidates) {
+    const normalized = normalizeSlackUsername(candidate);
+    if (normalized) return normalized;
+  }
+
+  return null;
+}
+
+async function resolveCommandUsername(rawValue) {
+  const value = String(rawValue || "").trim();
+  if (!value) return null;
+
+  const rawUserId = value.match(/^[A-Z0-9]{6,}$/i);
+  if (rawUserId) {
+    const lookedUp = await lookupSlackUsernameById(rawUserId[0]);
+    return lookedUp || normalizeSlackUsername(rawUserId[0]);
+  }
+
+  const mentionWithName = value.match(/^<@([A-Z0-9]+)\|([^>]+)>$/i);
+  if (mentionWithName) {
+    return normalizeSlackUsername(mentionWithName[2]);
+  }
+
+  const mentionWithoutName = value.match(/^<@([A-Z0-9]+)>$/i);
+  if (mentionWithoutName) {
+    const lookedUp = await lookupSlackUsernameById(mentionWithoutName[1]);
+    return lookedUp || normalizeSlackUsername(mentionWithoutName[1]);
+  }
+
+  return normalizeSlackUsername(value);
+}
+
+function parseScoreCommandText(text = "") {
+  const trimmed = String(text || "").trim();
+  if (!trimmed) return { error: "Usage: `/score @username <points>`" };
+
+  const parts = trimmed.split(/\s+/);
+  if (parts.length < 2) {
+    return { error: "Usage: `/score @username <points>`" };
+  }
+
+  const deltaRaw = parts[1];
+  if (!/^-?\d+$/.test(deltaRaw)) {
+    return { error: "Points must be an integer. Example: `/score @thomas 10`" };
+  }
+
+  return {
+    targetRaw: parts[0],
+    delta: Number.parseInt(deltaRaw, 10)
+  };
+}
+
+async function addScoreForUser(username, delta) {
+  const normalizedUser = normalizeSlackUsername(username);
+  const now = Date.now();
+
+  const result = await db.updateDBCustom({
+    Key: { user: normalizedUser },
+    TableName: STORY_POINTS_TABLE + (process.env.ENVIRONMENT || ""),
+    UpdateExpression:
+      "SET score = if_not_exists(score, :zero) + :delta, createdAt = if_not_exists(createdAt, :createdAt), updatedAt = :updatedAt",
+    ExpressionAttributeValues: {
+      ":zero": 0,
+      ":delta": delta,
+      ":createdAt": now,
+      ":updatedAt": now
+    },
+    ReturnValues: "ALL_NEW"
+  });
+
+  return result.Attributes;
+}
+
+export async function runScoreCommand(body) {
+  const caller = await resolveCommandUsername(body.user_name || body.user_id);
+  if (!caller || !scoreCommandAdmins.includes(caller)) {
+    return {
+      response_type: "ephemeral",
+      text: "You are not allowed to use `/score`."
+    };
+  }
+
+  const parsed = parseScoreCommandText(body.text);
+  if (parsed.error) {
+    return {
+      response_type: "ephemeral",
+      text: parsed.error
+    };
+  }
+
+  const target = await resolveCommandUsername(parsed.targetRaw);
+  if (!target) {
+    return {
+      response_type: "ephemeral",
+      text: "Could not parse username. Example: `/score @thomas 10`"
+    };
+  }
+
+  try {
+    const updated = await addScoreForUser(target, parsed.delta);
+    const newScore = Number(updated.score || 0);
+    const changePrefix = parsed.delta >= 0 ? "+" : "";
+
+    return {
+      response_type: "in_channel",
+      text: `✅ Updated @${target}: ${newScore} points (${changePrefix}${parsed.delta})`
+    };
+  } catch (error) {
+    console.error("Failed running /score:", error);
+    return {
+      response_type: "ephemeral",
+      text: "Could not update score right now. Please try again."
+    };
+  }
+}
+
+export async function runLeaderboardCommand() {
+  try {
+    const rows = await db.scan(STORY_POINTS_TABLE);
+    const leaderboard = (rows || [])
+      .map((row) => ({
+        username: normalizeSlackUsername(row.user),
+        score: Number(row.score || 0)
+      }))
+      .filter((row) => row.username)
+      .sort((a, b) => b.score - a.score || a.username.localeCompare(b.username));
+
+    if (!leaderboard.length) {
+      return {
+        response_type: "in_channel",
+        text: "🏆 *Dev story point leaderboards!*\nNo scores yet."
+      };
+    }
+
+    const lines = leaderboard.map(
+      (entry, index) => `${index + 1}. @${entry.username} - ${entry.score}`
+    );
+
+    return {
+      response_type: "in_channel",
+      text: `🏆 *Dev story point leaderboards!*\n${lines.join("\n")}`
+    };
+  } catch (error) {
+    console.error("Failed running /leaderboard:", error);
+    return {
+      response_type: "ephemeral",
+      text: "Could not load leaderboard right now. Please try again."
+    };
   }
 }
 

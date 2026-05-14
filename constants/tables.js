@@ -16,6 +16,7 @@ export const MEMBERS2026_TABLE = "biztechMembers2026";
 export const PRIZES_TABLE = "biztechPrizes";
 export const STICKERS_TABLE = "bizStickers";
 export const SCORE_TABLE = "bizScores";
+export const STORY_POINTS_TABLE = "storyPoints";
 export const SOCKETS_TABLE = "bizSockets";
 export const TRANSACTIONS_TABLE = "biztechTransactions";
 export const USERS_TABLE = "biztechUsers";
