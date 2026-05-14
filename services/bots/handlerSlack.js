@@ -2,6 +2,8 @@ import {
   answerDocsQuestion,
   getProjectBoard,
   openPingShortcut,
+  runLeaderboardCommand,
+  runScoreCommand,
   slackApi,
   sendIssueReminders as sendIssueReminders,
   submitPingShortcut,
@@ -48,6 +50,28 @@ export const shortcutHandler = async (event, ctx, callback) => {
         response_type: "ephemeral",
         text: "Generating summary..."
       })
+    };
+  }
+
+  if (body.command === "/score") {
+    const response = await runScoreCommand(body);
+    return {
+      statusCode: 200,
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(response)
+    };
+  }
+
+  if (body.command === "/leaderboard") {
+    const response = await runLeaderboardCommand();
+    return {
+      statusCode: 200,
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(response)
     };
   }
 

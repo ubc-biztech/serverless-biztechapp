@@ -63,6 +63,8 @@ export const projects = [
   "Internal Tools"
 ];
 
+export const scoreCommandAdmins = Object.freeze(["elijah", "kevin", "jay"]);
+
 export const ack = {
   statusCode: 200,
   body: ""
