@@ -43,6 +43,7 @@ jobs:
           sudo npm i -g serverless@4 --legacy-peer-deps
           sls -v
           npm ci --legacy-peer-deps
+          npm rebuild esbuild --force
 
       - name: Checkout docs repository snapshot
         if: github.event_name == 'repository_dispatch' && github.event.action == 'biztech_docs_updated'

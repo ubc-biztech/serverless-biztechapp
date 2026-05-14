@@ -39,7 +39,9 @@ jobs:
           fi
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: |
+          npm ci --legacy-peer-deps
+          npm rebuild esbuild --force
 
       - name: "Deploy and test Production"
         env:

@@ -29,6 +29,7 @@ jobs:
           sudo npm i -g serverless@4 --legacy-peer-deps
           sls -v
           npm ci --legacy-peer-deps
+          npm rebuild esbuild --force
 
       - name: "Run Serverless Package Deployable Check"
         env:
