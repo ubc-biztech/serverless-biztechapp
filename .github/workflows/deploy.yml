@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
+      ESBUILD_BINARY_PATH: ${{ github.workspace }}/node_modules/@esbuild/linux-x64/bin/esbuild
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}
@@ -43,6 +44,8 @@ jobs:
           sudo npm i -g serverless@4 --legacy-peer-deps
           sls -v
           npm ci --legacy-peer-deps
+          npm rebuild esbuild --force
+          "$ESBUILD_BINARY_PATH" --version
 
       - name: Checkout docs repository snapshot
         if: github.event_name == 'repository_dispatch' && github.event.action == 'biztech_docs_updated'

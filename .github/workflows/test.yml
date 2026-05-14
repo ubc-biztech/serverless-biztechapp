@@ -9,12 +9,12 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
+      ESBUILD_BINARY_PATH: ${{ github.workspace }}/node_modules/@esbuild/linux-x64/bin/esbuild
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          cache: "npm"
           node-version: "22.x"
 
       - name: Validate Serverless auth secret is configured
@@ -28,7 +28,11 @@ jobs:
         run: |
           sudo npm i -g serverless@4 --legacy-peer-deps
           sls -v
+          npm cache clean --force
           npm ci --legacy-peer-deps
+          npm rebuild esbuild --force
+          node -e "console.log(require('esbuild').version)"
+          "$ESBUILD_BINARY_PATH" --version
 
       - name: "Run Serverless Package Deployable Check"
         env:
