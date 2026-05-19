@@ -7,7 +7,7 @@ import {
   btDevs,
   scoreCommandAdmins
 } from "./constants.js";
-import { docsBaseUrl, docsChunks } from "./docsIndex.js";
+import { ensureDocsIndexLoaded } from "./docsIndexStore.js";
 import db from "../../lib/db.js";
 import { STORY_POINTS_TABLE } from "../../constants/tables.js";
 import jwt from "jsonwebtoken";
@@ -71,29 +71,59 @@ function tokenize(text = "") {
   );
 }
 
-const preparedDocsChunks = docsChunks.map((chunk) => ({
-  ...chunk,
-  titleSearch: normalizeForSearch(chunk.title),
-  sectionSearch: normalizeForSearch(chunk.section)
-}));
+const docsSearchCache = {
+  cacheKey: "",
+  preparedDocsChunks: [],
+  tokenIdf: new Map()
+};
 
-const tokenDocumentFrequency = new Map();
-for (const chunk of preparedDocsChunks) {
-  const uniqueTokens = new Set(tokenize(chunk.searchText));
-  for (const token of uniqueTokens) {
-    tokenDocumentFrequency.set(
-      token,
-      (tokenDocumentFrequency.get(token) || 0) + 1
-    );
+function buildDocsSearchArtifacts(docsChunks = []) {
+  const preparedDocsChunks = docsChunks.map((chunk) => ({
+    ...chunk,
+    titleSearch: normalizeForSearch(chunk.title),
+    sectionSearch: normalizeForSearch(chunk.section)
+  }));
+
+  const tokenDocumentFrequency = new Map();
+  for (const chunk of preparedDocsChunks) {
+    const uniqueTokens = new Set(tokenize(chunk.searchText));
+    for (const token of uniqueTokens) {
+      tokenDocumentFrequency.set(
+        token,
+        (tokenDocumentFrequency.get(token) || 0) + 1
+      );
+    }
   }
+
+  const tokenIdf = new Map(
+    [...tokenDocumentFrequency.entries()].map(([token, df]) => [
+      token,
+      Math.log((1 + preparedDocsChunks.length) / (1 + df)) + 1
+    ])
+  );
+
+  return {
+    preparedDocsChunks,
+    tokenIdf
+  };
 }
 
-const tokenIdf = new Map(
-  [...tokenDocumentFrequency.entries()].map(([token, df]) => [
-    token,
-    Math.log((1 + preparedDocsChunks.length) / (1 + df)) + 1
-  ])
-);
+function getDocsSearchArtifacts(docsState) {
+  const cacheKey = `${docsState.docsIndexGeneratedAt}:${docsState.docsChunkCount}:${docsState.source}:${docsState.etag || ""}`;
+  if (docsSearchCache.cacheKey !== cacheKey) {
+    const { preparedDocsChunks, tokenIdf } = buildDocsSearchArtifacts(
+      docsState.docsChunks
+    );
+    docsSearchCache.cacheKey = cacheKey;
+    docsSearchCache.preparedDocsChunks = preparedDocsChunks;
+    docsSearchCache.tokenIdf = tokenIdf;
+  }
+
+  return {
+    preparedDocsChunks: docsSearchCache.preparedDocsChunks,
+    tokenIdf: docsSearchCache.tokenIdf
+  };
+}
 
 function queryBigrams(tokens) {
   const bigrams = [];
@@ -123,7 +153,13 @@ function routeIntentBoost(route, tokenSet) {
   return boost;
 }
 
-function scoreChunkForQuestion(chunk, queryNorm, queryTokens, bigrams) {
+function scoreChunkForQuestion(
+  chunk,
+  queryNorm,
+  queryTokens,
+  bigrams,
+  tokenIdf
+) {
   const queryPhrase = queryNorm.trim();
   const searchable = chunk.searchText || normalizeForSearch(chunk.content);
   const tokenSet = new Set(queryTokens);
@@ -157,17 +193,28 @@ function scoreChunkForQuestion(chunk, queryNorm, queryTokens, bigrams) {
   return score;
 }
 
-function retrieveTopDocsChunks(question, limit = DOCS_MAX_CONTEXT_SOURCES) {
+function retrieveTopDocsChunks(
+  question,
+  docsState,
+  limit = DOCS_MAX_CONTEXT_SOURCES
+) {
   const queryNorm = normalizeForSearch(question);
   const queryTokens = tokenize(question);
   const bigrams = queryBigrams(queryTokens);
+  const { preparedDocsChunks, tokenIdf } = getDocsSearchArtifacts(docsState);
 
   if (!queryNorm.trim() && queryTokens.length === 0) return [];
 
   const scored = preparedDocsChunks
     .map((chunk) => ({
       ...chunk,
-      score: scoreChunkForQuestion(chunk, queryNorm, queryTokens, bigrams)
+      score: scoreChunkForQuestion(
+        chunk,
+        queryNorm,
+        queryTokens,
+        bigrams,
+        tokenIdf
+      )
     }))
     .filter((chunk) => chunk.score > 0)
     .sort((a, b) => {
@@ -212,7 +259,7 @@ function extractCitationIndexes(text, maxIndex) {
   return [...new Set(indexes)];
 }
 
-function buildNoConfidenceReply(sources = []) {
+function buildNoConfidenceReply(docsBaseUrl, sources = []) {
   const suggested = sources
     .slice(0, 3)
     .map((source) => `• <${source.url}|${source.title}>`)
@@ -310,16 +357,16 @@ async function getDocsAnswerFromOpenAI(question, sources) {
   }
 }
 
-function buildDocsReply(answer, sources) {
-  if (!answer) return buildNoConfidenceReply(sources);
+function buildDocsReply(docsBaseUrl, answer, sources) {
+  if (!answer) return buildNoConfidenceReply(docsBaseUrl, sources);
 
   if (answer.trim() === DOCS_REPLY_FALLBACK) {
-    return buildNoConfidenceReply(sources);
+    return buildNoConfidenceReply(docsBaseUrl, sources);
   }
 
   const citedIndexes = extractCitationIndexes(answer, sources.length);
   if (!citedIndexes.length) {
-    return buildNoConfidenceReply(sources);
+    return buildNoConfidenceReply(docsBaseUrl, sources);
   }
 
   const sourceLines = citedIndexes
@@ -641,12 +688,16 @@ export async function answerDocsQuestion(opts) {
     return;
   }
 
-  const relevantSources = retrieveTopDocsChunks(cleanQuestion);
+  const docsState = await ensureDocsIndexLoaded();
+  const relevantSources = retrieveTopDocsChunks(cleanQuestion, docsState);
   if (
     !relevantSources.length ||
     relevantSources[0].score < DOCS_MIN_TOP_SCORE
   ) {
-    const lowConfidenceReply = buildNoConfidenceReply(relevantSources);
+    const lowConfidenceReply = buildNoConfidenceReply(
+      docsState.docsBaseUrl,
+      relevantSources
+    );
     if (thread_ts) {
       await slackApi("POST", "chat.postMessage", {
         channel: channel_id,
@@ -670,7 +721,7 @@ export async function answerDocsQuestion(opts) {
 
   const reply = error
     ? `${DOCS_REPLY_FALLBACK}\n\nThe docs assistant is temporarily unavailable.`
-    : buildDocsReply(answer, relevantSources);
+    : buildDocsReply(docsState.docsBaseUrl, answer, relevantSources);
 
   if (thread_ts) {
     await slackApi("POST", "chat.postMessage", {
