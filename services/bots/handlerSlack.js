@@ -9,15 +9,85 @@ import {
   submitPingShortcut,
   summarizeRecentMessages
 } from "./helpersSlack.js";
+import {
+  InvokeCommand,
+  LambdaClient
+} from "@aws-sdk/client-lambda";
 
 import {
   ack
 } from "./constants.js";
 
 const processedEventIds = new Set();
+const lambdaClient = new LambdaClient({});
+
+async function enqueueSlackTask(task, payload) {
+  const functionName = process.env.AWS_LAMBDA_FUNCTION_NAME;
+
+  // Local/non-Lambda fallback keeps behavior working in local scripts.
+  if (!functionName) {
+    if (task === "summarize") {
+      await summarizeRecentMessages(payload);
+      return;
+    }
+    if (task === "docs_answer") {
+      await answerDocsQuestion(payload);
+      return;
+    }
+    throw new Error(`Unsupported local task: ${task}`);
+  }
+
+  await lambdaClient.send(
+    new InvokeCommand({
+      FunctionName: functionName,
+      InvocationType: "Event",
+      Payload: Buffer.from(
+        JSON.stringify({
+          internalTask: task,
+          payload
+        }),
+        "utf8"
+      )
+    })
+  );
+}
+
+async function enqueueSummarizeJob(body) {
+  await enqueueSlackTask("summarize", {
+    channel_id: body.channel_id,
+    thread_ts: body.thread_ts || null,
+    response_url: body.response_url || null
+  });
+}
+
+async function enqueueDocsAnswerJob(event) {
+  await enqueueSlackTask("docs_answer", {
+    channel_id: event.channel,
+    thread_ts: event.thread_ts || event.ts,
+    response_url: null,
+    question: String(event.text || "").replace(/<@[^>]+>/g, "").trim()
+  });
+}
+
+async function enqueueThreadSummarizeJob(body) {
+  await enqueueSlackTask("summarize", {
+    channel_id: body.channel.id,
+    thread_ts: body.message.thread_ts || body.message_ts,
+    response_url: body.response_url
+  });
+}
 
 // router
 export const shortcutHandler = async (event, ctx, callback) => {
+  if (event?.internalTask === "summarize") {
+    await summarizeRecentMessages(event.payload || {});
+    return;
+  }
+  if (event?.internalTask === "docs_answer") {
+    await answerDocsQuestion(event.payload || {});
+    return ack;
+  }
+
   let body;
 
   if (event.headers["X-Slack-Retry-Num"]) {
@@ -40,7 +110,22 @@ export const shortcutHandler = async (event, ctx, callback) => {
   }
 
   if (body.command === "/summarize") {
-    summarizeRecentMessages(body);
+    try {
+      await enqueueSummarizeJob(body);
+    } catch (error) {
+      console.error("Failed to enqueue summarize job:", error);
+      return {
+        statusCode: 200,
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          response_type: "ephemeral",
+          text: "Could not start summary. Please try again."
+        })
+      };
+    }
+
     return {
       statusCode: 200,
       headers: {
@@ -99,20 +184,7 @@ export const shortcutHandler = async (event, ctx, callback) => {
       processedEventIds.delete(first);
     }
 
-    const question = String(event.text || "").replace(/<@[^>]+>/g, "").trim();
-
-    await slackApi("POST", "reactions.add", {
-      channel: event.channel,
-      name: "hourglass",
-      timestamp: event.ts
-    }).catch(() => {});
-
-    await answerDocsQuestion({
-      channel_id: event.channel,
-      thread_ts: event.thread_ts || event.ts,
-      response_url: null,
-      question
-    });
+    await enqueueDocsAnswerJob(event);
     return ack;
   }
 
@@ -146,11 +218,7 @@ export const shortcutHandler = async (event, ctx, callback) => {
     body.type === "message_action" &&
     body.callback_id === "summarize_thread"
   ) {
-    await summarizeRecentMessages({
-      channel_id: body.channel.id,
-      thread_ts: body.message.thread_ts || body.message_ts, // handle both
-      response_url: body.response_url
-    });
+    await enqueueThreadSummarizeJob(body);
     return ack;
   }
 
