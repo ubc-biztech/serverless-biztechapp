@@ -59,6 +59,11 @@ provider:
         - s3:GetObject
       Resource:
         - 'arn:aws:s3:::${env:DOCS_INDEX_S3_BUCKET, "biztech-docs-index"}/*'
+    - Effect: Allow
+      Action:
+        - lambda:InvokeFunction
+      Resource:
+        - "arn:aws:lambda:${self:provider.region}:${aws:accountId}:function:biztechApi-bots-${self:provider.stage}-slackShortcutEventHandler"
 
 custom:
   prune: ${file(../../serverless.common.yml):custom.prune}
