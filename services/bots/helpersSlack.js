@@ -380,7 +380,11 @@ function buildDocsReply(docsBaseUrl, answer, sources) {
 }
 
 export async function slackApi(method, endpoint, body) {
-  const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
+  const SLACK_BOT_TOKEN = getSlackBotToken();
+  if (!SLACK_BOT_TOKEN) {
+    console.error("SLACK_BOT_TOKEN is missing or invalid.");
+    return;
+  }
   try {
     const res = await fetch(`https://slack.com/api/${endpoint}`, {
       method,
@@ -399,6 +403,21 @@ export async function slackApi(method, endpoint, body) {
   } catch (error) {
     console.error("Failed to call Slack API:", error);
   }
+}
+
+function getSlackBotToken() {
+  const cleaned = String(process.env.SLACK_BOT_TOKEN || "")
+    .replace(/^["']+|["']+$/g, "")
+    .replace(/\s+/g, "")
+    .trim();
+
+  if (!cleaned) return "";
+  // Extract a valid Slack token and ignore accidental extra text/characters.
+  const tokenMatch = cleaned.match(/xox[baprs]-[A-Za-z0-9-]+/);
+  const token = tokenMatch ? tokenMatch[0] : "";
+  if (!token) return "";
+  if (/[^\x20-\x7E]/.test(token)) return "";
+  return token;
 }
 
 function normalizeSlackUsername(username = "") {
@@ -737,6 +756,14 @@ export async function answerDocsQuestion(opts) {
 export async function summarizeRecentMessages(opts) {
   const { channel_id, thread_ts, response_url } = opts;
   const BOT_USER_ID = process.env.SLACK_BOT_USER_ID;
+  const SLACK_BOT_TOKEN = getSlackBotToken();
+  if (!SLACK_BOT_TOKEN) {
+    await respondToSlack(
+      response_url,
+      "Slack bot token is misconfigured. Ask an admin to set a valid Bot User OAuth token (`xoxb-...`)."
+    );
+    return;
+  }
 
   const messages = thread_ts
     ? await fetchThreadMessages(channel_id, thread_ts)
@@ -774,7 +801,11 @@ export async function summarizeRecentMessages(opts) {
 }
 
 export async function fetchRecentMessages(channel) {
-  const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
+  const SLACK_BOT_TOKEN = getSlackBotToken();
+  if (!SLACK_BOT_TOKEN) {
+    console.error("SLACK_BOT_TOKEN is missing or invalid.");
+    return [];
+  }
   try {
     const res = await fetch(
       `https://slack.com/api/conversations.history?channel=${channel}&limit=100`,
