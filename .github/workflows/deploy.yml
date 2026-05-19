@@ -68,7 +68,7 @@ jobs:
           SLACK_APP_TOKEN: ${{ secrets.SLACK_APP_TOKEN }}
           NODE_ENV: ${{ secrets.NODE_ENV }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          DOCS_INDEX_S3_BUCKET: ${{ vars.DOCS_INDEX_S3_BUCKET || vars.DOCS_INDEX_BUCKET }}
+          DOCS_INDEX_S3_BUCKET: ${{ vars.DOCS_INDEX_S3_BUCKET || vars.DOCS_INDEX_BUCKET || 'biztech-docs-index' }}
           DOCS_INDEX_S3_KEY: ${{ vars.DOCS_INDEX_S3_KEY || vars.DOCS_INDEX_KEY }}
           DOCS_INDEX_S3_REGION: ${{ vars.DOCS_INDEX_S3_REGION || vars.DOCS_INDEX_AWS_REGION }}
           DOCS_INDEX_REFRESH_SECONDS: ${{ vars.DOCS_INDEX_REFRESH_SECONDS }}
@@ -117,7 +117,7 @@ jobs:
           SLACK_APP_TOKEN: ${{ secrets.SLACK_APP_TOKEN }}
           NODE_ENV: ${{ secrets.NODE_ENV }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          DOCS_INDEX_S3_BUCKET: ${{ vars.DOCS_INDEX_S3_BUCKET || vars.DOCS_INDEX_BUCKET }}
+          DOCS_INDEX_S3_BUCKET: ${{ vars.DOCS_INDEX_S3_BUCKET || vars.DOCS_INDEX_BUCKET || 'biztech-docs-index' }}
           DOCS_INDEX_S3_KEY: ${{ vars.DOCS_INDEX_S3_KEY || vars.DOCS_INDEX_KEY }}
           DOCS_INDEX_S3_REGION: ${{ vars.DOCS_INDEX_S3_REGION || vars.DOCS_INDEX_AWS_REGION }}
           DOCS_INDEX_REFRESH_SECONDS: ${{ vars.DOCS_INDEX_REFRESH_SECONDS }}

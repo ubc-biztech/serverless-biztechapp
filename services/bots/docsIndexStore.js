@@ -15,6 +15,7 @@ const DEFAULT_ERROR_RETRY_SECONDS = 30;
 const DEFAULT_MAX_BYTES = 8 * 1024 * 1024;
 const DEFAULT_S3_REGION = "us-west-2";
 const DEFAULT_S3_KEY = "slack-docs-index/latest.json";
+const DEFAULT_S3_BUCKET = "biztech-docs-index";
 
 function normalizeForSearch(text = "") {
   return ` ${String(text)
@@ -30,7 +31,7 @@ function positiveInt(value, fallback) {
 }
 
 const docsIndexConfig = {
-  bucket: String(process.env.DOCS_INDEX_S3_BUCKET || "").trim(),
+  bucket: String(process.env.DOCS_INDEX_S3_BUCKET || DEFAULT_S3_BUCKET).trim(),
   key: String(process.env.DOCS_INDEX_S3_KEY || DEFAULT_S3_KEY).trim(),
   region: String(
     process.env.DOCS_INDEX_S3_REGION || process.env.AWS_REGION || DEFAULT_S3_REGION

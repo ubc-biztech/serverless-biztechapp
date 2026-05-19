@@ -30,7 +30,7 @@ provider:
     GH_PRIVATE_KEY: ${env:GH_PRIVATE_KEY,""}
     OPENAI_API_KEY: ${env:OPENAI_API_KEY,""}
     OPENAI_DOCS_MODEL: ${env:OPENAI_DOCS_MODEL,"gpt-5.4-mini"}
-    DOCS_INDEX_S3_BUCKET: ${env:DOCS_INDEX_S3_BUCKET,""}
+    DOCS_INDEX_S3_BUCKET: ${env:DOCS_INDEX_S3_BUCKET,"biztech-docs-index"}
     DOCS_INDEX_S3_KEY: ${env:DOCS_INDEX_S3_KEY,"slack-docs-index/latest.json"}
     DOCS_INDEX_S3_REGION: ${env:DOCS_INDEX_S3_REGION, self:provider.region}
     DOCS_INDEX_REFRESH_SECONDS: ${env:DOCS_INDEX_REFRESH_SECONDS,"300"}
