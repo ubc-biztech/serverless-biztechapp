@@ -99,7 +99,6 @@ export const shortcutHandler = async (event, ctx, callback) => {
       processedEventIds.delete(first);
     }
 
-    const wantsSummary = /summarize/i.test(event.text);
     const question = String(event.text || "").replace(/<@[^>]+>/g, "").trim();
 
     await slackApi("POST", "reactions.add", {
@@ -107,15 +106,6 @@ export const shortcutHandler = async (event, ctx, callback) => {
       name: "hourglass",
       timestamp: event.ts
     }).catch(() => {});
-
-    if (wantsSummary) {
-      await summarizeRecentMessages({
-        channel_id: event.channel,
-        thread_ts: event.thread_ts,
-        response_url: null
-      });
-      return ack;
-    }
 
     await answerDocsQuestion({
       channel_id: event.channel,

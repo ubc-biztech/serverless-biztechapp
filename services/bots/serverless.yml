@@ -30,6 +30,12 @@ provider:
     GH_PRIVATE_KEY: ${env:GH_PRIVATE_KEY,""}
     OPENAI_API_KEY: ${env:OPENAI_API_KEY,""}
     OPENAI_DOCS_MODEL: ${env:OPENAI_DOCS_MODEL,"gpt-5.4-mini"}
+    DOCS_INDEX_S3_BUCKET: ${env:DOCS_INDEX_S3_BUCKET,"biztech-docs-index"}
+    DOCS_INDEX_S3_KEY: ${env:DOCS_INDEX_S3_KEY,"slack-docs-index/latest.json"}
+    DOCS_INDEX_S3_REGION: ${env:DOCS_INDEX_S3_REGION, self:provider.region}
+    DOCS_INDEX_REFRESH_SECONDS: ${env:DOCS_INDEX_REFRESH_SECONDS,"300"}
+    DOCS_INDEX_ERROR_RETRY_SECONDS: ${env:DOCS_INDEX_ERROR_RETRY_SECONDS,"30"}
+    DOCS_INDEX_MAX_BYTES: ${env:DOCS_INDEX_MAX_BYTES,"8388608"}
     SLACK_BOT_TOKEN: ${env:SLACK_BOT_TOKEN,""}
     SLACK_BOT_USER_ID: ${env:SLACK_BOT_USER_ID,""}
   timeout: 15 # in seconds
@@ -48,6 +54,11 @@ provider:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2025${self:provider.environment.ENVIRONMENT}"
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2026${self:provider.environment.ENVIRONMENT}"
         - "arn:aws:dynamodb:us-west-2:432714361962:table/storyPoints${self:provider.environment.ENVIRONMENT}"
+    - Effect: Allow
+      Action:
+        - s3:GetObject
+      Resource:
+        - 'arn:aws:s3:::${env:DOCS_INDEX_S3_BUCKET, "biztech-docs-index"}/*'
 
 custom:
   prune: ${file(../../serverless.common.yml):custom.prune}

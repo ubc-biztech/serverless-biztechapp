@@ -2,8 +2,6 @@ name: Deploy on merge
 on:
   push:
     branches: [dev, master]
-  repository_dispatch:
-    types: [biztech_docs_updated]
 
 jobs:
   deploy:
@@ -47,27 +45,8 @@ jobs:
           npm rebuild esbuild --force
           "$ESBUILD_BINARY_PATH" --version
 
-      - name: Checkout docs repository snapshot
-        if: github.event_name == 'repository_dispatch' && github.event.action == 'biztech_docs_updated'
-        uses: actions/checkout@v4
-        with:
-          repository: ubc-biztech/biztech-documentation
-          ref: ${{ github.event.client_payload.source_sha || 'main' }}
-          token: ${{ secrets.BIZTECH_DOCS_REPO_TOKEN || github.token }}
-          path: biztech-documentation
-
-      - name: Build Slack docs index
-        if: github.event_name == 'repository_dispatch' && github.event.action == 'biztech_docs_updated'
-        run: npm run build:slack-docs-index -- --docs-root ./biztech-documentation/biztech-docs/src/app
-
-      - name: Verify docs index build
-        if: github.event_name == 'repository_dispatch' && github.event.action == 'biztech_docs_updated'
-        run: |
-          test -f services/bots/docsIndex.js
-          echo "Docs index rebuilt at services/bots/docsIndex.js"
-
       - name: "Deploy Dev"
-        if: github.ref == 'refs/heads/dev' || (github.event_name == 'repository_dispatch' && github.event.action == 'biztech_docs_updated')
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -89,6 +68,12 @@ jobs:
           SLACK_APP_TOKEN: ${{ secrets.SLACK_APP_TOKEN }}
           NODE_ENV: ${{ secrets.NODE_ENV }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DOCS_INDEX_S3_BUCKET: ${{ vars.DOCS_INDEX_S3_BUCKET || vars.DOCS_INDEX_BUCKET || 'biztech-docs-index' }}
+          DOCS_INDEX_S3_KEY: ${{ vars.DOCS_INDEX_S3_KEY || vars.DOCS_INDEX_KEY }}
+          DOCS_INDEX_S3_REGION: ${{ vars.DOCS_INDEX_S3_REGION || vars.DOCS_INDEX_AWS_REGION }}
+          DOCS_INDEX_REFRESH_SECONDS: ${{ vars.DOCS_INDEX_REFRESH_SECONDS }}
+          DOCS_INDEX_ERROR_RETRY_SECONDS: ${{ vars.DOCS_INDEX_ERROR_RETRY_SECONDS }}
+          DOCS_INDEX_MAX_BYTES: ${{ vars.DOCS_INDEX_MAX_BYTES }}
           ALGOLIA_APP_ID: ${{ secrets.ALGOLIA_APP_ID }}
           ALGOLIA_API_KEY: ${{ secrets.ALGOLIA_API_KEY }}
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
@@ -132,6 +117,12 @@ jobs:
           SLACK_APP_TOKEN: ${{ secrets.SLACK_APP_TOKEN }}
           NODE_ENV: ${{ secrets.NODE_ENV }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DOCS_INDEX_S3_BUCKET: ${{ vars.DOCS_INDEX_S3_BUCKET || vars.DOCS_INDEX_BUCKET || 'biztech-docs-index' }}
+          DOCS_INDEX_S3_KEY: ${{ vars.DOCS_INDEX_S3_KEY || vars.DOCS_INDEX_KEY }}
+          DOCS_INDEX_S3_REGION: ${{ vars.DOCS_INDEX_S3_REGION || vars.DOCS_INDEX_AWS_REGION }}
+          DOCS_INDEX_REFRESH_SECONDS: ${{ vars.DOCS_INDEX_REFRESH_SECONDS }}
+          DOCS_INDEX_ERROR_RETRY_SECONDS: ${{ vars.DOCS_INDEX_ERROR_RETRY_SECONDS }}
+          DOCS_INDEX_MAX_BYTES: ${{ vars.DOCS_INDEX_MAX_BYTES }}
           ALGOLIA_APP_ID: ${{ secrets.ALGOLIA_APP_ID }}
           ALGOLIA_API_KEY: ${{ secrets.ALGOLIA_API_KEY }}
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
