@@ -379,7 +379,17 @@ export const post = async (event, ctx, callback) => {
     }
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+
+    // Known/intentional HTTP error
+    if (err?.statusCode && err?.body) {
+      return err;
+    }
+
+    // Unexpected internal error
+    return helpers.createResponse(500, {
+      message: err?.message || "Internal server error"
+    });
+
   }
 };
 
@@ -474,7 +484,13 @@ export const put = async (event, ctx, callback) => {
     return response;
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    if (err?.statusCode && err?.body) {
+      return err;
+    }
+
+    return helpers.createResponse(500, {
+      message: err?.message || "Internal server error"
+    });
   }
 };
 
@@ -601,7 +617,13 @@ export const get = async (event, ctx, callback) => {
     });
   } catch (err) {
     console.error("Error in get handler:", err);
-    return helpers.createResponse(500, { message: err.message || err });
+    if (err?.statusCode && err?.body) {
+      return err;
+    }
+
+    return helpers.createResponse(500, {
+      message: err?.message || "Internal server error"
+    });
   }
 };
 
@@ -638,7 +660,13 @@ export const del = async (event, ctx, callback) => {
       response: res
     });
   } catch (err) {
-    return helpers.createResponse(500, { message: err.message || err });
+    if (err?.statusCode && err?.body) {
+      return err;
+    }
+
+    return helpers.createResponse(500, {
+      message: err?.message || "Internal server error"
+    });
   }
 };
 
@@ -689,7 +717,13 @@ export const delMany = async (event, ctx, callback) => {
       response: res
     });
   } catch (err) {
-    return helpers.createResponse(500, { message: err.message || err });
+    if (err?.statusCode && err?.body) {
+      return err;
+    }
+
+    return helpers.createResponse(500, {
+      message: err?.message || "Internal server error"
+    });
   }
 };
 
@@ -739,6 +773,11 @@ export const leaderboard = async (event, ctx, callback) => {
     }
   } catch (error) {
     console.error("Error fetching leaderboard:", error);
+
+    if (error?.statusCode && error?.body) {
+      return error;
+    }
+
     return {
       statusCode: 500,
       body: JSON.stringify({
