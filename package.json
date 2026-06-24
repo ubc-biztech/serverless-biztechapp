@@ -42,7 +42,7 @@
     "tweetnacl": "^1.0.3",
     "uuid": "^8.3.1",
     "ws": "^8.16.0",
-    "yaml": "^1.10.2"
+    "yaml": "^1.10.3"
   },
   "scripts": {
     "itest": "node ./scripts/run_itests.js",
