@@ -16,7 +16,7 @@
     "@aws-sdk/client-sns": "^3.637.0",
     "@aws-sdk/lib-dynamodb": "^3.620.1",
     "@aws-sdk/s3-request-presigner": "^3.965.0",
-    "@sendgrid/mail": "^7.4.0",
+    "@sendgrid/mail": "^8.1.6",
     "@types/express": "^5.0.0",
     "algoliasearch": "^5.46.2",
     "concurrently": "^6.2.0",
@@ -61,7 +61,7 @@
     "build:slack-docs-index": "node ./scripts/generateSlackDocsIndex.js"
   },
   "devDependencies": {
-    "artillery": "^2.0.21",
+    "artillery": "^2.0.30",
     "aws-sdk-client-mock": "^4.1.0",
     "aws-sdk-mock": "^5.1.0",
     "babel-plugin-transform-runtime": "^6.23.0",
