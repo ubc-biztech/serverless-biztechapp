@@ -6,7 +6,7 @@ import AWSMock from "aws-sdk-mock";
 
 import mochaPlugin from "serverless-mocha-plugin";
 const expect = mochaPlugin.chai.expect;
-let wrapped = mochaPlugin.getWrapper("eventDelete", "/handler.js", "del");
+let wrapped = mochaPlugin.getWrapper("eventDelete", "/handler.ts", "del");
 import {
   EVENTS_TABLE
 } from "../../../constants/tables";

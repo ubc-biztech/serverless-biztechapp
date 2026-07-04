@@ -27,9 +27,9 @@
     "csv-parser": "^3.0.0",
     "discord-interactions": "^4.3.0",
     "dotenv": "^16.0.3",
+    "esbuild": "0.27.7",
     "express": "^4.17.1",
     "express-http-proxy": "^1.6.2",
-    "esbuild": "0.27.7",
     "fs": "0.0.1-security",
     "googleapis": "^144.0.0",
     "http-proxy-middleware": "^3.0.0",
@@ -62,6 +62,8 @@
     "build:slack-docs-index": "node ./scripts/generateSlackDocsIndex.js"
   },
   "devDependencies": {
+    "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.18.1",
     "artillery": "^2.0.21",
     "aws-sdk-client-mock": "^4.1.0",
     "aws-sdk-mock": "^5.1.0",
