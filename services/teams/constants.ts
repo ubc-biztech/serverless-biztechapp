@@ -3,7 +3,7 @@ export const WEIGHTS = {
   TECHNICAL: 0.4,
   UX: 0.15,
   PROBLEMSOLVING: 0.2,
-  PRESENTATION: 0.1
-};
+  PRESENTATION: 0.1,
+} as const;
 
 export const ROUND = "CURRENT_ROUND";

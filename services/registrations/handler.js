@@ -389,7 +389,6 @@ export const post = async (event, ctx, callback) => {
     return helpers.createResponse(500, {
       message: err?.message || "Internal server error"
     });
-
   }
 };
 
