@@ -257,8 +257,8 @@ export const updateQuest = async (
           try {
             const userAMember = await db.getOne(userID, USERS_TABLE);
             userAProfileId =
-              userAMember && (userAMember.profileID as string | undefined)
-                ? (userAMember.profileID as string)
+              userA && (userA.profileID as string | undefined)
+                ? (userA.profileID as string)
                 : null;
           } catch (_e: unknown) {
             console.warn(`Could not get profileId for ${userID}`);
