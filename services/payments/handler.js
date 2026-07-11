@@ -11,7 +11,10 @@ import {
   EVENTS_TABLE,
   USER_REGISTRATIONS_TABLE
 } from "../../constants/tables";
-import { createProfile } from "../profiles/helpers";
+import {
+  createProfile,
+  updateProfileFromMembershipData
+} from "../profiles/helpers";
 import { PROFILE_TYPES } from "../profiles/constants";
 import { MEMBERSHIP_PRICE } from "./constants";
 
@@ -30,6 +33,12 @@ const cancelSecret =
   process.env.ENVIRONMENT === "PROD"
     ? process.env.STRIPE_PROD_CANCEL
     : process.env.STRIPE_DEV_CANCEL;
+
+const parseTopics = (topics) =>
+  Array.isArray(topics) ? topics : (topics || "").split(",").filter(Boolean);
+
+const publicProfileType = (email) =>
+  email.endsWith("@ubcbiztech.com") ? PROFILE_TYPES.EXEC : PROFILE_TYPES.ATTENDEE;
 
 // Creates the member here
 export const webhook = async (event, ctx, callback) => {
@@ -75,13 +84,14 @@ export const webhook = async (event, ctx, callback) => {
       major: data.major,
       prevMember: data.prev_member,
       international: data.international,
-      topics: data.topics.split(","),
+      topics: parseTopics(data.topics),
       diet: data.diet,
       heardFrom: data.heard_from,
       heardFromSpecify: data.heardFromSpecify,
       university: data.university,
       highSchool: data.high_school,
       admin: isBiztechAdmin,
+      profileType: PROFILE_TYPES.ATTENDEE,
       createdAt: timestamp,
       updatedAt: timestamp
     };
@@ -106,12 +116,7 @@ export const webhook = async (event, ctx, callback) => {
 
     try {
       await db.put(memberParams, MEMBERS2026_TABLE, true);
-      await createProfile(
-        email,
-        email.endsWith("@ubcbiztech.com")
-          ? PROFILE_TYPES.EXEC
-          : PROFILE_TYPES.ATTENDEE
-      );
+      await createProfile(email, publicProfileType(email));
     } catch (error) {
       let response;
       console.log(error);
@@ -208,13 +213,14 @@ export const webhook = async (event, ctx, callback) => {
       major: data.major,
       prevMember: data.prev_member,
       international: data.international,
-      topics: data.topics.split(","),
+      topics: parseTopics(data.topics),
       diet: data.diet,
       heardFrom: data.heard_from,
       heardFromSpecify: data.heardFromSpecify,
       university: data.university,
       highSchool: data.high_school,
       admin: isBiztechAdmin,
+      profileType: PROFILE_TYPES.ATTENDEE,
       createdAt: timestamp,
       updatedAt: timestamp
     };
@@ -223,49 +229,15 @@ export const webhook = async (event, ctx, callback) => {
     // but if we change the bt web payment body for oauth users from usermember to memebr,
     // we will neesd a check here to see if user is first time oauth
     // if yes, we want a db.post instead of db.update
-    await db.updateDB(email, userParams, USERS_TABLE).catch((error) => {
-      let response;
+    await db.updateDB(email, userParams, USERS_TABLE);
+    await db.put(memberParams, MEMBERS2026_TABLE, true);
 
-      response = helpers.createResponse(
-        400,
-        `User could not be updated: ${error}`
-      );
-
-      return response;
-    });
-
-    await db.put(memberParams, MEMBERS2026_TABLE, true).catch((error) => {
-      let response;
-      if (error.code === "ConditionalCheckFailedException") {
-        response = helpers.createResponse(
-          409,
-          "Member could not be created because email already exists"
-        );
-      } else {
-        response = helpers.createResponse(
-          502,
-          "Internal Server Error occurred"
-        );
-      }
-      return response;
-    });
-    await createProfile(
-      email,
-      email.endsWith("@ubcbiztech.com")
-        ? PROFILE_TYPES.EXEC
-        : PROFILE_TYPES.ATTENDEE
-    ).catch((error) => {
-      console.error(error);
-
-      let response;
-
-      response = helpers.createResponse(
-        207,
-        `Profile for ${email} was not created, but member created and updated user!`
-      );
-
-      return response;
-    });
+    const user = await db.getOne(email, USERS_TABLE);
+    if (user?.profileID) {
+      await updateProfileFromMembershipData(user.profileID, memberParams);
+    } else {
+      await createProfile(email, publicProfileType(email));
+    }
 
     const response = helpers.createResponse(201, {
       message: "Created member and updated user!"

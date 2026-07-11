@@ -1,15 +1,27 @@
 import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db";
 import { isEmpty, isValidEmail } from "../../lib/utils";
-import docClient from "../../lib/docClient";
 import {
   USERS_TABLE,
-  MEMBERS2026_TABLE,
-  PROFILES_TABLE
+  MEMBERS2026_TABLE
 } from "../../constants/tables";
-import { DeleteCommand } from "@aws-sdk/lib-dynamodb";
-import { createProfile } from "../profiles/helpers";
-import { PROFILE_TYPES, TYPES } from "../profiles/constants";
+import {
+  createProfile,
+  updateProfileFromMembershipData
+} from "../profiles/helpers";
+import { PROFILE_TYPES } from "../profiles/constants";
+
+const validProfileTypes = new Set(Object.values(PROFILE_TYPES));
+
+const defaultProfileTypeForEmail = (email) =>
+  email.endsWith("@ubcbiztech.com")
+    ? PROFILE_TYPES.EXEC
+    : PROFILE_TYPES.ATTENDEE;
+
+const normalizeProfileType = (profileType, email) =>
+  validProfileTypes.has(profileType)
+    ? profileType
+    : defaultProfileTypeForEmail(email);
 
 export const create = async (event, ctx, callback) => {
   const userID = event.requestContext.authorizer.claims.email.toLowerCase();
@@ -23,9 +35,10 @@ export const create = async (event, ctx, callback) => {
   if (!isValidEmail(data.email)) {
     return helpers.inputError("Invalid email", data.email);
   }
+  const email = data.email.toLowerCase();
 
   const memberParams = {
-    id: data.email,
+    id: email,
     education: data.education,
     firstName: data.first_name,
     lastName: data.last_name,
@@ -43,6 +56,7 @@ export const create = async (event, ctx, callback) => {
     university: data.university,
     highSchool: data.high_school,
     admin: data.admin,
+    profileType: normalizeProfileType(data.profileType, email),
     createdAt: timestamp,
     updatedAt: timestamp
   };
@@ -82,7 +96,7 @@ export const getEmailFromProfile = async (event, ctx, callback) => {
 
     const profileID = event.pathParameters.profileID;
 
-    const member = await db.query(MEMBERS2026_TABLE, "profile-query", {
+    const user = await db.query(USERS_TABLE, "profileID-index", {
       expression: "#profileID = :profileID",
       expressionNames: {
         "#profileID": "profileID"
@@ -92,10 +106,10 @@ export const getEmailFromProfile = async (event, ctx, callback) => {
       }
     });
 
-    if (isEmpty(member[0])) throw helpers.notFoundResponse("member", profileID);
-    console.log(member);
+    if (isEmpty(user[0])) throw helpers.notFoundResponse("user", profileID);
+    console.log(user);
 
-    const { id } = member[0];
+    const { id } = user[0];
 
     const response = helpers.createResponse(200, { email: id });
     return response;
@@ -278,6 +292,7 @@ export const grantMembership = async (event, ctx, callback) => {
     }
 
     const member = await db.getOne(email, MEMBERS2026_TABLE);
+    let memberDataForProfile = member;
 
     if (isEmpty(member)) {
       const memberParams = {
@@ -298,19 +313,26 @@ export const grantMembership = async (event, ctx, callback) => {
         heardFrom: data.referral,
         university: data.education,
         admin: isBiztechAdmin,
+        profileType: isBiztechAdmin
+          ? PROFILE_TYPES.EXEC
+          : PROFILE_TYPES.ATTENDEE,
         createdAt: timestamp,
         updatedAt: timestamp
       };
       await db.put(memberParams, MEMBERS2026_TABLE, true);
+      memberDataForProfile = memberParams;
     }
 
-    const memberWithProfile = await db.getOne(email, MEMBERS2026_TABLE);
-    if (!memberWithProfile || !memberWithProfile.profileID) {
+    const userWithProfile = await db.getOne(email, USERS_TABLE);
+    if (userWithProfile?.profileID) {
+      await updateProfileFromMembershipData(
+        userWithProfile.profileID,
+        memberDataForProfile
+      );
+    } else {
       await createProfile(
         email,
-        isBiztechAdmin
-          ? PROFILE_TYPES.EXEC
-          : PROFILE_TYPES.ATTENDEE
+        isBiztechAdmin ? PROFILE_TYPES.EXEC : PROFILE_TYPES.ATTENDEE
       );
     }
 

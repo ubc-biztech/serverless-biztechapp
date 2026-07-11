@@ -8,7 +8,7 @@ import {
 } from "@aws-sdk/client-apigatewaymanagementapi";
 import {
   PROFILES_TABLE,
-  MEMBERS2026_TABLE
+  USERS_TABLE
 } from "../../constants/tables";
 import db from "../../lib/db";
 import handlerHelpers from "../../lib/handlerHelpers";
@@ -29,9 +29,13 @@ const LIVE_TABLE = `bizLiveConnections${process.env.ENVIRONMENT || ""}`;
 const WS_ENDPOINT = process.env.WS_API_ENDPOINT;
 
 export const handleConnection = async (userID, connProfileID, timestamp) => {
-  let memberData = await db.getOne(userID, MEMBERS2026_TABLE);
+  const userData = await db.getOne(userID, USERS_TABLE);
 
-  let userProfileID = memberData.profileID;
+  const userProfileID = userData?.profileID;
+
+  if (!userProfileID) {
+    return handlerHelpers.notFoundResponse("Profile", userID);
+  }
 
   if (userProfileID === connProfileID) {
     return handlerHelpers.createResponse(400, {

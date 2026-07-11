@@ -17,5 +17,6 @@ export const MUTABLE_PROFILE_ATTRIBUTES = Object.freeze({
   linkedIn: "linkedIn",
   profilePictureURL: "profilePictureURL",
   additionalLink: "additionalLink",
+  resumeURL: "resumeURL",
   description: "description"
 });

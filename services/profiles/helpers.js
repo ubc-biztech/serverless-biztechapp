@@ -1,6 +1,6 @@
 import humanId from "human-id";
 import {
-  MEMBERS2026_TABLE, PROFILES_TABLE
+  MEMBERS2026_TABLE, PROFILES_TABLE, USERS_TABLE
 } from "../../constants/tables";
 import db from "../../lib/db";
 import helpers from "../../lib/handlerHelpers";
@@ -9,14 +9,20 @@ import {
 } from "./constants";
 
 export async function createProfile(email, profileType) {
-  const memberData = await db.getOne(email, MEMBERS2026_TABLE);
+  const [memberData, userData] = await Promise.all([
+    db.getOne(email, MEMBERS2026_TABLE),
+    db.getOne(email, USERS_TABLE)
+  ]);
 
-  // Check if profile already exists, member entry implies profile entry
   if (!memberData) {
-    throw helpers.notFoundResponse("id", email);
+    throw helpers.notFoundResponse("member", email);
   }
 
-  if (memberData.profileID) {
+  if (!userData) {
+    throw helpers.notFoundResponse("user", email);
+  }
+
+  if (userData.profileID) {
     throw helpers.duplicateResponse("Profile", email);
   }
 
@@ -37,6 +43,7 @@ export async function createProfile(email, profileType) {
     linkedIn: true,
     profilePictureURL: true,
     additionalLink: true,
+    resumeURL: false,
     description: true,
     company: true,
     position: true,
@@ -47,6 +54,7 @@ export async function createProfile(email, profileType) {
   const profile = {
     compositeID: `PROFILE#${profileID}`,
     type: TYPES.PROFILE,
+    profileID,
     fname: memberData.firstName,
     lname: memberData.lastName,
     pronouns: memberData.pronouns || "",
@@ -59,6 +67,7 @@ export async function createProfile(email, profileType) {
     linkedIn: "",
     profilePictureURL: "",
     additionalLink: "",
+    resumeURL: "",
     description: "",
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -66,39 +75,28 @@ export async function createProfile(email, profileType) {
     viewableMap
   };
 
-  const params = {
-    Key: {
-      id: email
-    },
-    TableName: MEMBERS2026_TABLE + (process.env.ENVIRONMENT || ""),
+  const updateParams = {
     UpdateExpression: "set profileID = :profileID, updatedAt = :updatedAt",
     ExpressionAttributeValues: {
       ":profileID": profileID,
       ":updatedAt": timestamp
     },
-    ReturnValues: "UPDATED_NEW",
-    ConditionExpression: "attribute_exists(id)"
+    ConditionExpression:
+      "attribute_exists(id) AND attribute_not_exists(profileID)"
   };
-
-  const {
-    ReturnValues,
-    TableName,
-    Key,
-    ...updateParams
-  } = params;
 
   await db.writeMultiple([
     {
       Put: {
         TableName: PROFILES_TABLE,
         Item: profile,
-        ConditionExpression: "attribute_not_exists(id)"
+        ConditionExpression: "attribute_not_exists(compositeID)"
       }
     },
     {
       Update: {
         ...updateParams,
-        TableName: MEMBERS2026_TABLE,
+        TableName: USERS_TABLE,
         Key: {
           id: email
         }
@@ -112,6 +110,49 @@ export async function createProfile(email, profileType) {
   });
 
   return response;
+}
+
+export async function updateProfileFromMembershipData(profileID, memberData) {
+  const updateData = {};
+
+  ["pronouns", "major", "year"].forEach((key) => {
+    if (memberData[key] !== undefined && memberData[key] !== null) {
+      updateData[key] = memberData[key];
+    }
+  });
+
+  if (Object.keys(updateData).length === 0) {
+    return null;
+  }
+
+  const updateExpressions = ["#updatedAt = :updatedAt"];
+  const expressionAttributeNames = {
+    "#updatedAt": "updatedAt",
+    "#type": "type"
+  };
+  const expressionAttributeValues = {
+    ":updatedAt": Date.now()
+  };
+
+  Object.entries(updateData).forEach(([key, value]) => {
+    expressionAttributeNames[`#${key}`] = key;
+    expressionAttributeValues[`:${key}`] = value;
+    updateExpressions.push(`#${key} = :${key}`);
+  });
+
+  return db.updateDBCustom({
+    Key: {
+      compositeID: `PROFILE#${profileID}`,
+      type: TYPES.PROFILE
+    },
+    TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
+    UpdateExpression: `SET ${updateExpressions.join(", ")}`,
+    ExpressionAttributeNames: expressionAttributeNames,
+    ExpressionAttributeValues: expressionAttributeValues,
+    ReturnValues: "UPDATED_NEW",
+    ConditionExpression:
+      "attribute_exists(compositeID) AND attribute_exists(#type)"
+  });
 }
 
 export function filterPublicProfileFields(profile) {
