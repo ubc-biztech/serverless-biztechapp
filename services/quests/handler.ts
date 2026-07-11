@@ -1,150 +1,134 @@
-import {
-  QUESTS_TABLE,
-  MEMBERS2026_TABLE,
-  PROFILES_TABLE
-} from "../../constants/tables";
-import db from "../../lib/db";
-import { QUEST_DEFS } from "./constants";
-import { applyQuestEvent, parseEvents, initStoredQuest } from "./helper.js";
+import { MEMBERS2026_TABLE, QUESTS_TABLE } from "../../constants/tables.js";
+import db from "../../lib/db.js";
 import handlerHelpers from "../../lib/handlerHelpers";
-import helpers from "../../lib/handlerHelpers";
+import type { APIGatewayEvent, LambdaCallback, LambdaContext } from "../../lib/types";
+import { QUEST_DEFS } from "./constants.js";
+import { applyQuestEvent, initStoredQuest, parseEvents } from "./helper.js";
 
-/**
- * Look up a user's email from their profileId using the members table GSI
- * @param {string} profileId - The human-readable profile ID (e.g., "clever-fox-123")
- * @returns {string|null} - The user's email or null if not found
- */
-async function getEmailFromProfileId(profileId) {
+async function getEmailFromProfileId(profileId: string): Promise<string | null> {
   try {
     const results = await db.query(MEMBERS2026_TABLE, "profile-query", {
       expression: "#profileID = :profileID",
       expressionNames: {
-        "#profileID": "profileID"
+        "#profileID": "profileID",
       },
       expressionValues: {
-        ":profileID": profileId
-      }
+        ":profileID": profileId,
+      },
     });
 
     if (results && results.length > 0) {
-      // The 'id' field in the members table is the email
-      return results[0].id;
+      return results[0].id as string;
     }
     return null;
-  } catch (err) {
+  } catch (err: unknown) {
     console.error(`Error looking up email for profileId ${profileId}:`, err);
     return null;
   }
 }
 
-/**
- * Helper function to update quest progress for a specific user
- * Handles both new users (no quests yet) and existing users
- * Also handles race conditions when creating new quest records
- * IDEMPOTENT: For connection events, tracks connected profileIds to prevent double-counting
- *
- * @param {string} userID - The user ID (email) to update quests for
- * @param {string} event_id - The event ID
- * @param {string} year - The event year
- * @param {Array} questEvents - Parsed quest events to apply
- * @param {number} timestamp - The timestamp for the update
- * @param {string|null} connectionProfileId - For connection events, the profileId being connected to (for idempotency)
- * @returns {Object} - { success: boolean, quests: Object, alreadyConnected?: boolean, error?: string }
- */
 async function updateUserQuestProgress(
-  userID,
-  event_id,
-  year,
-  questEvents,
-  timestamp,
-  connectionProfileId = null
-) {
+  userID: string,
+  event_id: string,
+  year: string,
+  questEvents: ReturnType<typeof parseEvents>,
+  timestamp: number,
+  connectionProfileId: string | null = null,
+): Promise<{
+  success: boolean;
+  quests?: Record<string, unknown>;
+  alreadyConnected?: boolean;
+  error?: string;
+}> {
   const eventKey = `${event_id}#${year}`;
 
-  let userItem;
+  let userItem: Record<string, unknown> | null;
   try {
     userItem = await db.getOne(userID, QUESTS_TABLE, {
-      "eventID#year": eventKey
+      "eventID#year": eventKey,
     });
-  } catch (err) {
+  } catch (err: unknown) {
     console.error(`Could not read user data for ${userID}:`, err);
     return {
       success: false,
-      error: "DB read failed"
+      error: "DB read failed",
     };
   }
 
-  // Get existing connected profiles for idempotency check
-  const connectedProfiles = (userItem && userItem.connectedProfiles) || [];
+  const connectedProfiles =
+    ((userItem && userItem.connectedProfiles) as string[]) || [];
 
-  // IDEMPOTENCY: If this is a connection event and we've already connected with this profile, skip
   if (
     connectionProfileId &&
     connectedProfiles.includes(connectionProfileId.toLowerCase())
   ) {
     console.log(
-      `User ${userID} already connected with ${connectionProfileId}, skipping (idempotent)`
+      `User ${userID} already connected with ${connectionProfileId}, skipping (idempotent)`,
     );
     return {
       success: true,
-      quests: (userItem && userItem.quests) || {},
-      alreadyConnected: true
+      quests: ((userItem && userItem.quests) as Record<string, unknown>) || {},
+      alreadyConnected: true,
     };
   }
 
-  const questsMap = (userItem && userItem.quests) || {};
+  const questsMap = ((userItem && userItem.quests) as Record<string, unknown>) || {};
 
-  const nextQuestsMap = Object.values(QUEST_DEFS).reduce((acc, def) => {
-    const event = questEvents.find((e) => e.questId === def.id);
-    const current = acc[def.id];
-    const now = timestamp;
+  const nextQuestsMap = Object.values(QUEST_DEFS).reduce(
+    (acc, def) => {
+      const event = questEvents?.find((e) => e.questId === def.id);
+      const current = acc[def.id] as Record<string, unknown> | undefined;
+      const now = timestamp;
 
-    if (!current) {
-      const initialized = initStoredQuest(def, now);
-      if (!event) {
-        return {
-          ...acc,
-          [def.id]: initialized
-        };
+      if (!current) {
+        const initialized = initStoredQuest(def, now);
+        if (!event) {
+          return {
+            ...acc,
+            [def.id]: initialized,
+          };
+        }
       }
-    }
 
-    if (!event) return acc;
+      if (!event) return acc;
 
-    const updated = applyQuestEvent(def, current, event, now);
+      const updated = applyQuestEvent(def, current, event, now);
 
-    return {
-      ...acc,
-      [def.id]: updated
-    };
-  }, questsMap);
+      return {
+        ...acc,
+        [def.id]: updated,
+      };
+    },
+    questsMap,
+  );
 
-  // Add new connection to the list if this is a connection event
   const nextConnectedProfiles = connectionProfileId
     ? [...connectedProfiles, connectionProfileId.toLowerCase()]
     : connectedProfiles;
 
   const itemToWrite = {
-    "id": userID,
+    id: userID,
     "eventID#year": eventKey,
-    "quests": nextQuestsMap,
-    "connectedProfiles": nextConnectedProfiles
+    quests: nextQuestsMap,
+    connectedProfiles: nextConnectedProfiles,
   };
 
   try {
-    // Try to create new record if user doesn't exist, or update if they do
     await db.put(itemToWrite, QUESTS_TABLE, !userItem);
     return {
       success: true,
-      quests: nextQuestsMap
+      quests: nextQuestsMap,
     };
-  } catch (err) {
-    // Handle race condition: if we tried to create but it already exists,
+  } catch (err: unknown) {
+    const errObj = err as {
+      code?: string;
+      body?: string;
+    };
     const isConditionalCheckFailed =
-      err.code === "ConditionalCheckFailedException" ||
-      (err.body &&
-        err.body.includes &&
-        err.body.includes("ConditionalCheckFailed"));
+      errObj.code === "ConditionalCheckFailedException" ||
+      (errObj.body &&
+        errObj.body.includes &&
+        errObj.body.includes("ConditionalCheckFailed"));
 
     if (isConditionalCheckFailed) {
       console.log(`Race condition detected for ${userID}, retrying...`);
@@ -152,13 +136,13 @@ async function updateUserQuestProgress(
         await db.put(itemToWrite, QUESTS_TABLE, !!userItem);
         return {
           success: true,
-          quests: nextQuestsMap
+          quests: nextQuestsMap,
         };
-      } catch (retryErr) {
+      } catch (retryErr: unknown) {
         console.error(`Retry failed for ${userID}:`, retryErr);
         return {
           success: false,
-          error: "DB write failed after retry"
+          error: "DB write failed after retry",
         };
       }
     }
@@ -166,13 +150,16 @@ async function updateUserQuestProgress(
     console.error(`Error updating quest progress for ${userID}:`, err);
     return {
       success: false,
-      error: "DB write failed"
+      error: "DB write failed",
     };
   }
 }
 
-// go through callback and context
-export const updateQuest = async (event, ctx, callback) => {
+export const updateQuest = async (
+  event: APIGatewayEvent,
+  _ctx: LambdaContext,
+  _callback: LambdaCallback,
+) => {
   try {
     if (
       !event.pathParameters ||
@@ -180,37 +167,38 @@ export const updateQuest = async (event, ctx, callback) => {
       !event.pathParameters.year
     ) {
       console.log(event.pathParameters);
-      return helpers.createResponse(400, {
-        message: "missing path parameters"
+      return handlerHelpers.createResponse(400, {
+        message: "missing path parameters",
       });
     }
 
     const { event_id, year } = event.pathParameters;
 
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
-    const body = JSON.parse(event.body);
+    const userID =
+      event.requestContext.authorizer?.claims?.email?.toLowerCase() as string;
+    const body = JSON.parse(event.body as string) as Record<string, unknown>;
 
     try {
       handlerHelpers.checkPayloadProps(body, {
         type: {
           required: true,
-          type: "string"
+          type: "string",
         },
         argument: {
           required: true,
-          type: "object"
-        }
+          type: "object",
+        },
       });
 
       if (body.type !== "connection" && body.type !== "company") {
         return handlerHelpers.createResponse(400, {
-          message: `Invalid type: '${body.type}'. Valid types: 'connection', 'company'`
+          message: `Invalid type: '${body.type}'. Valid types: 'connection', 'company'`,
         });
       }
 
       if (body.type === "company" && typeof body.argument !== "string") {
         return handlerHelpers.createResponse(400, {
-          message: "For 'company' type, argument must be a company name string"
+          message: "For 'company' type, argument must be a company name string",
         });
       }
     } catch (err) {
@@ -222,35 +210,36 @@ export const updateQuest = async (event, ctx, callback) => {
 
     if (!questEvents) {
       return handlerHelpers.createResponse(400, {
-        message: "Failed to parse quest event"
+        message: "Failed to parse quest event",
       });
     }
 
-    // For connection events, we need the target profileId for idempotency
-    const targetProfileId = body.argument && body.argument.profileId;
+    const targetProfileId =
+      body.argument &&
+      typeof body.argument === "object" &&
+      (body.argument as Record<string, unknown>).profileId;
     const isConnectionEvent = body.type === "connection";
 
-    // For User A, we track User B's profileId to make it idempotent
     const userAResult = await updateUserQuestProgress(
       userID,
       event_id,
       year,
       questEvents,
       timestamp,
-      isConnectionEvent ? targetProfileId : null
+      isConnectionEvent ? (targetProfileId as string) : null,
     );
 
     if (!userAResult.success) {
       return handlerHelpers.createResponse(500, {
-        message: userAResult.error || "Internal server error"
+        message: userAResult.error || "Internal server error",
       });
     }
 
-    // Handle bi-directional updates for connection events
-    // When User A connects with User B, also update User B's quest progress
     const isBidirectional = !(
-      body.argument && body.argument.bidirectional === false
-    ); // Default to true
+      body.argument &&
+      typeof body.argument === "object" &&
+      (body.argument as Record<string, unknown>).bidirectional === false
+    );
 
     if (
       isConnectionEvent &&
@@ -258,18 +247,20 @@ export const updateQuest = async (event, ctx, callback) => {
       targetProfileId &&
       !userAResult.alreadyConnected
     ) {
-      const userBEmail = await getEmailFromProfileId(targetProfileId);
+      const userBEmail = await getEmailFromProfileId(targetProfileId as string);
 
       if (userBEmail) {
         const userBEmailLower = userBEmail.toLowerCase();
 
         if (userBEmailLower !== userID) {
-          // Look up User A's profileId from their email to track on User B's side for idempotency
-          let userAProfileId = null;
+          let userAProfileId: string | null = null;
           try {
             const userAMember = await db.getOne(userID, MEMBERS2026_TABLE);
-            userAProfileId = userAMember && userAMember.profileID;
-          } catch (e) {
+            userAProfileId =
+              userAMember && (userAMember.profileID as string | undefined)
+                ? (userAMember.profileID as string)
+                : null;
+          } catch (_e: unknown) {
             console.warn(`Could not get profileId for ${userID}`);
           }
 
@@ -279,12 +270,12 @@ export const updateQuest = async (event, ctx, callback) => {
             year,
             questEvents,
             timestamp,
-            userAProfileId // Track User A's profileId on User B's record
+            userAProfileId,
           );
 
           if (!userBResult.success) {
             console.error(
-              `Failed to update bi-directional quest for ${targetProfileId} (${userBEmail}): ${userBResult.error}`
+              `Failed to update bi-directional quest for ${targetProfileId} (${userBEmail}): ${userBResult.error}`,
             );
           }
         }
@@ -295,17 +286,21 @@ export const updateQuest = async (event, ctx, callback) => {
 
     return handlerHelpers.createResponse(200, {
       quests: userAResult.quests,
-      alreadyConnected: userAResult.alreadyConnected || false
+      alreadyConnected: userAResult.alreadyConnected || false,
     });
-  } catch (err) {
+  } catch (err: unknown) {
     console.error("Unhandled error in updateQuest:", err);
     return handlerHelpers.createResponse(500, {
-      message: "Internal server error"
+      message: "Internal server error",
     });
   }
 };
 
-export const getQuest = async (event, ctx, callback) => {
+export const getQuest = async (
+  event: APIGatewayEvent,
+  _ctx: LambdaContext,
+  _callback: LambdaCallback,
+) => {
   try {
     if (
       !event.pathParameters ||
@@ -313,64 +308,73 @@ export const getQuest = async (event, ctx, callback) => {
       !event.pathParameters.year
     ) {
       return handlerHelpers.createResponse(400, {
-        message: "missing path parameters"
+        message: "missing path parameters",
       });
     }
 
     const { event_id, year } = event.pathParameters;
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    const userID =
+      event.requestContext.authorizer?.claims?.email?.toLowerCase() as string;
 
     let userItem = await db.getOne(userID, QUESTS_TABLE, {
-      "eventID#year": `${event_id}#${year}`
+      "eventID#year": `${event_id}#${year}`,
     });
 
     if (userItem) {
       return handlerHelpers.createResponse(200, {
-        quests: userItem.quests || {}
+        quests: userItem.quests || {},
       });
     }
 
-    const newQuests = Object.entries(QUEST_DEFS).reduce((acc, [id, def]) => {
-      acc[id] = initStoredQuest(def, Date.now());
-      return acc;
-    }, {});
+    const newQuests = Object.entries(QUEST_DEFS).reduce(
+      (acc, [id, def]) => {
+        acc[id] = initStoredQuest(def, Date.now());
+        return acc;
+      },
+      {} as Record<string, unknown>,
+    );
 
     try {
       await db.put(
         {
-          "id": userID,
+          id: userID,
           "eventID#year": `${event_id}#${year}`,
-          "quests": newQuests
+          quests: newQuests,
         },
         QUESTS_TABLE,
-        true
+        true,
       );
 
       return handlerHelpers.createResponse(200, { quests: newQuests });
-    } catch (err) {
-      if (err.code !== "ConditionalCheckFailedException") {
+    } catch (err: unknown) {
+      const errObj = err as { code?: string };
+      if (errObj.code !== "ConditionalCheckFailedException") {
         console.error(err);
         return handlerHelpers.createResponse(500, {
-          message: "Internal server error"
+          message: "Internal server error",
         });
       }
     }
 
     userItem = await db.getOne(userID, QUESTS_TABLE, {
-      "eventID#year": `${event_id}#${year}`
+      "eventID#year": `${event_id}#${year}`,
     });
     return handlerHelpers.createResponse(200, {
-      quests: (userItem && userItem.quests) || {}
+      quests: (userItem && userItem.quests) || {},
     });
-  } catch (err) {
+  } catch (err: unknown) {
     console.error(err);
     return handlerHelpers.createResponse(500, {
-      message: "Internal server error"
+      message: "Internal server error",
     });
   }
 };
 
-export const getQuestsByEvent = async (event, ctx, callback) => {
+export const getQuestsByEvent = async (
+  event: APIGatewayEvent,
+  _ctx: LambdaContext,
+  _callback: LambdaCallback,
+) => {
   try {
     if (
       !event.pathParameters ||
@@ -378,11 +382,12 @@ export const getQuestsByEvent = async (event, ctx, callback) => {
       !event.pathParameters.year
     ) {
       return handlerHelpers.createResponse(400, {
-        message: "missing path parameters"
+        message: "missing path parameters",
       });
     }
 
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    const userID =
+      event.requestContext.authorizer?.claims?.email?.toLowerCase() as string;
     if (!userID.endsWith("@ubcbiztech.com")) {
       return handlerHelpers.createResponse(401, { message: "Unauthorized" });
     }
@@ -395,60 +400,62 @@ export const getQuestsByEvent = async (event, ctx, callback) => {
       {
         FilterExpression: "#eventquery = :eventKey",
         ExpressionAttributeNames: {
-          "#eventquery": "eventID#year"
+          "#eventquery": "eventID#year",
         },
         ExpressionAttributeValues: {
-          ":eventKey": eventKey
-        }
+          ":eventKey": eventKey,
+        },
       },
-      "event-query"
+      "event-query",
     );
 
     const quests = items.map((item) => ({
       userId: item.id,
-      quests: item.quests || {}
+      quests: item.quests || {},
     }));
 
     return handlerHelpers.createResponse(200, {
-      quests
+      quests,
     });
-  } catch (err) {
+  } catch (err: unknown) {
     console.error(err);
     return handlerHelpers.createResponse(500, {
-      message: "Internal server error"
+      message: "Internal server error",
     });
   }
 };
 
-function looksLikeEmail(s) {
-  return typeof s === "string" && s.includes("@") && s.includes(".");
-}
-
-async function resolveEmailFromProfileId(profileId) {
+async function resolveEmailFromProfileId(
+  profileId: string,
+): Promise<string | null> {
   if (!profileId) return null;
 
   try {
     const results = await db.query(MEMBERS2026_TABLE, "profile-query", {
       expression: "#profileID = :profileID",
       expressionNames: {
-        "#profileID": "profileID"
+        "#profileID": "profileID",
       },
       expressionValues: {
-        ":profileID": profileId
-      }
+        ":profileID": profileId,
+      },
     });
 
     if (results && results.length > 0 && results[0]?.id) {
       return String(results[0].id).toLowerCase();
     }
-  } catch (err) {
+  } catch (err: unknown) {
     console.error(`resolveEmailFromProfileId failed for ${profileId}:`, err);
   }
 
   return null;
 }
 
-export const getQuestKiosk = async (event, ctx, callback) => {
+export const getQuestKiosk = async (
+  event: APIGatewayEvent,
+  _ctx: LambdaContext,
+  _callback: LambdaCallback,
+) => {
   try {
     const p = event.pathParameters || {};
     const event_id = p.event_id;
@@ -457,7 +464,7 @@ export const getQuestKiosk = async (event, ctx, callback) => {
 
     if (!event_id || !year || !profileId) {
       return handlerHelpers.createResponse(400, {
-        message: "missing path parameters"
+        message: "missing path parameters",
       });
     }
 
@@ -467,53 +474,56 @@ export const getQuestKiosk = async (event, ctx, callback) => {
 
     if (email) {
       const byEmail = await db.getOne(email, QUESTS_TABLE, {
-        "eventID#year": eventKey
+        "eventID#year": eventKey,
       });
       if (byEmail?.quests) {
         return handlerHelpers.createResponse(200, {
           quests: byEmail.quests || {},
           resolvedUser: "email",
-          resolvedEmail: email
+          resolvedEmail: email,
         });
       }
     }
 
     const byProfileId = await db.getOne(profileId, QUESTS_TABLE, {
-      "eventID#year": eventKey
+      "eventID#year": eventKey,
     });
     if (byProfileId?.quests) {
       return handlerHelpers.createResponse(200, {
         quests: byProfileId.quests || {},
-        resolvedUser: "profileId"
+        resolvedUser: "profileId",
       });
     }
 
-    const newQuests = Object.entries(QUEST_DEFS).reduce((acc, [id, def]) => {
-      acc[id] = initStoredQuest(def, Date.now());
-      return acc;
-    }, {});
+    const newQuests = Object.entries(QUEST_DEFS).reduce(
+      (acc, [id, def]) => {
+        acc[id] = initStoredQuest(def, Date.now());
+        return acc;
+      },
+      {} as Record<string, unknown>,
+    );
 
     const writeId = email || profileId;
 
     await db.put(
       {
-        "id": writeId,
+        id: writeId,
         "eventID#year": eventKey,
-        "quests": newQuests
+        quests: newQuests,
       },
       QUESTS_TABLE,
-      true
+      true,
     );
 
     return handlerHelpers.createResponse(200, {
       quests: newQuests,
       resolvedUser: email ? "initialized-email" : "initialized-profileId",
-      resolvedEmail: email || null
+      resolvedEmail: email || null,
     });
-  } catch (err) {
+  } catch (err: unknown) {
     console.error("getQuestKiosk error:", err);
     return handlerHelpers.createResponse(500, {
-      message: "Internal server error"
+      message: "Internal server error",
     });
   }
 };
