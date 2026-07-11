@@ -7,10 +7,8 @@ import {
   humanId
 } from "human-id";
 import {
-  PROFILES_TABLE
-} from "../../constants/tables.js";
-import {
-  MEMBERS2026_TABLE
+  PROFILES_TABLE,
+  USERS_TABLE
 } from "../../constants/tables.js";
 import {
   MUTABLE_PROFILE_ATTRIBUTES,
@@ -191,10 +189,10 @@ export const updatePublicProfile = async (event, ctx, callback) => {
       throw helpers.inputError("Viewable map is not a literal object", body);
     }
 
-    const member = await db.getOne(userID, MEMBERS2026_TABLE);
+    const user = await db.getOne(userID, USERS_TABLE);
     const {
       profileID = null
-    } = member || {
+    } = user || {
     };
 
     if (!profileID) {
@@ -300,10 +298,10 @@ export const getUserProfile = async (event, ctx, callback) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
 
-    const member = await db.getOne(userID, MEMBERS2026_TABLE);
+    const user = await db.getOne(userID, USERS_TABLE);
     const {
       profileID = null
-    } = member || {
+    } = user || {
     };
 
     if (!profileID) {
@@ -452,8 +450,8 @@ export const createProfilePicUploadUrl = async (event, ctx, callback) => {
 
     let profileId = event.queryStringParameters?.profileId;
     if (!profileId) {
-      const member = await db.getOne(userEmail, MEMBERS2026_TABLE);
-      profileId = member?.profileID;
+      const user = await db.getOne(userEmail, USERS_TABLE);
+      profileId = user?.profileID;
     }
     if (!profileId) {
       return helpers.createResponse(400, {

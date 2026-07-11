@@ -3,7 +3,7 @@
 //   OPENSEARCH_INDEX_TOP_K
 // } from "../../constants/indexes";
 import {
-  MEMBERS2026_TABLE,
+  USERS_TABLE,
   PROFILES_TABLE,
   EVENTS_TABLE
 } from "../../constants/tables";
@@ -104,9 +104,9 @@ export const checkConnection = async (event, ctx, callback) => {
 
     const connectionID = event.pathParameters.id;
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
-    const memberData = await db.getOne(userID, MEMBERS2026_TABLE);
+    const userData = await db.getOne(userID, USERS_TABLE);
 
-    if (!memberData)
+    if (!userData?.profileID)
       return helpers.createResponse(200, {
         message: `No profile associated with ${userID}`,
         connected: false
@@ -114,7 +114,7 @@ export const checkConnection = async (event, ctx, callback) => {
 
     const {
       profileID
-    } = memberData;
+    } = userData;
 
     if (connectionID == profileID)
       return helpers.createResponse(400, {
@@ -145,8 +145,12 @@ export const getAllConnections = async (event, ctx, callback) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
 
-    const memberData = await db.getOne(userID, MEMBERS2026_TABLE);
-    const { profileID } = memberData;
+    const userData = await db.getOne(userID, USERS_TABLE);
+    const { profileID } = userData || {};
+
+    if (!profileID) {
+      throw helpers.notFoundResponse("Profile", userID);
+    }
 
     let data = await db.query(PROFILES_TABLE, null, {
       expression:

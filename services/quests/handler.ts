@@ -1,4 +1,4 @@
-import { MEMBERS2026_TABLE, QUESTS_TABLE } from "../../constants/tables.js";
+import { QUESTS_TABLE, USERS_TABLE } from "../../constants/tables.js";
 import db from "../../lib/db.js";
 import handlerHelpers from "../../lib/handlerHelpers";
 import type { APIGatewayEvent, LambdaCallback, LambdaContext } from "../../lib/types";
@@ -7,7 +7,7 @@ import { applyQuestEvent, initStoredQuest, parseEvents } from "./helper.js";
 
 async function getEmailFromProfileId(profileId: string): Promise<string | null> {
   try {
-    const results = await db.query(MEMBERS2026_TABLE, "profile-query", {
+    const results = await db.query(USERS_TABLE, "profileID-index", {
       expression: "#profileID = :profileID",
       expressionNames: {
         "#profileID": "profileID",
@@ -255,10 +255,10 @@ export const updateQuest = async (
         if (userBEmailLower !== userID) {
           let userAProfileId: string | null = null;
           try {
-            const userAMember = await db.getOne(userID, MEMBERS2026_TABLE);
+            const userA = await db.getOne(userID, USERS_TABLE);
             userAProfileId =
-              userAMember && (userAMember.profileID as string | undefined)
-                ? (userAMember.profileID as string)
+              userA && (userA.profileID as string | undefined)
+                ? (userA.profileID as string)
                 : null;
           } catch (_e: unknown) {
             console.warn(`Could not get profileId for ${userID}`);
@@ -431,7 +431,7 @@ async function resolveEmailFromProfileId(
   if (!profileId) return null;
 
   try {
-    const results = await db.query(MEMBERS2026_TABLE, "profile-query", {
+    const results = await db.query(USERS_TABLE, "profileID-index", {
       expression: "#profileID = :profileID",
       expressionNames: {
         "#profileID": "profileID",
