@@ -1,6 +1,6 @@
 import humanId from "human-id";
 import {
-  MEMBERS2026_TABLE, PROFILES_TABLE
+  MEMBERS2026_TABLE, PROFILES_TABLE, USERS_TABLE
 } from "../../constants/tables";
 import db from "../../lib/db";
 import helpers from "../../lib/handlerHelpers";
@@ -9,14 +9,20 @@ import {
 } from "./constants";
 
 export async function createProfile(email, profileType) {
-  const memberData = await db.getOne(email, MEMBERS2026_TABLE);
+  const [memberData, userData] = await Promise.all([
+    db.getOne(email, MEMBERS2026_TABLE),
+    db.getOne(email, USERS_TABLE)
+  ]);
 
-  // Check if profile already exists, member entry implies profile entry
   if (!memberData) {
-    throw helpers.notFoundResponse("id", email);
+    throw helpers.notFoundResponse("member", email);
   }
 
-  if (memberData.profileID) {
+  if (!userData) {
+    throw helpers.notFoundResponse("user", email);
+  }
+
+  if (userData.profileID) {
     throw helpers.duplicateResponse("Profile", email);
   }
 
@@ -47,6 +53,7 @@ export async function createProfile(email, profileType) {
   const profile = {
     compositeID: `PROFILE#${profileID}`,
     type: TYPES.PROFILE,
+    profileID,
     fname: memberData.firstName,
     lname: memberData.lastName,
     pronouns: memberData.pronouns || "",
@@ -70,14 +77,15 @@ export async function createProfile(email, profileType) {
     Key: {
       id: email
     },
-    TableName: MEMBERS2026_TABLE + (process.env.ENVIRONMENT || ""),
+    TableName: USERS_TABLE + (process.env.ENVIRONMENT || ""),
     UpdateExpression: "set profileID = :profileID, updatedAt = :updatedAt",
     ExpressionAttributeValues: {
       ":profileID": profileID,
       ":updatedAt": timestamp
     },
     ReturnValues: "UPDATED_NEW",
-    ConditionExpression: "attribute_exists(id)"
+    ConditionExpression:
+      "attribute_exists(id) AND attribute_not_exists(profileID)"
   };
 
   const {
@@ -92,13 +100,13 @@ export async function createProfile(email, profileType) {
       Put: {
         TableName: PROFILES_TABLE,
         Item: profile,
-        ConditionExpression: "attribute_not_exists(id)"
+        ConditionExpression: "attribute_not_exists(compositeID)"
       }
     },
     {
       Update: {
         ...updateParams,
-        TableName: MEMBERS2026_TABLE,
+        TableName: USERS_TABLE,
         Key: {
           id: email
         }

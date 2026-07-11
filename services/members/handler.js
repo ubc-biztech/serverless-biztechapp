@@ -82,7 +82,7 @@ export const getEmailFromProfile = async (event, ctx, callback) => {
 
     const profileID = event.pathParameters.profileID;
 
-    const member = await db.query(MEMBERS2026_TABLE, "profile-query", {
+    const users = await db.query(USERS_TABLE, "profileID-index", {
       expression: "#profileID = :profileID",
       expressionNames: {
         "#profileID": "profileID"
@@ -92,10 +92,10 @@ export const getEmailFromProfile = async (event, ctx, callback) => {
       }
     });
 
-    if (isEmpty(member[0])) throw helpers.notFoundResponse("member", profileID);
-    console.log(member);
+    if (isEmpty(users[0])) throw helpers.notFoundResponse("user", profileID);
+    console.log(users);
 
-    const { id } = member[0];
+    const { id } = users[0];
 
     const response = helpers.createResponse(200, { email: id });
     return response;
@@ -304,8 +304,8 @@ export const grantMembership = async (event, ctx, callback) => {
       await db.put(memberParams, MEMBERS2026_TABLE, true);
     }
 
-    const memberWithProfile = await db.getOne(email, MEMBERS2026_TABLE);
-    if (!memberWithProfile || !memberWithProfile.profileID) {
+    const userWithProfile = await db.getOne(email, USERS_TABLE);
+    if (!userWithProfile || !userWithProfile.profileID) {
       await createProfile(
         email,
         isBiztechAdmin

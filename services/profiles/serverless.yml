@@ -33,10 +33,12 @@ provider:
         - dynamodb:UpdateItem
         - dynamodb:Query
         - dynamodb:Scan
+        - dynamodb:TransactWriteItems
         - s3:PutObject
       Resource:
         - "arn:aws:dynamodb:${aws:region}:*:table/biztechProfiles${self:provider.environment.ENVIRONMENT}"
         - "arn:aws:dynamodb:${aws:region}:*:table/biztechMembers2026${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:${aws:region}:*:table/biztechUsers${self:provider.environment.ENVIRONMENT}"
         - "arn:aws:s3:::biztech-profile-pictures/profile-pictures/*"
 
 custom: ${file(../../serverless.common.yml):custom}
