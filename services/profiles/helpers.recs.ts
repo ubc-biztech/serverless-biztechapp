@@ -85,7 +85,7 @@ export function cosine(a: number[] = [], b: number[] = []) {
   return dot / (Math.sqrt(na) * Math.sqrt(nb));
 }
 
-const MAJOR_SYNONYMS: Record<string, string>= {
+const MAJOR_SYNONYMS: Record<string, string> = {
   "cs": "computer science",
   "comp sci": "computer science",
   "compsci": "computer science",

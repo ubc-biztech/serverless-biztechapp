@@ -11,9 +11,7 @@ import db from "../../lib/db";
 import handlerHelpers from "../../lib/handlerHelpers";
 import helpers from "../../lib/handlerHelpers";
 // import search from "../../lib/search";
-import {
-  TYPES
-} from "../profiles/constants";
+import { TYPES } from "../profiles/constants";
 import {
   handleConnection,
   saveSocketConnection,
@@ -44,8 +42,8 @@ const BOOTH = "BOOTH";
 //         type: "number"
 //       }
 //     });
-//     // Uncomment below to use staging or prod index 
-//     // const indexToUse = process.env.ENVIRONMENT === "STAGING" ? BLUEPRINT_OPENSEARCH_STAGING_INDEX : BLUEPRINT_OPENSEARCH_PROD_INDEX;  
+//     // Uncomment below to use staging or prod index
+//     // const indexToUse = process.env.ENVIRONMENT === "STAGING" ? BLUEPRINT_OPENSEARCH_STAGING_INDEX : BLUEPRINT_OPENSEARCH_PROD_INDEX;
 //     const reqObj = {
 //       indexName: BLUEPRINT_OPENSEARCH_PROD_INDEX, // TODO: change to indexToUse later
 //       queryText: data.query,
@@ -90,9 +88,7 @@ export const postInteraction: Handler = async (event, ctx, callback) => {
     }
 
     const timestamp = new Date().getTime();
-    const {
-      eventType, eventParam
-    } = data;
+    const { eventType, eventParam } = data;
 
     if (eventType != CONNECTION) {
       throw handlerHelpers.createResponse(400, {
@@ -112,8 +108,8 @@ export const checkConnection: Handler = async (event, ctx, callback) => {
   try {
     if (
       !event.pathParameters ||
-			!event.pathParameters.id ||
-			typeof event.pathParameters.id !== "string"
+      !event.pathParameters.id ||
+      typeof event.pathParameters.id !== "string"
     )
       throw helpers.missingIdQueryResponse("profile ID in request path");
 
@@ -127,9 +123,7 @@ export const checkConnection: Handler = async (event, ctx, callback) => {
         connected: false
       });
 
-    const {
-      profileID
-    } = userData;
+    const { profileID } = userData;
 
     if (connectionID == profileID)
       return helpers.createResponse(400, {
@@ -169,7 +163,7 @@ export const getAllConnections: Handler = async (event, ctx, callback) => {
 
     let data = await db.query(PROFILES_TABLE, null, {
       expression:
-				"compositeID = :compositeID AND begins_with(#type, :typePrefix)",
+        "compositeID = :compositeID AND begins_with(#type, :typePrefix)",
       expressionValues: {
         ":compositeID": `PROFILE#${profileID}`,
         ":typePrefix": `${TYPES.CONNECTION}#`
@@ -198,12 +192,12 @@ export const getAllConnections: Handler = async (event, ctx, callback) => {
 
         if (startDate) {
           const start = new Date(startDate).getTime();
-          data = data.filter(item => item.createdAt >= start);
+          data = data.filter((item) => item.createdAt >= start);
         }
 
         if (endDate) {
           const end = new Date(endDate).getTime();
-          data = data.filter(item => item.createdAt <= end);
+          data = data.filter((item) => item.createdAt <= end);
         }
 
         message = `all connections for ${userID} during event ${eventId} and year ${year}`;
@@ -226,8 +220,7 @@ export const getAllConnections: Handler = async (event, ctx, callback) => {
 
 export const getWallSnapshot: Handler = async (event, ctx, callback) => {
   try {
-    const qs = event.queryStringParameters || {
-    };
+    const qs = event.queryStringParameters || {};
     console.log("[WALL] snapshot request", qs);
 
     const eventId = qs.eventId || "DEFAULT";
@@ -242,9 +235,7 @@ export const getWallSnapshot: Handler = async (event, ctx, callback) => {
     const links = [];
 
     for (const it of items) {
-      const {
-        from, to, createdAt
-      } = it;
+      const { from, to, createdAt } = it;
 
       if (from?.id)
         nodeMap.set(from.id, {
@@ -292,7 +283,7 @@ export const wsConnect: Handler = async (event, ctx, callback) => {
     console.log("[WS] $connect", event.requestContext?.connectionId);
     const connectionId = event.requestContext.connectionId;
     if (!connectionId) {
-      throw new Error("Missing connectionId")
+      throw new Error("Missing connectionId");
     }
 
     await saveSocketConnection({
@@ -318,7 +309,7 @@ export const wsDisconnect: Handler = async (event, ctx, callback) => {
   try {
     const connectionId = event.requestContext.connectionId;
     if (!connectionId) {
-      throw new Error("Missing connectionId")
+      throw new Error("Missing connectionId");
     }
     await removeSocketConnection({
       connectionId
@@ -340,7 +331,7 @@ export const wsSubscribe: Handler = async (event, ctx, callback) => {
   try {
     const connectionId = event.requestContext.connectionId;
     if (!connectionId) {
-      throw new Error("Missing connectionId")
+      throw new Error("Missing connectionId");
     }
     const body = JSON.parse(event.body || "{}");
     console.log("[WS] subscribe", {

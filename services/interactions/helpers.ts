@@ -1,35 +1,23 @@
-import {
-  PutCommand,
-  QueryCommand,
-  DeleteCommand
-} from "@aws-sdk/lib-dynamodb";
-import {
-  ApiGatewayManagementApi
-} from "@aws-sdk/client-apigatewaymanagementapi";
-import {
-  PROFILES_TABLE,
-  USERS_TABLE
-} from "../../constants/tables";
+import { PutCommand, QueryCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
+import { ApiGatewayManagementApi } from "@aws-sdk/client-apigatewaymanagementapi";
+import { PROFILES_TABLE, USERS_TABLE } from "../../constants/tables";
 import db from "../../lib/db";
 import handlerHelpers from "../../lib/handlerHelpers";
 import docClient from "../../lib/docClient";
-import {
-  CURRENT_EVENT,
-  EXEC
-} from "./constants";
-import {
-  PROFILE_TYPES, TYPES
-} from "../profiles/constants";
-import {
-  randomUUID
-} from "crypto";
+import { CURRENT_EVENT, EXEC } from "./constants";
+import { PROFILE_TYPES, TYPES } from "../profiles/constants";
+import { randomUUID } from "crypto";
 import { Node, EdgePayload } from "./types";
 
 const WS_TABLE = `bizWallSockets${process.env.ENVIRONMENT || ""}`;
 const LIVE_TABLE = `bizLiveConnections${process.env.ENVIRONMENT || ""}`;
 const WS_ENDPOINT = process.env.WS_API_ENDPOINT;
 
-export const handleConnection = async (userID: string, connProfileID: string, timestamp: number) => {
+export const handleConnection = async (
+  userID: string,
+  connProfileID: string,
+  timestamp: number
+) => {
   const userData = await db.getOne(userID, USERS_TABLE);
 
   const userProfileID = userData?.profileID;
@@ -97,28 +85,24 @@ export const handleConnection = async (userID: string, connProfileID: string, ti
     pronouns: connProfile.pronouns,
     ...(connProfile.major
       ? {
-        major: connProfile.major
-      }
-      : {
-      }),
+          major: connProfile.major
+        }
+      : {}),
     ...(connProfile.year
       ? {
-        year: connProfile.year
-      }
-      : {
-      }),
+          year: connProfile.year
+        }
+      : {}),
     ...(connProfile.company
       ? {
-        company: connProfile.company
-      }
-      : {
-      }),
+          company: connProfile.company
+        }
+      : {}),
     ...(connProfile.title
       ? {
-        title: connProfile.title
-      }
-      : {
-      })
+          title: connProfile.title
+        }
+      : {})
   };
 
   const connPut = {
@@ -132,142 +116,140 @@ export const handleConnection = async (userID: string, connProfileID: string, ti
     pronouns: userProfile.pronouns,
     ...(userProfile.major
       ? {
-        major: userProfile.major
-      }
-      : {
-      }),
+          major: userProfile.major
+        }
+      : {}),
     ...(userProfile.year
       ? {
-        year: userProfile.year
-      }
-      : {
-      }),
+          year: userProfile.year
+        }
+      : {}),
     ...(userProfile.company
       ? {
-        company: userProfile.company
-      }
-      : {
-      }),
+          company: userProfile.company
+        }
+      : {}),
     ...(userProfile.title
       ? {
-        title: userProfile.title
-      }
-      : {
-      })
+          title: userProfile.title
+        }
+      : {})
   };
 
   const promises = [];
   switch (connProfile.profileType) {
-  // exec cases temporarily will be paused as we decide how to handle other interactions
-  case PROFILE_TYPES.EXEC + PROFILE_TYPES.EXEC:
+    // exec cases temporarily will be paused as we decide how to handle other interactions
+    case PROFILE_TYPES.EXEC + PROFILE_TYPES.EXEC:
     // promises.push(
     //   incrementQuestProgress(userProfileID, QUEST_CONNECT_EXEC_H)
     // );
 
-  case PROFILE_TYPES.EXEC:
+    case PROFILE_TYPES.EXEC:
     // promises.push(
     //   incrementQuestProgress(connProfileID, QUEST_CONNECT_EXEC_H)
     // );
 
     // case ATTENDEE:
-  default:
-    try {
-      await db.putMultiple(
-        [connPut, userPut],
-        [PROFILES_TABLE, PROFILES_TABLE],
-        true
-      );
-    } catch (error) {
-      console.error(error);
-      return handlerHelpers.createResponse(500, {
-        message: "Internal server error"
-      });
-    }
-
-    {
-      const eventId = CURRENT_EVENT || "DEFAULT";
-
-      const fromNode = {
-        id: swap ? connProfileID : userProfileID,
-        name: swap
-          ? `${connProfile.fname} ${connProfile.lname}`
-          : `${userProfile.fname} ${userProfile.lname}`,
-        avatar: swap
-          ? connProfile.profilePictureURL
-          : userProfile.profilePictureURL,
-        major: swap ? connProfile.major : userProfile.major,
-        year: swap ? connProfile.year : userProfile.year
-      };
-
-      const toNode = {
-        id: swap ? userProfileID : connProfileID,
-        name: swap
-          ? `${userProfile.fname} ${userProfile.lname}`
-          : `${connProfile.fname} ${connProfile.lname}`,
-        avatar: swap
-          ? userProfile.profilePictureURL
-          : connProfile.profilePictureURL,
-        major: swap ? userProfile.major : connProfile.major,
-        year: swap ? userProfile.year : connProfile.year
-      };
-
-      console.log("[WALL] new connection", {
-        eventId,
-        from: fromNode,
-        to: toNode
-      });
-
+    default:
       try {
-        const subs = await listConnectionsByEvent(eventId);
-
-        const payload = {
-          type: "connection",
-          createdAt: Date.now(),
-          from: fromNode,
-          to: toNode
-        };
-        await Promise.all(
-          subs.map((s) => postToConnection(s.connectionId, payload))
+        await db.putMultiple(
+          [connPut, userPut],
+          [PROFILES_TABLE, PROFILES_TABLE],
+          true
         );
-      } catch (e) {
-        console.error("broadcast error", e);
+      } catch (error) {
+        console.error(error);
+        return handlerHelpers.createResponse(500, {
+          message: "Internal server error"
+        });
       }
 
-      // Persist to live log (for initial hydration / replay)
-      await logLiveConnection({
-        eventId,
-        from: fromNode,
-        to: toNode
-      });
+      {
+        const eventId = CURRENT_EVENT || "DEFAULT";
 
-      console.log("[WALL] logged live connection");
+        const fromNode = {
+          id: swap ? connProfileID : userProfileID,
+          name: swap
+            ? `${connProfile.fname} ${connProfile.lname}`
+            : `${userProfile.fname} ${userProfile.lname}`,
+          avatar: swap
+            ? connProfile.profilePictureURL
+            : userProfile.profilePictureURL,
+          major: swap ? connProfile.major : userProfile.major,
+          year: swap ? connProfile.year : userProfile.year
+        };
 
-      try {
-        const subs = await listConnectionsByEvent(eventId);
-        const payload = {
-          type: "edge",
-          createdAt: Date.now(),
+        const toNode = {
+          id: swap ? userProfileID : connProfileID,
+          name: swap
+            ? `${userProfile.fname} ${userProfile.lname}`
+            : `${connProfile.fname} ${connProfile.lname}`,
+          avatar: swap
+            ? userProfile.profilePictureURL
+            : connProfile.profilePictureURL,
+          major: swap ? userProfile.major : connProfile.major,
+          year: swap ? userProfile.year : connProfile.year
+        };
+
+        console.log("[WALL] new connection", {
+          eventId,
           from: fromNode,
           to: toNode
-        };
-        await Promise.all(
-          subs.map((s) => postToConnection(s.connectionId, payload))
-        );
-      } catch (e) {
-        console.error("broadcast error", e);
+        });
+
+        try {
+          const subs = await listConnectionsByEvent(eventId);
+
+          const payload = {
+            type: "connection",
+            createdAt: Date.now(),
+            from: fromNode,
+            to: toNode
+          };
+          await Promise.all(
+            subs.map((s) => postToConnection(s.connectionId, payload))
+          );
+        } catch (e) {
+          console.error("broadcast error", e);
+        }
+
+        // Persist to live log (for initial hydration / replay)
+        await logLiveConnection({
+          eventId,
+          from: fromNode,
+          to: toNode
+        });
+
+        console.log("[WALL] logged live connection");
+
+        try {
+          const subs = await listConnectionsByEvent(eventId);
+          const payload = {
+            type: "edge",
+            createdAt: Date.now(),
+            from: fromNode,
+            to: toNode
+          };
+          await Promise.all(
+            subs.map((s) => postToConnection(s.connectionId, payload))
+          );
+        } catch (e) {
+          console.error("broadcast error", e);
+        }
       }
-    }
-    // incrementQuestProgress(userProfile.id, QUEST_TOTAL_CONNECTIONS),
-    // incrementQuestProgress(connProfile.id, QUEST_TOTAL_CONNECTIONS)
-    break;
+      // incrementQuestProgress(userProfile.id, QUEST_TOTAL_CONNECTIONS),
+      // incrementQuestProgress(connProfile.id, QUEST_TOTAL_CONNECTIONS)
+      break;
   }
 
   return handlerHelpers.createResponse(200, {
-    message: `Connection created with ${swap ? userProfile.fname : connProfile.fname
+    message: `Connection created with ${
+      swap ? userProfile.fname : connProfile.fname
     }`,
-    name: `${swap
-      ? userProfile.fname + " " + userProfile.lname
-      : connProfile.fname + " " + connProfile.lname
+    name: `${
+      swap
+        ? userProfile.fname + " " + userProfile.lname
+        : connProfile.fname + " " + connProfile.lname
     }`
   });
 };
@@ -284,7 +266,9 @@ const isDuplicateRequest = async (userID: string, connID: string) => {
 };
 
 export async function saveSocketConnection({
-  connectionId, eventId, userId
+  connectionId,
+  eventId,
+  userId
 }: {
   connectionId: string;
   eventId: string;
@@ -310,7 +294,7 @@ export async function saveSocketConnection({
 export async function removeSocketConnection({
   connectionId
 }: {
-  connectionId: string
+  connectionId: string;
 }) {
   const cmd = new DeleteCommand({
     TableName: WS_TABLE,
@@ -346,7 +330,10 @@ export function wsClient() {
   });
 }
 
-export async function postToConnection(connectionId: string, payload: EdgePayload) {
+export async function postToConnection(
+  connectionId: string,
+  payload: EdgePayload
+) {
   const api = wsClient();
   try {
     console.log(
@@ -362,19 +349,21 @@ export async function postToConnection(connectionId: string, payload: EdgePayloa
   } catch (err) {
     console.error("[WS] postToConnection error", err);
     if (
-          err !== null &&
-          err !== undefined &&
-          typeof err === "object" &&
-          "statusCode" in err &&
-          (err as any).statusCode === 410
-        ) {
-          await removeSocketConnection({ connectionId });
+      err !== null &&
+      err !== undefined &&
+      typeof err === "object" &&
+      "statusCode" in err &&
+      (err as any).statusCode === 410
+    ) {
+      await removeSocketConnection({ connectionId });
     }
   }
 }
 
 export async function logLiveConnection({
-  eventId, from, to
+  eventId,
+  from,
+  to
 }: {
   eventId: string;
   from: Node;

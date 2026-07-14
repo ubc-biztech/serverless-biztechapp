@@ -1,15 +1,8 @@
 import db from "../../lib/db.js";
 import helpers from "../../lib/handlerHelpers.js";
-import {
-  isEmpty
-} from "../../lib/utils.js";
-import {
-  humanId
-} from "human-id";
-import {
-  PROFILES_TABLE,
-  USERS_TABLE
-} from "../../constants/tables.js";
+import { isEmpty } from "../../lib/utils.js";
+import { humanId } from "human-id";
+import { PROFILES_TABLE, USERS_TABLE } from "../../constants/tables.js";
 import {
   MUTABLE_PROFILE_ATTRIBUTES,
   PROFILE_TYPES,
@@ -20,12 +13,8 @@ import {
   createProfile,
   filterPublicProfileFields
 } from "./helpers.js";
-import {
-  S3Client, PutObjectCommand
-} from "@aws-sdk/client-s3";
-import {
-  getSignedUrl
-} from "@aws-sdk/s3-request-presigner";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 const REGISTRATIONS_TABLE = "biztechRegistrations";
 const QRS_TABLE = "biztechQRs";
 const S3 = new S3Client({
@@ -39,7 +28,6 @@ import type {
   LambdaContext
 } from "../../lib/types";
 import type { Profile } from "./types";
-
 
 type Handler = (
   event: APIGatewayEvent,
@@ -72,7 +60,11 @@ export const create: Handler = async (event, ctx, callback) => {
 };
 
 // deprecated, will be done in another pr
-export const createPartialPartnerProfile: Handler = async (event, ctx, callback) => {
+export const createPartialPartnerProfile: Handler = async (
+  event,
+  ctx,
+  callback
+) => {
   try {
     const data = JSON.parse(event.body as string);
 
@@ -149,28 +141,28 @@ export const createPartialPartnerProfile: Handler = async (event, ctx, callback)
     // Create partial partner profile
     const timestamp = new Date().getTime();
     const profile = {
-      id: email,
+      "id": email,
       "eventID;year": eventIDAndYear,
       profileID,
       fname,
       lname,
       pronouns,
-      type: "Partner",
+      "type": "Partner",
       company,
       role,
       linkedIn,
       profilePictureURL,
-      createdAt: timestamp,
-      updatedAt: timestamp
+      "createdAt": timestamp,
+      "updatedAt": timestamp
     };
 
     // Create NFC entry
     const nfc = {
-      id: profileID,
+      "id": profileID,
       "eventID;year": eventIDAndYear,
-      type: "NFC_ATTENDEE",
-      isUnlimitedScans: true,
-      data: {
+      "type": "NFC_ATTENDEE",
+      "isUnlimitedScans": true,
+      "data": {
         email
       }
     };
@@ -192,7 +184,7 @@ export const createPartialPartnerProfile: Handler = async (event, ctx, callback)
 };
 
 export const updatePublicProfile: Handler = async (event, ctx, callback) => {
-  console.log("THOMAS CHANGES UPDATING HERE")
+  console.log("THOMAS CHANGES UPDATING HERE");
   try {
     const userID = event.requestContext.authorizer?.claims?.email.toLowerCase();
     const body = JSON.parse(event.body as string);
@@ -201,9 +193,7 @@ export const updatePublicProfile: Handler = async (event, ctx, callback) => {
         required: true
       }
     });
-    const {
-      viewableMap
-    } = body;
+    const { viewableMap } = body;
 
     if (
       !viewableMap ||
@@ -213,10 +203,7 @@ export const updatePublicProfile: Handler = async (event, ctx, callback) => {
     }
 
     const user = await db.getOne(userID, USERS_TABLE);
-    const {
-      profileID = null
-    } = user || {
-    };
+    const { profileID = null } = user || {};
 
     if (!profileID) {
       throw helpers.notFoundResponse("Profile", userID);
@@ -289,18 +276,16 @@ export const getPublicProfile: Handler = async (event, ctx, callback) => {
       throw helpers.missingPathParamResponse("profile", "profileID");
     }
 
-    const {
-      profileID
-    } = event.pathParameters;
+    const { profileID } = event.pathParameters;
 
     // Query using the GSI
-    const result = await db.getOneCustom({
+    const result = (await db.getOneCustom({
       TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
       Key: {
         compositeID: `PROFILE#${profileID}`,
         type: TYPES.PROFILE
       }
-    }) as Profile;
+    })) as Profile;
 
     if (!result) {
       throw helpers.notFoundResponse("Profile", profileID);
@@ -321,10 +306,7 @@ export const getUserProfile: Handler = async (event, ctx, callback) => {
     const userID = event.requestContext.authorizer?.claims?.email.toLowerCase();
 
     const user = await db.getOne(userID, USERS_TABLE);
-    const {
-      profileID = null
-    } = user || {
-    };
+    const { profileID = null } = user || {};
 
     if (!profileID) {
       throw helpers.notFoundResponse("Profile", userID);
@@ -419,26 +401,26 @@ export const createCompanyProfile: Handler = async (event, ctx, callback) => {
     const timestamp = new Date().getTime();
 
     const companyProfile = {
-      id: companyId,
+      "id": companyId,
       "eventID;year": eventIDAndYear,
-      profileID: companyId,
-      type: "Company",
+      "profileID": companyId,
+      "type": "Company",
       name,
       description,
       profilePictureURL,
       links,
       delegateProfileIDs,
-      createdAt: timestamp,
-      updatedAt: timestamp
+      "createdAt": timestamp,
+      "updatedAt": timestamp
     };
 
     // Create QR entry for company
     const qr = {
-      id: companyId,
+      "id": companyId,
       "eventID;year": eventIDAndYear,
-      type: "NFC_COMPANY",
-      isUnlimitedScans: true,
-      data: {
+      "type": "NFC_COMPANY",
+      "isUnlimitedScans": true,
+      "data": {
         companyId
       }
     };
@@ -459,10 +441,13 @@ export const createCompanyProfile: Handler = async (event, ctx, callback) => {
   }
 };
 
-export const createProfilePicUploadUrl: Handler = async (event, ctx, callback) => {
+export const createProfilePicUploadUrl: Handler = async (
+  event,
+  ctx,
+  callback
+) => {
   try {
-    const claims = event.requestContext?.authorizer?.claims || {
-    };
+    const claims = event.requestContext?.authorizer?.claims || {};
     const userEmail = claims.email?.toLowerCase();
     if (!userEmail) {
       return helpers.createResponse(401, {
@@ -481,9 +466,7 @@ export const createProfilePicUploadUrl: Handler = async (event, ctx, callback) =
       });
     }
 
-    const {
-      fileType, fileName, prefix
-    } = JSON.parse(event.body || "{}");
+    const { fileType, fileName, prefix } = JSON.parse(event.body || "{}");
     if (!fileType || !fileName) {
       return helpers.createResponse(400, {
         message: "Missing fileType or fileName"
@@ -556,9 +539,7 @@ export const linkPartnerToCompany: Handler = async (event, ctx, callback) => {
       }
     });
 
-    const {
-      partnerProfileID, companyProfileID, eventID, year
-    } = data;
+    const { partnerProfileID, companyProfileID, eventID, year } = data;
     const eventIDAndYear = `${eventID};${year}`;
 
     // Get company profile
@@ -604,7 +585,7 @@ export const linkPartnerToCompany: Handler = async (event, ctx, callback) => {
     // Update partner profile with company information
     const partnerUpdateParams = {
       Key: {
-        id: partnerProfile.id,
+        "id": partnerProfile.id,
         "eventID;year": eventIDAndYear
       },
       TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
@@ -621,7 +602,7 @@ export const linkPartnerToCompany: Handler = async (event, ctx, callback) => {
     // Update company profile with new delegate
     const companyUpdateParams = {
       Key: {
-        id: companyProfile.id,
+        "id": companyProfile.id,
         "eventID;year": eventIDAndYear
       },
       TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
@@ -683,22 +664,21 @@ export const syncPartnerData: Handler = async (event, ctx, callback) => {
           // Create registration entry if it doesn't exist
           const timestamp = new Date().getTime();
           const registrationData = {
-            id: profile.id,
+            "id": profile.id,
             "eventID;year": profile["eventID;year"],
-            isPartner: true,
-            profileID: profile.profileID,
-            basicInformation: {
+            "isPartner": true,
+            "profileID": profile.profileID,
+            "basicInformation": {
               fname: profile.fname || "",
               lname: profile.lname || "",
               companyName: profile.company || "",
               role: profile.role || "",
               gender: profile.pronouns || ""
             },
-            registrationStatus: "registered",
-            createdAt: timestamp,
-            updatedAt: timestamp,
-            dynamicResponses: {
-            } // Ensure this exists even if empty
+            "registrationStatus": "registered",
+            "createdAt": timestamp,
+            "updatedAt": timestamp,
+            "dynamicResponses": {} // Ensure this exists even if empty
           };
 
           await db.create(registrationData, REGISTRATIONS_TABLE);
@@ -709,13 +689,12 @@ export const syncPartnerData: Handler = async (event, ctx, callback) => {
           };
         } else {
           // Safely get dynamic responses with fallbacks
-          const dynamicResponses = registration.dynamicResponses || {
-          };
+          const dynamicResponses = registration.dynamicResponses || {};
 
           // Update profile with registration data
           const updateParams = {
             Key: {
-              id: profile.id,
+              "id": profile.id,
               "eventID;year": profile["eventID;year"]
             },
             TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),

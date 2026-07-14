@@ -1,13 +1,18 @@
 import humanId from "human-id";
 import {
-  MEMBERS2026_TABLE, PROFILES_TABLE, USERS_TABLE
+  MEMBERS2026_TABLE,
+  PROFILES_TABLE,
+  USERS_TABLE
 } from "../../constants/tables";
 import db from "../../lib/db";
 import helpers from "../../lib/handlerHelpers";
-import {
-  MUTABLE_PROFILE_ATTRIBUTES, TYPES
-} from "./constants";
-import type { ViewableMap, Profile, ProfileUpdateData, MemberData } from "./types";
+import { MUTABLE_PROFILE_ATTRIBUTES, TYPES } from "./constants";
+import type {
+  ViewableMap,
+  Profile,
+  ProfileUpdateData,
+  MemberData
+} from "./types";
 
 export async function createProfile(email: string, profileType: string) {
   const [memberData, userData] = await Promise.all([
@@ -47,7 +52,7 @@ export async function createProfile(email: string, profileType: string) {
     resumeURL: false,
     description: true,
     company: true,
-    position: true,
+    position: true
   };
 
   // Map registration data to profile schema
@@ -113,7 +118,10 @@ export async function createProfile(email: string, profileType: string) {
   return response;
 }
 
-export async function updateProfileFromMembershipData(profileID: string, memberData: MemberData) {
+export async function updateProfileFromMembershipData(
+  profileID: string,
+  memberData: MemberData
+) {
   const updateData: Partial<MemberData> = {};
 
   const keys: (keyof MemberData)[] = ["pronouns", "major", "year"];
@@ -132,7 +140,7 @@ export async function updateProfileFromMembershipData(profileID: string, memberD
     "#updatedAt": "updatedAt",
     "#type": "type"
   };
-  const expressionAttributeValues:  Record<string, unknown> = {
+  const expressionAttributeValues: Record<string, unknown> = {
     ":updatedAt": Date.now()
   };
 
