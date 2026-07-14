@@ -8,7 +8,7 @@ import {
 } from "@aws-sdk/client-apigatewaymanagementapi";
 import {
   PROFILES_TABLE,
-  MEMBERS2026_TABLE
+  USERS_TABLE
 } from "../../constants/tables";
 import db from "../../lib/db";
 import handlerHelpers from "../../lib/handlerHelpers";
@@ -23,15 +23,20 @@ import {
 import {
   randomUUID
 } from "crypto";
+import { Node, EdgePayload } from "./types";
 
 const WS_TABLE = `bizWallSockets${process.env.ENVIRONMENT || ""}`;
 const LIVE_TABLE = `bizLiveConnections${process.env.ENVIRONMENT || ""}`;
 const WS_ENDPOINT = process.env.WS_API_ENDPOINT;
 
-export const handleConnection = async (userID, connProfileID, timestamp) => {
-  let memberData = await db.getOne(userID, MEMBERS2026_TABLE);
+export const handleConnection = async (userID: string, connProfileID: string, timestamp: number) => {
+  const userData = await db.getOne(userID, USERS_TABLE);
 
-  let userProfileID = memberData.profileID;
+  const userProfileID = userData?.profileID;
+
+  if (!userProfileID) {
+    return handlerHelpers.notFoundResponse("Profile", userID);
+  }
 
   if (userProfileID === connProfileID) {
     return handlerHelpers.createResponse(400, {
@@ -267,7 +272,7 @@ export const handleConnection = async (userID, connProfileID, timestamp) => {
   });
 };
 
-const isDuplicateRequest = async (userID, connID) => {
+const isDuplicateRequest = async (userID: string, connID: string) => {
   const result = await db.getOneCustom({
     TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
     Key: {
@@ -280,6 +285,10 @@ const isDuplicateRequest = async (userID, connID) => {
 
 export async function saveSocketConnection({
   connectionId, eventId, userId
+}: {
+  connectionId: string;
+  eventId: string;
+  userId: string;
 }) {
   console.log("[WS] saveSocketConnection", {
     connectionId,
@@ -300,6 +309,8 @@ export async function saveSocketConnection({
 
 export async function removeSocketConnection({
   connectionId
+}: {
+  connectionId: string
 }) {
   const cmd = new DeleteCommand({
     TableName: WS_TABLE,
@@ -310,7 +321,7 @@ export async function removeSocketConnection({
   await docClient.send(cmd);
 }
 
-export async function listConnectionsByEvent(eventId) {
+export async function listConnectionsByEvent(eventId: string) {
   console.log("[WS] listConnectionsByEvent ->", eventId);
   const cmd = new QueryCommand({
     TableName: WS_TABLE,
@@ -335,7 +346,7 @@ export function wsClient() {
   });
 }
 
-export async function postToConnection(connectionId, payload) {
+export async function postToConnection(connectionId: string, payload: EdgePayload) {
   const api = wsClient();
   try {
     console.log(
@@ -350,16 +361,24 @@ export async function postToConnection(connectionId, payload) {
     });
   } catch (err) {
     console.error("[WS] postToConnection error", err);
-    if (err.statusCode === 410) {
-      await removeSocketConnection({
-        connectionId
-      });
+    if (
+          err !== null &&
+          err !== undefined &&
+          typeof err === "object" &&
+          "statusCode" in err &&
+          (err as any).statusCode === 410
+        ) {
+          await removeSocketConnection({ connectionId });
     }
   }
 }
 
 export async function logLiveConnection({
   eventId, from, to
+}: {
+  eventId: string;
+  from: Node;
+  to: Node;
 }) {
   const createdAt = Date.now();
   const sk = `ts#${createdAt}#${randomUUID()}`;
@@ -379,6 +398,9 @@ export async function logLiveConnection({
 export async function fetchRecentConnections({
   eventId,
   sinceMs = 60 * 60 * 1000
+}: {
+  eventId: string;
+  sinceMs: number;
 }) {
   const now = Date.now();
   const threshold = now - sinceMs;

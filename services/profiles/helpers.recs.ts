@@ -6,6 +6,7 @@ import {
   USER_REGISTRATIONS_TABLE,
   PROFILES_TABLE
 } from "../../constants/tables.js";
+import { Profile } from "./types";
 
 // ───────────────── OpenAI setup (embeddings only; no generation) ─────────────────
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -13,7 +14,7 @@ const EMBED_MODEL = process.env.OPENAI_EMBED_MODEL || "text-embedding-3-small";
 const openai = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
 
 // ───────────────── Helpers: Profile text & embeddings ─────────────────
-export function buildProfileText(p = {}) {
+export function buildProfileText(p: Partial<Profile> = {}) {
   const parts = [
     p.description,
     p.hobby1,
@@ -31,7 +32,7 @@ export function buildProfileText(p = {}) {
  *  - profile has no text to embed
  * If it creates an embedding, it persists it.
  */
-export async function ensureEmbedding(profileItem) {
+export async function ensureEmbedding(profileItem: Profile) {
   if (!openai) return null; // embedding optional mode
   if (Array.isArray(profileItem.embedding) && profileItem.embedding.length) {
     return profileItem.embedding;
@@ -70,7 +71,7 @@ export async function ensureEmbedding(profileItem) {
 }
 
 // ───────────────── Similarity & normalization ─────────────────
-export function cosine(a = [], b = []) {
+export function cosine(a: number[] = [], b: number[] = []) {
   if (!a || !b || a.length !== b.length || a.length === 0) return 0;
   let dot = 0,
     na = 0,
@@ -84,7 +85,7 @@ export function cosine(a = [], b = []) {
   return dot / (Math.sqrt(na) * Math.sqrt(nb));
 }
 
-const MAJOR_SYNONYMS = {
+const MAJOR_SYNONYMS: Record<string, string>= {
   "cs": "computer science",
   "comp sci": "computer science",
   "compsci": "computer science",
@@ -93,12 +94,12 @@ const MAJOR_SYNONYMS = {
   "bcom": "business"
 };
 
-function norm(s) {
+function norm(s: string) {
   return String(s || "")
     .trim()
     .toLowerCase();
 }
-function normMajor(s) {
+function normMajor(s: string) {
   const x = norm(s);
   return MAJOR_SYNONYMS[x] || x;
 }
@@ -123,8 +124,8 @@ const STOP = new Set([
   "will"
 ]);
 
-function topOverlapTokens(textA, textB) {
-  const tok = (t) =>
+function topOverlapTokens(textA: string, textB: string) {
+  const tok = (t: string) =>
     norm(t)
       .replace(/[^a-z0-9\s]/g, " ")
       .split(/\s+/)
@@ -136,7 +137,7 @@ function topOverlapTokens(textA, textB) {
 }
 
 // ───────────────── Events → shared attendance counts ─────────────────
-export async function getUserEventKeys(email) {
+export async function getUserEventKeys(email: string) {
   const regs = await db.query(USER_REGISTRATIONS_TABLE, null, {
     expression: "id = :id",
     expressionValues: { ":id": email }
@@ -148,7 +149,7 @@ export async function getUserEventKeys(email) {
   return [...keys]; // e.g. ["blueprint;2025", ...]
 }
 
-export async function mapSharedEventsByCandidate(eventKeys) {
+export async function mapSharedEventsByCandidate(eventKeys: string[]) {
   const counts = new Map(); // email -> count
   for (const key of eventKeys) {
     const regs = await db.query(USER_REGISTRATIONS_TABLE, "event-query", {
@@ -176,12 +177,12 @@ export async function scanAllProfiles() {
 
 // ───────────────── Score & deterministic reason (no LLM) ─────────────────
 export function computeScoreAndReason(
-  self,
-  selfVec,
-  other,
-  otherVec,
-  sharedEventCount,
-  maxSelfEvents
+  self: Profile,
+  selfVec: number[] | null,
+  other: Profile,
+  otherVec: number[] | null,
+  sharedEventCount: number,
+  maxSelfEvents: number
 ) {
   // text similarity (optional)
   const textSim = selfVec && otherVec ? cosine(selfVec, otherVec) : 0;

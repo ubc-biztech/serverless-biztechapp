@@ -7,10 +7,8 @@ import {
   humanId
 } from "human-id";
 import {
-  PROFILES_TABLE
-} from "../../constants/tables.js";
-import {
-  MEMBERS2026_TABLE
+  PROFILES_TABLE,
+  USERS_TABLE
 } from "../../constants/tables.js";
 import {
   MUTABLE_PROFILE_ATTRIBUTES,
@@ -34,10 +32,32 @@ const S3 = new S3Client({
   region: "us-west-2"
 });
 const PROFILE_BUCKET = "biztech-profile-pictures";
+import type {
+  APIGatewayEvent,
+  APIGatewayResponse,
+  LambdaCallback,
+  LambdaContext
+} from "../../lib/types";
+import type { Profile } from "./types";
 
-export const create = async (event, ctx, callback) => {
+
+type Handler = (
+  event: APIGatewayEvent,
+  ctx: LambdaContext,
+  callback: LambdaCallback
+) => Promise<APIGatewayResponse>;
+
+const errorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
+
+export const create: Handler = async (event, ctx, callback) => {
   try {
-    const email = event.requestContext.authorizer.claims.email.toLowerCase();
+    const email = event.requestContext.authorizer?.claims?.email.toLowerCase();
+    if (!email) {
+      return helpers.createResponse(401, {
+        message: "Authenticated user email missing."
+      });
+    }
     const response = await createProfile(
       email,
       email.endsWith("@ubcbiztech.com")
@@ -47,14 +67,14 @@ export const create = async (event, ctx, callback) => {
     return response;
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: errorMessage(err) });
   }
 };
 
 // deprecated, will be done in another pr
-export const createPartialPartnerProfile = async (event, ctx, callback) => {
+export const createPartialPartnerProfile: Handler = async (event, ctx, callback) => {
   try {
-    const data = JSON.parse(event.body);
+    const data = JSON.parse(event.body as string);
 
     // Validate input
     helpers.checkPayloadProps(data, {
@@ -167,14 +187,15 @@ export const createPartialPartnerProfile = async (event, ctx, callback) => {
     });
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: errorMessage(err) });
   }
 };
 
-export const updatePublicProfile = async (event, ctx, callback) => {
+export const updatePublicProfile: Handler = async (event, ctx, callback) => {
+  console.log("THOMAS CHANGES UPDATING HERE")
   try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
-    const body = JSON.parse(event.body);
+    const userID = event.requestContext.authorizer?.claims?.email.toLowerCase();
+    const body = JSON.parse(event.body as string);
     helpers.checkPayloadProps(body, {
       viewableMap: {
         required: true
@@ -191,10 +212,10 @@ export const updatePublicProfile = async (event, ctx, callback) => {
       throw helpers.inputError("Viewable map is not a literal object", body);
     }
 
-    const member = await db.getOne(userID, MEMBERS2026_TABLE);
+    const user = await db.getOne(userID, USERS_TABLE);
     const {
       profileID = null
-    } = member || {
+    } = user || {
     };
 
     if (!profileID) {
@@ -224,7 +245,7 @@ export const updatePublicProfile = async (event, ctx, callback) => {
 
     Object.keys(viewableMap).forEach((key) => {
       if (
-        Object.hasOwn(MUTABLE_PROFILE_ATTRIBUTES, key) &&
+        Object.hasOwnProperty.call(MUTABLE_PROFILE_ATTRIBUTES, key) &&
         typeof viewableMap[key] === "boolean"
       ) {
         profile.viewableMap[key] = viewableMap[key];
@@ -233,11 +254,10 @@ export const updatePublicProfile = async (event, ctx, callback) => {
 
     delete body["viewableMap"];
 
-    const updateBody = {
-    };
+    const updateBody: Record<string, string> = {};
     Object.keys(body).forEach((key) => {
       if (
-        Object.hasOwn(MUTABLE_PROFILE_ATTRIBUTES, key) &&
+        Object.hasOwnProperty.call(MUTABLE_PROFILE_ATTRIBUTES, key) &&
         typeof body[key] === "string"
       ) {
         updateBody[key] = body[key];
@@ -259,14 +279,14 @@ export const updatePublicProfile = async (event, ctx, callback) => {
     });
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: errorMessage(err) });
   }
 };
 
-export const getPublicProfile = async (event, ctx, callback) => {
+export const getPublicProfile: Handler = async (event, ctx, callback) => {
   try {
     if (!event.pathParameters || !event.pathParameters.profileID) {
-      throw helpers.missingPathParamResponse("profileID");
+      throw helpers.missingPathParamResponse("profile", "profileID");
     }
 
     const {
@@ -280,7 +300,7 @@ export const getPublicProfile = async (event, ctx, callback) => {
         compositeID: `PROFILE#${profileID}`,
         type: TYPES.PROFILE
       }
-    });
+    }) as Profile;
 
     if (!result) {
       throw helpers.notFoundResponse("Profile", profileID);
@@ -292,18 +312,18 @@ export const getPublicProfile = async (event, ctx, callback) => {
     return helpers.createResponse(200, publicProfile);
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: errorMessage(err) });
   }
 };
 
-export const getUserProfile = async (event, ctx, callback) => {
+export const getUserProfile: Handler = async (event, ctx, callback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    const userID = event.requestContext.authorizer?.claims?.email.toLowerCase();
 
-    const member = await db.getOne(userID, MEMBERS2026_TABLE);
+    const user = await db.getOne(userID, USERS_TABLE);
     const {
       profileID = null
-    } = member || {
+    } = user || {
     };
 
     if (!profileID) {
@@ -325,14 +345,14 @@ export const getUserProfile = async (event, ctx, callback) => {
     return helpers.createResponse(200, result);
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: errorMessage(err) });
   }
 };
 
 // deprecated, will be done in another pr
-export const createCompanyProfile = async (event, ctx, callback) => {
+export const createCompanyProfile: Handler = async (event, ctx, callback) => {
   try {
-    const data = JSON.parse(event.body);
+    const data = JSON.parse(event.body as string);
 
     // Validate input
     helpers.checkPayloadProps(data, {
@@ -435,11 +455,11 @@ export const createCompanyProfile = async (event, ctx, callback) => {
     });
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: errorMessage(err) });
   }
 };
 
-export const createProfilePicUploadUrl = async (event, ctx, callback) => {
+export const createProfilePicUploadUrl: Handler = async (event, ctx, callback) => {
   try {
     const claims = event.requestContext?.authorizer?.claims || {
     };
@@ -452,8 +472,8 @@ export const createProfilePicUploadUrl = async (event, ctx, callback) => {
 
     let profileId = event.queryStringParameters?.profileId;
     if (!profileId) {
-      const member = await db.getOne(userEmail, MEMBERS2026_TABLE);
-      profileId = member?.profileID;
+      const user = await db.getOne(userEmail, USERS_TABLE);
+      profileId = user?.profileID;
     }
     if (!profileId) {
       return helpers.createResponse(400, {
@@ -512,9 +532,9 @@ export const createProfilePicUploadUrl = async (event, ctx, callback) => {
   }
 };
 
-export const linkPartnerToCompany = async (event, ctx, callback) => {
+export const linkPartnerToCompany: Handler = async (event, ctx, callback) => {
   try {
-    const data = JSON.parse(event.body);
+    const data = JSON.parse(event.body as string);
 
     // Validate input
     helpers.checkPayloadProps(data, {
@@ -627,11 +647,11 @@ export const linkPartnerToCompany = async (event, ctx, callback) => {
     });
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: errorMessage(err) });
   }
 };
 
-export const syncPartnerData = async (event, ctx, callback) => {
+export const syncPartnerData: Handler = async (event, ctx, callback) => {
   try {
     // Get all partner profiles
     const partnerProfiles = await db.scan(PROFILES_TABLE, {
@@ -725,7 +745,7 @@ export const syncPartnerData = async (event, ctx, callback) => {
               ":description":
                 dynamicResponses["6849bb7f-b8bd-438c-b03b-e046cede378a"] || "",
               ":updatedAt": new Date().getTime()
-            }
+            } as Record<string, any>
           };
 
           // Only update profile picture if it doesn't exist in profile and exists in registration
@@ -755,6 +775,6 @@ export const syncPartnerData = async (event, ctx, callback) => {
     });
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: errorMessage(err) });
   }
 };

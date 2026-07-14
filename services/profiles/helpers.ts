@@ -1,22 +1,29 @@
 import humanId from "human-id";
 import {
-  MEMBERS2026_TABLE, PROFILES_TABLE
+  MEMBERS2026_TABLE, PROFILES_TABLE, USERS_TABLE
 } from "../../constants/tables";
 import db from "../../lib/db";
 import helpers from "../../lib/handlerHelpers";
 import {
   MUTABLE_PROFILE_ATTRIBUTES, TYPES
 } from "./constants";
+import type { ViewableMap, Profile, ProfileUpdateData, MemberData } from "./types";
 
-export async function createProfile(email, profileType) {
-  const memberData = await db.getOne(email, MEMBERS2026_TABLE);
+export async function createProfile(email: string, profileType: string) {
+  const [memberData, userData] = await Promise.all([
+    db.getOne(email, MEMBERS2026_TABLE),
+    db.getOne(email, USERS_TABLE)
+  ]);
 
-  // Check if profile already exists, member entry implies profile entry
   if (!memberData) {
-    throw helpers.notFoundResponse("id", email);
+    throw helpers.notFoundResponse("member", email);
   }
 
-  if (memberData.profileID) {
+  if (!userData) {
+    throw helpers.notFoundResponse("user", email);
+  }
+
+  if (userData.profileID) {
     throw helpers.duplicateResponse("Profile", email);
   }
 
@@ -37,6 +44,7 @@ export async function createProfile(email, profileType) {
     linkedIn: true,
     profilePictureURL: true,
     additionalLink: true,
+    resumeURL: false,
     description: true,
     company: true,
     position: true,
@@ -47,6 +55,7 @@ export async function createProfile(email, profileType) {
   const profile = {
     compositeID: `PROFILE#${profileID}`,
     type: TYPES.PROFILE,
+    profileID,
     fname: memberData.firstName,
     lname: memberData.lastName,
     pronouns: memberData.pronouns || "",
@@ -59,6 +68,7 @@ export async function createProfile(email, profileType) {
     linkedIn: "",
     profilePictureURL: "",
     additionalLink: "",
+    resumeURL: "",
     description: "",
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -66,39 +76,28 @@ export async function createProfile(email, profileType) {
     viewableMap
   };
 
-  const params = {
-    Key: {
-      id: email
-    },
-    TableName: MEMBERS2026_TABLE + (process.env.ENVIRONMENT || ""),
+  const updateParams = {
     UpdateExpression: "set profileID = :profileID, updatedAt = :updatedAt",
     ExpressionAttributeValues: {
       ":profileID": profileID,
       ":updatedAt": timestamp
     },
-    ReturnValues: "UPDATED_NEW",
-    ConditionExpression: "attribute_exists(id)"
+    ConditionExpression:
+      "attribute_exists(id) AND attribute_not_exists(profileID)"
   };
-
-  const {
-    ReturnValues,
-    TableName,
-    Key,
-    ...updateParams
-  } = params;
 
   await db.writeMultiple([
     {
       Put: {
         TableName: PROFILES_TABLE,
         Item: profile,
-        ConditionExpression: "attribute_not_exists(id)"
+        ConditionExpression: "attribute_not_exists(compositeID)"
       }
     },
     {
       Update: {
         ...updateParams,
-        TableName: MEMBERS2026_TABLE,
+        TableName: USERS_TABLE,
         Key: {
           id: email
         }
@@ -114,9 +113,52 @@ export async function createProfile(email, profileType) {
   return response;
 }
 
-export function filterPublicProfileFields(profile) {
-  const publicFields = {
+export async function updateProfileFromMembershipData(profileID: string, memberData: MemberData) {
+  const updateData: Partial<MemberData> = {};
+
+  const keys: (keyof MemberData)[] = ["pronouns", "major", "year"];
+  keys.forEach((key) => {
+    if (memberData[key] !== undefined && memberData[key] !== null) {
+      updateData[key] = memberData[key];
+    }
+  });
+
+  if (Object.keys(updateData).length === 0) {
+    return null;
+  }
+
+  const updateExpressions = ["#updatedAt = :updatedAt"];
+  const expressionAttributeNames: Record<string, string> = {
+    "#updatedAt": "updatedAt",
+    "#type": "type"
   };
+  const expressionAttributeValues:  Record<string, unknown> = {
+    ":updatedAt": Date.now()
+  };
+
+  Object.entries(updateData).forEach(([key, value]) => {
+    expressionAttributeNames[`#${key}`] = key;
+    expressionAttributeValues[`:${key}`] = value;
+    updateExpressions.push(`#${key} = :${key}`);
+  });
+
+  return db.updateDBCustom({
+    Key: {
+      compositeID: `PROFILE#${profileID}`,
+      type: TYPES.PROFILE
+    },
+    TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
+    UpdateExpression: `SET ${updateExpressions.join(", ")}`,
+    ExpressionAttributeNames: expressionAttributeNames,
+    ExpressionAttributeValues: expressionAttributeValues,
+    ReturnValues: "UPDATED_NEW",
+    ConditionExpression:
+      "attribute_exists(compositeID) AND attribute_exists(#type)"
+  });
+}
+
+export function filterPublicProfileFields(profile: Profile) {
+  const publicFields: Record<string, any> = {};
   const map = profile.viewableMap;
 
   for (const key in profile) {
@@ -138,18 +180,15 @@ export function filterPublicProfileFields(profile) {
  * @returns {Object} DynamoDB update parameters
  */
 export const buildProfileUpdateParams = (
-  compositeID,
-  updateData = {
-  },
-  viewableMap,
-  tableName,
-  timestamp
+  compositeID: string,
+  updateData: ProfileUpdateData = {},
+  viewableMap: ViewableMap | null,
+  tableName: string,
+  timestamp: number
 ) => {
   const updateExpressions = [];
-  const expressionAttributeValues = {
-  };
-  const expressionAttributeNames = {
-  };
+  const expressionAttributeValues: Record<string, any> = {};
+  const expressionAttributeNames: Record<string, any> = {};
 
   // Add timestamp to updates
   updateExpressions.push("#updatedAt = :updatedAt");
@@ -157,8 +196,8 @@ export const buildProfileUpdateParams = (
   expressionAttributeNames["#updatedAt"] = "updatedAt";
 
   // Process valid mutable attributes
-  Object.keys(updateData).forEach((key) => {
-    if (Object.hasOwn(MUTABLE_PROFILE_ATTRIBUTES, key)) {
+  (Object.keys(updateData) as (keyof ProfileUpdateData)[]).forEach((key) => {
+    if (Object.hasOwnProperty.call(MUTABLE_PROFILE_ATTRIBUTES, key)) {
       const attrName = `#${key}`;
       const attrValue = `:${key}`;
 

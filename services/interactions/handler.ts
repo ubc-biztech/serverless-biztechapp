@@ -3,7 +3,7 @@
 //   OPENSEARCH_INDEX_TOP_K
 // } from "../../constants/indexes";
 import {
-  MEMBERS2026_TABLE,
+  USERS_TABLE,
   PROFILES_TABLE,
   EVENTS_TABLE
 } from "../../constants/tables";
@@ -20,6 +20,12 @@ import {
   removeSocketConnection,
   fetchRecentConnections
 } from "./helpers";
+import type {
+  APIGatewayEvent,
+  APIGatewayResponse,
+  LambdaCallback,
+  LambdaContext
+} from "../../lib/types";
 
 const CONNECTION = "CONNECTION";
 const WORK = "WORKSHOP";
@@ -56,10 +62,19 @@ const BOOTH = "BOOTH";
 //   }
 // };
 
-export const postInteraction = async (event, ctx, callback) => {
+type Handler = (
+  event: APIGatewayEvent,
+  ctx: LambdaContext,
+  callback: LambdaCallback
+) => Promise<APIGatewayResponse>;
+
+const errorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
+
+export const postInteraction: Handler = async (event, ctx, callback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
-    const data = JSON.parse(event.body);
+    const userID = event.requestContext.authorizer!.claims!.email.toLowerCase();
+    const data = JSON.parse(event.body as string);
 
     try {
       helpers.checkPayloadProps(data, {
@@ -71,7 +86,7 @@ export const postInteraction = async (event, ctx, callback) => {
         }
       });
     } catch (error) {
-      return error;
+      throw new Error("Invalid request body");
     }
 
     const timestamp = new Date().getTime();
@@ -89,11 +104,11 @@ export const postInteraction = async (event, ctx, callback) => {
     return response;
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: errorMessage(err) });
   }
 };
 
-export const checkConnection = async (event, ctx, callback) => {
+export const checkConnection: Handler = async (event, ctx, callback) => {
   try {
     if (
       !event.pathParameters ||
@@ -103,10 +118,10 @@ export const checkConnection = async (event, ctx, callback) => {
       throw helpers.missingIdQueryResponse("profile ID in request path");
 
     const connectionID = event.pathParameters.id;
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
-    const memberData = await db.getOne(userID, MEMBERS2026_TABLE);
+    const userID = event.requestContext.authorizer?.claims?.email.toLowerCase();
+    const userData = await db.getOne(userID, USERS_TABLE);
 
-    if (!memberData)
+    if (!userData?.profileID)
       return helpers.createResponse(200, {
         message: `No profile associated with ${userID}`,
         connected: false
@@ -114,7 +129,7 @@ export const checkConnection = async (event, ctx, callback) => {
 
     const {
       profileID
-    } = memberData;
+    } = userData;
 
     if (connectionID == profileID)
       return helpers.createResponse(400, {
@@ -141,12 +156,16 @@ export const checkConnection = async (event, ctx, callback) => {
   }
 };
 
-export const getAllConnections = async (event, ctx, callback) => {
+export const getAllConnections: Handler = async (event, ctx, callback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    const userID = event.requestContext.authorizer?.claims?.email.toLowerCase();
 
-    const memberData = await db.getOne(userID, MEMBERS2026_TABLE);
-    const { profileID } = memberData;
+    const userData = await db.getOne(userID, USERS_TABLE);
+    const { profileID } = userData || {};
+
+    if (!profileID) {
+      throw helpers.notFoundResponse("Profile", userID);
+    }
 
     let data = await db.query(PROFILES_TABLE, null, {
       expression:
@@ -205,7 +224,7 @@ export const getAllConnections = async (event, ctx, callback) => {
   }
 };
 
-export const getWallSnapshot = async (event, ctx, callback) => {
+export const getWallSnapshot: Handler = async (event, ctx, callback) => {
   try {
     const qs = event.queryStringParameters || {
     };
@@ -268,10 +287,13 @@ export const getWallSnapshot = async (event, ctx, callback) => {
 };
 
 // WebSocket connect
-export const wsConnect = async (event, ctx, callback) => {
+export const wsConnect: Handler = async (event, ctx, callback) => {
   try {
     console.log("[WS] $connect", event.requestContext?.connectionId);
     const connectionId = event.requestContext.connectionId;
+    if (!connectionId) {
+      throw new Error("Missing connectionId")
+    }
 
     await saveSocketConnection({
       connectionId,
@@ -292,9 +314,12 @@ export const wsConnect = async (event, ctx, callback) => {
 };
 
 // WebSocket disconnect
-export const wsDisconnect = async (event, ctx, callback) => {
+export const wsDisconnect: Handler = async (event, ctx, callback) => {
   try {
     const connectionId = event.requestContext.connectionId;
+    if (!connectionId) {
+      throw new Error("Missing connectionId")
+    }
     await removeSocketConnection({
       connectionId
     });
@@ -311,9 +336,12 @@ export const wsDisconnect = async (event, ctx, callback) => {
   }
 };
 
-export const wsSubscribe = async (event, ctx, callback) => {
+export const wsSubscribe: Handler = async (event, ctx, callback) => {
   try {
     const connectionId = event.requestContext.connectionId;
+    if (!connectionId) {
+      throw new Error("Missing connectionId")
+    }
     const body = JSON.parse(event.body || "{}");
     console.log("[WS] subscribe", {
       connectionId,
