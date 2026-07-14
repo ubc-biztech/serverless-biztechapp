@@ -1,14 +1,20 @@
 import humanId from "human-id";
 import {
-  MEMBERS2026_TABLE, PROFILES_TABLE, USERS_TABLE
+  MEMBERS2026_TABLE,
+  PROFILES_TABLE,
+  USERS_TABLE
 } from "../../constants/tables";
 import db from "../../lib/db";
 import helpers from "../../lib/handlerHelpers";
-import {
-  MUTABLE_PROFILE_ATTRIBUTES, TYPES
-} from "./constants";
+import { MUTABLE_PROFILE_ATTRIBUTES, TYPES } from "./constants";
+import type {
+  ViewableMap,
+  Profile,
+  ProfileUpdateData,
+  MemberData
+} from "./types";
 
-export async function createProfile(email, profileType) {
+export async function createProfile(email: string, profileType: string) {
   const [memberData, userData] = await Promise.all([
     db.getOne(email, MEMBERS2026_TABLE),
     db.getOne(email, USERS_TABLE)
@@ -46,7 +52,7 @@ export async function createProfile(email, profileType) {
     resumeURL: false,
     description: true,
     company: true,
-    position: true,
+    position: true
   };
 
   // Map registration data to profile schema
@@ -112,10 +118,14 @@ export async function createProfile(email, profileType) {
   return response;
 }
 
-export async function updateProfileFromMembershipData(profileID, memberData) {
-  const updateData = {};
+export async function updateProfileFromMembershipData(
+  profileID: string,
+  memberData: MemberData
+) {
+  const updateData: Partial<MemberData> = {};
 
-  ["pronouns", "major", "year"].forEach((key) => {
+  const keys: (keyof MemberData)[] = ["pronouns", "major", "year"];
+  keys.forEach((key) => {
     if (memberData[key] !== undefined && memberData[key] !== null) {
       updateData[key] = memberData[key];
     }
@@ -126,11 +136,11 @@ export async function updateProfileFromMembershipData(profileID, memberData) {
   }
 
   const updateExpressions = ["#updatedAt = :updatedAt"];
-  const expressionAttributeNames = {
+  const expressionAttributeNames: Record<string, string> = {
     "#updatedAt": "updatedAt",
     "#type": "type"
   };
-  const expressionAttributeValues = {
+  const expressionAttributeValues: Record<string, unknown> = {
     ":updatedAt": Date.now()
   };
 
@@ -155,9 +165,8 @@ export async function updateProfileFromMembershipData(profileID, memberData) {
   });
 }
 
-export function filterPublicProfileFields(profile) {
-  const publicFields = {
-  };
+export function filterPublicProfileFields(profile: Profile) {
+  const publicFields: Record<string, any> = {};
   const map = profile.viewableMap;
 
   for (const key in profile) {
@@ -179,18 +188,15 @@ export function filterPublicProfileFields(profile) {
  * @returns {Object} DynamoDB update parameters
  */
 export const buildProfileUpdateParams = (
-  compositeID,
-  updateData = {
-  },
-  viewableMap,
-  tableName,
-  timestamp
+  compositeID: string,
+  updateData: ProfileUpdateData = {},
+  viewableMap: ViewableMap | null,
+  tableName: string,
+  timestamp: number
 ) => {
   const updateExpressions = [];
-  const expressionAttributeValues = {
-  };
-  const expressionAttributeNames = {
-  };
+  const expressionAttributeValues: Record<string, any> = {};
+  const expressionAttributeNames: Record<string, any> = {};
 
   // Add timestamp to updates
   updateExpressions.push("#updatedAt = :updatedAt");
@@ -198,8 +204,8 @@ export const buildProfileUpdateParams = (
   expressionAttributeNames["#updatedAt"] = "updatedAt";
 
   // Process valid mutable attributes
-  Object.keys(updateData).forEach((key) => {
-    if (Object.hasOwn(MUTABLE_PROFILE_ATTRIBUTES, key)) {
+  (Object.keys(updateData) as (keyof ProfileUpdateData)[]).forEach((key) => {
+    if (Object.hasOwnProperty.call(MUTABLE_PROFILE_ATTRIBUTES, key)) {
       const attrName = `#${key}`;
       const attrValue = `:${key}`;
 
