@@ -765,9 +765,18 @@ export async function summarizeRecentMessages(opts) {
     return;
   }
 
-  const messages = thread_ts
+  const historyResult = thread_ts
     ? await fetchThreadMessages(channel_id, thread_ts)
     : await fetchRecentMessages(channel_id);
+  if (historyResult.error) {
+    await respondToSlack(
+      response_url,
+      getSlackHistoryErrorMessage(historyResult.error, Boolean(thread_ts))
+    );
+    return;
+  }
+
+  const messages = historyResult.messages;
   if (!messages || messages.length === 0) {
     await respondToSlack(
       response_url,
@@ -779,6 +788,13 @@ export async function summarizeRecentMessages(opts) {
   const cleaned = messages.filter(
     (m) => m.text && !m.text.includes(`<@${BOT_USER_ID}>`)
   );
+  if (cleaned.length === 0) {
+    await respondToSlack(
+      response_url,
+      "I found recent messages, but none of them had summarizable text after filtering bot messages."
+    );
+    return;
+  }
 
   const ordered = thread_ts ? cleaned : cleaned.reverse();
 
@@ -788,7 +804,7 @@ export async function summarizeRecentMessages(opts) {
 
   const summary = await getSummaryFromOpenAI(textBlob);
 
-  const reply = `📌 *Here’s your summary of the last ${messages.length} messages:*\n${summary}`;
+  const reply = `📌 *Here’s your summary of the last ${cleaned.length} messages:*\n${summary}`;
   if (thread_ts) {
     await slackApi("POST", "chat.postMessage", {
       channel: channel_id,
@@ -801,30 +817,76 @@ export async function summarizeRecentMessages(opts) {
 }
 
 export async function fetchRecentMessages(channel) {
+  return fetchSlackMessages(
+    `conversations.history?channel=${encodeURIComponent(channel)}&limit=100`,
+    "channel history"
+  );
+}
+
+function getSlackHistoryErrorMessage(error, isThread) {
+  const conversationType = isThread ? "thread" : "channel";
+  const code = error.error || "unknown_error";
+
+  if (code === "missing_scope") {
+    return `I can’t read this ${conversationType} yet. Add the relevant Slack history scope to the bot token, reinstall the app, then try again. For public channels use \`channels:history\`; for private channels use \`groups:history\`; for DMs use \`im:history\`; for group DMs use \`mpim:history\`. Slack error: \`${code}\`.`;
+  }
+
+  if (code === "not_in_channel") {
+    return `I can’t read this ${conversationType} because the bot is not in the channel. Invite the bot to the channel, then try again. Slack error: \`${code}\`.`;
+  }
+
+  if (code === "channel_not_found") {
+    return `I couldn’t find this ${conversationType}. Check that the bot is installed in this workspace and has access to the channel. Slack error: \`${code}\`.`;
+  }
+
+  if (["invalid_auth", "not_authed", "token_revoked"].includes(code)) {
+    return `Slack auth is misconfigured for summaries. Check \`SLACK_BOT_TOKEN\` and reinstall the Slack app if needed. Slack error: \`${code}\`.`;
+  }
+
+  if (code === "ratelimited") {
+    return "Slack rate-limited the summary request. Wait a minute and try again.";
+  }
+
+  return `I couldn’t read this ${conversationType} from Slack. Check the Lambda logs for details. Slack error: \`${code}\`.`;
+}
+
+async function fetchSlackMessages(endpoint, label) {
   const SLACK_BOT_TOKEN = getSlackBotToken();
   if (!SLACK_BOT_TOKEN) {
     console.error("SLACK_BOT_TOKEN is missing or invalid.");
-    return [];
+    return {
+      messages: [],
+      error: { error: "invalid_auth" }
+    };
   }
   try {
-    const res = await fetch(
-      `https://slack.com/api/conversations.history?channel=${channel}&limit=100`,
-      {
-        headers: {
-          Authorization: `Bearer ${SLACK_BOT_TOKEN}`
-        }
+    const res = await fetch(`https://slack.com/api/${endpoint}`, {
+      headers: {
+        Authorization: `Bearer ${SLACK_BOT_TOKEN}`
       }
-    );
+    });
     const data = await res.json();
     if (!data.ok) {
-      console.error("Failed to fetch messages:", data);
-      return [];
+      console.error(`Failed to fetch Slack ${label}:`, data);
+      return {
+        messages: [],
+        error: data
+      };
     }
-    // Filter out bot replies and empty text
-    return data.messages.filter((m) => m.text && !m.subtype);
+
+    return {
+      messages: data.messages.filter((m) => m.text && !m.subtype),
+      error: null
+    };
   } catch (err) {
-    console.error("Error fetching channel history:", err);
-    return [];
+    console.error(`Error fetching Slack ${label}:`, err);
+    return {
+      messages: [],
+      error: {
+        error: "request_failed",
+        message: err.message
+      }
+    };
   }
 }
 
@@ -878,6 +940,11 @@ export async function getSummaryFromOpenAI(text) {
 }
 
 async function respondToSlack(response_url, message) {
+  if (!response_url) {
+    console.error("Missing Slack response_url for message:", message);
+    return;
+  }
+
   await fetch(response_url, {
     method: "POST",
     headers: {
@@ -891,14 +958,12 @@ async function respondToSlack(response_url, message) {
 }
 
 export async function fetchThreadMessages(channel, thread_ts) {
-  const result = await slackApi(
-    "GET",
-    `conversations.replies?channel=${channel}&ts=${thread_ts}&limit=100`
+  return fetchSlackMessages(
+    `conversations.replies?channel=${encodeURIComponent(
+      channel
+    )}&ts=${encodeURIComponent(thread_ts)}&limit=100`,
+    "thread replies"
   );
-  if (!result || !result.messages) {
-    return [];
-  }
-  return result.messages.filter((m) => m.text && !m.subtype);
 }
 
 async function getGithubToken() {
