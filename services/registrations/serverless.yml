@@ -68,6 +68,16 @@ functions:
           path: registrations/
           method: post
           cors: true
+  registrationCreatePartnerRegistrations:
+    handler: handler.createPartnerRegistrations
+    events:
+      - http:
+          path: registrations/partners/batch
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   registrationPut:
     handler: handler.put
     events:
