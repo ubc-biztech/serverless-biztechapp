@@ -15,7 +15,8 @@ const testEntry = {
   lname: "dude",
   faculty: "Science",
   major: "biology",
-  email: email
+  email: email,
+  isMember: true
 };
 
 describe("userCreate", () => {
@@ -37,6 +38,7 @@ describe("userCreate", () => {
     const responseBody = JSON.parse(response.body);
     expect(responseBody.params.Item.id).to.equal(email);
     expect(responseBody.params.Item.admin).to.equal(false);
+    expect(responseBody.params.Item).not.to.have.property("isMember");
   });
 
   it("returns 406 when not given email", async () => {

@@ -5,6 +5,7 @@ import {
   ScanCommand,
   UpdateCommand
 } from "@aws-sdk/lib-dynamodb";
+import { MEMBERS_TABLE } from "../constants/tables.js";
 
 dotenv.config();
 
@@ -15,7 +16,7 @@ dotenv.config();
 
 const DEFAULT_REGION = "us-west-2";
 const DEFAULT_USERS_TABLE = "biztechUsers";
-const DEFAULT_MEMBERS_TABLE = "biztechMembers2026";
+const DEFAULT_MEMBERS_TABLE = MEMBERS_TABLE;
 
 function parseArgs(argv) {
   const args = {
@@ -66,7 +67,7 @@ Options:
   --dry-run                Force dry-run mode.
   --stage=dev|prod         Maps prod to ENVIRONMENT suffix "PROD"; dev/staging to "".
   --env-suffix=SUFFIX      Override table suffix directly.
-  --members-table=NAME     Source membership table base name. Default: biztechMembers2026.
+  --members-table=NAME     Source membership table base name. Defaults to MEMBERS_TABLE.
   --users-table=NAME       Destination users table base name. Default: biztechUsers.
   --limit=N                Process only N source member records.
 `);

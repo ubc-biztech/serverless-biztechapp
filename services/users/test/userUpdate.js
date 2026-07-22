@@ -81,4 +81,14 @@ describe("userUpdate", () => {
     });
     expect(response.statusCode).to.equal(200);
   });
+
+  it("rejects attempts to update legacy membership status", async () => {
+    const response = await wrapped.run({
+      body: JSON.stringify({ isMember: true }),
+      pathParameters: {
+        email
+      }
+    });
+    expect(response.statusCode).to.equal(406);
+  });
 });

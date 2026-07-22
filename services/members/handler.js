@@ -3,7 +3,7 @@ import db from "../../lib/db";
 import { isEmpty, isValidEmail } from "../../lib/utils";
 import {
   USERS_TABLE,
-  MEMBERS2026_TABLE
+  MEMBERS_TABLE
 } from "../../constants/tables";
 import {
   createProfile,
@@ -23,6 +23,11 @@ const normalizeProfileType = (profileType, email) =>
     ? profileType
     : defaultProfileTypeForEmail(email);
 
+const normalizeTopics = (topics) =>
+  (Array.isArray(topics) ? topics : (topics || "").split(","))
+    .map((topic) => topic.trim())
+    .filter(Boolean);
+
 export const create = async (event, ctx, callback) => {
   const userID = event.requestContext.authorizer.claims.email.toLowerCase();
   if (!userID.endsWith("@ubcbiztech.com"))
@@ -39,6 +44,7 @@ export const create = async (event, ctx, callback) => {
 
   const memberParams = {
     id: email,
+    cardCount: data.cardCount ?? 0,
     education: data.education,
     firstName: data.first_name,
     lastName: data.last_name,
@@ -49,7 +55,7 @@ export const create = async (event, ctx, callback) => {
     major: data.major,
     prevMember: data.prev_member,
     international: data.international,
-    topics: data.topics,
+    topics: normalizeTopics(data.topics),
     heardFrom: data.heard_from,
     heardFromSpecify: data.heardFromSpecify,
     diet: data.diet,
@@ -62,7 +68,7 @@ export const create = async (event, ctx, callback) => {
   };
 
   try {
-    await db.put(memberParams, MEMBERS2026_TABLE, true);
+    await db.put(memberParams, MEMBERS_TABLE, true);
     const response = helpers.createResponse(201, {
       message: "Created!",
       params: memberParams
@@ -133,7 +139,7 @@ export const get = async (event, ctx, callback) => {
     const email = event.pathParameters.id;
 
     if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
-    const member = await db.getOne(email, MEMBERS2026_TABLE);
+    const member = await db.getOne(email, MEMBERS_TABLE);
     if (isEmpty(member)) throw helpers.notFoundResponse("member", email);
 
     const response = helpers.createResponse(200, member);
@@ -152,7 +158,7 @@ export const getAll = async (event, ctx, callback) => {
         message: "unauthorized for this action"
       });
 
-    const members = await db.scan(MEMBERS2026_TABLE);
+    const members = await db.scan(MEMBERS_TABLE);
 
     let response = {};
     if (members !== null) response = helpers.createResponse(200, members);
@@ -178,13 +184,13 @@ export const update = async (event, ctx, callback) => {
     const email = event.pathParameters.id;
     if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
 
-    const existingMember = await db.getOne(email, MEMBERS2026_TABLE);
+    const existingMember = await db.getOne(email, MEMBERS_TABLE);
     // eslint-disable-next-line
     if (isEmpty(existingMember))
       throw helpers.notFoundResponse("member", email);
 
     const data = JSON.parse(event.body);
-    const res = await db.updateDB(email, data, MEMBERS2026_TABLE);
+    const res = await db.updateDB(email, data, MEMBERS_TABLE);
     const response = helpers.createResponse(200, {
       message: `Updated member with email ${email}!`,
       response: res
@@ -210,11 +216,11 @@ export const del = async (event, ctx, callback) => {
 
     const email = event.pathParameters.id;
     if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
-    const existingMember = await db.getOne(email, MEMBERS2026_TABLE);
+    const existingMember = await db.getOne(email, MEMBERS_TABLE);
     if (isEmpty(existingMember))
       throw helpers.notFoundResponse("Member", email);
 
-    const res = await db.deleteOne(email, MEMBERS2026_TABLE);
+    const res = await db.deleteOne(email, MEMBERS_TABLE);
     const response = helpers.createResponse(200, {
       message: "Member deleted!",
       response: res
@@ -241,7 +247,6 @@ export const del = async (event, ctx, callback) => {
 //   dietaryRestrictions: string,
 //   referral: string,
 //   topics: string[],
-//   isMember: true,
 //   adminCreated: true,
 // };
 
@@ -279,7 +284,6 @@ export const grantMembership = async (event, ctx, callback) => {
       year: userYear,
       gender: data.pronouns,
       diet: data.dietaryRestrictions,
-      isMember: true,
       admin: isBiztechAdmin,
       createdAt: timestamp,
       updatedAt: timestamp
@@ -291,7 +295,7 @@ export const grantMembership = async (event, ctx, callback) => {
       await db.updateDB(email, userParams, USERS_TABLE);
     }
 
-    const member = await db.getOne(email, MEMBERS2026_TABLE);
+    const member = await db.getOne(email, MEMBERS_TABLE);
     let memberDataForProfile = member;
 
     if (isEmpty(member)) {
@@ -308,7 +312,7 @@ export const grantMembership = async (event, ctx, callback) => {
         major: data.major,
         prevMember: Boolean(data.previousMember),
         international: Boolean(data.internationalStudent),
-        topics: data.topics,
+        topics: normalizeTopics(data.topics),
         diet: data.dietaryRestrictions,
         heardFrom: data.referral,
         university: data.education,
@@ -319,7 +323,7 @@ export const grantMembership = async (event, ctx, callback) => {
         createdAt: timestamp,
         updatedAt: timestamp
       };
-      await db.put(memberParams, MEMBERS2026_TABLE, true);
+      await db.put(memberParams, MEMBERS_TABLE, true);
       memberDataForProfile = memberParams;
     }
 

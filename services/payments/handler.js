@@ -7,7 +7,7 @@ import { CognitoIdentityProvider } from "@aws-sdk/client-cognito-identity-provid
 
 import {
   USERS_TABLE,
-  MEMBERS2026_TABLE,
+  MEMBERS_TABLE,
   EVENTS_TABLE,
   USER_REGISTRATIONS_TABLE
 } from "../../constants/tables";
@@ -35,10 +35,31 @@ const cancelSecret =
     : process.env.STRIPE_DEV_CANCEL;
 
 const parseTopics = (topics) =>
-  Array.isArray(topics) ? topics : (topics || "").split(",").filter(Boolean);
+  (Array.isArray(topics) ? topics : (topics || "").split(","))
+    .map((topic) => topic.trim())
+    .filter(Boolean);
+
+const parseBoolean = (value) =>
+  value === true || ["true", "yes", "1"].includes(String(value).toLowerCase());
 
 const publicProfileType = (email) =>
   email.endsWith("@ubcbiztech.com") ? PROFILE_TYPES.EXEC : PROFILE_TYPES.ATTENDEE;
+
+const putIfMissing = async (item, table) => {
+  const existing = await db.getOne(item.id, table);
+  if (!isEmpty(existing)) return existing;
+
+  try {
+    await db.put(item, table, true);
+    return item;
+  } catch (error) {
+    // A concurrent/retried Stripe webhook may have created it after the read.
+    if (error.type === "ConditionalCheckFailedException") {
+      return db.getOne(item.id, table);
+    }
+    throw error;
+  }
+};
 
 // Creates the member here
 export const webhook = async (event, ctx, callback) => {
@@ -66,7 +87,6 @@ export const webhook = async (event, ctx, callback) => {
       year: data.year,
       gender: data.pronouns,
       diet: data.diet,
-      isMember: true,
       createdAt: timestamp,
       updatedAt: timestamp,
       admin: isBiztechAdmin
@@ -82,56 +102,34 @@ export const webhook = async (event, ctx, callback) => {
       faculty: data.faculty,
       year: data.year,
       major: data.major,
-      prevMember: data.prev_member,
-      international: data.international,
+      prevMember: parseBoolean(data.prev_member),
+      international: parseBoolean(data.international),
       topics: parseTopics(data.topics),
       diet: data.diet,
-      heardFrom: data.heard_from,
+      heardFrom: data.heard_from || data.referral,
       heardFromSpecify: data.heardFromSpecify,
-      university: data.university,
+      university: data.university || data.education,
       highSchool: data.high_school,
       admin: isBiztechAdmin,
-      profileType: PROFILE_TYPES.ATTENDEE,
+      cardCount: 0,
+      profileType: publicProfileType(email),
       createdAt: timestamp,
       updatedAt: timestamp
     };
 
     try {
-      await db.put(userParams, USERS_TABLE, true);
-    } catch (error) {
-      let response;
-      if (error.type === "ConditionalCheckFailedException") {
-        response = helpers.createResponse(
-          409,
-          "User could not be created because email already exists"
-        );
-      } else {
-        response = helpers.createResponse(
-          502,
-          "Internal Server Error occurred"
-        );
-      }
-      return response;
-    }
+      await putIfMissing(userParams, USERS_TABLE);
+      await putIfMissing(memberParams, MEMBERS_TABLE);
 
-    try {
-      await db.put(memberParams, MEMBERS2026_TABLE, true);
-      await createProfile(email, publicProfileType(email));
-    } catch (error) {
-      let response;
-      console.log(error);
-      if (error.type === "ConditionalCheckFailedException") {
-        response = helpers.createResponse(
-          409,
-          "Member could not be created because email already exists"
-        );
+      const user = await db.getOne(email, USERS_TABLE);
+      if (user?.profileID) {
+        await updateProfileFromMembershipData(user.profileID, memberParams);
       } else {
-        response = helpers.createResponse(
-          502,
-          "Internal Server Error occurred"
-        );
+        await createProfile(email, publicProfileType(email));
       }
-      return response;
+    } catch (error) {
+      console.log(error);
+      return helpers.createResponse(502, "Internal Server Error occurred");
     }
 
     const response = helpers.createResponse(201, {
@@ -164,9 +162,15 @@ export const webhook = async (event, ctx, callback) => {
       Password: data.password
     };
 
-    await cognito.signUp(cognitoParams);
+    try {
+      await cognito.signUp(cognitoParams);
+    } catch (error) {
+      // Stripe retries should resume provisioning if Cognito was already
+      // created by an earlier delivery that failed later in the flow.
+      if (error.name !== "UsernameExistsException") throw error;
+    }
 
-    await OAuthMemberSignup({
+    return OAuthMemberSignup({
       ...data,
       email: normalizedEmail
     });
@@ -187,7 +191,7 @@ export const webhook = async (event, ctx, callback) => {
     }
 
     const userParams = {
-      email: email,
+      id: email,
       education: data.education,
       studentId: data.student_number,
       fname: data.fname,
@@ -197,7 +201,6 @@ export const webhook = async (event, ctx, callback) => {
       year: data.year,
       gender: data.pronouns,
       diet: data.diet,
-      isMember: true,
       admin: isBiztechAdmin
     };
 
@@ -211,26 +214,32 @@ export const webhook = async (event, ctx, callback) => {
       faculty: data.faculty,
       year: data.year,
       major: data.major,
-      prevMember: data.prev_member,
-      international: data.international,
+      prevMember: parseBoolean(data.prev_member),
+      international: parseBoolean(data.international),
       topics: parseTopics(data.topics),
       diet: data.diet,
-      heardFrom: data.heard_from,
+      heardFrom: data.heard_from || data.referral,
       heardFromSpecify: data.heardFromSpecify,
-      university: data.university,
+      university: data.university || data.education,
       highSchool: data.high_school,
       admin: isBiztechAdmin,
-      profileType: PROFILE_TYPES.ATTENDEE,
+      cardCount: 0,
+      profileType: publicProfileType(email),
       createdAt: timestamp,
       updatedAt: timestamp
     };
 
-    // for members, we update the user table here
-    // but if we change the bt web payment body for oauth users from usermember to memebr,
-    // we will neesd a check here to see if user is first time oauth
-    // if yes, we want a db.post instead of db.update
-    await db.updateDB(email, userParams, USERS_TABLE);
-    await db.put(memberParams, MEMBERS2026_TABLE, true);
+    const existingUser = await db.getOne(email, USERS_TABLE);
+    if (isEmpty(existingUser)) {
+      await putIfMissing({
+        ...userParams,
+        createdAt: timestamp,
+        updatedAt: timestamp
+      }, USERS_TABLE);
+    } else {
+      await db.updateDB(email, userParams, USERS_TABLE);
+    }
+    await putIfMissing(memberParams, MEMBERS_TABLE);
 
     const user = await db.getOne(email, USERS_TABLE);
     if (user?.profileID) {
@@ -314,23 +323,23 @@ export const webhook = async (event, ctx, callback) => {
 
     switch (data.paymentType) {
     case "UserMember":
-      await userMemberSignup(data);
-      break;
+      return userMemberSignup(data);
     case "OAuthMember":
-      await OAuthMemberSignup(data);
-      break;
+      return OAuthMemberSignup(data);
     case "Member":
-      await memberSignup(data);
-      break;
+      return memberSignup(data);
     case "Event":
-      await eventRegistration(data);
-      break;
+      return eventRegistration(data);
     default:
       return helpers.createResponse(400, {
         message: "Webhook Error: unidentified payment type"
       });
     }
   }
+
+  return helpers.createResponse(200, {
+    message: `Ignored Stripe event type ${eventData.type}`
+  });
 };
 
 export const payment = async (event, ctx, callback) => {
@@ -345,16 +354,16 @@ export const payment = async (event, ctx, callback) => {
     let unit_amount;
     if (isEvent) {
       // determine price for event based on Biztech membership status
-      const [event, user] = await Promise.all([
+      const [event, member] = await Promise.all([
         db.getOne(data.eventID, EVENTS_TABLE, { year: Number(data.year) }),
-        db.getOne(data.email, USERS_TABLE)
+        db.getOne(data.email, MEMBERS_TABLE)
       ]);
 
       if (isEmpty(event)) {
         throw helpers.notFoundResponse("event", data.eventID);
       }
 
-      const isMember = !isEmpty(user) && user.isMember;
+      const isMember = !isEmpty(member);
       const samePricing = event.pricing.members === event.pricing.nonMembers;
       unit_amount =
           (isMember ? event.pricing.members : event.pricing.nonMembers) * 100;

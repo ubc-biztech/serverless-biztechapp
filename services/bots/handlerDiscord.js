@@ -5,7 +5,7 @@ import {
   verifyRequestSignature,
   applicationCommandRouter
 } from "./helpersDiscord";
-import { MEMBERS2026_TABLE } from "../../constants/tables";
+import { MEMBERS_TABLE } from "../../constants/tables";
 import {
   assignUserRoles,
   removeUserRoles,
@@ -89,7 +89,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
 
   try {
     console.log(`Attempting to map Discord ID ${discordId} to email ${email}`);
-    const exists = await db.getOne(email, MEMBERS2026_TABLE);
+    const exists = await db.getOne(email, MEMBERS_TABLE);
 
     if (!exists) {
       return handlerHelpers.createResponse(404, {
@@ -105,7 +105,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
     }
 
     // update with new field
-    await db.updateDB(email, { discordId }, MEMBERS2026_TABLE);
+    await db.updateDB(email, { discordId }, MEMBERS_TABLE);
 
     // assign verfied role based on membership tier
     try {

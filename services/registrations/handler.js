@@ -6,8 +6,8 @@ import db from "../../lib/db";
 import { isEmpty, isValidEmail } from "../../lib/utils";
 import {
   EVENTS_TABLE,
-  USER_REGISTRATIONS_TABLE,
-  USERS_TABLE
+  MEMBERS_TABLE,
+  USER_REGISTRATIONS_TABLE
 } from "../../constants/tables";
 import SESEmailService from "./EmailService/SESEmailService";
 import awsConfig from "../../lib/config";
@@ -458,8 +458,8 @@ export const put = async (event, ctx, callback) => {
     const isAccepted = data.registrationStatus === "accepted";
 
     if (isAccepted) {
-      const user = await db.getOne(email, USERS_TABLE);
-      const isMember = user?.isMember;
+      const member = await db.getOne(email, MEMBERS_TABLE);
+      const isMember = !isEmpty(member);
 
       // for type safety, but event pricing not existing for nonMember
       // with a nonMember registration is an illegal state
