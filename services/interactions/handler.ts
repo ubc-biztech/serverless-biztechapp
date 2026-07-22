@@ -84,7 +84,9 @@ export const postInteraction: Handler = async (event, ctx, callback) => {
         }
       });
     } catch (error) {
-      throw new Error("Invalid request body");
+      throw handlerHelpers.createResponse(400, {
+        message: errorMessage(error)
+      });
     }
 
     const timestamp = new Date().getTime();
@@ -114,7 +116,13 @@ export const checkConnection: Handler = async (event, ctx, callback) => {
       throw helpers.missingIdQueryResponse("profile ID in request path");
 
     const connectionID = event.pathParameters.id;
-    const userID = event.requestContext.authorizer?.claims?.email.toLowerCase();
+    const userID = event.requestContext.authorizer?.claims?.email?.toLowerCase();
+
+    if (!userID) {
+      return helpers.createResponse(401, {
+        message: "Authenticated user email missing"
+      });
+    }
     const userData = await db.getOne(userID, USERS_TABLE);
 
     if (!userData?.profileID)
@@ -152,7 +160,12 @@ export const checkConnection: Handler = async (event, ctx, callback) => {
 
 export const getAllConnections: Handler = async (event, ctx, callback) => {
   try {
-    const userID = event.requestContext.authorizer?.claims?.email.toLowerCase();
+    const userID = event.requestContext.authorizer?.claims?.email?.toLowerCase();
+    if (!userID) {
+      return helpers.createResponse(401, {
+        message: "Authenticated user email missing"
+      });
+    }
 
     const userData = await db.getOne(userID, USERS_TABLE);
     const { profileID } = userData || {};

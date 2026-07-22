@@ -40,7 +40,7 @@ const errorMessage = (error: unknown): string =>
 
 export const create: Handler = async (event, ctx, callback) => {
   try {
-    const email = event.requestContext.authorizer?.claims?.email.toLowerCase();
+    const email = event.requestContext.authorizer?.claims?.email?.toLowerCase();
     if (!email) {
       return helpers.createResponse(401, {
         message: "Authenticated user email missing."
@@ -186,7 +186,12 @@ export const createPartialPartnerProfile: Handler = async (
 export const updatePublicProfile: Handler = async (event, ctx, callback) => {
   console.log("THOMAS CHANGES UPDATING HERE");
   try {
-    const userID = event.requestContext.authorizer?.claims?.email.toLowerCase();
+    const userID = event.requestContext.authorizer?.claims?.email?.toLowerCase();
+    if (!userID) {
+      return helpers.createResponse(401, {
+        message: "Authenticated user email missing"
+      });
+    }
     const body = JSON.parse(event.body as string);
     helpers.checkPayloadProps(body, {
       viewableMap: {
@@ -303,7 +308,12 @@ export const getPublicProfile: Handler = async (event, ctx, callback) => {
 
 export const getUserProfile: Handler = async (event, ctx, callback) => {
   try {
-    const userID = event.requestContext.authorizer?.claims?.email.toLowerCase();
+    const userID = event.requestContext.authorizer?.claims?.email?.toLowerCase();
+    if (!userID) {
+      return helpers.createResponse(401, {
+        message: "Authenticated user email missing"
+      });
+    }
 
     const user = await db.getOne(userID, USERS_TABLE);
     const { profileID = null } = user || {};

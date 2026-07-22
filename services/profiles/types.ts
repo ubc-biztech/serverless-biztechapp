@@ -34,7 +34,7 @@ export type ProfileUpdateData = {
   lname?: string;
   pronouns?: string;
   major?: string;
-  year?: number;
+  year?: string;
   hobby1?: string;
   hobby2?: string;
   funQuestion1?: string;
