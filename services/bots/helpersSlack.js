@@ -4,9 +4,12 @@ import {
   installationID,
   reminderChannelID,
   btFields,
-  btDevs
+  btDevs,
+  scoreCommandAdmins
 } from "./constants.js";
-import { docsBaseUrl, docsChunks } from "./docsIndex.js";
+import { ensureDocsIndexLoaded } from "./docsIndexStore.js";
+import db from "../../lib/db.js";
+import { STORY_POINTS_TABLE } from "../../constants/tables.js";
 import jwt from "jsonwebtoken";
 import fetch from "node-fetch";
 
@@ -68,29 +71,59 @@ function tokenize(text = "") {
   );
 }
 
-const preparedDocsChunks = docsChunks.map((chunk) => ({
-  ...chunk,
-  titleSearch: normalizeForSearch(chunk.title),
-  sectionSearch: normalizeForSearch(chunk.section)
-}));
+const docsSearchCache = {
+  cacheKey: "",
+  preparedDocsChunks: [],
+  tokenIdf: new Map()
+};
 
-const tokenDocumentFrequency = new Map();
-for (const chunk of preparedDocsChunks) {
-  const uniqueTokens = new Set(tokenize(chunk.searchText));
-  for (const token of uniqueTokens) {
-    tokenDocumentFrequency.set(
-      token,
-      (tokenDocumentFrequency.get(token) || 0) + 1
-    );
+function buildDocsSearchArtifacts(docsChunks = []) {
+  const preparedDocsChunks = docsChunks.map((chunk) => ({
+    ...chunk,
+    titleSearch: normalizeForSearch(chunk.title),
+    sectionSearch: normalizeForSearch(chunk.section)
+  }));
+
+  const tokenDocumentFrequency = new Map();
+  for (const chunk of preparedDocsChunks) {
+    const uniqueTokens = new Set(tokenize(chunk.searchText));
+    for (const token of uniqueTokens) {
+      tokenDocumentFrequency.set(
+        token,
+        (tokenDocumentFrequency.get(token) || 0) + 1
+      );
+    }
   }
+
+  const tokenIdf = new Map(
+    [...tokenDocumentFrequency.entries()].map(([token, df]) => [
+      token,
+      Math.log((1 + preparedDocsChunks.length) / (1 + df)) + 1
+    ])
+  );
+
+  return {
+    preparedDocsChunks,
+    tokenIdf
+  };
 }
 
-const tokenIdf = new Map(
-  [...tokenDocumentFrequency.entries()].map(([token, df]) => [
-    token,
-    Math.log((1 + preparedDocsChunks.length) / (1 + df)) + 1
-  ])
-);
+function getDocsSearchArtifacts(docsState) {
+  const cacheKey = `${docsState.docsIndexGeneratedAt}:${docsState.docsChunkCount}:${docsState.source}:${docsState.etag || ""}`;
+  if (docsSearchCache.cacheKey !== cacheKey) {
+    const { preparedDocsChunks, tokenIdf } = buildDocsSearchArtifacts(
+      docsState.docsChunks
+    );
+    docsSearchCache.cacheKey = cacheKey;
+    docsSearchCache.preparedDocsChunks = preparedDocsChunks;
+    docsSearchCache.tokenIdf = tokenIdf;
+  }
+
+  return {
+    preparedDocsChunks: docsSearchCache.preparedDocsChunks,
+    tokenIdf: docsSearchCache.tokenIdf
+  };
+}
 
 function queryBigrams(tokens) {
   const bigrams = [];
@@ -120,7 +153,13 @@ function routeIntentBoost(route, tokenSet) {
   return boost;
 }
 
-function scoreChunkForQuestion(chunk, queryNorm, queryTokens, bigrams) {
+function scoreChunkForQuestion(
+  chunk,
+  queryNorm,
+  queryTokens,
+  bigrams,
+  tokenIdf
+) {
   const queryPhrase = queryNorm.trim();
   const searchable = chunk.searchText || normalizeForSearch(chunk.content);
   const tokenSet = new Set(queryTokens);
@@ -154,17 +193,28 @@ function scoreChunkForQuestion(chunk, queryNorm, queryTokens, bigrams) {
   return score;
 }
 
-function retrieveTopDocsChunks(question, limit = DOCS_MAX_CONTEXT_SOURCES) {
+function retrieveTopDocsChunks(
+  question,
+  docsState,
+  limit = DOCS_MAX_CONTEXT_SOURCES
+) {
   const queryNorm = normalizeForSearch(question);
   const queryTokens = tokenize(question);
   const bigrams = queryBigrams(queryTokens);
+  const { preparedDocsChunks, tokenIdf } = getDocsSearchArtifacts(docsState);
 
   if (!queryNorm.trim() && queryTokens.length === 0) return [];
 
   const scored = preparedDocsChunks
     .map((chunk) => ({
       ...chunk,
-      score: scoreChunkForQuestion(chunk, queryNorm, queryTokens, bigrams)
+      score: scoreChunkForQuestion(
+        chunk,
+        queryNorm,
+        queryTokens,
+        bigrams,
+        tokenIdf
+      )
     }))
     .filter((chunk) => chunk.score > 0)
     .sort((a, b) => {
@@ -209,7 +259,7 @@ function extractCitationIndexes(text, maxIndex) {
   return [...new Set(indexes)];
 }
 
-function buildNoConfidenceReply(sources = []) {
+function buildNoConfidenceReply(docsBaseUrl, sources = []) {
   const suggested = sources
     .slice(0, 3)
     .map((source) => `• <${source.url}|${source.title}>`)
@@ -307,16 +357,16 @@ async function getDocsAnswerFromOpenAI(question, sources) {
   }
 }
 
-function buildDocsReply(answer, sources) {
-  if (!answer) return buildNoConfidenceReply(sources);
+function buildDocsReply(docsBaseUrl, answer, sources) {
+  if (!answer) return buildNoConfidenceReply(docsBaseUrl, sources);
 
   if (answer.trim() === DOCS_REPLY_FALLBACK) {
-    return buildNoConfidenceReply(sources);
+    return buildNoConfidenceReply(docsBaseUrl, sources);
   }
 
   const citedIndexes = extractCitationIndexes(answer, sources.length);
   if (!citedIndexes.length) {
-    return buildNoConfidenceReply(sources);
+    return buildNoConfidenceReply(docsBaseUrl, sources);
   }
 
   const sourceLines = citedIndexes
@@ -330,7 +380,11 @@ function buildDocsReply(answer, sources) {
 }
 
 export async function slackApi(method, endpoint, body) {
-  const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
+  const SLACK_BOT_TOKEN = getSlackBotToken();
+  if (!SLACK_BOT_TOKEN) {
+    console.error("SLACK_BOT_TOKEN is missing or invalid.");
+    return;
+  }
   try {
     const res = await fetch(`https://slack.com/api/${endpoint}`, {
       method,
@@ -348,6 +402,190 @@ export async function slackApi(method, endpoint, body) {
     return data;
   } catch (error) {
     console.error("Failed to call Slack API:", error);
+  }
+}
+
+function getSlackBotToken() {
+  const cleaned = String(process.env.SLACK_BOT_TOKEN || "")
+    .replace(/^["']+|["']+$/g, "")
+    .replace(/\s+/g, "")
+    .trim();
+
+  if (!cleaned) return "";
+  // Extract a valid Slack token and ignore accidental extra text/characters.
+  const tokenMatch = cleaned.match(/xox[baprs]-[A-Za-z0-9-]+/);
+  const token = tokenMatch ? tokenMatch[0] : "";
+  if (!token) return "";
+  if (/[^\x20-\x7E]/.test(token)) return "";
+  return token;
+}
+
+function normalizeSlackUsername(username = "") {
+  return String(username).trim().toLowerCase().replace(/^@/, "");
+}
+
+async function lookupSlackUsernameById(userId) {
+  const userInfo = await slackApi("GET", `users.info?user=${userId}`);
+  if (!userInfo || !userInfo.user) {
+    return null;
+  }
+
+  const profile = userInfo.user.profile || {};
+  const candidates = [
+    userInfo.user.name,
+    profile.display_name,
+    profile.display_name_normalized,
+    profile.real_name
+  ];
+
+  for (const candidate of candidates) {
+    const normalized = normalizeSlackUsername(candidate);
+    if (normalized) return normalized;
+  }
+
+  return null;
+}
+
+async function resolveCommandUsername(rawValue) {
+  const value = String(rawValue || "").trim();
+  if (!value) return null;
+
+  const rawUserId = value.match(/^[A-Z0-9]{6,}$/i);
+  if (rawUserId) {
+    const lookedUp = await lookupSlackUsernameById(rawUserId[0]);
+    return lookedUp || normalizeSlackUsername(rawUserId[0]);
+  }
+
+  const mentionWithName = value.match(/^<@([A-Z0-9]+)\|([^>]+)>$/i);
+  if (mentionWithName) {
+    return normalizeSlackUsername(mentionWithName[2]);
+  }
+
+  const mentionWithoutName = value.match(/^<@([A-Z0-9]+)>$/i);
+  if (mentionWithoutName) {
+    const lookedUp = await lookupSlackUsernameById(mentionWithoutName[1]);
+    return lookedUp || normalizeSlackUsername(mentionWithoutName[1]);
+  }
+
+  return normalizeSlackUsername(value);
+}
+
+function parseScoreCommandText(text = "") {
+  const trimmed = String(text || "").trim();
+  if (!trimmed) return { error: "Usage: `/score @username <points>`" };
+
+  const parts = trimmed.split(/\s+/);
+  if (parts.length < 2) {
+    return { error: "Usage: `/score @username <points>`" };
+  }
+
+  const deltaRaw = parts[1];
+  if (!/^-?\d+$/.test(deltaRaw)) {
+    return { error: "Points must be an integer. Example: `/score @thomas 10`" };
+  }
+
+  return {
+    targetRaw: parts[0],
+    delta: Number.parseInt(deltaRaw, 10)
+  };
+}
+
+async function addScoreForUser(username, delta) {
+  const normalizedUser = normalizeSlackUsername(username);
+  const now = Date.now();
+
+  const result = await db.updateDBCustom({
+    Key: { user: normalizedUser },
+    TableName: STORY_POINTS_TABLE + (process.env.ENVIRONMENT || ""),
+    UpdateExpression:
+      "SET score = if_not_exists(score, :zero) + :delta, createdAt = if_not_exists(createdAt, :createdAt), updatedAt = :updatedAt",
+    ExpressionAttributeValues: {
+      ":zero": 0,
+      ":delta": delta,
+      ":createdAt": now,
+      ":updatedAt": now
+    },
+    ReturnValues: "ALL_NEW"
+  });
+
+  return result.Attributes;
+}
+
+export async function runScoreCommand(body) {
+  const caller = await resolveCommandUsername(body.user_name || body.user_id);
+  if (!caller || !scoreCommandAdmins.includes(caller)) {
+    return {
+      response_type: "ephemeral",
+      text: "You are not allowed to use `/score`."
+    };
+  }
+
+  const parsed = parseScoreCommandText(body.text);
+  if (parsed.error) {
+    return {
+      response_type: "ephemeral",
+      text: parsed.error
+    };
+  }
+
+  const target = await resolveCommandUsername(parsed.targetRaw);
+  if (!target) {
+    return {
+      response_type: "ephemeral",
+      text: "Could not parse username. Example: `/score @thomas 10`"
+    };
+  }
+
+  try {
+    const updated = await addScoreForUser(target, parsed.delta);
+    const newScore = Number(updated.score || 0);
+    const changePrefix = parsed.delta >= 0 ? "+" : "";
+
+    return {
+      response_type: "in_channel",
+      text: `✅ Updated @${target}: ${newScore} points (${changePrefix}${parsed.delta})`
+    };
+  } catch (error) {
+    console.error("Failed running /score:", error);
+    return {
+      response_type: "ephemeral",
+      text: "Could not update score right now. Please try again."
+    };
+  }
+}
+
+export async function runLeaderboardCommand() {
+  try {
+    const rows = await db.scan(STORY_POINTS_TABLE);
+    const leaderboard = (rows || [])
+      .map((row) => ({
+        username: normalizeSlackUsername(row.user),
+        score: Number(row.score || 0)
+      }))
+      .filter((row) => row.username)
+      .sort((a, b) => b.score - a.score || a.username.localeCompare(b.username));
+
+    if (!leaderboard.length) {
+      return {
+        response_type: "in_channel",
+        text: "🏆 *Dev story point leaderboards!*\nNo scores yet."
+      };
+    }
+
+    const lines = leaderboard.map(
+      (entry, index) => `${index + 1}. @${entry.username} - ${entry.score}`
+    );
+
+    return {
+      response_type: "in_channel",
+      text: `🏆 *Dev story point leaderboards!*\n${lines.join("\n")}`
+    };
+  } catch (error) {
+    console.error("Failed running /leaderboard:", error);
+    return {
+      response_type: "ephemeral",
+      text: "Could not load leaderboard right now. Please try again."
+    };
   }
 }
 
@@ -469,12 +707,16 @@ export async function answerDocsQuestion(opts) {
     return;
   }
 
-  const relevantSources = retrieveTopDocsChunks(cleanQuestion);
+  const docsState = await ensureDocsIndexLoaded();
+  const relevantSources = retrieveTopDocsChunks(cleanQuestion, docsState);
   if (
     !relevantSources.length ||
     relevantSources[0].score < DOCS_MIN_TOP_SCORE
   ) {
-    const lowConfidenceReply = buildNoConfidenceReply(relevantSources);
+    const lowConfidenceReply = buildNoConfidenceReply(
+      docsState.docsBaseUrl,
+      relevantSources
+    );
     if (thread_ts) {
       await slackApi("POST", "chat.postMessage", {
         channel: channel_id,
@@ -498,7 +740,7 @@ export async function answerDocsQuestion(opts) {
 
   const reply = error
     ? `${DOCS_REPLY_FALLBACK}\n\nThe docs assistant is temporarily unavailable.`
-    : buildDocsReply(answer, relevantSources);
+    : buildDocsReply(docsState.docsBaseUrl, answer, relevantSources);
 
   if (thread_ts) {
     await slackApi("POST", "chat.postMessage", {
@@ -514,10 +756,27 @@ export async function answerDocsQuestion(opts) {
 export async function summarizeRecentMessages(opts) {
   const { channel_id, thread_ts, response_url } = opts;
   const BOT_USER_ID = process.env.SLACK_BOT_USER_ID;
+  const SLACK_BOT_TOKEN = getSlackBotToken();
+  if (!SLACK_BOT_TOKEN) {
+    await respondToSlack(
+      response_url,
+      "Slack bot token is misconfigured. Ask an admin to set a valid Bot User OAuth token (`xoxb-...`)."
+    );
+    return;
+  }
 
-  const messages = thread_ts
+  const historyResult = thread_ts
     ? await fetchThreadMessages(channel_id, thread_ts)
     : await fetchRecentMessages(channel_id);
+  if (historyResult.error) {
+    await respondToSlack(
+      response_url,
+      getSlackHistoryErrorMessage(historyResult.error, Boolean(thread_ts))
+    );
+    return;
+  }
+
+  const messages = historyResult.messages;
   if (!messages || messages.length === 0) {
     await respondToSlack(
       response_url,
@@ -529,6 +788,13 @@ export async function summarizeRecentMessages(opts) {
   const cleaned = messages.filter(
     (m) => m.text && !m.text.includes(`<@${BOT_USER_ID}>`)
   );
+  if (cleaned.length === 0) {
+    await respondToSlack(
+      response_url,
+      "I found recent messages, but none of them had summarizable text after filtering bot messages."
+    );
+    return;
+  }
 
   const ordered = thread_ts ? cleaned : cleaned.reverse();
 
@@ -538,7 +804,7 @@ export async function summarizeRecentMessages(opts) {
 
   const summary = await getSummaryFromOpenAI(textBlob);
 
-  const reply = `📌 *Here’s your summary of the last ${messages.length} messages:*\n${summary}`;
+  const reply = `📌 *Here’s your summary of the last ${cleaned.length} messages:*\n${summary}`;
   if (thread_ts) {
     await slackApi("POST", "chat.postMessage", {
       channel: channel_id,
@@ -551,26 +817,76 @@ export async function summarizeRecentMessages(opts) {
 }
 
 export async function fetchRecentMessages(channel) {
-  const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
+  return fetchSlackMessages(
+    `conversations.history?channel=${encodeURIComponent(channel)}&limit=100`,
+    "channel history"
+  );
+}
+
+function getSlackHistoryErrorMessage(error, isThread) {
+  const conversationType = isThread ? "thread" : "channel";
+  const code = error.error || "unknown_error";
+
+  if (code === "missing_scope") {
+    return `I can’t read this ${conversationType} yet. Add the relevant Slack history scope to the bot token, reinstall the app, then try again. For public channels use \`channels:history\`; for private channels use \`groups:history\`; for DMs use \`im:history\`; for group DMs use \`mpim:history\`. Slack error: \`${code}\`.`;
+  }
+
+  if (code === "not_in_channel") {
+    return `I can’t read this ${conversationType} because the bot is not in the channel. Invite the bot to the channel, then try again. Slack error: \`${code}\`.`;
+  }
+
+  if (code === "channel_not_found") {
+    return `I couldn’t find this ${conversationType}. Check that the bot is installed in this workspace and has access to the channel. Slack error: \`${code}\`.`;
+  }
+
+  if (["invalid_auth", "not_authed", "token_revoked"].includes(code)) {
+    return `Slack auth is misconfigured for summaries. Check \`SLACK_BOT_TOKEN\` and reinstall the Slack app if needed. Slack error: \`${code}\`.`;
+  }
+
+  if (code === "ratelimited") {
+    return "Slack rate-limited the summary request. Wait a minute and try again.";
+  }
+
+  return `I couldn’t read this ${conversationType} from Slack. Check the Lambda logs for details. Slack error: \`${code}\`.`;
+}
+
+async function fetchSlackMessages(endpoint, label) {
+  const SLACK_BOT_TOKEN = getSlackBotToken();
+  if (!SLACK_BOT_TOKEN) {
+    console.error("SLACK_BOT_TOKEN is missing or invalid.");
+    return {
+      messages: [],
+      error: { error: "invalid_auth" }
+    };
+  }
   try {
-    const res = await fetch(
-      `https://slack.com/api/conversations.history?channel=${channel}&limit=100`,
-      {
-        headers: {
-          Authorization: `Bearer ${SLACK_BOT_TOKEN}`
-        }
+    const res = await fetch(`https://slack.com/api/${endpoint}`, {
+      headers: {
+        Authorization: `Bearer ${SLACK_BOT_TOKEN}`
       }
-    );
+    });
     const data = await res.json();
     if (!data.ok) {
-      console.error("Failed to fetch messages:", data);
-      return [];
+      console.error(`Failed to fetch Slack ${label}:`, data);
+      return {
+        messages: [],
+        error: data
+      };
     }
-    // Filter out bot replies and empty text
-    return data.messages.filter((m) => m.text && !m.subtype);
+
+    return {
+      messages: data.messages.filter((m) => m.text && !m.subtype),
+      error: null
+    };
   } catch (err) {
-    console.error("Error fetching channel history:", err);
-    return [];
+    console.error(`Error fetching Slack ${label}:`, err);
+    return {
+      messages: [],
+      error: {
+        error: "request_failed",
+        message: err.message
+      }
+    };
   }
 }
 
@@ -624,6 +940,11 @@ export async function getSummaryFromOpenAI(text) {
 }
 
 async function respondToSlack(response_url, message) {
+  if (!response_url) {
+    console.error("Missing Slack response_url for message:", message);
+    return;
+  }
+
   await fetch(response_url, {
     method: "POST",
     headers: {
@@ -637,14 +958,12 @@ async function respondToSlack(response_url, message) {
 }
 
 export async function fetchThreadMessages(channel, thread_ts) {
-  const result = await slackApi(
-    "GET",
-    `conversations.replies?channel=${channel}&ts=${thread_ts}&limit=100`
+  return fetchSlackMessages(
+    `conversations.replies?channel=${encodeURIComponent(
+      channel
+    )}&ts=${encodeURIComponent(thread_ts)}&limit=100`,
+    "thread replies"
   );
-  if (!result || !result.messages) {
-    return [];
-  }
-  return result.messages.filter((m) => m.text && !m.subtype);
 }
 
 async function getGithubToken() {

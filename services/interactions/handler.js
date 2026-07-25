@@ -1,16 +1,16 @@
+// import {
+//   BLUEPRINT_OPENSEARCH_PROD_INDEX,
+//   OPENSEARCH_INDEX_TOP_K
+// } from "../../constants/indexes";
 import {
-  BLUEPRINT_OPENSEARCH_PROD_INDEX,
-  OPENSEARCH_INDEX_TOP_K
-} from "../../constants/indexes";
-import {
-  MEMBERS2026_TABLE,
+  USERS_TABLE,
   PROFILES_TABLE,
   EVENTS_TABLE
 } from "../../constants/tables";
 import db from "../../lib/db";
 import handlerHelpers from "../../lib/handlerHelpers";
 import helpers from "../../lib/handlerHelpers";
-import search from "../../lib/search";
+// import search from "../../lib/search";
 import {
   TYPES
 } from "../profiles/constants";
@@ -25,36 +25,36 @@ const CONNECTION = "CONNECTION";
 const WORK = "WORKSHOP";
 const BOOTH = "BOOTH";
 
-export const searchHandler = async (event, ctx, callback) => {
-  try {
-    const data = JSON.parse(event.body);
-    helpers.checkPayloadProps(data, {
-      query: {
-        required: true,
-        type: "string"
-      },
-      topK: {
-        required: false,
-        type: "number"
-      }
-    });
-    // Uncomment below to use staging or prod index 
-    // const indexToUse = process.env.ENVIRONMENT === "STAGING" ? BLUEPRINT_OPENSEARCH_STAGING_INDEX : BLUEPRINT_OPENSEARCH_PROD_INDEX;  
-    const reqObj = {
-      indexName: BLUEPRINT_OPENSEARCH_PROD_INDEX, // TODO: change to indexToUse later
-      queryText: data.query,
-      topK: data.topK || OPENSEARCH_INDEX_TOP_K,
-    };
-    console.log("reqObj:", reqObj);
-    const result = await search.retrieveTopK(reqObj);
-    return helpers.createResponse(200, result);
-  } catch (err) {
-    console.error("Error in recommend:", err);
-    return helpers.createResponse(500, {
-      message: "Internal server error"
-    });
-  }
-};
+// export const searchHandler = async (event, ctx, callback) => {
+//   try {
+//     const data = JSON.parse(event.body);
+//     helpers.checkPayloadProps(data, {
+//       query: {
+//         required: true,
+//         type: "string"
+//       },
+//       topK: {
+//         required: false,
+//         type: "number"
+//       }
+//     });
+//     // Uncomment below to use staging or prod index 
+//     // const indexToUse = process.env.ENVIRONMENT === "STAGING" ? BLUEPRINT_OPENSEARCH_STAGING_INDEX : BLUEPRINT_OPENSEARCH_PROD_INDEX;  
+//     const reqObj = {
+//       indexName: BLUEPRINT_OPENSEARCH_PROD_INDEX, // TODO: change to indexToUse later
+//       queryText: data.query,
+//       topK: data.topK || OPENSEARCH_INDEX_TOP_K,
+//     };
+//     console.log("reqObj:", reqObj);
+//     const result = await search.retrieveTopK(reqObj);
+//     return helpers.createResponse(200, result);
+//   } catch (err) {
+//     console.error("Error in recommend:", err);
+//     return helpers.createResponse(500, {
+//       message: "Internal server error"
+//     });
+//   }
+// };
 
 export const postInteraction = async (event, ctx, callback) => {
   try {
@@ -104,9 +104,9 @@ export const checkConnection = async (event, ctx, callback) => {
 
     const connectionID = event.pathParameters.id;
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
-    const memberData = await db.getOne(userID, MEMBERS2026_TABLE);
+    const userData = await db.getOne(userID, USERS_TABLE);
 
-    if (!memberData)
+    if (!userData?.profileID)
       return helpers.createResponse(200, {
         message: `No profile associated with ${userID}`,
         connected: false
@@ -114,7 +114,7 @@ export const checkConnection = async (event, ctx, callback) => {
 
     const {
       profileID
-    } = memberData;
+    } = userData;
 
     if (connectionID == profileID)
       return helpers.createResponse(400, {
@@ -145,8 +145,12 @@ export const getAllConnections = async (event, ctx, callback) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
 
-    const memberData = await db.getOne(userID, MEMBERS2026_TABLE);
-    const { profileID } = memberData;
+    const userData = await db.getOne(userID, USERS_TABLE);
+    const { profileID } = userData || {};
+
+    if (!profileID) {
+      throw helpers.notFoundResponse("Profile", userID);
+    }
 
     let data = await db.query(PROFILES_TABLE, null, {
       expression:

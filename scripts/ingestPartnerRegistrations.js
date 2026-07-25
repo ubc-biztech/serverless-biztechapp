@@ -4,6 +4,7 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
 import { humanId } from "human-id";
 import dotenv from "dotenv";
+import { MEMBERS_TABLE } from "../constants/tables.js";
 
 dotenv.config();
 
@@ -17,11 +18,15 @@ const awsConfig = {
 };
 
 const client = new DynamoDBClient(awsConfig);
-const docClient = DynamoDBDocumentClient.from(client);
+const docClient = DynamoDBDocumentClient.from(client, {
+  marshallOptions: {
+    removeUndefinedValues: true
+  }
+});
 
 const USERS_TABLE = "biztechUsers" + (process.env.ENVIRONMENT || "");
 const PROFILES_TABLE = "biztechProfiles" + (process.env.ENVIRONMENT || "");
-const MEMBERS2026_TABLE = "biztechMembers2026" + (process.env.ENVIRONMENT || "");
+const RESOLVED_MEMBERS_TABLE = MEMBERS_TABLE + (process.env.ENVIRONMENT || "");
 const USER_REGISTRATIONS_TABLE = "biztechRegistrations" + (process.env.ENVIRONMENT || "");
 
 // NOTE: Usage of this is mainly for kickstart;2025 event
@@ -38,9 +43,9 @@ async function updateTables(user) {
           TableName: USERS_TABLE,
           Item: {
             id: user.email.toLowerCase(),
+            profileID,
             fname: user.fname,
             lname: user.lname,
-            isMember: true,
             createdAt: timestamp,
             updatedAt: timestamp,
           },
@@ -50,10 +55,9 @@ async function updateTables(user) {
       // 2. Give them memberships for NFC cards
       {
         Put: {
-          TableName: MEMBERS2026_TABLE,
+          TableName: RESOLVED_MEMBERS_TABLE,
           Item: {
             id: user.email.toLowerCase(),
-            profileID,
             firstName: user.fname,
             lastName: user.lname,
             createdAt: timestamp,
@@ -67,6 +71,7 @@ async function updateTables(user) {
         Put: {
           TableName: PROFILES_TABLE,
           Item: {
+            profileID,
             fname: user.fname,
             lname: user.lname,
             type: "PROFILE",

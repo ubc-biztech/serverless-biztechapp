@@ -1,6 +1,7 @@
 import * as dotenv from "dotenv";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { QueryCommand, GetCommand, BatchGetCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
+import { MEMBERS_TABLE } from "../constants/tables.js";
 
 dotenv.config({
   path: "../.env"
@@ -14,6 +15,7 @@ const awsConfig = {
 
 const client = new DynamoDBClient(awsConfig);
 const docClient = DynamoDBDocumentClient.from(client);
+const MEMBERS_TABLE_NAME = `${MEMBERS_TABLE}PROD`;
 
 const getAcceptedRegistrations = async (eventID, year) => {
   const acceptedRegistrationsResult = await docClient.send(new QueryCommand({
@@ -50,7 +52,7 @@ const getEventPricing = async (eventID, year) => {
   };
 };
 
-const getUsersMembershipMap = async (userIDs) => {
+const getMembershipMap = async (userIDs) => {
   userIDs = [...new Set(userIDs)]; // avoid duplicates
   if (!userIDs.length) return {};
 
@@ -63,17 +65,18 @@ const getUsersMembershipMap = async (userIDs) => {
 
     const batchResult = await docClient.send(new BatchGetCommand({
       RequestItems: {
-        biztechUsersPROD: {
+        [MEMBERS_TABLE_NAME]: {
           Keys: keys
         }
       }
     }));
 
-    const users = (batchResult.Responses && batchResult.Responses.biztechUsersPROD) || [];
+    const members =
+      (batchResult.Responses && batchResult.Responses[MEMBERS_TABLE_NAME]) || [];
 
-    // map the existent users to whether they are members or not
-    for (const user of users) {
-      userMap[user.id] = user.isMember;
+    // A current-year membership record is the source of truth.
+    for (const member of members) {
+      userMap[member.id] = true;
     }
 
     // missing users should be set to false -> indicate non-membership by default
@@ -95,7 +98,7 @@ const findAcceptedRegistrations = async (eventID, year) => {
   const userIDs = acceptedRegistrations.map((reg) => reg.id);
   const [pricing, userMap] = await Promise.all([
     getEventPricing(eventID, year),
-    getUsersMembershipMap(userIDs)
+    getMembershipMap(userIDs)
   ]);
 
   const { memberPrice, nonMemberPrice } = pricing;

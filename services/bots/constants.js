@@ -4,7 +4,8 @@ export const groups = {
     "jay",
     "jerryn",
     "jimmy",
-    "karens"
+    "karens",
+    "elijah"
   ],
   "internal": ["rohan", "kailey", "hannah", "marcus"],
   "experiences": [
@@ -40,7 +41,8 @@ export const groups = {
     "daisy",
     "tiger",
     "ali",
-    "dhrishty"
+    "dhrishty",
+    "charley"
   ],
   "devs": [
     "elijah",
@@ -62,6 +64,8 @@ export const projects = [
   "Biztech Card",
   "Internal Tools"
 ];
+
+export const scoreCommandAdmins = Object.freeze(["elijah", "kevin", "jay"]);
 
 export const ack = {
   statusCode: 200,

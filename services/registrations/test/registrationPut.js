@@ -19,6 +19,7 @@ const {
 } = require("@aws-sdk/client-ses");
 const {
   EVENTS_TABLE,
+  MEMBERS_TABLE,
   USERS_TABLE,
   USER_REGISTRATIONS_TABLE,
 } = require("../../../constants/tables");
@@ -134,6 +135,12 @@ describe("registrationPut", () => {
           if (params.Key.id === "unknown@test.com") {
             return {
               Item: undefined
+            };
+          }
+        } else if (params.TableName.includes(MEMBERS_TABLE)) {
+          if (params.Key.id === email) {
+            return {
+              Item: { id: email }
             };
           }
         } else if (params.TableName.includes(USER_REGISTRATIONS_TABLE)) {

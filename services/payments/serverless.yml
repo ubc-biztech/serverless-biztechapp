@@ -1,15 +1,17 @@
 service: biztechApi-payments
-tenant: ianmh
+org: ianmh
 app: biztechapp
 
-frameworkVersion: 3.40.0
+frameworkVersion: "^4.0.0"
+
+build:
+  esbuild: false
 
 plugins:
   - serverless-dynamodb
   - serverless-offline
   - serverless-domain-manager
   - serverless-esbuild
-  - serverless-prune-plugin
   - serverless-mocha-plugin
 
 provider:
@@ -17,7 +19,6 @@ provider:
   stage: ${file(../../serverless.common.yml):provider.stage}
   runtime: ${file(../../serverless.common.yml):provider.runtime}
   region: ${file(../../serverless.common.yml):provider.region}
-  cfLogs: true
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     STRIPE_DEV_CANCEL: ${env:STRIPE_DEV_CANCEL, 'default'}
@@ -46,6 +47,7 @@ provider:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2024${self:provider.environment.ENVIRONMENT}"
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2025${self:provider.environment.ENVIRONMENT}"
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2026${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2027${self:provider.environment.ENVIRONMENT}"
     - Effect: Allow
       Action:
         - dynamodb:Scan
@@ -53,6 +55,7 @@ provider:
         - dynamodb:PutItem
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
+        - dynamodb:TransactWriteItems
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechUsers${self:provider.environment.ENVIRONMENT}"
     - Effect: Allow
@@ -86,6 +89,7 @@ provider:
         - dynamodb:GetItem
         - dynamodb:Query
         - dynamodb:PutItem
+        - dynamodb:UpdateItem
         - dynamodb:TransactWriteItems
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechProfiles${self:provider.environment.ENVIRONMENT}"

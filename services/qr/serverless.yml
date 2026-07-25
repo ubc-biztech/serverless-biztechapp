@@ -1,13 +1,17 @@
 service: biztechApi-qr
-tenant: ianmh
+org: ianmh
 app: biztechapp
+
+frameworkVersion: "^4.0.0"
+
+build:
+  esbuild: false
 
 plugins:
   - serverless-dynamodb
   - serverless-offline
   - serverless-domain-manager
   - serverless-esbuild
-  - serverless-prune-plugin
   - serverless-mocha-plugin
 
 provider:
@@ -15,7 +19,6 @@ provider:
   stage: ${file(../../serverless.common.yml):provider.stage}
   runtime: ${file(../../serverless.common.yml):provider.runtime}
   region: ${file(../../serverless.common.yml):provider.region}
-  cfLogs: true
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
@@ -73,10 +76,11 @@ functions:
           path: qr/{id}/{eventID}/{year}
           method: get
           request:
-            path:
-              id: true
-              eventID: true
-              year: true
+            parameters:
+              paths:
+                id: true
+                eventID: true
+                year: true
           cors: true
   qrCreate:
     handler: handler.create
@@ -92,26 +96,28 @@ functions:
           path: qr/{id}/{eventID}/{year}
           method: patch
           request:
-            path:
-              id: true
-              eventID: true
-              year: true
+            parameters:
+              paths:
+                id: true
+                eventID: true
+                year: true
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
-qrDelete:
-  handler: handler.del
-  events:
-    - http:
-        path: qr/{id}/{eventID}/{year}
-        method: delete
-        request:
-          path:
-            id: true
-            eventID: true
-            year: true
-        cors: true
-        authorizer:
-          type: COGNITO_USER_POOLS
-          authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  qrDelete:
+    handler: handler.del
+    events:
+      - http:
+          path: qr/{id}/{eventID}/{year}
+          method: delete
+          request:
+            parameters:
+              paths:
+                id: true
+                eventID: true
+                year: true
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}

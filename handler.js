@@ -20,9 +20,10 @@ export const readConfigFile = () => {
 // builds concurrently commands for each service
 export const runServices = (serviceConfigs, basePort, stage, prefixColors) => {
   const commands = [];
+  const localServerlessBin = path.join(process.cwd(), "node_modules", ".bin", "serverless");
 
   for (let i = 0; i < serviceConfigs.length; i++) {
-    const command = `cd "${process.cwd()}/${serviceConfigs[i].srvSource}" && serverless offline --stage ${stage} --httpPort ${basePort + i} --lambdaPort ${basePort + i + 1000}`;
+    const command = `cd "${process.cwd()}/${serviceConfigs[i].srvSource}" && "${localServerlessBin}" offline --stage ${stage} --httpPort ${basePort + i} --lambdaPort ${basePort + i + 1000}`;
 
     commands.push({
       command,
@@ -46,7 +47,20 @@ export const runProxy = (serviceConfigs, basePort, stage) => {
       proxyPath,
       createProxyMiddleware({
         pathRewrite: (path) => {
-          return stripBasePath ? path.replace(proxyPath, "/") : path;
+          if (stripBasePath) {
+            return path;
+          }
+
+          // Express strips mount path from req.url; add it back for service routing.
+          if (path === "/") {
+            return proxyPath;
+          }
+
+          if (path.startsWith("/?")) {
+            return `${proxyPath}${path.slice(1)}`;
+          }
+
+          return `${proxyPath}${path}`;
         },
         target: `http://localhost:${basePort + i}/${stage}/`,
         changeOrigin: true,

@@ -6,8 +6,8 @@ import db from "../../lib/db";
 import { isEmpty, isValidEmail } from "../../lib/utils";
 import {
   EVENTS_TABLE,
-  USER_REGISTRATIONS_TABLE,
-  USERS_TABLE
+  MEMBERS_TABLE,
+  USER_REGISTRATIONS_TABLE
 } from "../../constants/tables";
 import SESEmailService from "./EmailService/SESEmailService";
 import awsConfig from "../../lib/config";
@@ -379,7 +379,16 @@ export const post = async (event, ctx, callback) => {
     }
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+
+    // Known/intentional HTTP error
+    if (err?.statusCode && err?.body) {
+      return err;
+    }
+
+    // Unexpected internal error
+    return helpers.createResponse(500, {
+      message: err?.message || "Internal server error"
+    });
   }
 };
 
@@ -449,8 +458,8 @@ export const put = async (event, ctx, callback) => {
     const isAccepted = data.registrationStatus === "accepted";
 
     if (isAccepted) {
-      const user = await db.getOne(email, USERS_TABLE);
-      const isMember = user?.isMember;
+      const member = await db.getOne(email, MEMBERS_TABLE);
+      const isMember = !isEmpty(member);
 
       // for type safety, but event pricing not existing for nonMember
       // with a nonMember registration is an illegal state
@@ -474,7 +483,13 @@ export const put = async (event, ctx, callback) => {
     return response;
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    if (err?.statusCode && err?.body) {
+      return err;
+    }
+
+    return helpers.createResponse(500, {
+      message: err?.message || "Internal server error"
+    });
   }
 };
 
@@ -601,7 +616,13 @@ export const get = async (event, ctx, callback) => {
     });
   } catch (err) {
     console.error("Error in get handler:", err);
-    return helpers.createResponse(500, { message: err.message || err });
+    if (err?.statusCode && err?.body) {
+      return err;
+    }
+
+    return helpers.createResponse(500, {
+      message: err?.message || "Internal server error"
+    });
   }
 };
 
@@ -638,7 +659,13 @@ export const del = async (event, ctx, callback) => {
       response: res
     });
   } catch (err) {
-    return helpers.createResponse(500, { message: err.message || err });
+    if (err?.statusCode && err?.body) {
+      return err;
+    }
+
+    return helpers.createResponse(500, {
+      message: err?.message || "Internal server error"
+    });
   }
 };
 
@@ -689,7 +716,13 @@ export const delMany = async (event, ctx, callback) => {
       response: res
     });
   } catch (err) {
-    return helpers.createResponse(500, { message: err.message || err });
+    if (err?.statusCode && err?.body) {
+      return err;
+    }
+
+    return helpers.createResponse(500, {
+      message: err?.message || "Internal server error"
+    });
   }
 };
 
@@ -739,6 +772,11 @@ export const leaderboard = async (event, ctx, callback) => {
     }
   } catch (error) {
     console.error("Error fetching leaderboard:", error);
+
+    if (error?.statusCode && error?.body) {
+      return error;
+    }
+
     return {
       statusCode: 500,
       body: JSON.stringify({

@@ -1,25 +1,39 @@
-import eventHelpers from "./helpers";
-import feedbackHelpers from "./feedbackHelpers";
-import helpers from "../../lib/handlerHelpers";
-import db from "../../lib/db";
 import {
-  alphabeticalComparer, dateComparer, isEmpty, isValidEmail
-} from "../../lib/utils";
-import {
-  MAX_BATCH_ITEM_COUNT
-} from "../../constants/dynamodb";
+  S3Client,
+  PutObjectCommand,
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { v4 as uuidv4 } from "uuid";
+import { MAX_BATCH_ITEM_COUNT } from "../../constants/dynamodb.js";
 import {
   EVENTS_TABLE,
   EVENT_FEEDBACK_TABLE,
   USERS_TABLE,
-  USER_REGISTRATIONS_TABLE
-} from "../../constants/tables";
+  USER_REGISTRATIONS_TABLE,
+} from "../../constants/tables.js";
+import db from "../../lib/db.js";
+import helpers from "../../lib/handlerHelpers";
+import type {
+  APIGatewayResponse,
+  LambdaHandler,
+} from "../../lib/types";
 import {
-  S3Client,
-  PutObjectCommand
-} from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { v4 as uuidv4 } from "uuid";
+  alphabeticalComparer,
+  dateComparer,
+  isEmpty,
+  isValidEmail,
+} from "../../lib/utils.js";
+import feedbackHelpers, { isValidationFail } from "./feedbackHelpers.js";
+import eventHelpers from "./helpers";
+import type {
+  CreateEventBody,
+  CreateThumbnailPicUploadUrlBody,
+  EventRecord,
+  UpdateEventBody,
+} from "./types";
+
+const errorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
 
 const S3 = new S3Client({
   region: "us-west-2"
@@ -36,10 +50,11 @@ const {
   normalizeText
 } = feedbackHelpers;
 
-export const create = async (event, ctx, callback) => {
+
+export const create: LambdaHandler = async (event) => {
   try {
     const timestamp = new Date().getTime();
-    const data = JSON.parse(event.body);
+    const data = JSON.parse(event.body as string) as CreateEventBody;
     if (data.hasOwnProperty("attendeeFeedbackQuestions") &&
       !Array.isArray(data.attendeeFeedbackQuestions)) {
       return helpers.createResponse(406, {
@@ -64,7 +79,7 @@ export const create = async (event, ctx, callback) => {
       attendeeFeedbackQuestions,
       "attendee"
     );
-    if (!attendeeQuestionValidation.isValid) {
+    if (isValidationFail(attendeeQuestionValidation)) {
       return helpers.createResponse(406, {
         message: attendeeQuestionValidation.error
       });
@@ -74,7 +89,7 @@ export const create = async (event, ctx, callback) => {
       partnerFeedbackQuestions,
       "partner"
     );
-    if (!partnerQuestionValidation.isValid) {
+    if (isValidationFail(partnerQuestionValidation)) {
       return helpers.createResponse(406, {
         message: partnerQuestionValidation.error
       });
@@ -119,7 +134,7 @@ export const create = async (event, ctx, callback) => {
     });
     if (!isEmpty(existingEvent))
       throw helpers.duplicateResponse("event id and year", data);
-    const item = {
+    const item: EventRecord = {
       id: data.id,
       year: data.year,
       ename: data.ename,
@@ -177,13 +192,12 @@ export const create = async (event, ctx, callback) => {
     return response;
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: errorMessage(err) });
   }
 };
 
 // DELETE /events/{id}/{year}
-// eslint-disable-next-line
-export const del = async (event, ctx, callback) => {
+export const del: LambdaHandler = async (event) => {
   try {
     if (!event.pathParameters || !event.pathParameters.id)
       throw helpers.missingIdQueryResponse("event");
@@ -214,11 +228,11 @@ export const del = async (event, ctx, callback) => {
     return response;
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: errorMessage(err) });
   }
 };
 
-export const getAll = async (event, ctx, callback) => {
+export const getAll: LambdaHandler = async (event, ctx) => {
   try {
     // Set context callbackWaitsForEmptyEventLoop to false to prevent Lambda from waiting
     ctx.callbackWaitsForEmptyEventLoop = false;
@@ -233,9 +247,8 @@ export const getAll = async (event, ctx, callback) => {
       event.queryStringParameters &&
       event.queryStringParameters.hasOwnProperty("id")
     ) {
-      events = events.filter(
-        (eventItem) => eventItem.id === event.queryStringParameters.id
-      );
+      const filterId = event.queryStringParameters.id;
+      events = events.filter((eventItem) => eventItem.id === filterId);
     }
 
     // sort by startDate
@@ -245,12 +258,12 @@ export const getAll = async (event, ctx, callback) => {
     return response;
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: errorMessage(err) });
   }
 };
 
 // PATCH events/{id}/{year}
-export const update = async (event, ctx, callback) => {
+export const update: LambdaHandler = async (event) => {
   try {
     if (!event.pathParameters || !event.pathParameters.id)
       throw helpers.missingIdQueryResponse("event");
@@ -267,10 +280,10 @@ export const update = async (event, ctx, callback) => {
 
     const existingEvent = await db.getOne(id, EVENTS_TABLE, {
       year
-    });
-    if (isEmpty(existingEvent))
+    }) as EventRecord | null;
+    if (!existingEvent || isEmpty(existingEvent))
       throw helpers.notFoundResponse("event", id, year);
-    const data = JSON.parse(event.body);
+    const data = JSON.parse(event.body as string) as UpdateEventBody;
     if (data.hasOwnProperty("attendeeFeedbackQuestions") &&
       !Array.isArray(data.attendeeFeedbackQuestions)) {
       return helpers.createResponse(406, {
@@ -311,7 +324,7 @@ export const update = async (event, ctx, callback) => {
         data.partnerFeedbackQuestions,
         "partner"
       );
-      if (!partnerQuestionValidation.isValid) {
+      if (isValidationFail(partnerQuestionValidation)) {
         return helpers.createResponse(406, {
           message: partnerQuestionValidation.error
         });
@@ -326,7 +339,7 @@ export const update = async (event, ctx, callback) => {
         data.attendeeFeedbackQuestions,
         "attendee"
       );
-      if (!attendeeQuestionValidation.isValid) {
+      if (isValidationFail(attendeeQuestionValidation)) {
         return helpers.createResponse(406, {
           message: attendeeQuestionValidation.error
         });
@@ -407,31 +420,35 @@ export const update = async (event, ctx, callback) => {
     return response;
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: errorMessage(err) });
   }
 };
 
 // POST events/event-thumbnail-upload-url/{id}/{year}
-export const createThumbnailPicUploadUrl = async (event, ctx, callback) => {
+export const createThumbnailPicUploadUrl: LambdaHandler = async (event) => {
   try {
-    const data = JSON.parse(event.body);
+    const data = JSON.parse(event.body as string) as CreateThumbnailPicUploadUrlBody;
     helpers.checkPayloadProps(data, {
       fileType: {
-        required: true
+        required: true,
+        type: "string"
       },
       fileName: {
-        required: true
+        required: true,
+        type: "string"
       },
       prefix: {
-        required: true
+        required: true,
+        type: "string"
       },
       eventId: {
-        required: true
+        required: true,
+        type: "string"
       },
     });
-    const {
-      fileType, fileName, prefix, eventId
-    } = JSON.parse(event.body || "{}");
+
+    const {fileType, fileName, prefix, eventId } = data;
+
     if (!fileType || !fileName) {
       const res = helpers.createResponse(400, {
         message: "Missing fileType or fileName"
@@ -486,7 +503,7 @@ export const createThumbnailPicUploadUrl = async (event, ctx, callback) => {
 };
 
 // GET events/{id}/{year}
-export const get = async (event, ctx, callback) => {
+export const get: LambdaHandler = async (event) => {
   try {
     if (!event.pathParameters || !event.pathParameters.id)
       throw helpers.missingIdQueryResponse("event");
@@ -539,12 +556,9 @@ export const get = async (event, ctx, callback) => {
           message: "Unable to scan registration table."
         });
       }
-      let keysForRequest = registrationList.map((registrationObj) => {
-        const keyEntry = {
-        };
-        keyEntry.id = registrationObj.id;
-        return keyEntry;
-      });
+      let keysForRequest = registrationList.map((registrationObj) => ({
+        id: registrationObj.id as string,
+      }));
 
       console.log("Keys:", keysForRequest);
 
@@ -564,14 +578,14 @@ export const get = async (event, ctx, callback) => {
         )
       );
 
-      const flattenResults = result.flatMap(
-        (batchResult) =>
-          batchResult.Responses[
-            `${USERS_TABLE}${
-              process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""
-            }`
-          ]
-      );
+      const usersTableName = `${USERS_TABLE}${
+        process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""
+      }`;
+      const flattenResults = result.flatMap((batchResult) => {
+        const responses = (batchResult as { Responses?: Record<string, unknown[]> })
+          .Responses;
+        return responses?.[usersTableName] ?? [];
+      }) as Record<string, unknown>[];
 
       const resultsWithRegistrationStatus = flattenResults.map((item) => {
         const registrationObj = registrationList.filter(
@@ -606,16 +620,21 @@ export const get = async (event, ctx, callback) => {
   } catch (err) {
     console.error(err);
 
-    let response = err;
-    if (!response || !response.statusCode || !response.headers)
-      response = helpers.createResponse(502, { message: err.message || err });
+    if (
+      typeof err === "object" &&
+      err !== null &&
+      "statusCode" in err &&
+      "headers" in err
+    ) {
+      return err as APIGatewayResponse;
+    }
 
-    return response;
+    return helpers.createResponse(502, { message: errorMessage(err) });
   }
 };
 
 // GET events/{id}/{year}/feedback/{formType}
-export const getFeedbackForm = async (event, ctx, callback) => {
+export const getFeedbackForm: LambdaHandler = async (event) => {
   try {
     if (!event.pathParameters || !event.pathParameters.id)
       throw helpers.missingIdQueryResponse("event");
@@ -636,25 +655,26 @@ export const getFeedbackForm = async (event, ctx, callback) => {
         event.pathParameters
       );
 
-    const eventItem = await db.getOne(id, EVENTS_TABLE, {
-      year
-    });
+    const eventItem = (await db.getOne(id, EVENTS_TABLE, {
+      year,
+    })) as EventRecord | null;
 
     if (isEmpty(eventItem)) throw helpers.notFoundResponse("event", id, year);
 
-    const feedbackQuestions = getFeedbackQuestionsForType(eventItem, formType);
-    const enabled = isFeedbackEnabledForType(eventItem, formType);
+    const eventRecord = eventItem as EventRecord;
+    const feedbackQuestions = getFeedbackQuestionsForType(eventRecord, formType);
+    const enabled = isFeedbackEnabledForType(eventRecord, formType);
 
     return helpers.createResponse(200, {
       event: {
-        id: eventItem.id,
-        year: eventItem.year,
-        ename: eventItem.ename,
-        description: eventItem.description,
-        partnerDescription: eventItem.partnerDescription,
-        imageUrl: eventItem.imageUrl,
-        endDate: eventItem.endDate,
-        isCompleted: eventItem.isCompleted
+        id: eventRecord.id,
+        year: eventRecord.year,
+        ename: eventRecord.ename,
+        description: eventRecord.description,
+        partnerDescription: eventRecord.partnerDescription,
+        imageUrl: eventRecord.imageUrl,
+        endDate: eventRecord.endDate,
+        isCompleted: eventRecord.isCompleted,
       },
       formType,
       enabled,
@@ -662,12 +682,12 @@ export const getFeedbackForm = async (event, ctx, callback) => {
     });
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: errorMessage(err) });
   }
 };
 
 // POST events/{id}/{year}/feedback/{formType}
-export const submitFeedback = async (event, ctx, callback) => {
+export const submitFeedback: LambdaHandler = async (event) => {
   try {
     if (!event.pathParameters || !event.pathParameters.id)
       throw helpers.missingIdQueryResponse("event");
@@ -706,8 +726,11 @@ export const submitFeedback = async (event, ctx, callback) => {
       });
     }
 
-    const validation = validateFeedbackPayload(feedbackQuestions, data.responses);
-    if (!validation.isValid) {
+    const validation = validateFeedbackPayload(
+      feedbackQuestions,
+      data.responses ?? {},
+    );
+    if (isValidationFail(validation)) {
       return helpers.createResponse(406, {
         message: validation.error
       });
@@ -751,12 +774,12 @@ export const submitFeedback = async (event, ctx, callback) => {
     });
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: errorMessage(err) });
   }
 };
 
 // GET events/{id}/{year}/feedback/{formType}/submissions
-export const getFeedbackSubmissions = async (event, ctx, callback) => {
+export const getFeedbackSubmissions: LambdaHandler = async (event) => {
   try {
     if (!event.pathParameters || !event.pathParameters.id)
       throw helpers.missingIdQueryResponse("event");
@@ -798,7 +821,11 @@ export const getFeedbackSubmissions = async (event, ctx, callback) => {
 
     const sortedSubmissions = submissions
       .slice()
-      .sort((a, b) => (b.submittedAt || 0) - (a.submittedAt || 0));
+      .sort(
+        (a, b) =>
+          Number((b as { submittedAt?: number }).submittedAt ?? 0) -
+          Number((a as { submittedAt?: number }).submittedAt ?? 0),
+      );
 
     return helpers.createResponse(200, {
       count: sortedSubmissions.length,
@@ -806,12 +833,12 @@ export const getFeedbackSubmissions = async (event, ctx, callback) => {
     });
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: errorMessage(err) });
   }
 };
 
 // GET events/getActiveEvent
-export const getActiveEvent = async (event, ctx, callback) => {
+export const getActiveEvent: LambdaHandler = async () => {
   try {
     // already now by default
     const nowISO = new Date().toISOString();
@@ -835,6 +862,6 @@ export const getActiveEvent = async (event, ctx, callback) => {
     return response;
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: errorMessage(err) });
   }
 };

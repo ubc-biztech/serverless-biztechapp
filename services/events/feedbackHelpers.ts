@@ -1,15 +1,36 @@
 import { v4 as uuidv4 } from "uuid";
+import type {
+  EventRecord,
+  FeedbackFormType,
+  FeedbackHelpers,
+  FeedbackQuestion,
+  FeedbackQuestionType,
+  QuestionsValidationResult,
+  RawFeedbackQuestion,
+  ResponsesValidationResult,
+  ValidationFail,
+} from "./types";
 
-const FEEDBACK_FORM_TYPES = new Set(["attendee", "partner"]);
-const FEEDBACK_QUESTION_TYPES = new Set([
+export const isValidationFail = (
+  result: { isValid: boolean },
+): result is ValidationFail => !result.isValid;
+
+const FEEDBACK_FORM_TYPES = new Set<FeedbackFormType>(["attendee", "partner"]);
+const FEEDBACK_QUESTION_TYPES = new Set<FeedbackQuestionType>([
   "SHORT_TEXT",
   "LONG_TEXT",
   "MULTIPLE_CHOICE",
   "CHECKBOXES",
-  "LINEAR_SCALE"
+  "LINEAR_SCALE",
 ]);
 
-const FORM_CONFIG = {
+const FORM_CONFIG: Record<
+  FeedbackFormType,
+  {
+    enabledField: "attendeeFeedbackEnabled" | "partnerFeedbackEnabled";
+    questionsField: "attendeeFeedbackQuestions" | "partnerFeedbackQuestions";
+  }
+> = {
   attendee: {
     enabledField: "attendeeFeedbackEnabled",
     questionsField: "attendeeFeedbackQuestions"
@@ -20,14 +41,14 @@ const FORM_CONFIG = {
   }
 };
 
-const FEEDBACK_TEXT_LIMITS = {
+const FEEDBACK_TEXT_LIMITS: Partial<Record<FeedbackQuestionType, number>> = {
   SHORT_TEXT: 280,
-  LONG_TEXT: 4000
+  LONG_TEXT: 4000,
 };
 
 const MAX_FEEDBACK_QUESTIONS_PER_FORM = 50;
 const OVERALL_RATING_QUESTION_ID = "overall-rating";
-const DEFAULT_OVERALL_RATING_QUESTION = {
+const DEFAULT_OVERALL_RATING_QUESTION: FeedbackQuestion = {
   questionId: OVERALL_RATING_QUESTION_ID,
   type: "LINEAR_SCALE",
   label: "How would you rate this event overall?",
@@ -38,27 +59,31 @@ const DEFAULT_OVERALL_RATING_QUESTION = {
   scaleMaxLabel: "Excellent"
 };
 
-const fail = (error) => ({
-  isValid: false,
-  error
+const fail = (error: string): ValidationFail => ({
+  isValid: false as const,
+  error,
 });
 
-const succeedQuestions = (questions) => ({
-  isValid: true,
-  questions
+const succeedQuestions = (
+  questions: FeedbackQuestion[],
+): QuestionsValidationResult => ({
+  isValid: true as const,
+  questions,
 });
 
-const succeedResponses = (responses) => ({
-  isValid: true,
-  responses
+const succeedResponses = (
+  responses: Record<string, unknown>,
+): ResponsesValidationResult => ({
+  isValid: true as const,
+  responses,
 });
 
-const normalizeText = (value) => {
+const normalizeText = (value: unknown): string => {
   if (typeof value !== "string") return "";
   return value.trim();
 };
 
-const normalizeChoices = (choicesValue) => {
+const normalizeChoices = (choicesValue: unknown): string[] => {
   if (Array.isArray(choicesValue)) {
     return choicesValue.map((choice) => normalizeText(choice)).filter(Boolean);
   }
@@ -70,27 +95,36 @@ const normalizeChoices = (choicesValue) => {
     .filter(Boolean);
 };
 
-const getFormConfig = (formType) => FORM_CONFIG[formType] || null;
+const getFormConfig = (formType: FeedbackFormType) => FORM_CONFIG[formType];
 
-const parseFormType = (raw) => {
+const parseFormType = (raw: string | undefined): FeedbackFormType | null => {
   if (!raw || typeof raw !== "string") return null;
   const normalized = raw.toLowerCase();
-  if (!FEEDBACK_FORM_TYPES.has(normalized)) return null;
-  return normalized;
+  if (!FEEDBACK_FORM_TYPES.has(normalized as FeedbackFormType)) return null;
+  return normalized as FeedbackFormType;
 };
 
-const ensureDefaultOverallRatingQuestion = (questions) => {
+const ensureDefaultOverallRatingQuestion = (
+  questions: RawFeedbackQuestion[] | FeedbackQuestion[] | unknown,
+): FeedbackQuestion[] => {
   const safeQuestions = Array.isArray(questions) ? questions : [];
   const otherQuestions = safeQuestions.filter((question) => {
-    return question && question.questionId !== OVERALL_RATING_QUESTION_ID;
-  });
+    return (
+      question &&
+      typeof question === "object" &&
+      (question as RawFeedbackQuestion).questionId !== OVERALL_RATING_QUESTION_ID
+    );
+  }) as FeedbackQuestion[];
 
-  return [{ ...DEFAULT_OVERALL_RATING_QUESTION }].concat(otherQuestions);
+  return [{ ...DEFAULT_OVERALL_RATING_QUESTION }, ...otherQuestions];
 };
 
-const getFeedbackQuestionsForType = (eventItem, formType) => {
+const getFeedbackQuestionsForType = (
+  eventItem: EventRecord | Record<string, unknown> | null,
+  formType: FeedbackFormType,
+): FeedbackQuestion[] => {
   const config = getFormConfig(formType);
-  if (!config || !eventItem) {
+  if (!eventItem) {
     return ensureDefaultOverallRatingQuestion([]);
   }
 
@@ -102,29 +136,38 @@ const getFeedbackQuestionsForType = (eventItem, formType) => {
   return ensureDefaultOverallRatingQuestion(rawQuestions);
 };
 
-const isFeedbackEnabledForType = (eventItem, formType) => {
+const isFeedbackEnabledForType = (
+  eventItem: EventRecord | Record<string, unknown> | null,
+  formType: FeedbackFormType,
+): boolean => {
+  if (!eventItem) return false;
   const config = getFormConfig(formType);
-  if (!config || !eventItem) return false;
   return Boolean(eventItem[config.enabledField]);
 };
 
-const buildQuestionPrefix = (formType, index) => {
+const buildQuestionPrefix = (formType: FeedbackFormType, index: number): string => {
   return `${formType}FeedbackQuestions[${index}]`;
 };
 
-const normalizeQuestionType = (rawQuestion, prefix) => {
+const normalizeQuestionType = (
+  rawQuestion: RawFeedbackQuestion,
+  prefix: string,
+): ValidationFail | { isValid: true; type: FeedbackQuestionType } => {
   const type = normalizeText(rawQuestion.type).toUpperCase();
-  if (!FEEDBACK_QUESTION_TYPES.has(type)) {
+  if (!FEEDBACK_QUESTION_TYPES.has(type as FeedbackQuestionType)) {
     return fail(`${prefix} has unsupported type '${rawQuestion.type}'.`);
   }
 
   return {
     isValid: true,
-    type
+    type: type as FeedbackQuestionType,
   };
 };
 
-const normalizeQuestionLabel = (rawQuestion, prefix) => {
+const normalizeQuestionLabel = (
+  rawQuestion: RawFeedbackQuestion,
+  prefix: string,
+): ValidationFail | { isValid: true; label: string } => {
   const label = normalizeText(rawQuestion.label || rawQuestion.question);
   if (!label) {
     return fail(`${prefix} is missing a question label.`);
@@ -140,7 +183,11 @@ const normalizeQuestionLabel = (rawQuestion, prefix) => {
   };
 };
 
-const normalizeQuestionId = (rawQuestion, formType, questionIdSet) => {
+const normalizeQuestionId = (
+  rawQuestion: RawFeedbackQuestion,
+  formType: FeedbackFormType,
+  questionIdSet: Set<string>,
+): ValidationFail | { isValid: true; questionId: string } => {
   const rawQuestionId = normalizeText(rawQuestion.questionId || rawQuestion.id);
   const questionId = rawQuestionId || uuidv4();
 
@@ -157,7 +204,11 @@ const normalizeQuestionId = (rawQuestion, formType, questionIdSet) => {
   };
 };
 
-const appendSelectableQuestionFields = (question, rawQuestion, prefix) => {
+const appendSelectableQuestionFields = (
+  question: FeedbackQuestion,
+  rawQuestion: RawFeedbackQuestion,
+  prefix: string,
+): ValidationFail | { isValid: true } => {
   const options = normalizeChoices(rawQuestion.choices || rawQuestion.options);
   const dedupedOptions = [...new Set(options)];
 
@@ -176,7 +227,11 @@ const appendSelectableQuestionFields = (question, rawQuestion, prefix) => {
   };
 };
 
-const appendScaleQuestionFields = (question, rawQuestion, prefix) => {
+const appendScaleQuestionFields = (
+  question: FeedbackQuestion,
+  rawQuestion: RawFeedbackQuestion,
+  prefix: string,
+): ValidationFail | { isValid: true } => {
   const parsedMin = Number(rawQuestion.scaleMin);
   const parsedMax = Number(rawQuestion.scaleMax);
   const scaleMin = Number.isFinite(parsedMin) ? parsedMin : 1;
@@ -211,11 +266,11 @@ const appendScaleQuestionFields = (question, rawQuestion, prefix) => {
 };
 
 const normalizeSingleQuestion = (
-  rawQuestion,
-  index,
-  formType,
-  questionIdSet
-) => {
+  rawQuestion: unknown,
+  index: number,
+  formType: FeedbackFormType,
+  questionIdSet: Set<string>,
+): ValidationFail | { isValid: true; question: FeedbackQuestion } => {
   const prefix = buildQuestionPrefix(formType, index);
 
   if (
@@ -226,38 +281,39 @@ const normalizeSingleQuestion = (
     return fail(`${prefix} is invalid.`);
   }
 
-  const typeResult = normalizeQuestionType(rawQuestion, prefix);
-  if (!typeResult.isValid) return typeResult;
+  const questionInput = rawQuestion as RawFeedbackQuestion;
+  const typeResult = normalizeQuestionType(questionInput, prefix);
+  if (isValidationFail(typeResult)) return typeResult;
 
-  const labelResult = normalizeQuestionLabel(rawQuestion, prefix);
-  if (!labelResult.isValid) return labelResult;
+  const labelResult = normalizeQuestionLabel(questionInput, prefix);
+  if (isValidationFail(labelResult)) return labelResult;
 
-  const idResult = normalizeQuestionId(rawQuestion, formType, questionIdSet);
-  if (!idResult.isValid) return idResult;
+  const idResult = normalizeQuestionId(questionInput, formType, questionIdSet);
+  if (isValidationFail(idResult)) return idResult;
 
-  const question = {
+  const question: FeedbackQuestion = {
     questionId: idResult.questionId,
     type: typeResult.type,
     label: labelResult.label,
-    required: Boolean(rawQuestion.required)
+    required: Boolean(questionInput.required),
   };
 
   if (question.type === "MULTIPLE_CHOICE" || question.type === "CHECKBOXES") {
     const selectableResult = appendSelectableQuestionFields(
       question,
-      rawQuestion,
-      prefix
+      questionInput,
+      prefix,
     );
-    if (!selectableResult.isValid) return selectableResult;
+    if (isValidationFail(selectableResult)) return selectableResult;
   }
 
   if (question.type === "LINEAR_SCALE") {
     const scaleResult = appendScaleQuestionFields(
       question,
-      rawQuestion,
-      prefix
+      questionInput,
+      prefix,
     );
-    if (!scaleResult.isValid) return scaleResult;
+    if (isValidationFail(scaleResult)) return scaleResult;
   }
 
   return {
@@ -266,7 +322,10 @@ const normalizeSingleQuestion = (
   };
 };
 
-const normalizeFeedbackQuestions = (rawQuestions, formType) => {
+const normalizeFeedbackQuestions = (
+  rawQuestions: unknown,
+  formType: FeedbackFormType,
+): QuestionsValidationResult => {
   if (!Array.isArray(rawQuestions)) {
     return fail(`${formType}FeedbackQuestions must be an array.`);
   }
@@ -277,18 +336,18 @@ const normalizeFeedbackQuestions = (rawQuestions, formType) => {
     );
   }
 
-  const normalizedQuestions = [];
-  const questionIdSet = new Set();
+  const normalizedQuestions: FeedbackQuestion[] = [];
+  const questionIdSet = new Set<string>();
 
   for (let index = 0; index < rawQuestions.length; index++) {
     const questionResult = normalizeSingleQuestion(
       rawQuestions[index],
       index,
       formType,
-      questionIdSet
+      questionIdSet,
     );
 
-    if (!questionResult.isValid) {
+    if (isValidationFail(questionResult)) {
       return questionResult;
     }
 
@@ -298,7 +357,9 @@ const normalizeFeedbackQuestions = (rawQuestions, formType) => {
   return succeedQuestions(normalizedQuestions);
 };
 
-const validateResponseObjectShape = (rawResponses) => {
+const validateResponseObjectShape = (
+  rawResponses: unknown,
+): ValidationFail | { isValid: true } => {
   if (
     !rawResponses ||
     typeof rawResponses !== "object" ||
@@ -312,7 +373,10 @@ const validateResponseObjectShape = (rawResponses) => {
   };
 };
 
-const validateNoUnknownQuestionIds = (questions, responses) => {
+const validateNoUnknownQuestionIds = (
+  questions: FeedbackQuestion[],
+  responses: Record<string, unknown>,
+): ValidationFail | { isValid: true } => {
   const allowedIds = new Set(questions.map((q) => q.questionId));
   const responseKeys = Object.keys(responses);
 
@@ -327,7 +391,10 @@ const validateNoUnknownQuestionIds = (questions, responses) => {
   };
 };
 
-const validateTextResponse = (question, answer) => {
+const validateTextResponse = (
+  question: FeedbackQuestion,
+  answer: unknown,
+): ValidationFail | { isValid: true; hasValue: false } | { isValid: true; hasValue: true; value: string } => {
   const maxLength = FEEDBACK_TEXT_LIMITS[question.type];
   const text = normalizeText(answer);
 
@@ -342,7 +409,7 @@ const validateTextResponse = (question, answer) => {
     };
   }
 
-  if (text.length > maxLength) {
+  if (maxLength !== undefined && text.length > maxLength) {
     return fail(
       `Question '${question.questionId}' exceeds max length of ${maxLength}.`
     );
@@ -355,7 +422,10 @@ const validateTextResponse = (question, answer) => {
   };
 };
 
-const validateMultipleChoiceResponse = (question, answer) => {
+const validateMultipleChoiceResponse = (
+  question: FeedbackQuestion,
+  answer: unknown,
+): ValidationFail | { isValid: true; hasValue: false } | { isValid: true; hasValue: true; value: string } => {
   const options = normalizeChoices(question.choices);
   const text = normalizeText(answer);
 
@@ -381,7 +451,9 @@ const validateMultipleChoiceResponse = (question, answer) => {
   };
 };
 
-const normalizeCheckboxValues = (answer) => {
+const normalizeCheckboxValues = (
+  answer: unknown,
+): ValidationFail | { isValid: true; values: string[] } => {
   if (Array.isArray(answer)) {
     return {
       isValid: true,
@@ -409,11 +481,14 @@ const normalizeCheckboxValues = (answer) => {
   return fail("INVALID_CHECKBOX_SHAPE");
 };
 
-const validateCheckboxResponse = (question, answer) => {
+const validateCheckboxResponse = (
+  question: FeedbackQuestion,
+  answer: unknown,
+): ValidationFail | { isValid: true; hasValue: false } | { isValid: true; hasValue: true; value: string[] } => {
   const options = normalizeChoices(question.choices);
   const normalizedValueResult = normalizeCheckboxValues(answer);
 
-  if (!normalizedValueResult.isValid) {
+  if (isValidationFail(normalizedValueResult)) {
     return fail(
       `Invalid checkbox response for question '${question.questionId}'.`
     );
@@ -446,7 +521,10 @@ const validateCheckboxResponse = (question, answer) => {
   };
 };
 
-const validateScaleResponse = (question, answer) => {
+const validateScaleResponse = (
+  question: FeedbackQuestion,
+  answer: unknown,
+): ValidationFail | { isValid: true; hasValue: false } | { isValid: true; hasValue: true; value: number } => {
   const min = Number.isFinite(Number(question.scaleMin))
     ? Number(question.scaleMin)
     : 1;
@@ -485,7 +563,10 @@ const validateScaleResponse = (question, answer) => {
   };
 };
 
-const validateAnswerForQuestion = (question, answer) => {
+const validateAnswerForQuestion = (
+  question: FeedbackQuestion,
+  answer: unknown,
+) => {
   if (!FEEDBACK_QUESTION_TYPES.has(question.type)) {
     return fail(
       `Unsupported feedback question type '${question.type}' for question '${question.questionId}'.`
@@ -507,21 +588,24 @@ const validateAnswerForQuestion = (question, answer) => {
   return validateScaleResponse(question, answer);
 };
 
-const validateFeedbackPayload = (questions, rawResponses) => {
+const validateFeedbackPayload = (
+  questions: FeedbackQuestion[],
+  rawResponses: unknown,
+): ResponsesValidationResult => {
   const shapeResult = validateResponseObjectShape(rawResponses);
-  if (!shapeResult.isValid) return shapeResult;
+  if (isValidationFail(shapeResult)) return shapeResult;
 
-  const responses = rawResponses || {};
+  const responses = (rawResponses as Record<string, unknown>) || {};
   const unknownIdResult = validateNoUnknownQuestionIds(questions, responses);
-  if (!unknownIdResult.isValid) return unknownIdResult;
+  if (isValidationFail(unknownIdResult)) return unknownIdResult;
 
-  const normalized = {};
+  const normalized: Record<string, unknown> = {};
 
   for (const question of questions) {
     const answer = responses[question.questionId];
     const answerResult = validateAnswerForQuestion(question, answer);
 
-    if (!answerResult.isValid) {
+    if (isValidationFail(answerResult)) {
       return answerResult;
     }
 
@@ -533,12 +617,14 @@ const validateFeedbackPayload = (questions, rawResponses) => {
   return succeedResponses(normalized);
 };
 
-export default {
+const feedbackHelpers: FeedbackHelpers = {
   parseFormType,
   ensureDefaultOverallRatingQuestion,
   getFeedbackQuestionsForType,
   isFeedbackEnabledForType,
   normalizeFeedbackQuestions,
   validateFeedbackPayload,
-  normalizeText
+  normalizeText,
 };
+
+export default feedbackHelpers;

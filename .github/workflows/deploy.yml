@@ -2,18 +2,19 @@ name: Deploy on merge
 on:
   push:
     branches: [dev, master]
-  repository_dispatch:
-    types: [biztech_docs_updated]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
+      ESBUILD_BINARY_PATH: ${{ github.workspace }}/node_modules/@esbuild/linux-x64/bin/esbuild
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          node-version: "20.7"
+          node-version: "22.x"
 
       # https://help.github.com/en/actions/configuring-and-managing-workflows/caching-dependencies-to-speed-up-workflows
       - name: Cache node modules
@@ -29,33 +30,23 @@ jobs:
             ${{ runner.os }}-build-
             ${{ runner.os }}-
 
+      - name: Validate Serverless auth secret is configured
+        run: |
+          if [ -z "${SERVERLESS_ACCESS_KEY}" ]; then
+            echo "Missing Serverless auth in CI. Set SERVERLESS_ACCESS_KEY."
+            exit 1
+          fi
+
       - name: Install Serverless CLI and dependencies
         run: |
-          sudo npm i -g serverless@3 --legacy-peer-dep
+          sudo npm i -g serverless@4 --legacy-peer-deps
           sls -v
           npm ci --legacy-peer-deps
-
-      - name: Checkout docs repository snapshot
-        if: github.event_name == 'repository_dispatch' && github.event.action == 'biztech_docs_updated'
-        uses: actions/checkout@v4
-        with:
-          repository: ubc-biztech/biztech-documentation
-          ref: ${{ github.event.client_payload.source_sha || 'main' }}
-          token: ${{ secrets.BIZTECH_DOCS_REPO_TOKEN || github.token }}
-          path: biztech-documentation
-
-      - name: Build Slack docs index
-        if: github.event_name == 'repository_dispatch' && github.event.action == 'biztech_docs_updated'
-        run: npm run build:slack-docs-index -- --docs-root ./biztech-documentation/biztech-docs/src/app
-
-      - name: Verify docs index build
-        if: github.event_name == 'repository_dispatch' && github.event.action == 'biztech_docs_updated'
-        run: |
-          test -f services/bots/docsIndex.js
-          echo "Docs index rebuilt at services/bots/docsIndex.js"
+          npm rebuild esbuild --force
+          "$ESBUILD_BINARY_PATH" --version
 
       - name: "Deploy Dev"
-        if: github.ref == 'refs/heads/dev' || (github.event_name == 'repository_dispatch' && github.event.action == 'biztech_docs_updated')
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -77,6 +68,12 @@ jobs:
           SLACK_APP_TOKEN: ${{ secrets.SLACK_APP_TOKEN }}
           NODE_ENV: ${{ secrets.NODE_ENV }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DOCS_INDEX_S3_BUCKET: ${{ vars.DOCS_INDEX_S3_BUCKET || vars.DOCS_INDEX_BUCKET || 'biztech-docs-index' }}
+          DOCS_INDEX_S3_KEY: ${{ vars.DOCS_INDEX_S3_KEY || vars.DOCS_INDEX_KEY }}
+          DOCS_INDEX_S3_REGION: ${{ vars.DOCS_INDEX_S3_REGION || vars.DOCS_INDEX_AWS_REGION }}
+          DOCS_INDEX_REFRESH_SECONDS: ${{ vars.DOCS_INDEX_REFRESH_SECONDS }}
+          DOCS_INDEX_ERROR_RETRY_SECONDS: ${{ vars.DOCS_INDEX_ERROR_RETRY_SECONDS }}
+          DOCS_INDEX_MAX_BYTES: ${{ vars.DOCS_INDEX_MAX_BYTES }}
           ALGOLIA_APP_ID: ${{ secrets.ALGOLIA_APP_ID }}
           ALGOLIA_API_KEY: ${{ secrets.ALGOLIA_API_KEY }}
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
@@ -120,6 +117,12 @@ jobs:
           SLACK_APP_TOKEN: ${{ secrets.SLACK_APP_TOKEN }}
           NODE_ENV: ${{ secrets.NODE_ENV }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DOCS_INDEX_S3_BUCKET: ${{ vars.DOCS_INDEX_S3_BUCKET || vars.DOCS_INDEX_BUCKET || 'biztech-docs-index' }}
+          DOCS_INDEX_S3_KEY: ${{ vars.DOCS_INDEX_S3_KEY || vars.DOCS_INDEX_KEY }}
+          DOCS_INDEX_S3_REGION: ${{ vars.DOCS_INDEX_S3_REGION || vars.DOCS_INDEX_AWS_REGION }}
+          DOCS_INDEX_REFRESH_SECONDS: ${{ vars.DOCS_INDEX_REFRESH_SECONDS }}
+          DOCS_INDEX_ERROR_RETRY_SECONDS: ${{ vars.DOCS_INDEX_ERROR_RETRY_SECONDS }}
+          DOCS_INDEX_MAX_BYTES: ${{ vars.DOCS_INDEX_MAX_BYTES }}
           ALGOLIA_APP_ID: ${{ secrets.ALGOLIA_APP_ID }}
           ALGOLIA_API_KEY: ${{ secrets.ALGOLIA_API_KEY }}
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}

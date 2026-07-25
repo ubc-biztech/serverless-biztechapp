@@ -2,7 +2,7 @@ import nacl from "tweetnacl";
 import fetch from "node-fetch";
 import { InteractionResponseType } from "discord-interactions";
 import db from "../../lib/db";
-import { MEMBERS2026_TABLE } from "../../constants/tables";
+import { MEMBERS_TABLE } from "../../constants/tables";
 import {
   DISCORD_GUILD_ID,
   DISCORD_GUILD_ID_PROD,
@@ -134,7 +134,7 @@ function handleVerifyCommand(member) {
 }
 
 export async function assignUserRoles(userID, membershipTier, eventID = null) {
-  const user = await db.getOne(userID, MEMBERS2026_TABLE);
+  const user = await db.getOne(userID, MEMBERS_TABLE);
   if (!user) {
     throw new Error(`User ${userID} not found in database`);
   }
@@ -200,7 +200,7 @@ export async function assignUserRoles(userID, membershipTier, eventID = null) {
 }
 
 export async function removeUserRoles(userID, membershipTier, eventID = null) {
-  const user = await db.getOne(userID, MEMBERS2026_TABLE);
+  const user = await db.getOne(userID, MEMBERS_TABLE);
   if (!user) {
     throw new Error(`User ${userID} not found in database`);
   }
@@ -260,7 +260,7 @@ export async function removeUserRoles(userID, membershipTier, eventID = null) {
 }
 
 export async function backfillUserRoles(userID) {
-  const user = await db.getOne(userID, MEMBERS2026_TABLE);
+  const user = await db.getOne(userID, MEMBERS_TABLE);
   if (!user) {
     throw new Error(`User ${userID} not found in database`);
   }

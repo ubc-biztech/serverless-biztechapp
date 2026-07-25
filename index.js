@@ -52,7 +52,18 @@ const result = concurrently(commands, {
   killOthers: ["failure", "success"]
 });
 
-result.then();
+result.then(() => {
+}).catch((err) => {
+  const errors = Array.isArray(err) ? err : [err];
+  console.error("Service runner exited with errors:");
+  errors.forEach((entry) => {
+    if (entry && entry.command && entry.exitCode !== undefined) {
+      console.error(`- ${entry.command.name}: exit ${entry.exitCode}`);
+    } else {
+      console.error(`- ${String(entry)}`);
+    }
+  });
+});
 
 const proxyServer = runProxy(selectedServices, basePort, stage);
 

@@ -4,6 +4,7 @@ import { isEmpty, isValidEmail } from "../../lib/utils";
 import {
   USERS_TABLE,
   EVENTS_TABLE,
+  MEMBERS_TABLE,
   IMMUTABLE_USER_PROPS
 } from "../../constants/tables";
 import docClient from "../../lib/docClient";
@@ -35,7 +36,6 @@ export const create = async (event, ctx, callback) => {
     year: data.year,
     gender: data.gender,
     diet: data.diet,
-    isMember: data.isMember,
     createdAt: timestamp,
     updatedAt: timestamp,
     admin: isBiztechAdmin
@@ -151,13 +151,12 @@ export const checkUser = async (event, ctx, callback) => {
 export const checkUserMembership = async (event, ctx, callback) => {
   console.log(event);
   try {
-    const email = event.pathParameters.email;
-    const user = await db.getOne(email, USERS_TABLE);
-    if (isEmpty(user)) {
-      return helpers.createResponse(200, false);
-    } else {
-      return helpers.createResponse(200, user.isMember);
+    const email = event.pathParameters?.email?.trim().toLowerCase();
+    if (!isValidEmail(email)) {
+      return helpers.inputError("Invalid email", email);
     }
+    const member = await db.getOne(email, MEMBERS_TABLE);
+    return helpers.createResponse(200, !isEmpty(member));
   } catch (err) {
     return helpers.createResponse(400, err);
   }

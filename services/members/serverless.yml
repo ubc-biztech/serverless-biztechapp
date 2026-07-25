@@ -1,15 +1,17 @@
 service: biztechApi-members
-tenant: ianmh
+org: ianmh
 app: biztechapp
 
-frameworkVersion: 3.40.0
+frameworkVersion: "^4.0.0"
+
+build:
+  esbuild: false
 
 plugins:
   - serverless-dynamodb
   - serverless-offline
   - serverless-domain-manager
   - serverless-esbuild
-  - serverless-prune-plugin
   - serverless-mocha-plugin
 
 provider:
@@ -17,7 +19,6 @@ provider:
   stage: ${file(../../serverless.common.yml):provider.stage}
   runtime: ${file(../../serverless.common.yml):provider.runtime}
   region: ${file(../../serverless.common.yml):provider.region}
-  cfLogs: true
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
@@ -34,12 +35,11 @@ provider:
         - dynamodb:PutItem
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
-        - dynamodb:Query
         - dynamodb:TransactWriteItems
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2025${self:provider.environment.ENVIRONMENT}"
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2026${self:provider.environment.ENVIRONMENT}"
-        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2026${self:provider.environment.ENVIRONMENT}/index/profile-query"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechMembers2027${self:provider.environment.ENVIRONMENT}"
     - Effect: Allow
       Action:
         - dynamodb:DeleteItem
@@ -53,9 +53,12 @@ provider:
       Action:
         - dynamodb:GetItem
         - dynamodb:PutItem
+        - dynamodb:Query
         - dynamodb:UpdateItem
+        - dynamodb:TransactWriteItems
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechUsers${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechUsers${self:provider.environment.ENVIRONMENT}/index/profileID-index"
 
 custom: ${file(../../serverless.common.yml):custom}
 
@@ -78,7 +81,7 @@ functions:
           method: get
           request:
             parameters:
-              path:
+              paths:
                 id: true
           cors: true
           authorizer:
@@ -92,7 +95,7 @@ functions:
           method: get
           request:
             parameters:
-              path:
+              paths:
                 profileID: true
           cors: true
           authorizer:
@@ -115,8 +118,9 @@ functions:
           path: members/{id}
           method: patch
           request:
-            path:
-              id: true
+            parameters:
+              paths:
+                id: true
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS
@@ -128,8 +132,9 @@ functions:
           path: members/{id}
           method: delete
           request:
-            path:
-              id: true
+            parameters:
+              paths:
+                id: true
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS
@@ -145,4 +150,3 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
-

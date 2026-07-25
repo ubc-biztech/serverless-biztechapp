@@ -1,13 +1,20 @@
-import {
-  v4 as uuidv4
-} from "uuid";
+import { v4 as uuidv4 } from "uuid";
 import {
   USER_REGISTRATIONS_TABLE,
   TEAMS_TABLE,
-  JUDGING_TABLE
+  JUDGING_TABLE,
 } from "../../constants/tables";
 import helpers from "../../lib/handlerHelpers.js";
 import db from "../../lib/db.js";
+import type {
+  JudgeScore,
+  JudgeUpdateResult,
+  NewTeamRecord,
+  NormalizedScore,
+  ScoreAverage,
+  TeamRecord,
+  TeamsHelpers,
+} from "./types";
 
 /*
   Team Table Schema from DynamoDB:
@@ -25,7 +32,20 @@ import db from "../../lib/db.js";
     "metadata": object
  */
 
-export default {
+type RegistrationRecord = {
+  id: string;
+  teamID?: string;
+  fname?: string;
+  registrationStatus?: string;
+  [key: string]: unknown;
+};
+
+type JudgeRecord = {
+  currentTeam?: string;
+  [key: string]: unknown;
+};
+
+const teamHelpers: TeamsHelpers = {
   async _getTeamFromUserRegistration(userID, eventID, year) {
     /*
         Returns the Team object of the team that the user is on.
@@ -35,9 +55,9 @@ export default {
 
     try {
       // Get the user registration for this event+year
-      const res = await db.getOne(userID, USER_REGISTRATIONS_TABLE, {
+      const res = (await db.getOne(userID, USER_REGISTRATIONS_TABLE, {
         "eventID;year": eventID_year,
-      });
+      })) as RegistrationRecord | null;
 
       if (!res) {
         return null;
@@ -49,9 +69,9 @@ export default {
       }
 
       // Fetch the team
-      const team = await db.getOne(teamID, TEAMS_TABLE, {
+      const team = (await db.getOne(teamID, TEAMS_TABLE, {
         "eventID;year": eventID_year,
-      });
+      })) as TeamRecord;
 
       // List of member IDs
       const teamMemberKeys = team.memberIDs.map((id) => {
@@ -61,14 +81,19 @@ export default {
         };
       });
       // Fetch member registration objects
-      const teamMembers = (await db.batchGet(
+      const registrationsTable =
+        USER_REGISTRATIONS_TABLE + (process.env.ENVIRONMENT || "");
+      const batchResult = (await db.batchGet(
         teamMemberKeys,
-        USER_REGISTRATIONS_TABLE + (process.env.ENVIRONMENT || "")
-      )).Responses[USER_REGISTRATIONS_TABLE + (process.env.ENVIRONMENT || "")];
+        registrationsTable,
+      )) as unknown as { Responses: Record<string, RegistrationRecord[]> };
+      const teamMembers = batchResult.Responses[registrationsTable];
 
       // Extract names
       const teamMemberEmails = teamMembers.map((member) => member.id);
-      const teamMemberNames = teamMembers.map((member) => member.fname ?? "Participant");
+      const teamMemberNames = teamMembers.map(
+        (member) => member.fname ?? "Participant",
+      );
       team.memberIDs = teamMemberEmails;
       team.memberNames = teamMemberNames;
 
@@ -86,19 +111,22 @@ export default {
 
     try {
       const updateResults = await Promise.all(
-        judgeIDs.map(async (judgeID) => {
+        judgeIDs.map(async (judgeID): Promise<JudgeUpdateResult | null> => {
           try {
             if (!judgeID) {
               console.error("Error: judgeID is missing!");
               return null;
             }
 
-            const judge = await db.getOne(judgeID, JUDGING_TABLE);
+            const judge = (await db.getOne(
+              judgeID,
+              JUDGING_TABLE,
+            )) as JudgeRecord | null;
             if (!judge) {
               console.log(`Judge ${judgeID} not found, skipping.`);
               return {
                 judgeID,
-                status: "not found"
+                status: "not found",
               };
             }
             judge.currentTeam = teamID;
@@ -107,17 +135,17 @@ export default {
             console.log(`Judge ${judgeID} updated to team ${teamID}`);
             return {
               judgeID,
-              status: "updated"
+              status: "updated",
             };
           } catch (err) {
             console.error(`Failed to update judge ${judgeID}:`, err);
             return {
               judgeID,
               status: "failed",
-              error: err.message
+              error: err instanceof Error ? err.message : String(err),
             };
           }
-        })
+        }),
       );
 
       console.log("All judges updated successfully:", updateResults);
@@ -125,7 +153,7 @@ export default {
       return helpers.createResponse(200, {
         message: "Judges updated successfully",
         updatedJudges: judgeIDs,
-        newTeamID: teamID
+        newTeamID: teamID,
       });
     } catch (error) {
       console.error("Database update error:", error);
@@ -144,14 +172,14 @@ export default {
   async leaveTeam(memberID, eventID, year) {
     const eventID_year = eventID + ";" + year;
 
-    const registration = await db.getOne(memberID, USER_REGISTRATIONS_TABLE, {
-      "eventID;year": eventID_year
-    });
+    const registration = (await db.getOne(memberID, USER_REGISTRATIONS_TABLE, {
+      "eventID;year": eventID_year,
+    })) as RegistrationRecord | null;
 
     if (!registration) {
       throw helpers.inputError(
         `User ${memberID} is not registered for event ${eventID_year}`,
-        404
+        404,
       );
     }
 
@@ -159,7 +187,11 @@ export default {
       throw helpers.inputError(`User ${memberID} is not on any team`, 400);
     }
 
-    const team = await this._getTeamFromUserRegistration(memberID, eventID, year);
+    const team = await teamHelpers._getTeamFromUserRegistration(
+      memberID,
+      eventID,
+      year,
+    );
     if (!team) {
       throw helpers.inputError(`Team not found for user ${memberID}`, 404);
     }
@@ -168,7 +200,7 @@ export default {
     team.memberIDs = team.memberIDs.filter((id) => id !== memberID);
 
     // TODO: delete team if empty ?
-    await this._putTeam(team, false);
+    await teamHelpers._putTeam(team, false);
 
     // Remove teamID from user registration
     registration.teamID = "";
@@ -176,68 +208,67 @@ export default {
     const {
       updateExpression,
       expressionAttributeValues,
-      expressionAttributeNames
+      expressionAttributeNames,
     } = db.createUpdateExpression(registration);
 
     const updateParams = {
       Key: {
         id: registration.id,
-        ["eventID;year"]: eventID_year
+        ["eventID;year"]: eventID_year,
       },
       TableName:
-        USER_REGISTRATIONS_TABLE +
-        (process.env.ENVIRONMENT || ""),
+        USER_REGISTRATIONS_TABLE + (process.env.ENVIRONMENT || ""),
       ExpressionAttributeValues: expressionAttributeValues,
       ExpressionAttributeNames: {
         ...expressionAttributeNames,
-        "#eventIDYear": "eventID;year"
+        "#eventIDYear": "eventID;year",
       },
       UpdateExpression: updateExpression,
       ReturnValues: "UPDATED_NEW",
-      ConditionExpression: "attribute_exists(id) and attribute_exists(#eventIDYear)"
+      ConditionExpression:
+        "attribute_exists(id) and attribute_exists(#eventIDYear)",
     };
 
     await db.updateDBCustom(updateParams);
 
     return {
       success: true,
-      message: `User ${memberID} has left the team.`
+      message: `User ${memberID} has left the team.`,
     };
   },
-
 
   async joinTeam(memberID, eventID, year, teamID) {
     const eventID_year = eventID + ";" + year;
 
-    const registration = await db.getOne(memberID, USER_REGISTRATIONS_TABLE, {
-      "eventID;year": eventID_year
-    });
+    const registration = (await db.getOne(memberID, USER_REGISTRATIONS_TABLE, {
+      "eventID;year": eventID_year,
+    })) as RegistrationRecord | null;
 
     if (!registration) {
       throw helpers.inputError(
         `User ${memberID} is not registered for event ${eventID_year}`,
-        403
+        403,
       );
     }
 
-    if (registration.registrationStatus.toLowerCase() !== "checkedin") {
+    if (registration.registrationStatus?.toLowerCase() !== "checkedin") {
       throw helpers.inputError(
         `User ${memberID} has not checked in for event ${eventID_year}`,
-        403
+        403,
       );
     }
 
-    if (registration.teamID?.length > 0) {
+    if ((registration.teamID?.length ?? 0) > 0) {
       throw helpers.inputError(
         `User ${memberID} is already in another team`,
-        400
+        400,
       );
     }
 
     // Get the team
-    const team = await db.getOne(teamID, TEAMS_TABLE, {
-      "eventID;year": eventID_year
-    });
+    const team = (await db.getOne(teamID, TEAMS_TABLE, {
+      "eventID;year": eventID_year,
+    })) as TeamRecord | null;
 
     if (!team) {
       throw helpers.inputError(`Team ${teamID} does not exist`, 404);
@@ -245,13 +276,16 @@ export default {
 
     // Short circuit if user is already in the team
     if (team.memberIDs.includes(memberID)) {
-      throw helpers.inputError(`User ${memberID} is already in team ${teamID}`, 400);
+      throw helpers.inputError(
+        `User ${memberID} is already in team ${teamID}`,
+        400,
+      );
     }
 
     // Add the member to the team
     team.memberIDs.push(memberID);
     const memberIDs = team.memberIDs;
-    await this._putTeam(team, false);
+    await teamHelpers._putTeam(team, false);
 
     // Update the user's registration
     registration.teamID = teamID;
@@ -259,13 +293,13 @@ export default {
     const {
       updateExpression,
       expressionAttributeValues,
-      expressionAttributeNames
+      expressionAttributeNames,
     } = db.createUpdateExpression(registration);
 
     const updateParams = {
       Key: {
         id: registration.id,
-        ["eventID;year"]: eventID_year
+        ["eventID;year"]: eventID_year,
       },
       TableName:
         USER_REGISTRATIONS_TABLE +
@@ -273,11 +307,12 @@ export default {
       ExpressionAttributeValues: expressionAttributeValues,
       ExpressionAttributeNames: {
         ...expressionAttributeNames,
-        "#eventIDYear": "eventID;year"
+        "#eventIDYear": "eventID;year",
       },
       UpdateExpression: updateExpression,
       ReturnValues: "UPDATED_NEW",
-      ConditionExpression: "attribute_exists(id) and attribute_exists(#eventIDYear)"
+      ConditionExpression:
+        "attribute_exists(id) and attribute_exists(#eventIDYear)",
     };
 
     await db.updateDBCustom(updateParams);
@@ -286,10 +321,9 @@ export default {
       success: true,
       message: `User ${memberID} joined team ${team.teamName}`,
       memberIDs, // return list of members in the team
-      teamName: team.teamName // return team name
+      teamName: team.teamName, // return team name
     };
   },
-
 
   async makeTeam(team_name, eventID, year, memberIDs) {
     /*
@@ -305,40 +339,41 @@ export default {
       // get user's registration
       await db
         .getOne(memberID, USER_REGISTRATIONS_TABLE, {
-          "eventID;year": eventID_year
+          "eventID;year": eventID_year,
         })
         .then((res) => {
-          if (!res) {
+          const registration = res as RegistrationRecord | null;
+          if (!registration) {
             throw helpers.inputError(
               "User " +
                 memberID +
                 " is not registered for event " +
                 eventID_year,
-              403
+              403,
             );
           }
 
           // hardcoded for kickstart 2025
-          if (res.registrationStatus.toLowerCase() !== "checkedin") {
+          if (registration.registrationStatus?.toLowerCase() !== "checkedin") {
             throw helpers.inputError(
               "User " +
                 memberID +
                 " is not checked in for event " +
                 eventID_year,
-              403
+              403,
             );
           }
 
           // disallow users from adding people already in other teams to their own team
-          if (res.teamID?.length > 0) {
+          if ((registration.teamID?.length ?? 0) > 0) {
             throw helpers.inputError(
-              "User " + memberID + " is already registered to a team"
+              "User " + memberID + " is already registered to a team",
             );
           }
         });
     }
 
-    const params = {
+    const params: NewTeamRecord = {
       id: uuidv4(),
       teamName: team_name,
       "eventID;year": eventID + ";" + year,
@@ -349,8 +384,7 @@ export default {
       transactions: [],
       inventory: [],
       submission: "",
-      metadata: {
-      }
+      metadata: {},
     };
 
     // HARDCODED FOR KICKSTART PURPOSES
@@ -367,19 +401,21 @@ export default {
         const memberID = memberIDs[i];
 
         // Get the user's registration
-        const res = await db.getOne(memberID, USER_REGISTRATIONS_TABLE, {
-          "eventID;year": eventID_year
-        });
+        const res = (await db.getOne(memberID, USER_REGISTRATIONS_TABLE, {
+          "eventID;year": eventID_year,
+        })) as RegistrationRecord;
 
         if (res.teamID) {
           // If user is already on a team, remove them from that team on the Teams table
-          const team = await this._getTeamFromUserRegistration(
+          const team = await teamHelpers._getTeamFromUserRegistration(
             memberID,
             eventID,
-            year
+            year,
           );
-          team.memberIDs = team.memberIDs.filter((id) => id !== memberID);
-          await this._putTeam(team, false);
+          if (team) {
+            team.memberIDs = team.memberIDs.filter((id) => id !== memberID);
+            await teamHelpers._putTeam(team, false);
+          }
         }
 
         res.teamID = params.id;
@@ -389,13 +425,13 @@ export default {
         const {
           updateExpression,
           expressionAttributeValues,
-          expressionAttributeNames
+          expressionAttributeNames,
         } = db.createUpdateExpression(res);
 
         let updateParams = {
           Key: {
             id: res.id,
-            ["eventID;year"]: eventID + ";" + year
+            ["eventID;year"]: eventID + ";" + year,
           },
           TableName:
             USER_REGISTRATIONS_TABLE +
@@ -403,11 +439,11 @@ export default {
           ExpressionAttributeValues: expressionAttributeValues,
           ExpressionAttributeNames: {
             ...expressionAttributeNames,
-            "#eventIDYear": "eventID;year"
+            "#eventIDYear": "eventID;year",
           },
           UpdateExpression: updateExpression,
           ReturnValues: "UPDATED_NEW",
-          ConditionExpression: conditionExpression
+          ConditionExpression: conditionExpression,
         };
 
         await db.updateDBCustom(updateParams);
@@ -417,7 +453,7 @@ export default {
       return params;
     } catch (error) {
       console.log(error);
-      throw new Error(error);
+      throw new Error(error instanceof Error ? error.message : String(error));
     }
   },
   async checkQRScanned(user_id, qr_code_id, eventID, year) {
@@ -428,14 +464,19 @@ export default {
    */
 
     // get user's team using helper function _getTeamFromUserRegistration
-    return await this._getTeamFromUserRegistration(user_id, eventID, year)
+    return await teamHelpers
+      ._getTeamFromUserRegistration(user_id, eventID, year)
       .then((team) => {
+        if (!team) {
+          throw new Error(`User ${user_id} is not on a team`);
+        }
+
         // check if qr_code_id is in scannedQRs
         return team.scannedQRs.includes(qr_code_id);
       })
       .catch((err) => {
         console.log(err);
-        throw new Error(err);
+        throw new Error(err instanceof Error ? err.message : String(err));
       });
   },
   async addQRScan(user_id, qr_code_id, eventID, year, points) {
@@ -444,8 +485,13 @@ export default {
    */
 
     // get user's team using helper function _getTeamFromUserRegistration
-    return await this._getTeamFromUserRegistration(user_id, eventID, year).then(
-      (team) => {
+    return await teamHelpers
+      ._getTeamFromUserRegistration(user_id, eventID, year)
+      .then((team) => {
+        if (!team) {
+          throw new Error(`User ${user_id} is not on a team`);
+        }
+
         // add qr_code_id to scannedQRs
         team.scannedQRs.push(qr_code_id);
 
@@ -461,7 +507,8 @@ export default {
 
         // put team in Teams table
         return new Promise((resolve, reject) => {
-          this._putTeam(team, false)
+          teamHelpers
+            ._putTeam(team, false)
             .then((res) => {
               resolve(res);
             })
@@ -469,8 +516,7 @@ export default {
               reject(err);
             });
         });
-      }
-    );
+      });
   },
 
   async addQuestions(user_id, questions, eventID, year, pointsPerQuestion) {
@@ -485,10 +531,15 @@ export default {
         Adds multiple questions to the scannedQRs array of a user's team.
     */
 
-    return await this._getTeamFromUserRegistration(user_id, eventID, year).then(
-      (team) => {
+    return await teamHelpers
+      ._getTeamFromUserRegistration(user_id, eventID, year)
+      .then((team) => {
+        if (!team) {
+          throw new Error(`User ${user_id} is not on a team`);
+        }
+
         const uniqueQuestions = questions.filter(
-          (question) => !team.scannedQRs.includes(question)
+          (question) => !team.scannedQRs.includes(question),
         ); // Only add new questions
 
         team.scannedQRs.push(...uniqueQuestions);
@@ -508,7 +559,8 @@ export default {
         }
 
         return new Promise((resolve, reject) => {
-          this._putTeam(team, false)
+          teamHelpers
+            ._putTeam(team, false)
             .then((res) => {
               resolve(res);
             })
@@ -516,8 +568,7 @@ export default {
               reject(err);
             });
         });
-      }
-    );
+      });
   },
 
   async changeTeamName(user_id, eventID, year, team_name) {
@@ -525,12 +576,18 @@ export default {
         Changes a team's name in the Teams table
    */
 
-    return await this._getTeamFromUserRegistration(user_id, eventID, year).then(
-      (team) => {
+    return await teamHelpers
+      ._getTeamFromUserRegistration(user_id, eventID, year)
+      .then((team) => {
+        if (!team) {
+          throw new Error(`User ${user_id} is not on a team`);
+        }
+
         team.teamName = team_name;
 
         return new Promise((resolve, reject) => {
-          this._putTeam(team, false)
+          teamHelpers
+            ._putTeam(team, false)
             .then((res) => {
               resolve(res);
             })
@@ -538,13 +595,17 @@ export default {
               reject(err);
             });
         });
-      }
-    );
-  }
+      });
+  },
 };
 
-export const normalizeScores = (scores, scoreAvg) => {
-  let normalizedScores = [];
+export default teamHelpers;
+
+export const normalizeScores = (
+  scores: JudgeScore[],
+  scoreAvg: ScoreAverage,
+): NormalizedScore[] => {
+  let normalizedScores: NormalizedScore[] = [];
   const count = scores.length;
 
   let s1N = 0;
@@ -568,7 +629,7 @@ export const normalizeScores = (scores, scoreAvg) => {
   s5N /= count;
 
   for (let i = 0; i < scores.length; i++) {
-    let scoreObj = {
+    let scoreObj: NormalizedScore = {
       team: scores[i].team,
       teamName: scores[i].teamName,
       judge: scores[i].judge,
@@ -577,7 +638,7 @@ export const normalizeScores = (scores, scoreAvg) => {
       metric3: s3N !== 0 ? (scores[i].metric3 - scoreAvg.metric3) / s3N : 0,
       metric4: s4N !== 0 ? (scores[i].metric4 - scoreAvg.metric4) / s4N : 0,
       metric5: s5N !== 0 ? (scores[i].metric5 - scoreAvg.metric5) / s5N : 0,
-      originalScores: scores
+      originalScores: scores,
     };
 
     normalizedScores.push(scoreObj);
@@ -588,13 +649,15 @@ export const normalizeScores = (scores, scoreAvg) => {
 
 // UNSAFE
 // doesn't account for length == 0 cause it will only be called on arrays > 0 length
-export const scoreObjectAverage = (originalScores) => {
-  let scoreAvg = {
+export const scoreObjectAverage = (
+  originalScores: JudgeScore[],
+): ScoreAverage => {
+  let scoreAvg: ScoreAverage = {
     metric1: 0,
     metric2: 0,
     metric3: 0,
     metric4: 0,
-    metric5: 0
+    metric5: 0,
   };
 
   for (let i = 0; i < originalScores.length; i++) {
@@ -615,19 +678,19 @@ export const scoreObjectAverage = (originalScores) => {
 };
 
 export const scoreObjectAverageWeighted = (
-  originalScores,
-  w1,
-  w2,
-  w3,
-  w4,
-  w5
-) => {
-  let scoreAvg = {
+  originalScores: JudgeScore[],
+  w1: number,
+  w2: number,
+  w3: number,
+  w4: number,
+  w5: number,
+): number => {
+  let scoreAvg: ScoreAverage = {
     metric1: 0,
     metric2: 0,
     metric3: 0,
     metric4: 0,
-    metric5: 0
+    metric5: 0,
   };
 
   for (let i = 0; i < originalScores.length; i++) {

@@ -11,11 +11,12 @@ export const PARTNERSHIPS_META_TABLE = "biztechPartnershipsMeta";
 export const JUDGING_TABLE = "bizJudge";
 export const MEMBERSHIPS2021_TABLE = "biztechMemberships2021";
 export const MEMBERS2022_TABLE = "biztechMembers2022";
-export const MEMBERS2026_TABLE = "biztechMembers2026";
-// export const MEMBERS2026_TABLE = "biztechMembers2026";
+// CHANGE EVERY YEAR
+export const MEMBERS_TABLE = "biztechMembers2027";
 export const PRIZES_TABLE = "biztechPrizes";
 export const STICKERS_TABLE = "bizStickers";
 export const SCORE_TABLE = "bizScores";
+export const STORY_POINTS_TABLE = "storyPoints";
 export const SOCKETS_TABLE = "bizSockets";
 export const TRANSACTIONS_TABLE = "biztechTransactions";
 export const USERS_TABLE = "biztechUsers";
@@ -28,7 +29,7 @@ export const INVESTMENTS_TABLE = "biztechInvestments";
 export const PROFILES_TABLE = "biztechProfiles";
 export const QUIZZES_TABLE = "biztechQuizzes";
 
-export const IMMUTABLE_USER_PROPS = ["admin"]; // make sure you check all calls to /user's patch in the frontend if you add to this list
+export const IMMUTABLE_USER_PROPS = ["admin", "isMember"]; // make sure you check all calls to /user's patch in the frontend if you add to this list
 
 export const BTX_PROJECTS_TABLE = "bizBtxProjects";
 export const BTX_ACCOUNTS_TABLE = "bizBtxAccounts";
