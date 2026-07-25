@@ -34,16 +34,18 @@ export const getDefaultApplicationTemplate = (emailParams) => {
     fname, ename, registrationStatus, logoBase64, qrCode, currentYear
   } = emailParams;
 
-  // revert this change after techstrat
   return `<div style="font-size: 15px; text-align: left;">
       <div>
           <p>Hello ${fname},</p>
-          <p>Thank you for registering for TechStrat 2026 – Preliminary Round! We are excited for you to join us at UBC BizTech’s flagship case competition. Be sure to look out for our preliminary case, which will be released on February 16, 2026. We will send an additional email to confirm your team registration soon after the case releases.</p>
-          <p>All TechStrat participants are encouraged to join our <a href="https://join.slack.com/t/techstrat2026/shared_invite/zt-3p2tnx513-2qFEqNGz64925b404USpJA">TechStrat Slack Community Channel</a> to stay updated on event announcements, participant questions, and information about team formation.</p>
-          <p>Please reach out to our Event Director at TechStrat@ubcbiztech.com if this was a mistake!</p>
+          <p>Thank you for registering for ProduHacks 2026! We’re excited to receive your application and will be reviewing it shortly.</p>
+          <p>If you have any questions or concerns about your application, please reach out to our Event Director at <a href="mailto:allison@ubcbiztech.com">allison@ubcbiztech.com</a>.</p>
+          <p>We’ll be in touch by email once the applicant review process is complete.</p>
+          <p>Best,<br>BizTech Team</p>
       </div>
+
       <img src="${logoBase64}" width="40" height="40" alt="BizTech Logo">
       <br>
+
       <div style="font-size: 8px;">
           <div>
               <p>UBC BizTech • 445-2053 Main Mall • Vancouver, BC V6T 1Z2</p>
