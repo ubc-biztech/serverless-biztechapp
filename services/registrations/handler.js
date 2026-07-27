@@ -14,6 +14,33 @@ import awsConfig from "../../lib/config";
 
 // const CHECKIN_COUNT_SANITY_CHECK = 500;
 
+const normalizePartnerRegistration = (partner = {}) => ({
+  email: partner.email ? partner.email.trim().toLowerCase() : "",
+  firstName: (partner.firstName || partner.fname || "").trim(),
+  lastName: (partner.lastName || partner.lname || "").trim()
+});
+
+const validatePartnerRegistration = (partner) => {
+  if (!isValidEmail(partner.email)) return "Invalid email";
+  if (!partner.firstName) return "Missing firstName";
+  if (!partner.lastName) return "Missing lastName";
+  return null;
+};
+
+const summarizePartnerRegistrationResults = (results) => {
+  return results.reduce(
+    (summary, result) => {
+      summary[result.status] += 1;
+      return summary;
+    },
+    {
+      created: 0,
+      skipped: 0,
+      failed: 0
+    }
+  );
+};
+
 /* returns error 403 if the given id/eventID DNE in database
    returns error 502 if there is a problem with processing data or sending an email
    returns 201 when entry is created successfully, error 409 if a registration with the same id/eventID exists
@@ -381,13 +408,119 @@ export const post = async (event, ctx, callback) => {
     console.error(err);
 
     // Known/intentional HTTP error
-    if (err?.statusCode && err?.body) {
+    if (err && err.statusCode && err.body) {
       return err;
     }
 
     // Unexpected internal error
     return helpers.createResponse(500, {
-      message: err?.message || "Internal server error"
+      message: (err && err.message) || "Internal server error"
+    });
+  }
+};
+
+export const createPartnerRegistrations = async (event, ctx, callback) => {
+  try {
+    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    if (!userID.endsWith("@ubcbiztech.com")) {
+      return helpers.createResponse(403, {
+        message: "unauthorized"
+      });
+    }
+
+    const data = JSON.parse(event.body || "{}");
+    const { eventID, year } = data;
+
+    if (typeof eventID !== "string") {
+      return helpers.inputError("eventID must be a string", data);
+    }
+
+    if (typeof year !== "number" || isNaN(year)) {
+      return helpers.inputError("year must be a number", data);
+    }
+
+    if (!Array.isArray(data.partners)) {
+      return helpers.inputError("partners must be an array", data);
+    }
+
+    const existingEvent = await db.getOne(eventID, EVENTS_TABLE, {
+      year
+    });
+    if (isEmpty(existingEvent)) {
+      return helpers.createResponse(404, {
+        message: `Event with id '${eventID}' and year '${year}' could not be found.`
+      });
+    }
+
+    const results = await Promise.all(data.partners.map(async (partnerData) => {
+      const partner = normalizePartnerRegistration(partnerData);
+      const validationError = validatePartnerRegistration(partner);
+      if (validationError) {
+        return {
+          email: partner.email,
+          status: "failed",
+          reason: validationError
+        };
+      }
+
+      const existingRegistration = await db.getOne(
+        partner.email,
+        USER_REGISTRATIONS_TABLE,
+        {
+          "eventID;year": `${eventID};${year}`
+        }
+      );
+      if (!isEmpty(existingRegistration)) {
+        return {
+          email: partner.email,
+          status: "skipped",
+          reason: "registration already exists"
+        };
+      }
+
+      try {
+        await updateHelper(
+          {
+            eventID,
+            year,
+            email: partner.email,
+            fname: partner.firstName,
+            registrationStatus: "acceptedComplete",
+            isPartner: true
+          },
+          true,
+          partner.email,
+          partner.firstName
+        );
+
+        return {
+          email: partner.email,
+          status: "created"
+        };
+      } catch (err) {
+        const body = err && err.body ? JSON.parse(err.body) : {};
+        return {
+          email: partner.email,
+          status: "failed",
+          reason:
+            body.code ||
+            body.message ||
+            (err && err.message) ||
+            "Failed to create partner registration"
+        };
+      }
+    }));
+
+    return helpers.createResponse(200, {
+      eventID,
+      year,
+      ...summarizePartnerRegistrationResults(results),
+      results
+    });
+  } catch (err) {
+    console.error(err);
+    return helpers.createResponse(500, {
+      message: err.message || "Internal server error"
     });
   }
 };
@@ -464,8 +597,12 @@ export const put = async (event, ctx, callback) => {
       // for type safety, but event pricing not existing for nonMember
       // with a nonMember registration is an illegal state
       const pricing = isMember
-        ? eventExists.pricing?.members ?? 0
-        : eventExists.pricing?.nonMembers ?? 0;
+        ? eventExists.pricing && eventExists.pricing.members != null
+          ? eventExists.pricing.members
+          : 0
+        : eventExists.pricing && eventExists.pricing.nonMembers != null
+          ? eventExists.pricing.nonMembers
+          : 0;
 
       // Set status to complete if pricing is free or zero
       if (pricing === 0) {
@@ -483,12 +620,12 @@ export const put = async (event, ctx, callback) => {
     return response;
   } catch (err) {
     console.error(err);
-    if (err?.statusCode && err?.body) {
+    if (err && err.statusCode && err.body) {
       return err;
     }
 
     return helpers.createResponse(500, {
-      message: err?.message || "Internal server error"
+      message: (err && err.message) || "Internal server error"
     });
   }
 };
@@ -616,12 +753,12 @@ export const get = async (event, ctx, callback) => {
     });
   } catch (err) {
     console.error("Error in get handler:", err);
-    if (err?.statusCode && err?.body) {
+    if (err && err.statusCode && err.body) {
       return err;
     }
 
     return helpers.createResponse(500, {
-      message: err?.message || "Internal server error"
+      message: (err && err.message) || "Internal server error"
     });
   }
 };
@@ -659,12 +796,12 @@ export const del = async (event, ctx, callback) => {
       response: res
     });
   } catch (err) {
-    if (err?.statusCode && err?.body) {
+    if (err && err.statusCode && err.body) {
       return err;
     }
 
     return helpers.createResponse(500, {
-      message: err?.message || "Internal server error"
+      message: (err && err.message) || "Internal server error"
     });
   }
 };
@@ -716,12 +853,12 @@ export const delMany = async (event, ctx, callback) => {
       response: res
     });
   } catch (err) {
-    if (err?.statusCode && err?.body) {
+    if (err && err.statusCode && err.body) {
       return err;
     }
 
     return helpers.createResponse(500, {
-      message: err?.message || "Internal server error"
+      message: (err && err.message) || "Internal server error"
     });
   }
 };
@@ -773,7 +910,7 @@ export const leaderboard = async (event, ctx, callback) => {
   } catch (error) {
     console.error("Error fetching leaderboard:", error);
 
-    if (error?.statusCode && error?.body) {
+    if (error && error.statusCode && error.body) {
       return error;
     }
 
