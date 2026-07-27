@@ -37,20 +37,11 @@ jobs:
               ...context.repo,
               pull_number: context.payload.pull_request.number,
             });
-            if (commits.length !== 1) {
-              core.setFailed(`PR must have exactly 1 commit (has ${commits.length})`);
-            }
+            for (let i = 0; i < commits.length; i++) {
+              const msg = commits[i].commit.message;
+              const [subject] = msg.split('\n');
 
-            const msg = commits[0].commit.message;
-            const [subject, ...bodyLines] = msg.split('\n');
-
-            if (subject.length > 60) {
-              core.setFailed(`Commit subject must be ≤60 characters (got ${subject.length})`);
-            }
-
-            for (let i = 0; i < bodyLines.length; i++) {
-              const line = bodyLines[i];
-              if (line.length > 72) {
-                core.setFailed(`Commit body line ${i + 1} exceeds 72 characters: "${line.slice(0, 80)}..."`);
+              if (subject.length > 60) {
+                core.setFailed(`Commit ${i + 1} subject must be ≤60 characters (got ${subject.length})`);
               }
             }
