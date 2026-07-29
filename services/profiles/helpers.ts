@@ -1,8 +1,6 @@
 import humanId from "human-id";
 import {
-  MEMBERS2026_TABLE,
-  PROFILES_TABLE,
-  USERS_TABLE
+  MEMBERS_TABLE, PROFILES_TABLE, USERS_TABLE
 } from "../../constants/tables";
 import db from "../../lib/db";
 import helpers from "../../lib/handlerHelpers";
@@ -16,7 +14,7 @@ import type {
 
 export async function createProfile(email: string, profileType: string) {
   const [memberData, userData] = await Promise.all([
-    db.getOne(email, MEMBERS2026_TABLE),
+    db.getOne(email, MEMBERS_TABLE),
     db.getOne(email, USERS_TABLE)
   ]);
 

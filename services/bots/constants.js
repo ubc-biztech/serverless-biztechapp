@@ -4,7 +4,8 @@ export const groups = {
     "jay",
     "jerryn",
     "jimmy",
-    "karens"
+    "karens",
+    "elijah"
   ],
   "internal": ["rohan", "kailey", "hannah", "marcus"],
   "experiences": [
@@ -40,7 +41,8 @@ export const groups = {
     "daisy",
     "tiger",
     "ali",
-    "dhrishty"
+    "dhrishty",
+    "charley"
   ],
   "devs": [
     "elijah",

@@ -29,6 +29,8 @@ jobs:
       pull-requests: read
     steps:
       - uses: actions/github-script@v7
+        # Release promotions collect many dev commits by design.
+        if: github.event.pull_request.head.ref != 'dev' || github.event.pull_request.base.ref != 'master'
         with:
           script: |
             const { data: commits } = await github.rest.pulls.listCommits({

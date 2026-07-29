@@ -3,13 +3,18 @@ import db from "../../lib/db";
 import { isEmpty, isValidEmail } from "../../lib/utils";
 import {
   USERS_TABLE,
-  MEMBERS2026_TABLE
+  MEMBERS_TABLE,
+  PROFILES_TABLE
 } from "../../constants/tables";
 import {
   createProfile,
   updateProfileFromMembershipData
 } from "../profiles/helpers";
-import { PROFILE_TYPES } from "../profiles/constants";
+import {
+  PROFILE_TYPES,
+  TYPES
+} from "../profiles/constants";
+import humanId from "human-id";
 
 const validProfileTypes = new Set(Object.values(PROFILE_TYPES));
 
@@ -22,6 +27,163 @@ const normalizeProfileType = (profileType, email) =>
   validProfileTypes.has(profileType)
     ? profileType
     : defaultProfileTypeForEmail(email);
+
+const normalizeTopics = (topics) =>
+  (Array.isArray(topics) ? topics : (topics || "").split(","))
+    .map((topic) => topic.trim())
+    .filter(Boolean);
+
+const PARTNER_PROFILE_VIEWABLE_MAP = {
+  fname: true,
+  lname: true,
+  pronouns: true,
+  major: false,
+  year: false,
+  profileType: true,
+  hobby1: false,
+  hobby2: false,
+  funQuestion1: false,
+  funQuestion2: false,
+  linkedIn: true,
+  profilePictureURL: false,
+  additionalLink: false,
+  resumeURL: false,
+  description: false,
+  company: true,
+  position: true
+};
+
+const normalizePartner = (partner = {}) => ({
+  email: partner.email ? partner.email.trim().toLowerCase() : "",
+  firstName: (partner.firstName || partner.fname || "").trim(),
+  lastName: (partner.lastName || partner.lname || "").trim(),
+  pronouns: (partner.pronouns || "").trim(),
+  linkedIn: (partner.linkedIn || partner.linkedin || "").trim(),
+  company: (partner.company || "").trim(),
+  position: (partner.position || "").trim()
+});
+
+const validatePartner = (partner) => {
+  if (!isValidEmail(partner.email)) return "Invalid email";
+  if (!partner.firstName) return "Missing firstName";
+  if (!partner.lastName) return "Missing lastName";
+  return null;
+};
+
+const summarizePartnerResults = (results) => {
+  return results.reduce(
+    (summary, result) => {
+      summary[result.status] += 1;
+      return summary;
+    },
+    {
+      created: 0,
+      skipped: 0,
+      failed: 0
+    }
+  );
+};
+
+const buildPartnerMembershipRecords = (partner, profileID, timestamp) => {
+  const user = {
+    id: partner.email,
+    fname: partner.firstName,
+    lname: partner.lastName,
+    isMember: true,
+    admin: partner.email.endsWith("@ubcbiztech.com"),
+    profileID,
+    createdAt: timestamp,
+    updatedAt: timestamp
+  };
+
+  const member = {
+    id: partner.email,
+    cardCount: 0,
+    firstName: partner.firstName,
+    lastName: partner.lastName,
+    pronouns: partner.pronouns,
+    createdAt: timestamp,
+    updatedAt: timestamp
+  };
+
+  const profile = {
+    compositeID: `PROFILE#${profileID}`,
+    type: TYPES.PROFILE,
+    profileID,
+    fname: partner.firstName,
+    lname: partner.lastName,
+    pronouns: partner.pronouns,
+    linkedIn: partner.linkedIn,
+    company: partner.company,
+    position: partner.position,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    profileType: PROFILE_TYPES.PARTNER,
+    viewableMap: PARTNER_PROFILE_VIEWABLE_MAP
+  };
+
+  return {
+    user,
+    member,
+    profile
+  };
+};
+
+const buildPartnerMembershipTransaction = (records, existingUser) => {
+  const userWrite = isEmpty(existingUser)
+    ? {
+      Put: {
+        TableName: USERS_TABLE,
+        Item: records.user,
+        ConditionExpression: "attribute_not_exists(id)"
+      }
+    }
+    : {
+      Update: {
+        TableName: USERS_TABLE,
+        Key: {
+          id: records.user.id
+        },
+        UpdateExpression:
+          "SET #fname = :fname, #lname = :lname, #isMember = :isMember, #admin = :admin, #profileID = :profileID, #updatedAt = :updatedAt",
+        ExpressionAttributeNames: {
+          "#fname": "fname",
+          "#lname": "lname",
+          "#isMember": "isMember",
+          "#admin": "admin",
+          "#profileID": "profileID",
+          "#updatedAt": "updatedAt"
+        },
+        ExpressionAttributeValues: {
+          ":fname": records.user.fname,
+          ":lname": records.user.lname,
+          ":isMember": true,
+          ":admin": records.user.admin,
+          ":profileID": records.user.profileID,
+          ":updatedAt": records.user.updatedAt
+        },
+        ConditionExpression: "attribute_exists(id)"
+      }
+    };
+
+  return [
+    userWrite,
+    {
+      Put: {
+        TableName: MEMBERS_TABLE,
+        Item: records.member,
+        ConditionExpression: "attribute_not_exists(id)"
+      }
+    },
+    {
+      Put: {
+        TableName: PROFILES_TABLE,
+        Item: records.profile,
+        ConditionExpression: "attribute_not_exists(compositeID)"
+      }
+    }
+  ];
+};
 
 export const create = async (event, ctx, callback) => {
   const userID = event.requestContext.authorizer.claims.email.toLowerCase();
@@ -39,6 +201,7 @@ export const create = async (event, ctx, callback) => {
 
   const memberParams = {
     id: email,
+    cardCount: data.cardCount ?? 0,
     education: data.education,
     firstName: data.first_name,
     lastName: data.last_name,
@@ -49,7 +212,7 @@ export const create = async (event, ctx, callback) => {
     major: data.major,
     prevMember: data.prev_member,
     international: data.international,
-    topics: data.topics,
+    topics: normalizeTopics(data.topics),
     heardFrom: data.heard_from,
     heardFromSpecify: data.heardFromSpecify,
     diet: data.diet,
@@ -62,7 +225,7 @@ export const create = async (event, ctx, callback) => {
   };
 
   try {
-    await db.put(memberParams, MEMBERS2026_TABLE, true);
+    await db.put(memberParams, MEMBERS_TABLE, true);
     const response = helpers.createResponse(201, {
       message: "Created!",
       params: memberParams
@@ -133,7 +296,7 @@ export const get = async (event, ctx, callback) => {
     const email = event.pathParameters.id;
 
     if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
-    const member = await db.getOne(email, MEMBERS2026_TABLE);
+    const member = await db.getOne(email, MEMBERS_TABLE);
     if (isEmpty(member)) throw helpers.notFoundResponse("member", email);
 
     const response = helpers.createResponse(200, member);
@@ -152,7 +315,7 @@ export const getAll = async (event, ctx, callback) => {
         message: "unauthorized for this action"
       });
 
-    const members = await db.scan(MEMBERS2026_TABLE);
+    const members = await db.scan(MEMBERS_TABLE);
 
     let response = {};
     if (members !== null) response = helpers.createResponse(200, members);
@@ -178,13 +341,13 @@ export const update = async (event, ctx, callback) => {
     const email = event.pathParameters.id;
     if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
 
-    const existingMember = await db.getOne(email, MEMBERS2026_TABLE);
+    const existingMember = await db.getOne(email, MEMBERS_TABLE);
     // eslint-disable-next-line
     if (isEmpty(existingMember))
       throw helpers.notFoundResponse("member", email);
 
     const data = JSON.parse(event.body);
-    const res = await db.updateDB(email, data, MEMBERS2026_TABLE);
+    const res = await db.updateDB(email, data, MEMBERS_TABLE);
     const response = helpers.createResponse(200, {
       message: `Updated member with email ${email}!`,
       response: res
@@ -210,11 +373,11 @@ export const del = async (event, ctx, callback) => {
 
     const email = event.pathParameters.id;
     if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
-    const existingMember = await db.getOne(email, MEMBERS2026_TABLE);
+    const existingMember = await db.getOne(email, MEMBERS_TABLE);
     if (isEmpty(existingMember))
       throw helpers.notFoundResponse("Member", email);
 
-    const res = await db.deleteOne(email, MEMBERS2026_TABLE);
+    const res = await db.deleteOne(email, MEMBERS_TABLE);
     const response = helpers.createResponse(200, {
       message: "Member deleted!",
       response: res
@@ -223,6 +386,86 @@ export const del = async (event, ctx, callback) => {
     return response;
   } catch (err) {
     return err;
+  }
+};
+
+export const createPartnerMemberships = async (event, ctx, callback) => {
+  try {
+    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    if (!userID.endsWith("@ubcbiztech.com")) {
+      return helpers.createResponse(403, {
+        message: "unauthorized"
+      });
+    }
+
+    const data = JSON.parse(event.body || "{}");
+    if (!Array.isArray(data.partners)) {
+      return helpers.inputError("partners must be an array", data);
+    }
+
+    const results = await Promise.all(data.partners.map(async (partnerData) => {
+      const partner = normalizePartner(partnerData);
+      const validationError = validatePartner(partner);
+      if (validationError) {
+        return {
+          email: partner.email,
+          status: "failed",
+          reason: validationError
+        };
+      }
+
+      const existingMember = await db.getOne(partner.email, MEMBERS_TABLE);
+      if (!isEmpty(existingMember)) {
+        return {
+          email: partner.email,
+          status: "skipped",
+          reason: "membership already exists"
+        };
+      }
+
+      const profileID = humanId();
+      const timestamp = new Date().getTime();
+      const records = buildPartnerMembershipRecords(
+        partner,
+        profileID,
+        timestamp
+      );
+      const existingUser = await db.getOne(partner.email, USERS_TABLE);
+      const transactionItems = buildPartnerMembershipTransaction(
+        records,
+        existingUser
+      );
+
+      try {
+        await db.writeMultiple(transactionItems);
+
+        return {
+          email: partner.email,
+          status: "created",
+          profileID
+        };
+      } catch (err) {
+        const body = err && err.body ? JSON.parse(err.body) : {};
+        return {
+          email: partner.email,
+          status: "failed",
+          reason:
+            body.code ||
+            (err && err.message) ||
+            "Failed to create partner membership"
+        };
+      }
+    }));
+
+    return helpers.createResponse(200, {
+      ...summarizePartnerResults(results),
+      results
+    });
+  } catch (err) {
+    console.error(err);
+    return helpers.createResponse(500, {
+      message: err.message || "Internal server error"
+    });
   }
 };
 
@@ -241,7 +484,6 @@ export const del = async (event, ctx, callback) => {
 //   dietaryRestrictions: string,
 //   referral: string,
 //   topics: string[],
-//   isMember: true,
 //   adminCreated: true,
 // };
 
@@ -257,7 +499,7 @@ export const grantMembership = async (event, ctx, callback) => {
 
     const data = JSON.parse(event.body);
 
-    const email = data?.email?.toLowerCase();
+    const email = data && data.email ? data.email.toLowerCase() : undefined;
     if (!isValidEmail(email)) {
       callback(null, helpers.inputError("Invalid email", email));
       return null;
@@ -279,7 +521,6 @@ export const grantMembership = async (event, ctx, callback) => {
       year: userYear,
       gender: data.pronouns,
       diet: data.dietaryRestrictions,
-      isMember: true,
       admin: isBiztechAdmin,
       createdAt: timestamp,
       updatedAt: timestamp
@@ -291,7 +532,7 @@ export const grantMembership = async (event, ctx, callback) => {
       await db.updateDB(email, userParams, USERS_TABLE);
     }
 
-    const member = await db.getOne(email, MEMBERS2026_TABLE);
+    const member = await db.getOne(email, MEMBERS_TABLE);
     let memberDataForProfile = member;
 
     if (isEmpty(member)) {
@@ -308,7 +549,7 @@ export const grantMembership = async (event, ctx, callback) => {
         major: data.major,
         prevMember: Boolean(data.previousMember),
         international: Boolean(data.internationalStudent),
-        topics: data.topics,
+        topics: normalizeTopics(data.topics),
         diet: data.dietaryRestrictions,
         heardFrom: data.referral,
         university: data.education,
@@ -319,12 +560,12 @@ export const grantMembership = async (event, ctx, callback) => {
         createdAt: timestamp,
         updatedAt: timestamp
       };
-      await db.put(memberParams, MEMBERS2026_TABLE, true);
+      await db.put(memberParams, MEMBERS_TABLE, true);
       memberDataForProfile = memberParams;
     }
 
     const userWithProfile = await db.getOne(email, USERS_TABLE);
-    if (userWithProfile?.profileID) {
+    if (userWithProfile && userWithProfile.profileID) {
       await updateProfileFromMembershipData(
         userWithProfile.profileID,
         memberDataForProfile

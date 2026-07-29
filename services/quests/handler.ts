@@ -190,15 +190,9 @@ export const updateQuest = async (
         },
       });
 
-      if (body.type !== "connection" && body.type !== "company") {
+      if (body.type !== "connection") {
         return handlerHelpers.createResponse(400, {
-          message: `Invalid type: '${body.type}'. Valid types: 'connection', 'company'`,
-        });
-      }
-
-      if (body.type === "company" && typeof body.argument !== "string") {
-        return handlerHelpers.createResponse(400, {
-          message: "For 'company' type, argument must be a company name string",
+          message: `Invalid type: '${body.type}'. Valid types: 'connection'`,
         });
       }
     } catch (err) {
