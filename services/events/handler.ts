@@ -150,6 +150,7 @@ export const create: LambdaHandler = async (event) => {
       longitude: data.longitude,
       latitude: data.latitude,
       pricing: data.pricing,
+      registrationFormKey: data.registrationFormKey,
       createdAt: timestamp,
       updatedAt: timestamp,
       requiredTextFields: data.requiredTextFields,

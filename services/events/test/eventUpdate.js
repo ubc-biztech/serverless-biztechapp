@@ -26,10 +26,12 @@ const updatePayload = {
   latitude: 78.00,
   createdAt: "20200607T000000-0400",
   updatedAt: "20200607T000000-0400",
+  registrationFormKey: "mis",
   feedback: "updated-test-feedback-form-link",
 };
 
 describe("eventUpdate", () => {
+  let lastUpdateParams;
   const existingEvents = [{
     id: "existingEvent1",
     year: 2020
@@ -57,6 +59,7 @@ describe("eventUpdate", () => {
     });
 
     AWSMock.mock("DynamoDB.DocumentClient", "update", (params, callback) => {
+      lastUpdateParams = params;
       // Check if an entry with the same id and year already exists in our table
       if (params.Key.id && params.Key.year && existingEvents.some(key => key.id === params.Key.id && key.year === params.Key.year)) {
         callback(null, "successfully updated item in database");
@@ -114,5 +117,7 @@ describe("eventUpdate", () => {
       body: JSON.stringify(updatePayload)
     });
     expect(response.statusCode).to.be.equal(200);
+    expect(lastUpdateParams.ExpressionAttributeValues[":registrationFormKey"])
+      .to.equal(updatePayload.registrationFormKey);
   });
 });
