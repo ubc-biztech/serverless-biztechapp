@@ -26,6 +26,7 @@ const eventPayload = {
   latitude: 78.00,
   createdAt: "20200607T000000-0400",
   updatedAt: "20200607T000000-0400",
+  registrationFormKey: "mis",
   registrationQuestions: [
     {
       type: "textField",
@@ -133,6 +134,8 @@ describe("eventCreate", () => {
       body: JSON.stringify(payload)
     });
     expect(response.statusCode).to.be.equal(201);
+    const body = JSON.parse(response.body);
+    expect(body.item.registrationFormKey).to.equal(payload.registrationFormKey);
   });
 
   it("return 409 for trying to create an event with the same id and year", async () => {
