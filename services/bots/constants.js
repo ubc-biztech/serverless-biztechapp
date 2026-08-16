@@ -42,7 +42,8 @@ export const groups = {
     "tiger",
     "ali",
     "dhrishty",
-    "charley"
+    "charley",
+    "emmy"
   ],
   "devs": [
     "elijah",
