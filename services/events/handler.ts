@@ -163,6 +163,7 @@ export const create: LambdaHandler = async (event) => {
       feedback: data.feedback,
       isApplicationBased: data.isApplicationBased,
       nonBizTechAllowed: data.nonBizTechAllowed,
+      eventPage: data.eventPage,
       attendeeFeedbackEnabled,
       partnerFeedbackEnabled,
       attendeeFeedbackQuestions: normalizedAttendeeQuestions,
