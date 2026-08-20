@@ -14,6 +14,29 @@ export type RegistrationQuestionWithId = RegistrationQuestion & {
   questionId: string;
 };
 
+export type EventPageModuleId = "registration" | "qa" | "connections";
+
+export type EventPageModuleVisibility =
+  | "public"
+  | "signedIn"
+  | "registered"
+  | "checkedIn"
+  | "admin";
+
+export interface EventPageModule {
+  id: EventPageModuleId;
+  order: number;
+  visibility: EventPageModuleVisibility;
+  config?: Record<string, unknown>;
+}
+
+export interface EventPageConfig {
+  subtitle?: string;
+  targetAudience?: string;
+  externalUrl?: string;
+  modules?: EventPageModule[];
+}
+
 /** POST /events/ request body. */
 export interface CreateEventBody {
   id: string;
@@ -47,6 +70,7 @@ export interface CreateEventBody {
   feedback?: string;
   isApplicationBased?: boolean;
   nonBizTechAllowed?: boolean;
+  eventPage?: EventPageConfig;
   [key: string]: unknown;
 }
 
@@ -91,6 +115,7 @@ export interface EventRecord {
   feedback?: string;
   isApplicationBased?: boolean;
   nonBizTechAllowed?: boolean;
+  eventPage?: EventPageConfig;
   [key: string]: unknown;
 }
 
