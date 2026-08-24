@@ -7,9 +7,10 @@ import {
   DISCORD_GUILD_ID,
   DISCORD_GUILD_ID_PROD,
   MEMBERSHIP_ROLES
-} from "./constants.js";
+} from "./constants";
+import type { APIGatewayEvent } from "../../lib/types";
 
-export async function DiscordRequest(endpoint, options) {
+export async function DiscordRequest(endpoint: string, options: any) {
   const url = "https://discord.com/api/v10/" + endpoint;
   if (options.body) options.body = JSON.stringify(options.body);
   const res = await fetch(url, {
@@ -33,7 +34,7 @@ export async function DiscordRequest(endpoint, options) {
   return res;
 }
 
-export function verifyRequestSignature(req) {
+export function verifyRequestSignature(req: APIGatewayEvent) {
   let isValid = false;
   const signature =
     req.headers["x-signature-ed25519"] || req.headers["X-Signature-Ed25519"];
@@ -51,9 +52,11 @@ export function verifyRequestSignature(req) {
     Buffer.from(timestamp + body),
     Buffer.from(signature, "hex"),
     Buffer.from(
+      // The env vars are `string | undefined`; the original JS throws a TypeError
+      // from `Buffer.from(undefined, "hex")` when unset, so assert rather than guard.
       process.env.ENVIRONMENT === "PROD"
-        ? process.env.DISCORD_PUBLIC_KEY_PROD
-        : process.env.DISCORD_PUBLIC_KEY,
+        ? process.env.DISCORD_PUBLIC_KEY_PROD!
+        : process.env.DISCORD_PUBLIC_KEY!,
       "hex"
     )
   );
@@ -63,7 +66,7 @@ export function verifyRequestSignature(req) {
 
 // Handles application commands and routes them to the appropriate handler
 // * handlers should return a response object with statusCode and body
-export function applicationCommandRouter(name, body) {
+export function applicationCommandRouter(name: string, body: any) {
   const { member } = body;
   switch (name) {
   case "verify":
@@ -84,7 +87,7 @@ export function applicationCommandRouter(name, body) {
 }
 
 // handles /verify slash command
-function handleVerifyCommand(member) {
+function handleVerifyCommand(member: any) {
   const discordUserId = member?.user?.id;
 
   console.log("User initiating verify:", discordUserId);
@@ -133,7 +136,10 @@ function handleVerifyCommand(member) {
   };
 }
 
-export async function assignUserRoles(userID, membershipTier, eventID = null) {
+// `membershipTier` is typed loosely because it is used as a key into
+// `MEMBERSHIP_ROLES`, whose declared type in `constants.ts` has only two literal
+// keys; a `string` here would need an index cast that asserts the key exists.
+export async function assignUserRoles(userID: string, membershipTier: any, eventID: string | null = null) {
   const user = await db.getOne(userID, MEMBERS_TABLE);
   if (!user) {
     throw new Error(`User ${userID} not found in database`);
@@ -149,10 +155,10 @@ export async function assignUserRoles(userID, membershipTier, eventID = null) {
     );
   }
 
-  const rolesToAdd = [];
+  const rolesToAdd: any[] = [];
 
-  if (membershipTier && MEMBERSHIP_ROLES[membershipTier]) {
-    rolesToAdd.push(...MEMBERSHIP_ROLES[membershipTier]);
+  if (membershipTier && (MEMBERSHIP_ROLES as Record<string, string[]>)[membershipTier]) {
+    rolesToAdd.push(...(MEMBERSHIP_ROLES as Record<string, string[]>)[membershipTier]);
   }
 
   // TODO: add event role logic here when needed
@@ -161,7 +167,7 @@ export async function assignUserRoles(userID, membershipTier, eventID = null) {
     throw new Error("No valid roles to assign");
   }
 
-  const results = [];
+  const results: any[] = [];
   for (const roleID of rolesToAdd) {
     try {
       await DiscordRequest(
@@ -181,12 +187,12 @@ export async function assignUserRoles(userID, membershipTier, eventID = null) {
     } catch (error) {
       console.error(
         `Failed to assign role ${roleID} to user ${userID}:`,
-        error.message
+        (error as { message?: unknown }).message
       );
       results.push({
         roleID,
         status: "failed",
-        error: error.message
+        error: (error as { message?: unknown }).message
       });
     }
   }
@@ -199,7 +205,7 @@ export async function assignUserRoles(userID, membershipTier, eventID = null) {
   };
 }
 
-export async function removeUserRoles(userID, membershipTier, eventID = null) {
+export async function removeUserRoles(userID: string, membershipTier: any, eventID: string | null = null) {
   const user = await db.getOne(userID, MEMBERS_TABLE);
   if (!user) {
     throw new Error(`User ${userID} not found in database`);
@@ -209,10 +215,11 @@ export async function removeUserRoles(userID, membershipTier, eventID = null) {
     throw new Error(`No Discord ID found for user ${userID}`);
   }
 
-  const rolesToRemove = [];
+  const rolesToRemove: any[] = [];
 
-  if (membershipTier && MEMBERSHIP_ROLES[membershipTier]) {
-    rolesToRemove.push(MEMBERSHIP_ROLES[membershipTier]);
+  // BUG (pre-existing, preserved): pushes the whole role array instead of spreading it (`assignUserRoles` spreads), so `roleID` below is an array and the Discord URL is built from `Array.prototype.toString`.
+  if (membershipTier && (MEMBERSHIP_ROLES as Record<string, string[]>)[membershipTier]) {
+    rolesToRemove.push((MEMBERSHIP_ROLES as Record<string, string[]>)[membershipTier]);
   }
 
   // TODO: Add event role logic here when needed
@@ -221,7 +228,7 @@ export async function removeUserRoles(userID, membershipTier, eventID = null) {
     throw new Error("No valid roles to remove");
   }
 
-  const results = [];
+  const results: any[] = [];
   for (const roleID of rolesToRemove) {
     try {
       await DiscordRequest(
@@ -241,12 +248,12 @@ export async function removeUserRoles(userID, membershipTier, eventID = null) {
     } catch (error) {
       console.error(
         `Failed to remove role ${roleID} from user ${userID}:`,
-        error.message
+        (error as { message?: unknown }).message
       );
       results.push({
         roleID,
         status: "failed",
-        error: error.message
+        error: (error as { message?: unknown }).message
       });
     }
   }
@@ -259,7 +266,7 @@ export async function removeUserRoles(userID, membershipTier, eventID = null) {
   };
 }
 
-export async function backfillUserRoles(userID) {
+export async function backfillUserRoles(userID: string) {
   const user = await db.getOne(userID, MEMBERS_TABLE);
   if (!user) {
     throw new Error(`User ${userID} not found in database`);

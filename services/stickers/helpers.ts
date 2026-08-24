@@ -12,16 +12,18 @@ import docClient from "../../lib/docClient";
 import {
   RESERVED_WORDS
 } from "../../constants/dynamodb";
+// @ts-expect-error TS7016 `copy-dynamodb-table` ships no type declarations.
 import error from "copy-dynamodb-table/error";
 import {
   ACTION_TYPES, STATE_KEY
 } from "./constants";
+import type { PayloadCheck, WebSocketEvent, WebSocketRequestContext } from "../../lib/types";
 
 /**
  * @param event socket action event
  * @param {Object} data message object being sent
  */
-export const sendMessage = async (event, data) => {
+export const sendMessage = async (event: { requestContext: WebSocketRequestContext }, data: unknown) => {
   const {
     url, connectionId
   } = getEndpoint(event);
@@ -34,7 +36,8 @@ export const sendMessage = async (event, data) => {
       apigatewaymanagementapi.postToConnection(
         {
           ConnectionId: connectionId,
-          Data: JSON.stringify(data)
+          // The generated SDK type declares `Data` as `Uint8Array`, but the runtime accepts a string body.
+          Data: JSON.stringify(data) as unknown as Uint8Array
         },
         (err, data) => {
           if (err) {
@@ -46,40 +49,42 @@ export const sendMessage = async (event, data) => {
       );
     });
   } catch (error) {
-    switch (error.code) {
+    switch ((error as { code?: string }).code) {
+    // BUG (pre-existing, preserved): `"GoneException" || "UnknownException"` evaluates to "GoneException", so "UnknownException" never matches this case.
+    // @ts-expect-error TS2872 the `||` in the case expression is always truthy; preserved verbatim.
     case "GoneException" || "UnknownException": // Connection no longer exists
-      console.error("Stale Connection", error.message || error);
+      console.error("Stale Connection", (error as { message?: unknown }).message || error);
       break;
 
     case "LimitExceededException": // Rate limit exceeded
-      console.error("Rate limit exceeded.", error.message || error);
+      console.error("Rate limit exceeded.", (error as { message?: unknown }).message || error);
       break;
 
     case "PayloadTooLargeException": // Payload size exceeds the allowed limit
-      console.error("Payload is too large", error.message || error);
+      console.error("Payload is too large", (error as { message?: unknown }).message || error);
       break;
 
     case "ForbiddenException": // Insufficient permissions
       console.error(
         "Forbidden: You do not have permission to post to this connection.",
-        error.message || error
+        (error as { message?: unknown }).message || error
       );
       break;
 
     case "InternalServerErrorException": // Internal server error
-      console.error("Internal server error", error.message || error);
+      console.error("Internal server error", (error as { message?: unknown }).message || error);
 
       break;
 
     case "BadRequestException": // Invalid request format
       console.error(
         "Bad request: Please check your data format.",
-        error.message || error
+        (error as { message?: unknown }).message || error
       );
       break;
 
     default:
-      console.error("An unexpected error occurred:", error.message || error);
+      console.error("An unexpected error occurred:", (error as { message?: unknown }).message || error);
       break;
     }
     await deleteConnection(connectionId);
@@ -113,7 +118,7 @@ export const fetchState = async (roomID = STATE_KEY) => {
  * @param {*} event
  * @returns {obj} {url, connectionId}
  */
-function getEndpoint(event) {
+function getEndpoint(event: { requestContext: WebSocketRequestContext }) {
   const domain = event.requestContext.domainName;
   const stage = event.requestContext.stage;
   const connectionId = event.requestContext.connectionId;
@@ -130,8 +135,8 @@ function getEndpoint(event) {
  * @param state socket state object, update role, teamName, isVoting
  * @param {string} connectionID id of socket connection
  */
-export async function updateSocket(state, connectionID) {
-  let res = {
+export async function updateSocket(state: Record<string, unknown>, connectionID: string) {
+  let res: Record<string, unknown> = {
     status: 200,
     action: "update",
     message: "Successfully updated state",
@@ -175,7 +180,7 @@ export async function updateSocket(state, connectionID) {
  *
  * sends message to all voters
  */
-export async function notifyVoters(data, action, event, roomID) {
+export async function notifyVoters(data: unknown, action: string, event: WebSocketEvent, roomID: string) {
   let voters;
   try {
     const command = new QueryCommand({
@@ -200,14 +205,15 @@ export async function notifyVoters(data, action, event, roomID) {
     console.error(errResponse);
   }
 
+  // BUG (pre-existing, preserved): the catch above swallows the error, so a failed query falls through to `voters.length` on undefined and throws a TypeError.
   // send message to all voters in the specific room
-  for (let i = 0; i < voters.length; i++) {
+  for (let i = 0; i < voters!.length; i++) {
     await sendMessage(
       {
         requestContext: {
           domainName: event.requestContext.domainName,
           stage: event.requestContext.stage,
-          connectionId: voters[i].connectionID
+          connectionId: voters![i].connectionID
         }
       },
       {
@@ -225,7 +231,7 @@ export async function notifyVoters(data, action, event, roomID) {
  *
  * sends message to all admins
  */
-export async function notifyAdmins(data, action, event, roomID) {
+export async function notifyAdmins(data: unknown, action: string, event: WebSocketEvent, roomID: string) {
   let admins;
   try {
     const command = new QueryCommand({
@@ -250,14 +256,15 @@ export async function notifyAdmins(data, action, event, roomID) {
     console.error(errResponse);
   }
 
+  // BUG (pre-existing, preserved): the catch above swallows the error, so a failed query falls through to `admins.length` on undefined and throws a TypeError.
   // should only ever be length one because we have one presenter per room
-  for (let i = 0; i < admins.length; i++) {
+  for (let i = 0; i < admins!.length; i++) {
     await sendMessage(
       {
         requestContext: {
           domainName: event.requestContext.domainName,
           stage: event.requestContext.stage,
-          connectionId: admins[i].connectionID
+          connectionId: admins![i].connectionID
         }
       },
       {
@@ -275,12 +282,12 @@ export async function notifyAdmins(data, action, event, roomID) {
  *
  * returns parsed update expression based on input obj
  */
-export function createUpdateExpression(obj) {
+export function createUpdateExpression(obj: Record<string, unknown>) {
   let val = 0;
   let updateExpression = "SET ";
-  let expressionAttributeValues = {
+  let expressionAttributeValues: Record<string, unknown> = {
   };
-  let expressionAttributeNames = null;
+  let expressionAttributeNames: Record<string, string> | null = null;
 
   for (const key in obj) {
     if (obj.hasOwnProperty(key)) {
@@ -313,7 +320,7 @@ export function createUpdateExpression(obj) {
  *
  * return custom error message
  */
-export function checkPayloadProps(payload, check = {
+export function checkPayloadProps(payload: Record<string, any>, check: PayloadCheck = {
 }) {
   try {
     const criteria = Object.entries(check);
@@ -330,7 +337,7 @@ export function checkPayloadProps(payload, check = {
       }
     });
   } catch (errMsg) {
-    const response = {
+    const response: { status?: number; action: string; message: unknown; data: string } = {
       status: 406,
       action: ACTION_TYPES.error,
       message: errMsg,
@@ -349,7 +356,7 @@ export function checkPayloadProps(payload, check = {
  *
  * Deletes connection in sockets table
  */
-export async function deleteConnection(connectionID) {
+export async function deleteConnection(connectionID: string) {
   try {
     const params = {
       Key: {
@@ -365,12 +372,13 @@ export async function deleteConnection(connectionID) {
       message: "Disconnected"
     };
   } catch (err) {
+    // BUG (pre-existing, preserved): the caught error is bound to `err`, but the imported `error` module is passed to `dynamoErrorResponse` instead.
     let errResponse = db.dynamoErrorResponse(error);
     console.error(errResponse);
   }
 }
 
-export async function getSticker(teamName, stickerName, id) {
+export async function getSticker(teamName: string, stickerName: string, id: string) {
   try {
     const params = {
       Key: {
@@ -398,8 +406,8 @@ export async function getSticker(teamName, stickerName, id) {
  *
  * updates sticker.
  */
-export async function updateSticker(state, teamName, userID, stickerName) {
-  let res = {
+export async function updateSticker(state: Record<string, unknown>, teamName: string, userID: string, stickerName: string) {
+  let res: Record<string, unknown> = {
     status: 200,
     message: "Successfully updated state",
     state: state
@@ -439,7 +447,7 @@ export async function updateSticker(state, teamName, userID, stickerName) {
 /*
 Assuming syncAdmin is called on the correct teamName, there is no need for roomID 
 */
-export async function syncAdmin(event, teamName, isVoting) {
+export async function syncAdmin(event: WebSocketEvent, teamName: string, isVoting: boolean) {
   await updateSocket(
     {
       role: "admin"
@@ -460,7 +468,7 @@ export async function syncAdmin(event, teamName, isVoting) {
   };
 }
 
-export async function syncUser(body, event) {
+export async function syncUser(body: Record<string, any>, event: WebSocketEvent) {
   let stickers;
   try {
     const command = new QueryCommand({
@@ -495,7 +503,7 @@ export async function syncUser(body, event) {
   return stickers;
 }
 
-export async function fetchSocketRoomIDForConnection(id) {
+export async function fetchSocketRoomIDForConnection(id: string) {
   let roomID;
   try {
     const command = new QueryCommand({
@@ -517,7 +525,7 @@ export async function fetchSocketRoomIDForConnection(id) {
   return roomID;
 }
 
-export async function fetchSocket(id) {
+export async function fetchSocket(id: string) {
   const command = new GetCommand({
     TableName: SOCKETS_TABLE + (process.env.ENVIRONMENT || ""),
     Key: {
@@ -528,7 +536,7 @@ export async function fetchSocket(id) {
   return response.Item || null;
 }
 
-export function createResponse(statusCode, body) {
+export function createResponse(statusCode: number, body: any) {
   const response = {
     statusCode,
     headers: {
@@ -544,7 +552,7 @@ export function createResponse(statusCode, body) {
   return response;
 }
 
-export function missingPathParamResponse(type, paramName) {
+export function missingPathParamResponse(type: string, paramName: string) {
   return createResponse(400, {
     message: `A(n) ${paramName} path parameter was not provided for this ${type}. Check path params`
   });

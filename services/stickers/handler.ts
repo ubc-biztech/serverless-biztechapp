@@ -33,6 +33,7 @@ import {
   STICKER_TYPE_GOLDEN,
   VOTER_ROLE
 } from "./constants";
+import type { APIGatewayEvent, LambdaCallback, LambdaContext, WebSocketEvent } from "../../lib/types";
 
 /**
  * Connection handler
@@ -41,7 +42,7 @@ import {
  * to voter role
  *
  */
-export const connectHandler = async (event, ctx, callback) => {
+export const connectHandler = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   const connectionID = event.requestContext.connectionId;
 
   let roomID = "";
@@ -75,7 +76,7 @@ export const connectHandler = async (event, ctx, callback) => {
  *
  * Cleans up socket table upon graceful disconnect
  */
-export const disconnectHandler = async (event, ctx, callback) => {
+export const disconnectHandler = async (event: WebSocketEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   const connectionID = event.requestContext.connectionId;
   await deleteConnection(connectionID);
   return {
@@ -95,8 +96,8 @@ export const disconnectHandler = async (event, ctx, callback) => {
  *
  *    to sync connection to admin role and state, set id = ADMIN_ROLE
  */
-export const syncHandler = async (event, ctx, callback) => {
-  const body = JSON.parse(event.body);
+export const syncHandler = async (event: WebSocketEvent, ctx: LambdaContext, callback: LambdaCallback) => {
+  const body = JSON.parse(event.body as string);
   if (!body.hasOwnProperty("id") || !body.hasOwnProperty("roomID")) {
     const errMessage = checkPayloadProps(body, {
       id: {
@@ -109,7 +110,7 @@ export const syncHandler = async (event, ctx, callback) => {
       }
     });
     await sendMessage(event, errMessage);
-    delete errMessage.status;
+    delete errMessage!.status;
     return {
       statusCode: 406,
       body: {
@@ -122,7 +123,7 @@ export const syncHandler = async (event, ctx, callback) => {
   let state = await fetchState(roomID);
   const {
     isVoting, teamName
-  } = state.Item;
+  } = state!.Item!;
 
   // sync admin that is specific to that room
   if (body.id === ADMIN_ROLE) {
@@ -169,8 +170,8 @@ export const syncHandler = async (event, ctx, callback) => {
  *    if changeTeam is used as the action, then a team property must
  *    be provided as part of the message body
  */
-export const adminHandler = async (event, ctx, callback) => {
-  const body = JSON.parse(event.body);
+export const adminHandler = async (event: WebSocketEvent, ctx: LambdaContext, callback: LambdaCallback) => {
+  const body = JSON.parse(event.body as string);
   if (!body.hasOwnProperty("event") || !body.hasOwnProperty("roomID")) {
     const errMessage = checkPayloadProps(body, {
       event: {
@@ -183,7 +184,7 @@ export const adminHandler = async (event, ctx, callback) => {
       }
     });
     await sendMessage(event, errMessage);
-    delete errMessage.status;
+    delete errMessage!.status;
     return {
       statusCode: 406,
       body: {
@@ -194,6 +195,8 @@ export const adminHandler = async (event, ctx, callback) => {
   const action = body.event;
   const roomID = body.roomID;
 
+  // BUG (pre-existing, preserved): `changeTeam` is a key of `ADMIN_EVENTS`, not `ACTION_TYPES`, so this comparison is against `undefined` and the missing-`team` check never runs.
+  // @ts-expect-error TS2339 `changeTeam` does not exist on `ACTION_TYPES`; preserved verbatim.
   if (action === ACTION_TYPES.changeTeam && !body.hasOwnProperty("team")) {
     const errMessage = checkPayloadProps(body, {
       team: {
@@ -203,7 +206,7 @@ export const adminHandler = async (event, ctx, callback) => {
     });
 
     await sendMessage(event, errMessage);
-    delete errMessage.status;
+    delete errMessage!.status;
     return {
       statusCode: 406,
       body: {
@@ -290,8 +293,8 @@ export const adminHandler = async (event, ctx, callback) => {
  *
  *
  */
-export const stickerHandler = async (event, ctx, callback) => {
-  const body = JSON.parse(event.body);
+export const stickerHandler = async (event: WebSocketEvent, ctx: LambdaContext, callback: LambdaCallback) => {
+  const body = JSON.parse(event.body as string);
   if (
     !body.hasOwnProperty("id") ||
     !body.hasOwnProperty("stickerName") ||
@@ -312,7 +315,7 @@ export const stickerHandler = async (event, ctx, callback) => {
       }
     });
     await sendMessage(event, errMessage);
-    delete errMessage.status;
+    delete errMessage!.status;
     return {
       statusCode: 406,
       body: {
@@ -327,7 +330,7 @@ export const stickerHandler = async (event, ctx, callback) => {
   let state = await fetchState(roomID);
   const {
     teamName, isVoting
-  } = state.Item;
+  } = state!.Item!;
 
   if (!isVoting) {
     await sendMessage(event, {
@@ -355,7 +358,7 @@ export const stickerHandler = async (event, ctx, callback) => {
         TableName: STICKERS_TABLE + (process.env.ENVIRONMENT || "")
       });
       const response = await docClient.send(command);
-      isGoldenInDB = response.Items.length > 0;
+      isGoldenInDB = response.Items!.length > 0;
     } catch (error) {
       let errResponse = db.dynamoErrorResponse(error);
       console.error(errResponse);
@@ -500,8 +503,8 @@ export const stickerHandler = async (event, ctx, callback) => {
  *
  *
  */
-export const scoreHandler = async (event, ctx, callback) => {
-  const body = JSON.parse(event.body);
+export const scoreHandler = async (event: WebSocketEvent, ctx: LambdaContext, callback: LambdaCallback) => {
+  const body = JSON.parse(event.body as string);
   if (
     !body.hasOwnProperty("id") ||
     !body.hasOwnProperty("score") ||
@@ -522,7 +525,7 @@ export const scoreHandler = async (event, ctx, callback) => {
       }
     });
     await sendMessage(event, errMessage);
-    delete errMessage.status;
+    delete errMessage!.status;
     return {
       statusCode: 406,
       body: {
@@ -538,7 +541,7 @@ export const scoreHandler = async (event, ctx, callback) => {
   let state = await fetchState(roomID);
   const {
     teamName
-  } = state.Item;
+  } = state!.Item!;
   let payload = {
     teamName,
     userID: id,
@@ -549,7 +552,7 @@ export const scoreHandler = async (event, ctx, callback) => {
   try {
     await db.put(payload, SCORE_TABLE, true);
   } catch (error) {
-    console.error(error.message);
+    console.error((error as { message?: unknown }).message);
     await sendMessage(event, {
       status: 500,
       message: "Failed to store score"
@@ -575,7 +578,7 @@ export const scoreHandler = async (event, ctx, callback) => {
  *
  * Returns status 400 error for unrecognized action
  */
-export const defaultHandler = async (event, ctx, callback) => {
+export const defaultHandler = async (event: WebSocketEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
     await sendMessage(event, {
       status: 400,
@@ -584,7 +587,7 @@ export const defaultHandler = async (event, ctx, callback) => {
     });
   } catch (error) {
     console.error(error);
-    return createResponse(500, { message: error.message || error });
+    return createResponse(500, { message: (error as { message?: unknown }).message || error });
   }
   return {
     statusCode: 200
@@ -595,7 +598,7 @@ export const defaultHandler = async (event, ctx, callback) => {
  * Endpoint to return all scores
  *
  */
-export const getScores = async (event, ctx, callback) => {
+export const getScores = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   let res;
   try {
     res = await db.scan(SCORE_TABLE);
@@ -628,8 +631,10 @@ export const getScores = async (event, ctx, callback) => {
 };
 
 /** Endpoint to return all scores in room */
-export const getScoresRoom = async (event, ctx, callback) => {
+export const getScoresRoom = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   if (!event.pathParameters || !event.pathParameters.roomID)
+    // BUG (pre-existing, preserved): `missingPathParamResponse(type, paramName)` is called with one argument, so the message reads "A(n) undefined path parameter was not provided for this roomID".
+    // @ts-expect-error TS2554 one argument supplied for two required parameters; preserved verbatim.
     throw missingPathParamResponse("roomID");
 
   const roomID = event.pathParameters.roomID;
@@ -673,8 +678,10 @@ export const getScoresRoom = async (event, ctx, callback) => {
  * Endpoint to return all scores
  *
  */
-export const getScoresTeam = async (event, ctx, callback) => {
+export const getScoresTeam = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   if (!event.pathParameters || !event.pathParameters.teamName)
+    // BUG (pre-existing, preserved): `missingPathParamResponse(type, paramName)` is called with one argument, so the message reads "A(n) undefined path parameter was not provided for this teamName".
+    // @ts-expect-error TS2554 one argument supplied for two required parameters; preserved verbatim.
     throw missingPathParamResponse("teamName");
 
   const teamName = event.pathParameters.teamName;
@@ -710,7 +717,7 @@ export const getScoresTeam = async (event, ctx, callback) => {
 /**
  * Endpoint to return all stickers
  */
-export const getStickers = async (event, ctx, callback) => {
+export const getStickers = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   let res;
   try {
     res = await db.scan(STICKERS_TABLE + (process.env.ENVIRONMENT || ""));
@@ -742,8 +749,10 @@ export const getStickers = async (event, ctx, callback) => {
   return res;
 };
 
-export const getStickersRoom = async (event, ctx, callback) => {
+export const getStickersRoom = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   if (!event.pathParameters || !event.pathParameters.roomID)
+    // BUG (pre-existing, preserved): `missingPathParamResponse(type, paramName)` is called with one argument, so the message reads "A(n) undefined path parameter was not provided for this roomID".
+    // @ts-expect-error TS2554 one argument supplied for two required parameters; preserved verbatim.
     throw missingPathParamResponse("roomID");
 
   let roomID = event.pathParameters.roomID;
@@ -786,8 +795,10 @@ export const getStickersRoom = async (event, ctx, callback) => {
 /**
  * Endpoint to return all stickers
  */
-export const getStickersTeam = async (event, ctx, callback) => {
+export const getStickersTeam = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   if (!event.pathParameters || !event.pathParameters.teamName)
+    // BUG (pre-existing, preserved): `missingPathParamResponse(type, paramName)` is called with one argument, so the message reads "A(n) undefined path parameter was not provided for this teamName".
+    // @ts-expect-error TS2554 one argument supplied for two required parameters; preserved verbatim.
     throw missingPathParamResponse("teamName");
 
   const teamName = event.pathParameters.teamName;
@@ -806,7 +817,7 @@ export const getStickersTeam = async (event, ctx, callback) => {
       TableName: STICKERS_TABLE + (process.env.ENVIRONMENT || "")
     });
     const response = await docClient.send(command);
-    stickers = response.Items;
+    stickers = response.Items!;
   } catch (error) {
     let errResponse = db.dynamoErrorResponse(error);
     console.error(errResponse);

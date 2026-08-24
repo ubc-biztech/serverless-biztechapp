@@ -28,7 +28,7 @@ const WS_TABLE = `bizWallSockets${process.env.ENVIRONMENT || ""}`;
 const LIVE_TABLE = `bizLiveConnections${process.env.ENVIRONMENT || ""}`;
 const WS_ENDPOINT = process.env.WS_API_ENDPOINT;
 
-export const handleConnection = async (userID, connProfileID, timestamp) => {
+export const handleConnection = async (userID: string, connProfileID: string, timestamp: number) => {
   const userData = await db.getOne(userID, USERS_TABLE);
 
   const userProfileID = userData?.profileID;
@@ -77,10 +77,13 @@ export const handleConnection = async (userID, connProfileID, timestamp) => {
   }
 
   let swap = false;
+  // BUG (pre-existing, preserved): EXEC here is "Exec" from ./constants, while profiles store PROFILE_TYPES.EXEC === "EXEC", so neither exec branch can ever match.
   if (userProfile.profileType === EXEC && connProfile.profileType === EXEC) {
+    // BUG (pre-existing, preserved): assigns `type`, but the switch below reads `profileType`, so the EXEC+EXEC case is unreachable.
     connProfile.type = PROFILE_TYPES.EXEC + PROFILE_TYPES.EXEC;
   } else if (userProfile.profileType === EXEC) {
     userProfile = [connProfile, (connProfile = userProfile)][0];
+    // BUG (pre-existing, preserved): swaps userID (an email) into connProfileID, so the puts below would key off an email instead of a profile ID.
     userID = [connProfileID, (connProfileID = userID)][0];
     swap = true;
   }
@@ -271,7 +274,7 @@ export const handleConnection = async (userID, connProfileID, timestamp) => {
   });
 };
 
-const isDuplicateRequest = async (userID, connID) => {
+const isDuplicateRequest = async (userID: string, connID: string) => {
   const result = await db.getOneCustom({
     TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
     Key: {
@@ -284,7 +287,7 @@ const isDuplicateRequest = async (userID, connID) => {
 
 export async function saveSocketConnection({
   connectionId, eventId, userId
-}) {
+}: { connectionId: string | undefined; eventId: string; userId: string }) {
   console.log("[WS] saveSocketConnection", {
     connectionId,
     eventId,
@@ -304,7 +307,7 @@ export async function saveSocketConnection({
 
 export async function removeSocketConnection({
   connectionId
-}) {
+}: { connectionId: string | undefined }) {
   const cmd = new DeleteCommand({
     TableName: WS_TABLE,
     Key: {
@@ -314,7 +317,7 @@ export async function removeSocketConnection({
   await docClient.send(cmd);
 }
 
-export async function listConnectionsByEvent(eventId) {
+export async function listConnectionsByEvent(eventId: string) {
   console.log("[WS] listConnectionsByEvent ->", eventId);
   const cmd = new QueryCommand({
     TableName: WS_TABLE,
@@ -339,7 +342,7 @@ export function wsClient() {
   });
 }
 
-export async function postToConnection(connectionId, payload) {
+export async function postToConnection(connectionId: string, payload: Record<string, unknown>) {
   const api = wsClient();
   try {
     console.log(
@@ -354,7 +357,7 @@ export async function postToConnection(connectionId, payload) {
     });
   } catch (err) {
     console.error("[WS] postToConnection error", err);
-    if (err.statusCode === 410) {
+    if ((err as { statusCode?: number }).statusCode === 410) {
       await removeSocketConnection({
         connectionId
       });
@@ -364,7 +367,7 @@ export async function postToConnection(connectionId, payload) {
 
 export async function logLiveConnection({
   eventId, from, to
-}) {
+}: { eventId: string; from: Record<string, unknown>; to: Record<string, unknown> }) {
   const createdAt = Date.now();
   const sk = `ts#${createdAt}#${randomUUID()}`;
   const cmd = new PutCommand({
@@ -383,7 +386,7 @@ export async function logLiveConnection({
 export async function fetchRecentConnections({
   eventId,
   sinceMs = 60 * 60 * 1000
-}) {
+}: { eventId: string; sinceMs?: number }) {
   const now = Date.now();
   const threshold = now - sinceMs;
 

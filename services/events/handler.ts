@@ -22,7 +22,7 @@ import {
   dateComparer,
   isEmpty,
   isValidEmail,
-} from "../../lib/utils.js";
+} from "../../lib/utils";
 import feedbackHelpers, { isValidationFail } from "./feedbackHelpers.js";
 import eventHelpers from "./helpers";
 import type {

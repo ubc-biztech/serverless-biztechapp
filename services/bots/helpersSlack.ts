@@ -6,10 +6,12 @@ import {
   btFields,
   btDevs,
   scoreCommandAdmins
-} from "./constants.js";
-import { ensureDocsIndexLoaded } from "./docsIndexStore.js";
+} from "./constants";
+import { ensureDocsIndexLoaded } from "./docsIndexStore";
 import db from "../../lib/db.js";
 import { STORY_POINTS_TABLE } from "../../constants/tables.js";
+// `jsonwebtoken` ships no type declarations and `@types/jsonwebtoken` is not installed; no dependency was added, so the import is suppressed instead.
+// @ts-expect-error TS7016 Could not find a declaration file for module 'jsonwebtoken'.
 import jwt from "jsonwebtoken";
 import fetch from "node-fetch";
 
@@ -73,18 +75,18 @@ function tokenize(text = "") {
 
 const docsSearchCache = {
   cacheKey: "",
-  preparedDocsChunks: [],
-  tokenIdf: new Map()
+  preparedDocsChunks: [] as any[],
+  tokenIdf: new Map<string, number>()
 };
 
-function buildDocsSearchArtifacts(docsChunks = []) {
+function buildDocsSearchArtifacts(docsChunks: any[] = []) {
   const preparedDocsChunks = docsChunks.map((chunk) => ({
     ...chunk,
     titleSearch: normalizeForSearch(chunk.title),
     sectionSearch: normalizeForSearch(chunk.section)
   }));
 
-  const tokenDocumentFrequency = new Map();
+  const tokenDocumentFrequency = new Map<string, number>();
   for (const chunk of preparedDocsChunks) {
     const uniqueTokens = new Set(tokenize(chunk.searchText));
     for (const token of uniqueTokens) {
@@ -95,7 +97,7 @@ function buildDocsSearchArtifacts(docsChunks = []) {
     }
   }
 
-  const tokenIdf = new Map(
+  const tokenIdf = new Map<string, number>(
     [...tokenDocumentFrequency.entries()].map(([token, df]) => [
       token,
       Math.log((1 + preparedDocsChunks.length) / (1 + df)) + 1
@@ -108,7 +110,7 @@ function buildDocsSearchArtifacts(docsChunks = []) {
   };
 }
 
-function getDocsSearchArtifacts(docsState) {
+function getDocsSearchArtifacts(docsState: any) {
   const cacheKey = `${docsState.docsIndexGeneratedAt}:${docsState.docsChunkCount}:${docsState.source}:${docsState.etag || ""}`;
   if (docsSearchCache.cacheKey !== cacheKey) {
     const { preparedDocsChunks, tokenIdf } = buildDocsSearchArtifacts(
@@ -125,15 +127,15 @@ function getDocsSearchArtifacts(docsState) {
   };
 }
 
-function queryBigrams(tokens) {
-  const bigrams = [];
+function queryBigrams(tokens: string[]) {
+  const bigrams: string[] = [];
   for (let i = 0; i < tokens.length - 1; i += 1) {
     bigrams.push(`${tokens[i]} ${tokens[i + 1]}`);
   }
   return bigrams;
 }
 
-function routeIntentBoost(route, tokenSet) {
+function routeIntentBoost(route: string, tokenSet: Set<string>) {
   let boost = 0;
 
   if (route === "/docs/getting-started") {
@@ -154,11 +156,11 @@ function routeIntentBoost(route, tokenSet) {
 }
 
 function scoreChunkForQuestion(
-  chunk,
-  queryNorm,
-  queryTokens,
-  bigrams,
-  tokenIdf
+  chunk: any,
+  queryNorm: string,
+  queryTokens: string[],
+  bigrams: string[],
+  tokenIdf: Map<string, number>
 ) {
   const queryPhrase = queryNorm.trim();
   const searchable = chunk.searchText || normalizeForSearch(chunk.content);
@@ -194,8 +196,8 @@ function scoreChunkForQuestion(
 }
 
 function retrieveTopDocsChunks(
-  question,
-  docsState,
+  question: string,
+  docsState: any,
   limit = DOCS_MAX_CONTEXT_SOURCES
 ) {
   const queryNorm = normalizeForSearch(question);
@@ -222,7 +224,7 @@ function retrieveTopDocsChunks(
       return a.id.localeCompare(b.id);
     });
 
-  const selected = [];
+  const selected: any[] = [];
   const perRouteCount = new Map();
 
   for (const chunk of scored) {
@@ -236,7 +238,7 @@ function retrieveTopDocsChunks(
   return selected;
 }
 
-function formatDocsContext(sources) {
+function formatDocsContext(sources: any[]) {
   return sources
     .map((source, index) => {
       const excerpt =
@@ -250,7 +252,7 @@ function formatDocsContext(sources) {
     .join("\n\n---\n\n");
 }
 
-function extractCitationIndexes(text, maxIndex) {
+function extractCitationIndexes(text: string, maxIndex: number) {
   const matches = String(text).match(/\[(\d+)\]/g) || [];
   const indexes = matches
     .map((match) => Number(match.replace(/[^\d]/g, "")))
@@ -259,7 +261,7 @@ function extractCitationIndexes(text, maxIndex) {
   return [...new Set(indexes)];
 }
 
-function buildNoConfidenceReply(docsBaseUrl, sources = []) {
+function buildNoConfidenceReply(docsBaseUrl: string, sources: any[] = []) {
   const suggested = sources
     .slice(0, 3)
     .map((source) => `• <${source.url}|${source.title}>`)
@@ -272,7 +274,7 @@ function buildNoConfidenceReply(docsBaseUrl, sources = []) {
   return `${DOCS_REPLY_FALLBACK}\n\nClosest docs:\n${suggested}\n\nBrowse BizWiki directly: <${docsBaseUrl}|${docsBaseUrl}>`;
 }
 
-async function getDocsAnswerFromOpenAI(question, sources) {
+async function getDocsAnswerFromOpenAI(question: string, sources: any[]) {
   const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
   if (!OPENAI_API_KEY) {
     return {
@@ -334,7 +336,7 @@ async function getDocsAnswerFromOpenAI(question, sources) {
       })
     });
 
-    const data = await response.json();
+    const data: any = await response.json();
 
     if (!response.ok) {
       return {
@@ -357,7 +359,7 @@ async function getDocsAnswerFromOpenAI(question, sources) {
   }
 }
 
-function buildDocsReply(docsBaseUrl, answer, sources) {
+function buildDocsReply(docsBaseUrl: string, answer: string, sources: any[]) {
   if (!answer) return buildNoConfidenceReply(docsBaseUrl, sources);
 
   if (answer.trim() === DOCS_REPLY_FALLBACK) {
@@ -379,7 +381,7 @@ function buildDocsReply(docsBaseUrl, answer, sources) {
   return `📚 *Answer from BizWiki docs*\n${answer}\n\n*Sources*\n${sourceLines}`;
 }
 
-export async function slackApi(method, endpoint, body) {
+export async function slackApi(method: string, endpoint: string, body?: any) {
   const SLACK_BOT_TOKEN = getSlackBotToken();
   if (!SLACK_BOT_TOKEN) {
     console.error("SLACK_BOT_TOKEN is missing or invalid.");
@@ -394,7 +396,7 @@ export async function slackApi(method, endpoint, body) {
       },
       body: body ? JSON.stringify(body) : undefined
     });
-    const data = await res.json();
+    const data: any = await res.json();
     if (!data.ok) {
       console.error("Slack API Error occurred:", JSON.stringify(data));
       return;
@@ -424,7 +426,7 @@ function normalizeSlackUsername(username = "") {
   return String(username).trim().toLowerCase().replace(/^@/, "");
 }
 
-async function lookupSlackUsernameById(userId) {
+async function lookupSlackUsernameById(userId: string) {
   const userInfo = await slackApi("GET", `users.info?user=${userId}`);
   if (!userInfo || !userInfo.user) {
     return null;
@@ -446,7 +448,7 @@ async function lookupSlackUsernameById(userId) {
   return null;
 }
 
-async function resolveCommandUsername(rawValue) {
+async function resolveCommandUsername(rawValue: any) {
   const value = String(rawValue || "").trim();
   if (!value) return null;
 
@@ -490,7 +492,7 @@ function parseScoreCommandText(text = "") {
   };
 }
 
-async function addScoreForUser(username, delta) {
+async function addScoreForUser(username: string, delta: number) {
   const normalizedUser = normalizeSlackUsername(username);
   const now = Date.now();
 
@@ -511,7 +513,7 @@ async function addScoreForUser(username, delta) {
   return result.Attributes;
 }
 
-export async function runScoreCommand(body) {
+export async function runScoreCommand(body: any) {
   const caller = await resolveCommandUsername(body.user_name || body.user_id);
   if (!caller || !scoreCommandAdmins.includes(caller)) {
     return {
@@ -520,7 +522,9 @@ export async function runScoreCommand(body) {
     };
   }
 
-  const parsed = parseScoreCommandText(body.text);
+  // `parseScoreCommandText` returns one of two disjoint object shapes; annotating
+  // the binding keeps every property access below legal without narrowing changes.
+  const parsed: any = parseScoreCommandText(body.text);
   if (parsed.error) {
     return {
       response_type: "ephemeral",
@@ -538,7 +542,9 @@ export async function runScoreCommand(body) {
 
   try {
     const updated = await addScoreForUser(target, parsed.delta);
-    const newScore = Number(updated.score || 0);
+    // `Attributes` is optional on the DynamoDB update output; the original JS would
+    // throw a TypeError here if it were absent, so assert rather than guard.
+    const newScore = Number(updated!.score || 0);
     const changePrefix = parsed.delta >= 0 ? "+" : "";
 
     return {
@@ -589,7 +595,7 @@ export async function runLeaderboardCommand() {
   }
 }
 
-export async function openPingShortcut(body) {
+export async function openPingShortcut(body: any) {
   if (body.type !== "message_action" || body.callback_id !== "ping") {
     console.error("Invalid shortcut call:", body);
     return;
@@ -654,7 +660,7 @@ export async function openPingShortcut(body) {
   }
 }
 
-export async function submitPingShortcut(body) {
+export async function submitPingShortcut(body: any) {
   console.log("Submitting ping shortcut modal", body);
   if (
     body.type !== "view_submission" ||
@@ -672,9 +678,9 @@ export async function submitPingShortcut(body) {
     const channel = metadata.channel_id;
     const message_ts = metadata.message_ts;
 
-    const members = groups[group] || [];
+    const members = (groups as Record<string, string[]>)[group] || [];
 
-    const mentions = members.map((id) => `<@${id}>`).join(" ");
+    const mentions = members.map((id: string) => `<@${id}>`).join(" ");
     const message = `🔔 <@${user}> pinged *${group}*: ${mentions}`;
 
     // attempt to ping in thread
@@ -688,7 +694,7 @@ export async function submitPingShortcut(body) {
   }
 }
 
-export async function answerDocsQuestion(opts) {
+export async function answerDocsQuestion(opts: any) {
   const { channel_id, thread_ts, response_url, question } = opts;
 
   const cleanQuestion = String(question || "").trim();
@@ -753,7 +759,7 @@ export async function answerDocsQuestion(opts) {
   }
 }
 
-export async function summarizeRecentMessages(opts) {
+export async function summarizeRecentMessages(opts: any) {
   const { channel_id, thread_ts, response_url } = opts;
   const BOT_USER_ID = process.env.SLACK_BOT_USER_ID;
   const SLACK_BOT_TOKEN = getSlackBotToken();
@@ -786,7 +792,7 @@ export async function summarizeRecentMessages(opts) {
   }
 
   const cleaned = messages.filter(
-    (m) => m.text && !m.text.includes(`<@${BOT_USER_ID}>`)
+    (m: any) => m.text && !m.text.includes(`<@${BOT_USER_ID}>`)
   );
   if (cleaned.length === 0) {
     await respondToSlack(
@@ -799,7 +805,7 @@ export async function summarizeRecentMessages(opts) {
   const ordered = thread_ts ? cleaned : cleaned.reverse();
 
   const textBlob = ordered
-    .map((m) => `• ${m.user ? `<@${m.user}>` : "Bot"}: ${m.text}`)
+    .map((m: any) => `• ${m.user ? `<@${m.user}>` : "Bot"}: ${m.text}`)
     .join("\n");
 
   const summary = await getSummaryFromOpenAI(textBlob);
@@ -816,14 +822,14 @@ export async function summarizeRecentMessages(opts) {
   }
 }
 
-export async function fetchRecentMessages(channel) {
+export async function fetchRecentMessages(channel: string) {
   return fetchSlackMessages(
     `conversations.history?channel=${encodeURIComponent(channel)}&limit=100`,
     "channel history"
   );
 }
 
-function getSlackHistoryErrorMessage(error, isThread) {
+function getSlackHistoryErrorMessage(error: any, isThread: boolean) {
   const conversationType = isThread ? "thread" : "channel";
   const code = error.error || "unknown_error";
 
@@ -850,7 +856,7 @@ function getSlackHistoryErrorMessage(error, isThread) {
   return `I couldn’t read this ${conversationType} from Slack. Check the Lambda logs for details. Slack error: \`${code}\`.`;
 }
 
-async function fetchSlackMessages(endpoint, label) {
+async function fetchSlackMessages(endpoint: string, label: string) {
   const SLACK_BOT_TOKEN = getSlackBotToken();
   if (!SLACK_BOT_TOKEN) {
     console.error("SLACK_BOT_TOKEN is missing or invalid.");
@@ -865,7 +871,7 @@ async function fetchSlackMessages(endpoint, label) {
         Authorization: `Bearer ${SLACK_BOT_TOKEN}`
       }
     });
-    const data = await res.json();
+    const data: any = await res.json();
     if (!data.ok) {
       console.error(`Failed to fetch Slack ${label}:`, data);
       return {
@@ -875,7 +881,7 @@ async function fetchSlackMessages(endpoint, label) {
     }
 
     return {
-      messages: data.messages.filter((m) => m.text && !m.subtype),
+      messages: data.messages.filter((m: any) => m.text && !m.subtype),
       error: null
     };
   } catch (err) {
@@ -884,13 +890,13 @@ async function fetchSlackMessages(endpoint, label) {
       messages: [],
       error: {
         error: "request_failed",
-        message: err.message
+        message: (err as { message?: unknown }).message
       }
     };
   }
 }
 
-export async function getSummaryFromOpenAI(text) {
+export async function getSummaryFromOpenAI(text: string) {
   const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -916,7 +922,7 @@ export async function getSummaryFromOpenAI(text) {
       })
     });
 
-    const data = await response.json();
+    const data: any = await response.json();
 
     console.log("OpenAI raw response:", JSON.stringify(data, null, 2));
 
@@ -939,7 +945,7 @@ export async function getSummaryFromOpenAI(text) {
   }
 }
 
-async function respondToSlack(response_url, message) {
+async function respondToSlack(response_url: string, message: string) {
   if (!response_url) {
     console.error("Missing Slack response_url for message:", message);
     return;
@@ -957,7 +963,7 @@ async function respondToSlack(response_url, message) {
   });
 }
 
-export async function fetchThreadMessages(channel, thread_ts) {
+export async function fetchThreadMessages(channel: string, thread_ts: string) {
   return fetchSlackMessages(
     `conversations.replies?channel=${encodeURIComponent(
       channel
@@ -994,12 +1000,12 @@ async function getGithubToken() {
     }
   );
 
-  const auth = await authResponse.json();
+  const auth: any = await authResponse.json();
   return auth.token;
 }
 
 export async function getProjectBoard() {
-  let projects;
+  let projects: any;
 
   try {
     const token = await getGithubToken();
@@ -1022,7 +1028,7 @@ export async function getProjectBoard() {
   return projects;
 }
 
-export async function sendIssueReminders(projectBoard) {
+export async function sendIssueReminders(projectBoard: any) {
   const issues = processIssues(projectBoard);
   const message = formatIssuesForSlackText(issues);
 
@@ -1036,7 +1042,7 @@ export async function sendIssueReminders(projectBoard) {
   }
 }
 
-function processIssues(projectBoard) {
+function processIssues(projectBoard: any) {
   const items = projectBoard.data.organization.projectV2.items.nodes;
   const oneWeekFromNow = new Date();
   const today = new Date();
@@ -1044,9 +1050,9 @@ function processIssues(projectBoard) {
   oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
 
   const issues = items
-    .filter((it) => {
+    .filter((it: any) => {
       const endDateField = it.fieldValues.nodes.find(
-        (node) => node.field && node.field.name === btFields.endDate
+        (node: any) => node.field && node.field.name === btFields.endDate
       );
 
       if (
@@ -1066,14 +1072,15 @@ function processIssues(projectBoard) {
         it.content.assignees.nodes.length > 0
       );
     })
-    .map((it) => {
+    .map((it: any) => {
       const endDateField = it.fieldValues.nodes.find(
-        (node) => node.field && node.field.name === btFields.endDate
+        (node: any) => node.field && node.field.name === btFields.endDate
       );
 
       const endDate = new Date(endDateField.date);
 
-      const diffTime = endDate - today;
+      // TypeScript rejects `Date - Date` even though JS coerces both via `valueOf`; the casts erase at build time, so the emitted expression is unchanged.
+      const diffTime = (endDate as any) - (today as any);
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
       let dueStatus;
@@ -1099,7 +1106,7 @@ function processIssues(projectBoard) {
         endDateFormatted: endDate.toLocaleDateString(),
         dueStatus: dueStatus,
         daysUntilDue: diffDays,
-        assignees: it.content.assignees.nodes.map((assignee) => ({
+        assignees: it.content.assignees.nodes.map((assignee: any) => ({
           login: assignee.login,
           ...(assignee.name && {
             name: assignee.name
@@ -1108,7 +1115,7 @@ function processIssues(projectBoard) {
             email: assignee.email
           })
         })),
-        labels: it.content.labels.nodes.map((label) => {
+        labels: it.content.labels.nodes.map((label: any) => {
           return label.name;
         })
       };
@@ -1116,7 +1123,7 @@ function processIssues(projectBoard) {
   return issues;
 }
 
-function formatIssuesForSlackText(issues) {
+function formatIssuesForSlackText(issues: any[]) {
   if (!issues || issues.length === 0) {
     return "🎉 No overdue or upcoming issues found!";
   }
@@ -1124,9 +1131,9 @@ function formatIssuesForSlackText(issues) {
   let message = `🚨 *Issue Reminders - ${issues.length} items need attention*\n`;
 
   const addIssueSection = (
-    sectionIssues,
-    sectionTitle,
-    emoji,
+    sectionIssues: any[],
+    sectionTitle: string,
+    emoji: string,
     includeLabels = false
   ) => {
     if (sectionIssues.length === 0) return;
@@ -1134,8 +1141,9 @@ function formatIssuesForSlackText(issues) {
     message += `\n\n\n ${emoji} *${sectionTitle}:*\n`;
 
     sectionIssues.forEach((issue) => {
+      // BUG (pre-existing, preserved): the `||` fallback is dead code — the left operand is a template literal, which is always truthy, so an unmapped GitHub login renders as `<@undefined>` instead of `@login`.
       const assignees = issue.assignees
-        .map((a) => `<@${btDevs[a.login]}>` || `@${a.login}`)
+        .map((a: any) => `<@${(btDevs as Record<string, string>)[a.login]}>` || `@${a.login}`)
         .join(", ");
 
       message += `\n<${issue.url}|#${issue.number}: ${issue.title}>\n`;

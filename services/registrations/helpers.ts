@@ -7,7 +7,7 @@ import sgMail from "@sendgrid/mail";
 import db from "../../lib/db";
 const ics = require("ics");
 
-sgMail.setApiKey(process.env.SENDGRID_KEY);
+sgMail.setApiKey(process.env.SENDGRID_KEY as string);
 
 export default {
   /**
@@ -16,7 +16,7 @@ export default {
 	       * @param {String} eventIDAndYear
 	       * @return {registeredCount checkedInCount waitlistCount}
 	       */
-  getEventCounts: async function(eventID, year) {
+  getEventCounts: async function(eventID: string, year: number) {
     try {
       const event = await db.getOne(eventID, EVENTS_TABLE, {
         year: year
@@ -32,18 +32,21 @@ export default {
         };
       }
 
-      const cappedQuestions = [];
+      const cappedQuestions: {
+        questionId: string;
+        caps: { label: string; cap: number }[];
+      }[] = [];
       console.log("Event:", event);
 
       if (event.registrationQuestions && Array.isArray(event.registrationQuestions)) {
-        event.registrationQuestions.forEach(question => {
+        event.registrationQuestions.forEach((question: any) => {
           console.log("Question:", question);
           if (question.participantCap) {
             const choices = question.choices.split(",");
             const caps = question.participantCap.split(",");
             const cappedQuestionObject = {
               questionId: question.questionId,
-              caps: choices.map((choice, i) => {
+              caps: choices.map((choice: string, i: number) => {
                 return {
                   label: choice,
                   cap: parseInt(caps[i])
@@ -130,7 +133,7 @@ export default {
       };
     }
   },
-  sendDynamicQR: (msg) => {
+  sendDynamicQR: (msg: any) => {
     if (!msg.from) {
       // default from address
       msg.from = "info@ubcbiztech.com";
@@ -139,7 +142,7 @@ export default {
     // in the future if you want to restrict to prod, use process.env.ENVIRONMENT === 'PROD'
     return sgMail.send(msg);
   },
-  sendCalendarInvite: async (event, user, dynamicCalendarMsg) => {
+  sendCalendarInvite: async (event: any, user: any, dynamicCalendarMsg: any) => {
     let {
       ename, description, elocation, startDate, endDate
     } = event;
@@ -217,8 +220,14 @@ export default {
 
     // convert ics to base64
     const base64 = Buffer.from(value).toString("base64");
+    // BUG (pre-existing, preserved): `base64` is already a base64 string, so the second
+    // `.toString("base64")` ignores its argument and returns the same string.
+    // @ts-expect-error TS2554 expected 0 arguments, but got 1
     const base64Cal = base64.toString("base64");
 
+    // BUG (pre-existing, preserved): `user.isPartner !== undefined || user.isPartner` is
+    // true whenever `isPartner` is set at all, so a non-partner with `isPartner: false`
+    // also gets no .ics attachment.
     const attachments = user.isPartner !== undefined || user.isPartner ? [] : [
       {
         name: "invite.ics",

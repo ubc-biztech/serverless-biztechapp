@@ -3,7 +3,7 @@ import db from "../../lib/db.js";
 import helpers from "../../lib/handlerHelpers";
 import res from "../../lib/responseHelpers";
 import type { APIGatewayEvent, LambdaCallback, LambdaContext } from "../../lib/types";
-import { isEmpty } from "../../lib/utils.js";
+import { isEmpty } from "../../lib/utils";
 import registrationHelpers from "./helpers";
 
 const errorMessage = (err: unknown): string =>

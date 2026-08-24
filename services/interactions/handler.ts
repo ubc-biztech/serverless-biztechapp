@@ -20,6 +20,7 @@ import {
   removeSocketConnection,
   fetchRecentConnections
 } from "./helpers";
+import type { APIGatewayEvent, LambdaCallback, LambdaContext } from "../../lib/types";
 
 const CONNECTION = "CONNECTION";
 const WORK = "WORKSHOP";
@@ -56,10 +57,10 @@ const BOOTH = "BOOTH";
 //   }
 // };
 
-export const postInteraction = async (event, ctx, callback) => {
+export const postInteraction = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
-    const data = JSON.parse(event.body);
+    const userID = event.requestContext.authorizer!.claims!.email.toLowerCase();
+    const data = JSON.parse(event.body as string);
 
     try {
       helpers.checkPayloadProps(data, {
@@ -80,6 +81,7 @@ export const postInteraction = async (event, ctx, callback) => {
     } = data;
 
     if (eventType != CONNECTION) {
+      // BUG (pre-existing, preserved): this 400 is thrown, so the outer catch swallows it and returns a 500 whose `message` is the whole response object.
       throw handlerHelpers.createResponse(400, {
         message: "interactionType argument does not match known case"
       });
@@ -89,11 +91,11 @@ export const postInteraction = async (event, ctx, callback) => {
     return response;
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: (err as { message?: unknown }).message || err });
   }
 };
 
-export const checkConnection = async (event, ctx, callback) => {
+export const checkConnection = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
     if (
       !event.pathParameters ||
@@ -103,7 +105,7 @@ export const checkConnection = async (event, ctx, callback) => {
       throw helpers.missingIdQueryResponse("profile ID in request path");
 
     const connectionID = event.pathParameters.id;
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    const userID = event.requestContext.authorizer!.claims!.email.toLowerCase();
     const userData = await db.getOne(userID, USERS_TABLE);
 
     if (!userData?.profileID)
@@ -141,9 +143,9 @@ export const checkConnection = async (event, ctx, callback) => {
   }
 };
 
-export const getAllConnections = async (event, ctx, callback) => {
+export const getAllConnections = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    const userID = event.requestContext.authorizer!.claims!.email.toLowerCase();
 
     const userData = await db.getOne(userID, USERS_TABLE);
     const { profileID } = userData || {};
@@ -209,7 +211,7 @@ export const getAllConnections = async (event, ctx, callback) => {
   }
 };
 
-export const getWallSnapshot = async (event, ctx, callback) => {
+export const getWallSnapshot = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
     const qs = event.queryStringParameters || {
     };
@@ -272,7 +274,7 @@ export const getWallSnapshot = async (event, ctx, callback) => {
 };
 
 // WebSocket connect
-export const wsConnect = async (event, ctx, callback) => {
+export const wsConnect = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
     console.log("[WS] $connect", event.requestContext?.connectionId);
     const connectionId = event.requestContext.connectionId;
@@ -296,7 +298,7 @@ export const wsConnect = async (event, ctx, callback) => {
 };
 
 // WebSocket disconnect
-export const wsDisconnect = async (event, ctx, callback) => {
+export const wsDisconnect = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
     const connectionId = event.requestContext.connectionId;
     await removeSocketConnection({
@@ -315,7 +317,7 @@ export const wsDisconnect = async (event, ctx, callback) => {
   }
 };
 
-export const wsSubscribe = async (event, ctx, callback) => {
+export const wsSubscribe = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
     const connectionId = event.requestContext.connectionId;
     const body = JSON.parse(event.body || "{}");

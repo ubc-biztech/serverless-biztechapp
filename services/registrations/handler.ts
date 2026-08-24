@@ -11,23 +11,24 @@ import {
 } from "../../constants/tables";
 import SESEmailService from "./EmailService/SESEmailService";
 import awsConfig from "../../lib/config";
+import type { APIGatewayEvent, LambdaCallback, LambdaContext } from "../../lib/types";
 
 // const CHECKIN_COUNT_SANITY_CHECK = 500;
 
-const normalizePartnerRegistration = (partner = {}) => ({
+const normalizePartnerRegistration = (partner: Record<string, any> = {}) => ({
   email: partner.email ? partner.email.trim().toLowerCase() : "",
   firstName: (partner.firstName || partner.fname || "").trim(),
   lastName: (partner.lastName || partner.lname || "").trim()
 });
 
-const validatePartnerRegistration = (partner) => {
+const validatePartnerRegistration = (partner: Record<string, any>) => {
   if (!isValidEmail(partner.email)) return "Invalid email";
   if (!partner.firstName) return "Missing firstName";
   if (!partner.lastName) return "Missing lastName";
   return null;
 };
 
-const summarizePartnerRegistrationResults = (results) => {
+const summarizePartnerRegistrationResults = (results: any[]) => {
   return results.reduce(
     (summary, result) => {
       summary[result.status] += 1;
@@ -49,10 +50,10 @@ const summarizePartnerRegistrationResults = (results) => {
      if they are registered, waitlisted, or cancelled, but not if checkedIn
 */
 export async function updateHelper(
-  data,
-  createNew,
-  email,
-  fname,
+  data: any,
+  createNew: boolean,
+  email: string,
+  fname: string | undefined,
   isAcceptancePayment = false
 ) {
   const {
@@ -110,11 +111,14 @@ export async function updateHelper(
   if (applicationStatus) {
     try {
       if (!data.isPartner && !isAcceptancePayment) {
+        // BUG (pre-existing, preserved): sendEmail only takes 4 parameters, so `id` is
+        // bound to `emailType` and the trailing "application" argument is discarded.
         await sendEmail(
           user,
           existingEvent,
           applicationStatus,
           id,
+          // @ts-expect-error TS2554 expected 2-4 arguments, but got 5
           "application"
         );
       }
@@ -123,7 +127,7 @@ export async function updateHelper(
       throw helpers.createResponse(500, {
         statusCode: 500,
         code: "SES EMAIL SERVICE ERROR",
-        message: `Sending Email Error!: ${err.message}`
+        message: `Sending Email Error!: ${(err as { message?: unknown }).message}`
       });
     }
   } else if (dynamicRegistrationStatus) {
@@ -137,7 +141,9 @@ export async function updateHelper(
         });
       }
 
-      if (counts.registeredCount >= existingEvent.capac)
+      // `isEmpty(existingEvent)` above already threw for a missing event, but TS
+      // cannot narrow through that guard.
+      if (counts.registeredCount >= existingEvent!.capac)
         dynamicRegistrationStatus = "waitlist";
 
       // backend check if workshop is full. No longer needed for applicable.
@@ -163,7 +169,7 @@ export async function updateHelper(
       throw helpers.createResponse(500, {
         statusCode: 500,
         code: "SES ERROR",
-        message: `Sending Email Error!: ${err.message}`
+        message: `Sending Email Error!: ${(err as { message?: unknown }).message}`
       });
     }
   }
@@ -198,7 +204,7 @@ export async function updateHelper(
   return response;
 }
 
-function removeDefaultKeys(data) {
+function removeDefaultKeys(data: any) {
   const formResponse = data;
   const ignoreKeys = ["eventID", "year", "email"];
 
@@ -209,12 +215,12 @@ function removeDefaultKeys(data) {
 }
 
 async function createRegistration(
-  registrationStatus,
-  applicationStatus,
-  data,
-  email,
-  eventIDAndYear,
-  createNew
+  registrationStatus: any,
+  applicationStatus: any,
+  data: any,
+  email: string,
+  eventIDAndYear: string,
+  createNew: boolean
 ) {
   try {
     const formResponse = removeDefaultKeys(data);
@@ -308,9 +314,9 @@ async function createRegistration(
 }
 
 export async function sendEmail(
-  user,
-  existingEvent,
-  userStatus,
+  user: any,
+  existingEvent: any,
+  userStatus: any,
   emailType = ""
 ) {
   if (
@@ -348,9 +354,9 @@ export async function sendEmail(
   }
 }
 
-export const post = async (event, ctx, callback) => {
+export const post = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const data = JSON.parse(event.body);
+    const data = JSON.parse(event.body as string);
     // Normalize email to lowercase
     data.email = data.email.toLowerCase();
 
@@ -408,20 +414,20 @@ export const post = async (event, ctx, callback) => {
     console.error(err);
 
     // Known/intentional HTTP error
-    if (err && err.statusCode && err.body) {
+    if (err && (err as { statusCode?: number }).statusCode && (err as { body?: unknown }).body) {
       return err;
     }
 
     // Unexpected internal error
     return helpers.createResponse(500, {
-      message: (err && err.message) || "Internal server error"
+      message: (err && (err as { message?: unknown }).message) || "Internal server error"
     });
   }
 };
 
-export const createPartnerRegistrations = async (event, ctx, callback) => {
+export const createPartnerRegistrations = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    const userID = event.requestContext.authorizer!.claims!.email.toLowerCase();
     if (!userID.endsWith("@ubcbiztech.com")) {
       return helpers.createResponse(403, {
         message: "unauthorized"
@@ -452,7 +458,7 @@ export const createPartnerRegistrations = async (event, ctx, callback) => {
       });
     }
 
-    const results = await Promise.all(data.partners.map(async (partnerData) => {
+    const results = await Promise.all(data.partners.map(async (partnerData: any) => {
       const partner = normalizePartnerRegistration(partnerData);
       const validationError = validatePartnerRegistration(partner);
       if (validationError) {
@@ -498,14 +504,14 @@ export const createPartnerRegistrations = async (event, ctx, callback) => {
           status: "created"
         };
       } catch (err) {
-        const body = err && err.body ? JSON.parse(err.body) : {};
+        const body = err && (err as { body?: any }).body ? JSON.parse((err as { body?: any }).body) : {};
         return {
           email: partner.email,
           status: "failed",
           reason:
             body.code ||
             body.message ||
-            (err && err.message) ||
+            (err && (err as { message?: unknown }).message) ||
             "Failed to create partner registration"
         };
       }
@@ -520,7 +526,7 @@ export const createPartnerRegistrations = async (event, ctx, callback) => {
   } catch (err) {
     console.error(err);
     return helpers.createResponse(500, {
-      message: err.message || "Internal server error"
+      message: (err as { message?: unknown }).message || "Internal server error"
     });
   }
 };
@@ -542,7 +548,7 @@ export const createPartnerRegistrations = async (event, ctx, callback) => {
  *
  * Returns: The response object
  */
-export const put = async (event, ctx, callback) => {
+export const put = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
     if (!event.pathParameters || !event.pathParameters.email)
       throw helpers.missingIdQueryResponse("user");
@@ -550,7 +556,7 @@ export const put = async (event, ctx, callback) => {
     // Normalize email to lowercase
     const email = event.pathParameters.email.toLowerCase();
 
-    const data = JSON.parse(event.body);
+    const data = JSON.parse(event.body as string);
     if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
     // Check that parameters are valid
     helpers.checkPayloadProps(data, {
@@ -620,20 +626,20 @@ export const put = async (event, ctx, callback) => {
     return response;
   } catch (err) {
     console.error(err);
-    if (err && err.statusCode && err.body) {
+    if (err && (err as { statusCode?: number }).statusCode && (err as { body?: unknown }).body) {
       return err;
     }
 
     return helpers.createResponse(500, {
-      message: (err && err.message) || "Internal server error"
+      message: (err && (err as { message?: unknown }).message) || "Internal server error"
     });
   }
 };
 
 // Updates a batch of registration statuses
-export async function massUpdate(event, ctx, callback) {
+export async function massUpdate(event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) {
   try {
-    const { eventID, eventYear, updates } = JSON.parse(event.body);
+    const { eventID, eventYear, updates } = JSON.parse(event.body as string);
 
     if (!eventID || !eventYear || !Array.isArray(updates)) {
       return helpers.createResponse(400, {
@@ -667,7 +673,7 @@ export async function massUpdate(event, ctx, callback) {
           return {
             success: false,
             email: update.email,
-            error: error.message
+            error: (error as { message?: unknown }).message
           };
         }
       })
@@ -685,7 +691,7 @@ export async function massUpdate(event, ctx, callback) {
 }
 
 // Return list of entries with the matching id
-export const get = async (event, ctx, callback) => {
+export const get = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
     const queryString = event.queryStringParameters;
     if (
@@ -694,7 +700,7 @@ export const get = async (event, ctx, callback) => {
     )
       throw helpers.missingIdQueryResponse("eventID/year/user ");
 
-    let registrations = [];
+    let registrations: Record<string, any>[] = [];
 
     if (queryString.email) {
       // Normalize email to lowercase
@@ -753,20 +759,20 @@ export const get = async (event, ctx, callback) => {
     });
   } catch (err) {
     console.error("Error in get handler:", err);
-    if (err && err.statusCode && err.body) {
+    if (err && (err as { statusCode?: number }).statusCode && (err as { body?: unknown }).body) {
       return err;
     }
 
     return helpers.createResponse(500, {
-      message: (err && err.message) || "Internal server error"
+      message: (err && (err as { message?: unknown }).message) || "Internal server error"
     });
   }
 };
 
 // (used for testing)
-export const del = async (event, ctx, callback) => {
+export const del = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const data = JSON.parse(event.body);
+    const data = JSON.parse(event.body as string);
 
     if (!event.pathParameters || !event.pathParameters.email)
       throw helpers.missingIdQueryResponse("registration");
@@ -796,26 +802,26 @@ export const del = async (event, ctx, callback) => {
       response: res
     });
   } catch (err) {
-    if (err && err.statusCode && err.body) {
+    if (err && (err as { statusCode?: number }).statusCode && (err as { body?: unknown }).body) {
       return err;
     }
 
     return helpers.createResponse(500, {
-      message: (err && err.message) || "Internal server error"
+      message: (err && (err as { message?: unknown }).message) || "Internal server error"
     });
   }
 };
 
-export const delMany = async (event, ctx, callback) => {
+export const delMany = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const email = event.requestContext.authorizer.claims.email.toLowerCase();
+    const email = event.requestContext.authorizer!.claims!.email.toLowerCase();
     if (!email.endsWith("@ubcbiztech.com")) {
       return helpers.createResponse(403, {
         message: "Unauthorized"
       });
     }
 
-    const data = JSON.parse(event.body);
+    const data = JSON.parse(event.body as string);
 
     helpers.checkPayloadProps(data, {
       ids: {
@@ -836,12 +842,12 @@ export const delMany = async (event, ctx, callback) => {
       throw helpers.inputError("Ids must be an array", data.ids);
 
     const lowercaseEmails = data.ids
-      .map((email) => email.toLowerCase())
+      .map((email: any) => email.toLowerCase())
       .filter(isValidEmail);
 
     const eventIDAndYear = data.eventID + ";" + data.year;
 
-    const itemsToDelete = lowercaseEmails.map((email) => ({
+    const itemsToDelete = lowercaseEmails.map((email: any) => ({
       id: email, // partition key
       ["eventID;year"]: `${eventIDAndYear}` // sort key
     }));
@@ -853,17 +859,17 @@ export const delMany = async (event, ctx, callback) => {
       response: res
     });
   } catch (err) {
-    if (err && err.statusCode && err.body) {
+    if (err && (err as { statusCode?: number }).statusCode && (err as { body?: unknown }).body) {
       return err;
     }
 
     return helpers.createResponse(500, {
-      message: (err && err.message) || "Internal server error"
+      message: (err && (err as { message?: unknown }).message) || "Internal server error"
     });
   }
 };
 
-export const leaderboard = async (event, ctx, callback) => {
+export const leaderboard = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
     const queryString = event.queryStringParameters;
     if (!queryString || (!queryString.eventID && !queryString.year)) {
@@ -910,7 +916,7 @@ export const leaderboard = async (event, ctx, callback) => {
   } catch (error) {
     console.error("Error fetching leaderboard:", error);
 
-    if (error && error.statusCode && error.body) {
+    if (error && (error as { statusCode?: number }).statusCode && (error as { body?: unknown }).body) {
       return error;
     }
 

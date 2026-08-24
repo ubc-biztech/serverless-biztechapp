@@ -10,7 +10,7 @@ import {
 } from "@aws-sdk/client-sesv2";
 import helpers from "../../lib/handlerHelpers";
 import res from "../../lib/responseHelpers";
-import { sesClient } from "../../lib/sesV2Client.js";
+import { sesClient } from "../../lib/sesV2Client";
 import type { APIGatewayEvent, LambdaCallback, LambdaContext } from "../../lib/types";
 import emailHelpers from "./helpers";
 

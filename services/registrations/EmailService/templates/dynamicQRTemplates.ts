@@ -1,4 +1,4 @@
-export const getDefaultQRTemplate = (emailParams) => {
+export const getDefaultQRTemplate = (emailParams: { fname: string; ename: string; registrationStatus: string; logoBase64: string; qrCode: string; currentYear: number }) => {
   const {
     fname, ename, registrationStatus, logoBase64, qrCode, currentYear
   } = emailParams;
@@ -29,7 +29,7 @@ export const getDefaultQRTemplate = (emailParams) => {
     </div>`;
 };
 
-export const getDefaultApplicationTemplate = (emailParams) => {
+export const getDefaultApplicationTemplate = (emailParams: { fname: string; ename: string; registrationStatus: string; logoBase64: string; qrCode: string; currentYear: number }) => {
   const {
     fname, ename, registrationStatus, logoBase64, qrCode, currentYear
   } = emailParams;
@@ -62,7 +62,7 @@ export const getDefaultApplicationTemplate = (emailParams) => {
       </div>`;
 };
 
-export const getRegisteredQRTemplate = (emailParams) => {
+export const getRegisteredQRTemplate = (emailParams: { fname: string; ename: string; logoBase64: string; qrCode: string; currentYear: number }) => {
   const {
     fname, ename, logoBase64, qrCode, currentYear
   } = emailParams;

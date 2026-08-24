@@ -8,10 +8,11 @@ import {
   IMMUTABLE_USER_PROPS
 } from "../../constants/tables";
 import docClient from "../../lib/docClient";
+import type { APIGatewayEvent, LambdaCallback, LambdaContext } from "../../lib/types";
 
-export const create = async (event, ctx, callback) => {
+export const create = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   const timestamp = new Date().getTime();
-  const data = JSON.parse(event.body);
+  const data = JSON.parse(event.body as string);
   if (!isValidEmail(data.email))
     return helpers.inputError("Invalid email", data.email);
   const email = data.email.toLowerCase();
@@ -46,12 +47,17 @@ export const create = async (event, ctx, callback) => {
     Array.isArray(data.favedEventsArray)
   ) {
     let favedEventsArray = data.favedEventsArray;
+    // BUG (pre-existing, preserved): operator precedence makes this
+    // `(!favedEventsArray.length) === 0`, i.e. `false === 0`, which is never
+    // true, so the empty-array case is never rejected. TypeScript flags the
+    // mismatch, which is exactly the bug; the directive keeps it as-is.
+    // @ts-expect-error TS2367 comparing boolean to number
     if (!favedEventsArray.length === 0) {
       return helpers.inputError("the favedEventsArray is empty", data);
     }
     if (
       !favedEventsArray.every(
-        (eventIDAndYear) => typeof eventIDAndYear === "string"
+        (eventIDAndYear: unknown) => typeof eventIDAndYear === "string"
       )
     ) {
       return helpers.inputError(
@@ -66,8 +72,12 @@ export const create = async (event, ctx, callback) => {
       );
     }
     //if all conditions met, add favedEventsArray as a Set to userParams
-    userParams.Item["favedEventsID;year"] =
-      docClient.createSet(favedEventsArray);
+    // BUG (pre-existing, preserved): `userParams` has no `Item` property, so
+    // this throws a TypeError whenever `favedEventsArray` is supplied. The
+    // `createSet` call is also a v2 SDK leftover that does not exist on the v3
+    // DynamoDBDocumentClient. The casts keep both behaviours verbatim.
+    (userParams as any).Item["favedEventsID;year"] =
+      (docClient as any).createSet(favedEventsArray);
   }
 
   // if (data.hasOwnProperty('inviteCode')) {
@@ -122,7 +132,7 @@ export const create = async (event, ctx, callback) => {
     return response;
   } catch (error) {
     let response;
-    if (error.type === "ConditionalCheckFailedException") {
+    if ((error as { type?: unknown }).type === "ConditionalCheckFailedException") {
       response = helpers.createResponse(
         409,
         "User could not be created because email already exists"
@@ -134,9 +144,9 @@ export const create = async (event, ctx, callback) => {
   }
 };
 
-export const checkUser = async (event, ctx, callback) => {
+export const checkUser = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const email = event.pathParameters.email;
+    const email = event.pathParameters!.email;
     const user = await db.getOne(email, USERS_TABLE);
     if (isEmpty(user)) {
       return helpers.createResponse(200, false);
@@ -148,7 +158,7 @@ export const checkUser = async (event, ctx, callback) => {
   }
 };
 
-export const checkUserMembership = async (event, ctx, callback) => {
+export const checkUserMembership = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   console.log(event);
   try {
     const email = event.pathParameters?.email?.trim().toLowerCase();
@@ -162,9 +172,9 @@ export const checkUserMembership = async (event, ctx, callback) => {
   }
 };
 
-export const get = async (event, ctx, callback) => {
+export const get = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    let email = event.requestContext.authorizer.claims.email.toLowerCase();
+    let email = event.requestContext.authorizer!.claims!.email.toLowerCase();
 
     if (
       email.endsWith("@ubcbiztech.com") &&
@@ -186,11 +196,11 @@ export const get = async (event, ctx, callback) => {
     return response;
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: (err as { message?: unknown }).message || err });
   }
 };
 
-export const update = async (event, ctx, callback) => {
+export const update = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
     if (!event.pathParameters || !event.pathParameters.email)
       throw helpers.missingIdQueryResponse("event");
@@ -201,7 +211,7 @@ export const update = async (event, ctx, callback) => {
     const existingUser = await db.getOne(email, USERS_TABLE);
     if (isEmpty(existingUser)) throw helpers.notFoundResponse("user", email);
 
-    const data = JSON.parse(event.body);
+    const data = JSON.parse(event.body as string);
 
     const invalidUpdates = Object.keys(data).filter((prop) =>
       IMMUTABLE_USER_PROPS.includes(prop)
@@ -218,11 +228,11 @@ export const update = async (event, ctx, callback) => {
     return response;
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(err.statusCode || 500, { message: err.message || err });
+    return helpers.createResponse((err as { statusCode?: number }).statusCode || 500, { message: (err as { message?: unknown }).message || err });
   }
 };
 
-export const getAll = async (event, ctx, callback) => {
+export const getAll = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
     const users = await db.scan(USERS_TABLE);
 
@@ -231,14 +241,14 @@ export const getAll = async (event, ctx, callback) => {
     return response;
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: (err as { message?: unknown }).message || err });
   }
 };
 
 // TODO: Fix favouriteEvents 08/08/24
-export const favouriteEvent = async (event, ctx, callback) => {
+export const favouriteEvent = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const data = JSON.parse(event.body);
+    const data = JSON.parse(event.body as string);
 
     helpers.checkPayloadProps(data, {
       eventID: {
@@ -258,7 +268,7 @@ export const favouriteEvent = async (event, ctx, callback) => {
     const { eventID, year, isFavourite } = data;
     const eventIDAndYear = eventID + ";" + year;
 
-    const email = event.pathParameters.email;
+    const email = event.pathParameters!.email;
     if (email === null || !isValidEmail(email))
       throw helpers.inputError("Invalid email", email);
 
@@ -271,8 +281,8 @@ export const favouriteEvent = async (event, ctx, callback) => {
     const existingUser = await db.getOne(email, USERS_TABLE);
     if (isEmpty(existingUser)) throw helpers.notFoundResponse("user", email);
 
-    const favedEventsList = existingUser["favedEventsID;year"]
-      ? existingUser["favedEventsID;year"].values
+    const favedEventsList = existingUser!["favedEventsID;year"]
+      ? existingUser!["favedEventsID;year"].values
       : undefined;
 
     let updateExpression = "";
@@ -305,14 +315,16 @@ export const favouriteEvent = async (event, ctx, callback) => {
       });
     }
 
-    let expressionAttributeNames;
+    let expressionAttributeNames: Record<string, string>;
     expressionAttributeNames = {
       "#favedEvents": "favedEventsID;year"
     };
 
-    let expressionAttributeValues;
+    let expressionAttributeValues: Record<string, unknown>;
+    // BUG (pre-existing, preserved): `createSet` does not exist on the v3
+    // DynamoDBDocumentClient, so this throws a TypeError at runtime.
     expressionAttributeValues = {
-      ":eventsIDAndYear": docClient.createSet([eventIDAndYear])
+      ":eventsIDAndYear": (docClient as any).createSet([eventIDAndYear])
     };
     expressionAttributeValues[":eventIDAndYear"] = eventIDAndYear; // string data type, for conditionExpression
 
@@ -338,13 +350,13 @@ export const favouriteEvent = async (event, ctx, callback) => {
     });
   } catch (err) {
     console.error(err);
-    const response = helpers.createResponse(err.statusCode || 500, { message: err.message || err });
+    const response = helpers.createResponse((err as { statusCode?: number }).statusCode || 500, { message: (err as { message?: unknown }).message || err });
     return response;
   }
 };
 
 // TODO: refactor to abstract delete code among different endpoints
-export const del = async (event, ctx, callback) => {
+export const del = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
     // check that the param was given
     if (!event.pathParameters || !event.pathParameters.email)
@@ -363,6 +375,6 @@ export const del = async (event, ctx, callback) => {
 
     return response;
   } catch (err) {
-    return helpers.createResponse(err.statusCode || 500, { message: err.message || err });
+    return helpers.createResponse((err as { statusCode?: number }).statusCode || 500, { message: (err as { message?: unknown }).message || err });
   }
 };

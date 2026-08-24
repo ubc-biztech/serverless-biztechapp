@@ -3,7 +3,9 @@ import {
   CreateTemplateCommand,
   SendEmailCommand
 } from "@aws-sdk/client-ses";
+// @ts-expect-error TS7016 no bundled types for "nodemailer" and @types/nodemailer is not installed
 import nodemailer from "nodemailer";
+// @ts-expect-error TS7016 no bundled types for "qrcode" and @types/qrcode is not installed
 import QRCode from "qrcode";
 import {
   logoBase64
@@ -21,14 +23,17 @@ import {
 const ics = require("ics");
 
 export default class SESEmailService {
+  ses: SESClient;
+  transporter: any;
+
   constructor({
     accessKeyId,
     secretAccessKey,
     region = "us-west-2"
-  }) {
+  }: { accessKeyId?: string; secretAccessKey?: string; region?: string }) {
     const credentials = {
-      accessKeyId: accessKeyId,
-      secretAccessKey: secretAccessKey
+      accessKeyId: accessKeyId as string,
+      secretAccessKey: secretAccessKey as string
     };
     this.ses = process.env.ENVIRONMENT === "development" ?
       new SESClient({
@@ -47,7 +52,7 @@ export default class SESEmailService {
     });
   }
 
-  async createEmailTemplate(templateName, subject, htmlBody) {
+  async createEmailTemplate(templateName: string, subject: string, htmlBody: string) {
     try {
       const command = new CreateTemplateCommand({
         Template: {
@@ -59,11 +64,11 @@ export default class SESEmailService {
       const data = await this.ses.send(command);
       console.log(data);
     } catch (err) {
-      console.error(err, err.stack);
+      console.error(err, (err as { stack?: unknown }).stack);
     }
   }
 
-  async sendCalendarInvite(event, user) {
+  async sendCalendarInvite(event: any, user: any) {
     let {
       ename,
       eventID,
@@ -140,7 +145,7 @@ export default class SESEmailService {
     }
     // Email details
     // TODO: refactor to pass in template to make this method more reusuable
-    let mailOptions = {
+    let mailOptions: Record<string, any> = {
       from: "dev@ubcbiztech.com",
       to: id,
       subject: `[BizTech Confirmation] ${ename} on ${startDate}`,
@@ -170,7 +175,7 @@ export default class SESEmailService {
     }
   }
 
-  async sendDynamicQR(event, user, registrationStatus, emailType) {
+  async sendDynamicQR(event: any, user: any, registrationStatus: any, emailType: string) {
     const {
       id: email, fname
     } = user;

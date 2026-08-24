@@ -2,7 +2,7 @@ import { PROFILES_TABLE, QUIZZES_TABLE } from "../../constants/tables.js";
 import db from "../../lib/db.js";
 import helpers from "../../lib/handlerHelpers";
 import type { APIGatewayEvent, LambdaCallback, LambdaContext } from "../../lib/types";
-import { TYPES } from "../profiles/constants.js";
+import { TYPES } from "../profiles/constants";
 import {
   calculateAverage,
   generateMBTI,

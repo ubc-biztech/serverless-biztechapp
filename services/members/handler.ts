@@ -15,22 +15,23 @@ import {
   TYPES
 } from "../profiles/constants";
 import humanId from "human-id";
+import type { APIGatewayEvent, LambdaCallback, LambdaContext } from "../../lib/types";
 
-const validProfileTypes = new Set(Object.values(PROFILE_TYPES));
+const validProfileTypes: Set<string> = new Set(Object.values(PROFILE_TYPES));
 
-const defaultProfileTypeForEmail = (email) =>
+const defaultProfileTypeForEmail = (email: string) =>
   email.endsWith("@ubcbiztech.com")
     ? PROFILE_TYPES.EXEC
     : PROFILE_TYPES.ATTENDEE;
 
-const normalizeProfileType = (profileType, email) =>
+const normalizeProfileType = (profileType: string, email: string) =>
   validProfileTypes.has(profileType)
     ? profileType
     : defaultProfileTypeForEmail(email);
 
-const normalizeTopics = (topics) =>
+const normalizeTopics = (topics: any) =>
   (Array.isArray(topics) ? topics : (topics || "").split(","))
-    .map((topic) => topic.trim())
+    .map((topic: string) => topic.trim())
     .filter(Boolean);
 
 const PARTNER_PROFILE_VIEWABLE_MAP = {
@@ -53,7 +54,7 @@ const PARTNER_PROFILE_VIEWABLE_MAP = {
   position: true
 };
 
-const normalizePartner = (partner = {}) => ({
+const normalizePartner = (partner: Record<string, any> = {}) => ({
   email: partner.email ? partner.email.trim().toLowerCase() : "",
   firstName: (partner.firstName || partner.fname || "").trim(),
   lastName: (partner.lastName || partner.lname || "").trim(),
@@ -63,16 +64,16 @@ const normalizePartner = (partner = {}) => ({
   position: (partner.position || "").trim()
 });
 
-const validatePartner = (partner) => {
+const validatePartner = (partner: Record<string, any>) => {
   if (!isValidEmail(partner.email)) return "Invalid email";
   if (!partner.firstName) return "Missing firstName";
   if (!partner.lastName) return "Missing lastName";
   return null;
 };
 
-const summarizePartnerResults = (results) => {
+const summarizePartnerResults = (results: Record<string, any>[]) => {
   return results.reduce(
-    (summary, result) => {
+    (summary: Record<string, number>, result: Record<string, any>) => {
       summary[result.status] += 1;
       return summary;
     },
@@ -84,7 +85,7 @@ const summarizePartnerResults = (results) => {
   );
 };
 
-const buildPartnerMembershipRecords = (partner, profileID, timestamp) => {
+const buildPartnerMembershipRecords = (partner: Record<string, any>, profileID: string, timestamp: number) => {
   const user = {
     id: partner.email,
     fname: partner.firstName,
@@ -129,7 +130,7 @@ const buildPartnerMembershipRecords = (partner, profileID, timestamp) => {
   };
 };
 
-const buildPartnerMembershipTransaction = (records, existingUser) => {
+const buildPartnerMembershipTransaction = (records: Record<string, any>, existingUser: Record<string, any> | null) => {
   const userWrite = isEmpty(existingUser)
     ? {
       Put: {
@@ -185,15 +186,15 @@ const buildPartnerMembershipTransaction = (records, existingUser) => {
   ];
 };
 
-export const create = async (event, ctx, callback) => {
-  const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+export const create = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
+  const userID = event.requestContext.authorizer!.claims!.email.toLowerCase();
   if (!userID.endsWith("@ubcbiztech.com"))
     throw helpers.createResponse(403, {
       message: "unauthorized to perform this action"
     });
 
   const timestamp = new Date().getTime();
-  const data = JSON.parse(event.body);
+  const data = JSON.parse(event.body as string);
   if (!isValidEmail(data.email)) {
     return helpers.inputError("Invalid email", data.email);
   }
@@ -233,7 +234,7 @@ export const create = async (event, ctx, callback) => {
     return response;
   } catch (error) {
     let response;
-    if (error.type === "ConditionalCheckFailedException") {
+    if ((error as { type?: unknown }).type === "ConditionalCheckFailedException") {
       response = helpers.createResponse(
         409,
         "Member could not be created because email already exists"
@@ -245,9 +246,9 @@ export const create = async (event, ctx, callback) => {
   }
 };
 
-export const getEmailFromProfile = async (event, ctx, callback) => {
+export const getEmailFromProfile = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    const userID = event.requestContext.authorizer!.claims!.email.toLowerCase();
 
     if (!userID.endsWith("@ubcbiztech.com"))
       throw helpers.createResponse(403, {
@@ -282,9 +283,9 @@ export const getEmailFromProfile = async (event, ctx, callback) => {
   }
 };
 
-export const get = async (event, ctx, callback) => {
+export const get = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    const userID = event.requestContext.authorizer!.claims!.email.toLowerCase();
     if (!userID.endsWith("@ubcbiztech.com"))
       throw helpers.createResponse(403, {
         message: "unauthorized for this action"
@@ -307,9 +308,9 @@ export const get = async (event, ctx, callback) => {
   }
 };
 
-export const getAll = async (event, ctx, callback) => {
+export const getAll = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    const userID = event.requestContext.authorizer!.claims!.email.toLowerCase();
     if (!userID.endsWith("@ubcbiztech.com"))
       throw helpers.createResponse(403, {
         message: "unauthorized for this action"
@@ -326,9 +327,9 @@ export const getAll = async (event, ctx, callback) => {
   }
 };
 
-export const update = async (event, ctx, callback) => {
+export const update = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    const userID = event.requestContext.authorizer!.claims!.email.toLowerCase();
     if (!userID.endsWith("@ubcbiztech.com"))
       throw helpers.createResponse(403, {
         message: "unauthorized for this action"
@@ -346,7 +347,7 @@ export const update = async (event, ctx, callback) => {
     if (isEmpty(existingMember))
       throw helpers.notFoundResponse("member", email);
 
-    const data = JSON.parse(event.body);
+    const data = JSON.parse(event.body as string);
     const res = await db.updateDB(email, data, MEMBERS_TABLE);
     const response = helpers.createResponse(200, {
       message: `Updated member with email ${email}!`,
@@ -360,9 +361,9 @@ export const update = async (event, ctx, callback) => {
   }
 };
 
-export const del = async (event, ctx, callback) => {
+export const del = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    const userID = event.requestContext.authorizer!.claims!.email.toLowerCase();
     if (!userID.endsWith("@ubcbiztech.com"))
       throw helpers.createResponse(403, {
         message: "unauthorized for this action"
@@ -389,9 +390,9 @@ export const del = async (event, ctx, callback) => {
   }
 };
 
-export const createPartnerMemberships = async (event, ctx, callback) => {
+export const createPartnerMemberships = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    const userID = event.requestContext.authorizer!.claims!.email.toLowerCase();
     if (!userID.endsWith("@ubcbiztech.com")) {
       return helpers.createResponse(403, {
         message: "unauthorized"
@@ -403,7 +404,7 @@ export const createPartnerMemberships = async (event, ctx, callback) => {
       return helpers.inputError("partners must be an array", data);
     }
 
-    const results = await Promise.all(data.partners.map(async (partnerData) => {
+    const results = await Promise.all(data.partners.map(async (partnerData: any) => {
       const partner = normalizePartner(partnerData);
       const validationError = validatePartner(partner);
       if (validationError) {
@@ -445,13 +446,13 @@ export const createPartnerMemberships = async (event, ctx, callback) => {
           profileID
         };
       } catch (err) {
-        const body = err && err.body ? JSON.parse(err.body) : {};
+        const body = err && (err as any).body ? JSON.parse((err as any).body) : {};
         return {
           email: partner.email,
           status: "failed",
           reason:
             body.code ||
-            (err && err.message) ||
+            (err && (err as { message?: unknown }).message) ||
             "Failed to create partner membership"
         };
       }
@@ -464,7 +465,7 @@ export const createPartnerMemberships = async (event, ctx, callback) => {
   } catch (err) {
     console.error(err);
     return helpers.createResponse(500, {
-      message: err.message || "Internal server error"
+      message: (err as { message?: unknown }).message || "Internal server error"
     });
   }
 };
@@ -487,9 +488,9 @@ export const createPartnerMemberships = async (event, ctx, callback) => {
 //   adminCreated: true,
 // };
 
-export const grantMembership = async (event, ctx, callback) => {
+export const grantMembership = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    const userID = event.requestContext.authorizer!.claims!.email.toLowerCase();
     if (!userID.endsWith("@ubcbiztech.com")) {
       callback(null, helpers.createResponse(403, {
         message: "unauthorized"
@@ -497,7 +498,7 @@ export const grantMembership = async (event, ctx, callback) => {
       return null;
     }
 
-    const data = JSON.parse(event.body);
+    const data = JSON.parse(event.body as string);
 
     const email = data && data.email ? data.email.toLowerCase() : undefined;
     if (!isValidEmail(email)) {
@@ -566,9 +567,12 @@ export const grantMembership = async (event, ctx, callback) => {
 
     const userWithProfile = await db.getOne(email, USERS_TABLE);
     if (userWithProfile && userWithProfile.profileID) {
+      // `memberDataForProfile` is reassigned to `memberParams` when the member
+      // did not already exist, so it is non-null here; TS cannot narrow through
+      // the `isEmpty` guard.
       await updateProfileFromMembershipData(
         userWithProfile.profileID,
-        memberDataForProfile
+        memberDataForProfile!
       );
     } else {
       await createProfile(
