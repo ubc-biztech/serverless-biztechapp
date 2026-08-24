@@ -134,6 +134,52 @@ export const create = async (event, ctx, callback) => {
   }
 };
 
+export const ensureAuthenticatedUser = async (event) => {
+  const claims = event.requestContext?.authorizer?.claims || {};
+  const email = claims.email?.trim().toLowerCase();
+
+  if (!isValidEmail(email)) {
+    return helpers.inputError("Invalid authenticated email", email);
+  }
+
+  try {
+    const existingUser = await db.getOne(email, USERS_TABLE);
+    if (!isEmpty(existingUser)) {
+      return helpers.createResponse(200, {
+        message: "User already exists",
+        user: existingUser
+      });
+    }
+
+    const timestamp = Date.now();
+    const nameParts = String(claims.name || "").trim().split(/\s+/).filter(Boolean);
+    const user = {
+      id: email,
+      email,
+      fname: claims.given_name || nameParts[0] || "",
+      lname: claims.family_name || nameParts.slice(1).join(" ") || "",
+      admin: email.endsWith("@ubcbiztech.com"),
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+
+    try {
+      await db.put(user, USERS_TABLE, true);
+    } catch (error) {
+      // Another request may have already created the user.
+      if (error.type !== "ConditionalCheckFailedException") throw error;
+    }
+
+    return helpers.createResponse(201, {
+      message: "Created user from Cognito sign-in",
+      user: (await db.getOne(email, USERS_TABLE)) || user
+    });
+  } catch (error) {
+    console.error(error);
+    return helpers.createResponse(502, "Internal Server Error occurred");
+  }
+};
+
 export const checkUser = async (event, ctx, callback) => {
   try {
     const email = event.pathParameters.email;

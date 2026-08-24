@@ -8,9 +8,9 @@ import {
   MUTABLE_PROFILE_ATTRIBUTES, TYPES
 } from "./constants";
 
-export async function createProfile(email, profileType) {
+export async function createProfile(email, profileType, onboardingData = null) {
   const [memberData, userData] = await Promise.all([
-    db.getOne(email, MEMBERS_TABLE),
+    onboardingData ? Promise.resolve(onboardingData) : db.getOne(email, MEMBERS_TABLE),
     db.getOne(email, USERS_TABLE)
   ]);
 
