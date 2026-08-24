@@ -18,7 +18,8 @@ import {
 import {
   buildProfileUpdateParams,
   createProfile,
-  filterPublicProfileFields
+  filterPublicProfileFields,
+  updateProfileFromMembershipData
 } from "./helpers.js";
 import {
   S3Client, PutObjectCommand
@@ -36,12 +37,36 @@ const PROFILE_BUCKET = "biztech-profile-pictures";
 export const create = async (event, ctx, callback) => {
   try {
     const email = event.requestContext.authorizer.claims.email.toLowerCase();
-    const response = await createProfile(
-      email,
-      email.endsWith("@ubcbiztech.com")
-        ? PROFILE_TYPES.EXEC
-        : PROFILE_TYPES.ATTENDEE
-    );
+    const data = JSON.parse(event.body || "{}");
+    const onboardingYear = new Date().getFullYear();
+
+    await db.updateDB(email, {
+      education: data.education,
+      studentId: data.studentNumber,
+      fname: data.firstName,
+      lname: data.lastName,
+      faculty: data.faculty,
+      major: data.major,
+      year: data.levelOfStudy,
+      gender: data.pronouns,
+      diet: data.dietaryRestrictions,
+      onboardingYear
+    }, USERS_TABLE);
+
+    const user = await db.getOne(email, USERS_TABLE);
+    const profileData = {
+      firstName: data.firstName,
+      lastName: data.lastName,
+      pronouns: data.pronouns,
+      major: data.major,
+      year: data.levelOfStudy
+    };
+    const profileType = email.endsWith("@ubcbiztech.com")
+      ? PROFILE_TYPES.EXEC
+      : PROFILE_TYPES.ATTENDEE;
+    const response = user?.profileID
+      ? await updateProfileFromMembershipData(user.profileID, profileData)
+      : await createProfile(email, profileType, profileData);
     return response;
   } catch (err) {
     console.error(err);

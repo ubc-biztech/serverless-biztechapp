@@ -3,18 +3,12 @@ import { isEmpty, isValidEmail } from "../../lib/utils";
 import { updateHelper } from "../registrations/handler";
 import registrationHelpers from "../registrations/helpers";
 import db from "../../lib/db";
-import { CognitoIdentityProvider } from "@aws-sdk/client-cognito-identity-provider";
 
 import {
-  USERS_TABLE,
   MEMBERS_TABLE,
   EVENTS_TABLE,
   USER_REGISTRATIONS_TABLE
 } from "../../constants/tables";
-import {
-  createProfile,
-  updateProfileFromMembershipData
-} from "../profiles/helpers";
 import { PROFILE_TYPES } from "../profiles/constants";
 import { MEMBERSHIP_PRICE } from "./constants";
 
@@ -63,35 +57,9 @@ const putIfMissing = async (item, table) => {
 
 // Creates the member here
 export const webhook = async (event, ctx, callback) => {
-  const OAuthMemberSignup = async (data) => {
-    const timestamp = new Date().getTime();
+  const membershipSignup = async (data) => {
+    const timestamp = Date.now();
     const email = data.email.toLowerCase();
-
-    let isBiztechAdmin = false;
-
-    //assume the created user is biztech admin if using biztech email
-    if (
-      email.substring(email.indexOf("@") + 1, email.length) === "ubcbiztech.com"
-    ) {
-      isBiztechAdmin = true;
-    }
-
-    const userParams = {
-      id: email,
-      education: data.education,
-      studentId: data.student_number,
-      fname: data.fname,
-      lname: data.lname,
-      faculty: data.faculty,
-      major: data.major,
-      year: data.year,
-      gender: data.pronouns,
-      diet: data.diet,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      admin: isBiztechAdmin
-    };
-
     const memberParams = {
       id: email,
       education: data.education,
@@ -110,7 +78,7 @@ export const webhook = async (event, ctx, callback) => {
       heardFromSpecify: data.heardFromSpecify,
       university: data.university || data.education,
       highSchool: data.high_school,
-      admin: isBiztechAdmin,
+      admin: email.endsWith("@ubcbiztech.com"),
       cardCount: 0,
       profileType: publicProfileType(email),
       createdAt: timestamp,
@@ -118,140 +86,12 @@ export const webhook = async (event, ctx, callback) => {
     };
 
     try {
-      await putIfMissing(userParams, USERS_TABLE);
       await putIfMissing(memberParams, MEMBERS_TABLE);
-
-      const user = await db.getOne(email, USERS_TABLE);
-      if (user?.profileID) {
-        await updateProfileFromMembershipData(user.profileID, memberParams);
-      } else {
-        await createProfile(email, publicProfileType(email));
-      }
+      return helpers.createResponse(201, { message: "Created membership!" });
     } catch (error) {
       console.log(error);
       return helpers.createResponse(502, "Internal Server Error occurred");
     }
-
-    const response = helpers.createResponse(201, {
-      message: "Created user and member!"
-    });
-    return response;
-  };
-  const userMemberSignup = async (data) => {
-    const cognito = new CognitoIdentityProvider({
-      // The key apiVersion is no longer supported in v3, and can be removed.
-      // @deprecated The client uses the "latest" apiVersion.
-      apiVersion: "2016-04-18"
-    });
-
-    const normalizedEmail = data.email.toLowerCase();
-
-    const cognitoParams = {
-      ClientId: "5tc2jshu03i3bmtl1clsov96dt",
-      Username: normalizedEmail,
-      UserAttributes: [
-        {
-          Name: "name",
-          Value: data.fname + " " + data.lname
-        },
-        {
-          Name: "custom:student_id",
-          Value: data.student_number
-        }
-      ],
-      Password: data.password
-    };
-
-    try {
-      await cognito.signUp(cognitoParams);
-    } catch (error) {
-      // Stripe retries should resume provisioning if Cognito was already
-      // created by an earlier delivery that failed later in the flow.
-      if (error.name !== "UsernameExistsException") throw error;
-    }
-
-    return OAuthMemberSignup({
-      ...data,
-      email: normalizedEmail
-    });
-  };
-
-  const memberSignup = async (data) => {
-    const timestamp = new Date().getTime();
-
-    const email = data.email.toLowerCase();
-
-    let isBiztechAdmin = false;
-
-    //assume the created user is biztech admin if using biztech email
-    if (
-      email.substring(email.indexOf("@") + 1, email.length) === "ubcbiztech.com"
-    ) {
-      isBiztechAdmin = true;
-    }
-
-    const userParams = {
-      id: email,
-      education: data.education,
-      studentId: data.student_number,
-      fname: data.fname,
-      lname: data.lname,
-      faculty: data.faculty,
-      major: data.major,
-      year: data.year,
-      gender: data.pronouns,
-      diet: data.diet,
-      admin: isBiztechAdmin
-    };
-
-    const memberParams = {
-      id: email,
-      education: data.education,
-      firstName: data.fname,
-      lastName: data.lname,
-      pronouns: data.pronouns,
-      studentNumber: data.student_number,
-      faculty: data.faculty,
-      year: data.year,
-      major: data.major,
-      prevMember: parseBoolean(data.prev_member),
-      international: parseBoolean(data.international),
-      topics: parseTopics(data.topics),
-      diet: data.diet,
-      heardFrom: data.heard_from || data.referral,
-      heardFromSpecify: data.heardFromSpecify,
-      university: data.university || data.education,
-      highSchool: data.high_school,
-      admin: isBiztechAdmin,
-      cardCount: 0,
-      profileType: publicProfileType(email),
-      createdAt: timestamp,
-      updatedAt: timestamp
-    };
-
-    const existingUser = await db.getOne(email, USERS_TABLE);
-    if (isEmpty(existingUser)) {
-      await putIfMissing({
-        ...userParams,
-        createdAt: timestamp,
-        updatedAt: timestamp
-      }, USERS_TABLE);
-    } else {
-      await db.updateDB(email, userParams, USERS_TABLE);
-    }
-    await putIfMissing(memberParams, MEMBERS_TABLE);
-
-    const user = await db.getOne(email, USERS_TABLE);
-    if (user?.profileID) {
-      await updateProfileFromMembershipData(user.profileID, memberParams);
-    } else {
-      await createProfile(email, publicProfileType(email));
-    }
-
-    const response = helpers.createResponse(201, {
-      message: "Created member and updated user!"
-    });
-    return response;
   };
 
   const eventRegistration = async (data) => {
@@ -323,11 +163,9 @@ export const webhook = async (event, ctx, callback) => {
 
     switch (data.paymentType) {
     case "UserMember":
-      return userMemberSignup(data);
     case "OAuthMember":
-      return OAuthMemberSignup(data);
     case "Member":
-      return memberSignup(data);
+      return membershipSignup(data);
     case "Event":
       return eventRegistration(data);
     default:

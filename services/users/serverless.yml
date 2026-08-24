@@ -53,6 +53,16 @@ provider:
 custom: ${file(../../serverless.common.yml):custom}
 
 functions:
+  ensureAuthenticatedUser:
+    handler: handler.ensureAuthenticatedUser
+    events:
+      - http:
+          path: users/ensure
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   userCreate:
     handler: handler.create
     events:
