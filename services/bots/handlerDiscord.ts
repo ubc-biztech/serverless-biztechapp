@@ -11,9 +11,10 @@ import {
   removeUserRoles,
   backfillUserRoles
 } from "./helpersDiscord";
+import type { APIGatewayEvent, LambdaCallback, LambdaContext } from "../../lib/types";
 
-export const interactions = (event, ctx, callback) => {
-  const body = JSON.parse(event.body);
+export const interactions = (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
+  const body = JSON.parse(event.body as string);
 
   // reject if request is not valid
   if (!verifyRequestSignature(event)) {
@@ -60,12 +61,12 @@ export const interactions = (event, ctx, callback) => {
   }
 };
 
-export const webhook = (event, ctx, callback) => {
+export const webhook = (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   //stub
 };
 
-export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
-  const data = JSON.parse(event.body);
+export const mapDiscordAccountToMembership = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
+  const data = JSON.parse(event.body as string);
 
   handlerHelpers.checkPayloadProps(data, {
     email: {
@@ -78,7 +79,9 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
     }
   });
 
-  const email = event.requestContext.authorizer.claims.email.toLowerCase();
+  // `authorizer` and `claims` are optional on the event type; the original JS
+  // throws a TypeError when they are absent, so assert rather than guard.
+  const email = event.requestContext.authorizer!.claims!.email.toLowerCase();
   const { discordId } = data;
 
   if (!email || !discordId) {
@@ -111,11 +114,14 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
     try {
       await assignUserRoles(
         email,
+        // BUG (pre-existing, preserved): `""` is always falsy, so this concatenates
+        // `process.env.ENVIRONMENT` rather than an empty string.
+        // @ts-expect-error TS2873 This kind of expression is always falsy.
         "verified" + ("" || process.env.ENVIRONMENT)
       );
       console.log(`Successfully verified ${email}`);
     } catch (roleError) {
-      console.warn(`Failed to assign roles to ${email}:`, roleError.message);
+      console.warn(`Failed to assign roles to ${email}:`, (roleError as { message?: unknown }).message);
     }
 
     return handlerHelpers.createResponse(200, {
@@ -124,14 +130,14 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
   } catch (err) {
     console.error(db.dynamoErrorResponse(err));
     return handlerHelpers.createResponse(500, {
-      message: err.message || err
+      message: (err as { message?: unknown }).message || err
     });
   }
 };
 
-export const assignRoles = async (event, ctx, callback) => {
+export const assignRoles = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const data = JSON.parse(event.body);
+    const data = JSON.parse(event.body as string);
 
     handlerHelpers.checkPayloadProps(data, {
       userID: {
@@ -166,14 +172,14 @@ export const assignRoles = async (event, ctx, callback) => {
     console.error("Role assignment failed:", error);
     return handlerHelpers.createResponse(500, {
       message: "Failed to assign roles",
-      error: error.message
+      error: (error as { message?: unknown }).message
     });
   }
 };
 
-export const removeRoles = async (event, ctx, callback) => {
+export const removeRoles = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const data = JSON.parse(event.body);
+    const data = JSON.parse(event.body as string);
 
     handlerHelpers.checkPayloadProps(data, {
       userID: {
@@ -208,12 +214,12 @@ export const removeRoles = async (event, ctx, callback) => {
     console.error("Role removal failed:", error);
     return handlerHelpers.createResponse(500, {
       message: "Failed to remove roles",
-      error: error.message
+      error: (error as { message?: unknown }).message
     });
   }
 };
 
-export const backfillRoles = async (event, ctx, callback) => {
+export const backfillRoles = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
     if (!event.pathParameters || !event.pathParameters.userID) {
       throw handlerHelpers.missingPathParamResponse("user", "userID");
@@ -229,7 +235,7 @@ export const backfillRoles = async (event, ctx, callback) => {
   } catch (error) {
     console.error("Backfill failed:", error);
     return handlerHelpers.createResponse(500, {
-      message: error.message || error
+      message: (error as { message?: unknown }).message || error
     });
   }
 };

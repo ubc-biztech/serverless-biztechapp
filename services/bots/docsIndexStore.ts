@@ -24,7 +24,7 @@ function normalizeForSearch(text = "") {
     .trim()} `;
 }
 
-function positiveInt(value, fallback) {
+function positiveInt(value: unknown, fallback: number) {
   const parsed = Number.parseInt(String(value), 10);
   if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
   return parsed;
@@ -53,13 +53,13 @@ const s3Client = docsIndexConfig.bucket
   ? new S3Client({ region: docsIndexConfig.region })
   : null;
 
-function buildDocsState(payload, source, etag = "") {
+function buildDocsState(payload: any, source: string, etag = "") {
   const baseUrl = String(
     payload?.docsBaseUrl || payload?.baseUrl || bundledDocsBaseUrl
   ).trim();
   const rawChunks = Array.isArray(payload?.docsChunks) ? payload.docsChunks : [];
   const docsChunks = rawChunks
-    .map((chunk, index) => {
+    .map((chunk: any, index: number) => {
       if (!chunk || typeof chunk !== "object") return null;
 
       const content = String(chunk.content || "").trim();
@@ -116,19 +116,19 @@ let activeDocsState = buildDocsState(
   },
   "bundle"
 );
-let refreshPromise = null;
+let refreshPromise: Promise<typeof activeDocsState> | null = null;
 let nextRefreshAt = Date.now();
 let lastKnownEtag = "";
 
-async function streamToUtf8(body) {
+async function streamToUtf8(body: any) {
   if (!body) return "";
   if (typeof body.transformToString === "function") {
     return body.transformToString("utf-8");
   }
 
   return new Promise((resolve, reject) => {
-    const chunks = [];
-    body.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+    const chunks: Buffer[] = [];
+    body.on("data", (chunk: any) => chunks.push(Buffer.from(chunk)));
     body.on("error", reject);
     body.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
   });
@@ -153,7 +153,8 @@ async function refreshFromS3() {
     );
   }
 
-  const currentEtag = String(head.ETag || "").replaceAll("\"", "");
+  // `String.prototype.replaceAll` is ES2021; tsconfig still declares lib ES2020 even though the runtime is Node 22. Cast rather than change the build config.
+  const currentEtag = (String(head.ETag || "") as any).replaceAll("\"", "");
   if (currentEtag && lastKnownEtag && currentEtag === lastKnownEtag) {
     return activeDocsState;
   }
@@ -177,7 +178,7 @@ async function refreshFromS3() {
   return activeDocsState;
 }
 
-export async function ensureDocsIndexLoaded(options = {}) {
+export async function ensureDocsIndexLoaded(options: { forceRefresh?: boolean } = {}) {
   const forceRefresh = Boolean(options.forceRefresh);
 
   if (!s3Client) {
@@ -200,7 +201,7 @@ export async function ensureDocsIndexLoaded(options = {}) {
     } catch (error) {
       hadError = true;
       console.error(
-        `Failed to refresh docs index from S3; using bundled cache instead: ${error.message}`
+        `Failed to refresh docs index from S3; using bundled cache instead: ${(error as { message?: unknown }).message}`
       );
       return activeDocsState;
     } finally {

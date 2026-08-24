@@ -8,7 +8,7 @@ import {
   sendIssueReminders as sendIssueReminders,
   submitPingShortcut,
   summarizeRecentMessages
-} from "./helpersSlack.js";
+} from "./helpersSlack";
 import {
   InvokeCommand,
   LambdaClient
@@ -16,12 +16,13 @@ import {
 
 import {
   ack
-} from "./constants.js";
+} from "./constants";
+import type { APIGatewayEvent, LambdaCallback, LambdaContext } from "../../lib/types";
 
 const processedEventIds = new Set();
 const lambdaClient = new LambdaClient({});
 
-async function enqueueSlackTask(task, payload) {
+async function enqueueSlackTask(task: string, payload: any) {
   const functionName = process.env.AWS_LAMBDA_FUNCTION_NAME;
 
   // Local/non-Lambda fallback keeps behavior working in local scripts.
@@ -52,7 +53,7 @@ async function enqueueSlackTask(task, payload) {
   );
 }
 
-async function enqueueSummarizeJob(body) {
+async function enqueueSummarizeJob(body: any) {
   await enqueueSlackTask("summarize", {
     channel_id: body.channel_id,
     thread_ts: body.thread_ts || null,
@@ -60,7 +61,7 @@ async function enqueueSummarizeJob(body) {
   });
 }
 
-async function enqueueDocsAnswerJob(event) {
+async function enqueueDocsAnswerJob(event: any) {
   await enqueueSlackTask("docs_answer", {
     channel_id: event.channel,
     thread_ts: event.thread_ts || event.ts,
@@ -69,7 +70,7 @@ async function enqueueDocsAnswerJob(event) {
   });
 }
 
-async function enqueueThreadSummarizeJob(body) {
+async function enqueueThreadSummarizeJob(body: any) {
   await enqueueSlackTask("summarize", {
     channel_id: body.channel.id,
     thread_ts: body.message.thread_ts || body.message_ts,
@@ -78,7 +79,14 @@ async function enqueueThreadSummarizeJob(body) {
 }
 
 // router
-export const shortcutHandler = async (event, ctx, callback) => {
+// This Lambda is invoked both by API Gateway and by itself (async `InvokeCommand`
+// carrying `{ internalTask, payload }`), so the event is the API Gateway shape
+// widened with the two internal-task fields.
+export const shortcutHandler = async (
+  event: APIGatewayEvent & { internalTask?: string; payload?: any },
+  ctx: LambdaContext,
+  callback: LambdaCallback
+) => {
   if (event?.internalTask === "summarize") {
     await summarizeRecentMessages(event.payload || {});
     return;
@@ -98,7 +106,7 @@ export const shortcutHandler = async (event, ctx, callback) => {
   }
 
   if (event.headers["Content-Type"] === "application/x-www-form-urlencoded") {
-    const params = new URLSearchParams(event.body);
+    const params = new URLSearchParams(event.body as string);
     const payload = params.get("payload");
     if (payload) {
       body = JSON.parse(payload);
@@ -106,7 +114,7 @@ export const shortcutHandler = async (event, ctx, callback) => {
       body = Object.fromEntries(params);
     }
   } else {
-    body = JSON.parse(event.body);
+    body = JSON.parse(event.body as string);
   }
 
   if (body.command === "/summarize") {
@@ -240,7 +248,7 @@ export const shortcutHandler = async (event, ctx, callback) => {
   return ack;
 };
 
-export const slackGithubReminder = async (event, ctx, callback) => {
+export const slackGithubReminder = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   const projectBoard = await getProjectBoard();
   sendIssueReminders(projectBoard);
   return ack;

@@ -17,6 +17,7 @@ import {
 } from "../profiles/helpers";
 import { PROFILE_TYPES } from "../profiles/constants";
 import { MEMBERSHIP_PRICE } from "./constants";
+import type { APIGatewayEvent, LambdaCallback, LambdaContext } from "../../lib/types";
 
 const stripe = require("stripe")(
   process.env.ENVIRONMENT === "PROD"
@@ -34,18 +35,18 @@ const cancelSecret =
     ? process.env.STRIPE_PROD_CANCEL
     : process.env.STRIPE_DEV_CANCEL;
 
-const parseTopics = (topics) =>
+const parseTopics = (topics: any) =>
   (Array.isArray(topics) ? topics : (topics || "").split(","))
-    .map((topic) => topic.trim())
+    .map((topic: string) => topic.trim())
     .filter(Boolean);
 
-const parseBoolean = (value) =>
+const parseBoolean = (value: unknown) =>
   value === true || ["true", "yes", "1"].includes(String(value).toLowerCase());
 
-const publicProfileType = (email) =>
+const publicProfileType = (email: string) =>
   email.endsWith("@ubcbiztech.com") ? PROFILE_TYPES.EXEC : PROFILE_TYPES.ATTENDEE;
 
-const putIfMissing = async (item, table) => {
+const putIfMissing = async (item: Record<string, any>, table: string) => {
   const existing = await db.getOne(item.id, table);
   if (!isEmpty(existing)) return existing;
 
@@ -54,7 +55,7 @@ const putIfMissing = async (item, table) => {
     return item;
   } catch (error) {
     // A concurrent/retried Stripe webhook may have created it after the read.
-    if (error.type === "ConditionalCheckFailedException") {
+    if ((error as { type?: unknown }).type === "ConditionalCheckFailedException") {
       return db.getOne(item.id, table);
     }
     throw error;
@@ -62,8 +63,8 @@ const putIfMissing = async (item, table) => {
 };
 
 // Creates the member here
-export const webhook = async (event, ctx, callback) => {
-  const OAuthMemberSignup = async (data) => {
+export const webhook = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
+  const OAuthMemberSignup = async (data: Record<string, any>) => {
     const timestamp = new Date().getTime();
     const email = data.email.toLowerCase();
 
@@ -137,7 +138,7 @@ export const webhook = async (event, ctx, callback) => {
     });
     return response;
   };
-  const userMemberSignup = async (data) => {
+  const userMemberSignup = async (data: Record<string, any>) => {
     const cognito = new CognitoIdentityProvider({
       // The key apiVersion is no longer supported in v3, and can be removed.
       // @deprecated The client uses the "latest" apiVersion.
@@ -167,7 +168,7 @@ export const webhook = async (event, ctx, callback) => {
     } catch (error) {
       // Stripe retries should resume provisioning if Cognito was already
       // created by an earlier delivery that failed later in the flow.
-      if (error.name !== "UsernameExistsException") throw error;
+      if ((error as { name?: unknown }).name !== "UsernameExistsException") throw error;
     }
 
     return OAuthMemberSignup({
@@ -176,7 +177,7 @@ export const webhook = async (event, ctx, callback) => {
     });
   };
 
-  const memberSignup = async (data) => {
+  const memberSignup = async (data: Record<string, any>) => {
     const timestamp = new Date().getTime();
 
     const email = data.email.toLowerCase();
@@ -254,7 +255,7 @@ export const webhook = async (event, ctx, callback) => {
     return response;
   };
 
-  const eventRegistration = async (data) => {
+  const eventRegistration = async (data: Record<string, any>) => {
     try {
       let updatedRegistrationStatus = "registered";
 
@@ -297,7 +298,7 @@ export const webhook = async (event, ctx, callback) => {
       return response;
     } catch (err) {
       console.log(err);
-      return helpers.createResponse(500, { message: err.message || err });
+      return helpers.createResponse(500, { message: (err as { message?: unknown }).message || err });
     }
   };
 
@@ -342,9 +343,9 @@ export const webhook = async (event, ctx, callback) => {
   });
 };
 
-export const payment = async (event, ctx, callback) => {
+export const payment = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    let data = JSON.parse(event.body);
+    let data = JSON.parse(event.body as string);
     if (data.email) {
       data.email = data.email.toLowerCase();
     }
@@ -364,16 +365,18 @@ export const payment = async (event, ctx, callback) => {
       }
 
       const isMember = !isEmpty(member);
-      const samePricing = event.pricing.members === event.pricing.nonMembers;
+      // `event` is non-null past the `isEmpty` guard above, but TS cannot narrow
+      // through it, hence the non-null assertions below.
+      const samePricing = event!.pricing.members === event!.pricing.nonMembers;
       unit_amount =
-          (isMember ? event.pricing.members : event.pricing.nonMembers) * 100;
-      data.paymentName = `${event.ename} ${
+          (isMember ? event!.pricing.members : event!.pricing.nonMembers) * 100;
+      data.paymentName = `${event!.ename} ${
         isMember || samePricing ? "" : "(Non-member)"
       }`;
 
       data = {
         ...data,
-        paymentImages: [event.imageUrl]
+        paymentImages: [event!.imageUrl]
       };
     } else {
       // determine price for membership based on UBC student status
@@ -420,11 +423,11 @@ export const payment = async (event, ctx, callback) => {
     return response;
   } catch (err) {
     console.log(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: (err as { message?: unknown }).message || err });
   }
 };
 
-export const cancel = async (event, ctx, callback) => {
+export const cancel = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   // NOTE: cancel webhook currently only operates correctly for events i.e. payment incomplete
   const sig = event.headers["Stripe-Signature"];
   const eventData = stripe.webhooks.constructEvent(
@@ -450,7 +453,7 @@ export const cancel = async (event, ctx, callback) => {
 
       return response;
     } catch (err) {
-      return helpers.createResponse(500, { message: err.message || err });
+      return helpers.createResponse(500, { message: (err as { message?: unknown }).message || err });
     }
   } else {
     return helpers.createResponse(400, {

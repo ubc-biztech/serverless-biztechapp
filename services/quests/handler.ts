@@ -2,8 +2,8 @@ import { QUESTS_TABLE, USERS_TABLE } from "../../constants/tables.js";
 import db from "../../lib/db.js";
 import handlerHelpers from "../../lib/handlerHelpers";
 import type { APIGatewayEvent, LambdaCallback, LambdaContext } from "../../lib/types";
-import { QUEST_DEFS } from "./constants.js";
-import { applyQuestEvent, initStoredQuest, parseEvents } from "./helper.js";
+import { QUEST_DEFS } from "./constants";
+import { applyQuestEvent, initStoredQuest, parseEvents } from "./helper";
 
 async function getEmailFromProfileId(profileId: string): Promise<string | null> {
   try {

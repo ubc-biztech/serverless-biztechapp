@@ -1,10 +1,35 @@
-import { QUEST_IDS, QUEST_DEFS, QUEST_TYPES, QUEST_EVENT_TYPES } from "./constants.js";
+import { QUEST_IDS, QUEST_DEFS, QUEST_TYPES, QUEST_EVENT_TYPES } from "./constants";
+
+export interface QuestDef {
+  id: string;
+  type: string;
+  target?: number;
+  description: string;
+  eventType: string;
+}
+
+export interface StoredQuest {
+  progress: number;
+  target: number | null;
+  startedAt: number;
+  completedAt: number | null;
+  description: string;
+}
+
+export interface QuestEvent {
+  questId: string;
+  questType: string;
+  eventType: string;
+  eventParam: Record<string, unknown>;
+  count: number;
+}
+
 /**
  * shape of initialized quest
  * def is the defined quest object from QUEST_DEFS
  */
 
-export function initStoredQuest(def, now) {
+export function initStoredQuest(def: QuestDef, now: number): StoredQuest {
   return {
     progress: 0,
     target: def.target !== undefined ? def.target : null,
@@ -14,7 +39,7 @@ export function initStoredQuest(def, now) {
   };
 }
 
-export function parseEvents(body) {
+export function parseEvents(body: Record<string, unknown>): QuestEvent[] | null {
   switch (body.type) {
   case "connection": {
     return [{
@@ -45,8 +70,13 @@ export function parseEvents(body) {
 /**
  * Apply an event to the stored quest object and return updated stored object.
  */
-export function applyQuestEvent(def, currentStored, event, now) {
-  const state = currentStored || initStoredQuest(def, now); // initialize the stored quest if not already
+export function applyQuestEvent(
+  def: QuestDef,
+  currentStored: StoredQuest | Record<string, unknown> | undefined,
+  event: QuestEvent,
+  now: number,
+): StoredQuest {
+  const state = (currentStored || initStoredQuest(def, now)) as StoredQuest; // initialize the stored quest if not already
   if (event.eventType !== def.eventType) return state;
 
   // if the state of the event is completed
@@ -64,6 +94,6 @@ export function applyQuestEvent(def, currentStored, event, now) {
   };
 }
 
-export function getQuestDef(questId) {
+export function getQuestDef(questId: string): QuestDef | null {
   return QUEST_DEFS[questId] || null;
 }

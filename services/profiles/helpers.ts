@@ -7,8 +7,9 @@ import helpers from "../../lib/handlerHelpers";
 import {
   MUTABLE_PROFILE_ATTRIBUTES, TYPES
 } from "./constants";
+import type { APIGatewayResponse } from "../../lib/types";
 
-export async function createProfile(email, profileType) {
+export async function createProfile(email: string, profileType: string): Promise<APIGatewayResponse> {
   const [memberData, userData] = await Promise.all([
     db.getOne(email, MEMBERS_TABLE),
     db.getOne(email, USERS_TABLE)
@@ -112,8 +113,8 @@ export async function createProfile(email, profileType) {
   return response;
 }
 
-export async function updateProfileFromMembershipData(profileID, memberData) {
-  const updateData = {};
+export async function updateProfileFromMembershipData(profileID: string, memberData: Record<string, any>) {
+  const updateData: Record<string, unknown> = {};
 
   ["pronouns", "major", "year"].forEach((key) => {
     if (memberData[key] !== undefined && memberData[key] !== null) {
@@ -126,11 +127,11 @@ export async function updateProfileFromMembershipData(profileID, memberData) {
   }
 
   const updateExpressions = ["#updatedAt = :updatedAt"];
-  const expressionAttributeNames = {
+  const expressionAttributeNames: Record<string, string> = {
     "#updatedAt": "updatedAt",
     "#type": "type"
   };
-  const expressionAttributeValues = {
+  const expressionAttributeValues: Record<string, unknown> = {
     ":updatedAt": Date.now()
   };
 
@@ -155,8 +156,8 @@ export async function updateProfileFromMembershipData(profileID, memberData) {
   });
 }
 
-export function filterPublicProfileFields(profile) {
-  const publicFields = {
+export function filterPublicProfileFields(profile: Record<string, any>): Record<string, unknown> {
+  const publicFields: Record<string, unknown> = {
   };
   const map = profile.viewableMap;
 
@@ -171,25 +172,25 @@ export function filterPublicProfileFields(profile) {
 
 /**
  * Builds dynamic update parameters for profile updates
- * @param {string} compositeID - The composeID for the profile string
- * @param {Object} updateData - The data to update (valid attributes from MUTABLE_PROFILE_ATTRIBUTES)
- * @param {Object} viewableMap - The viewable map to update
- * @param {string} tableName - The DynamoDB table name
- * @param {number} timestamp - The update timestamp
- * @returns {Object} DynamoDB update parameters
+ * @param compositeID - The composeID for the profile string
+ * @param updateData - The data to update (valid attributes from MUTABLE_PROFILE_ATTRIBUTES)
+ * @param viewableMap - The viewable map to update
+ * @param tableName - The DynamoDB table name
+ * @param timestamp - The update timestamp
+ * @returns DynamoDB update parameters
  */
 export const buildProfileUpdateParams = (
-  compositeID,
-  updateData = {
+  compositeID: string,
+  updateData: Record<string, unknown> = {
   },
-  viewableMap,
-  tableName,
-  timestamp
+  viewableMap: Record<string, unknown> | null,
+  tableName: string,
+  timestamp: number
 ) => {
-  const updateExpressions = [];
-  const expressionAttributeValues = {
+  const updateExpressions: string[] = [];
+  const expressionAttributeValues: Record<string, unknown> = {
   };
-  const expressionAttributeNames = {
+  const expressionAttributeNames: Record<string, string> = {
   };
 
   // Add timestamp to updates
@@ -199,7 +200,9 @@ export const buildProfileUpdateParams = (
 
   // Process valid mutable attributes
   Object.keys(updateData).forEach((key) => {
-    if (Object.hasOwn(MUTABLE_PROFILE_ATTRIBUTES, key)) {
+    // `Object.hasOwn` is ES2022; tsconfig still declares lib ES2020 even though
+    // the runtime is Node 22. Cast rather than change the shared build config.
+    if ((Object as any).hasOwn(MUTABLE_PROFILE_ATTRIBUTES, key)) {
       const attrName = `#${key}`;
       const attrValue = `:${key}`;
 

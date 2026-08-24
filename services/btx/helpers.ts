@@ -44,16 +44,16 @@ const WS_ENDPOINT = process.env.WS_API_ENDPOINT;
 
 //  Utility helpers
 
-export function roundPrice(value) {
+export function roundPrice(value: number) {
   return Math.round(value * 100) / 100;
 }
 
-export function clampPrice(value) {
+export function clampPrice(value: number) {
   return Math.max(MIN_PRICE, roundPrice(value));
 }
 
 // (Kept but not used in executeTrade; you can delete if you like)
-export function applyExecutionNoise(endPrice) {
+export function applyExecutionNoise(endPrice: number) {
   const maxPct = EXECUTION_NOISE_MAX_PCT || 0;
   if (!maxPct || maxPct <= 0) {
     return clampPrice(endPrice);
@@ -85,7 +85,11 @@ export function wsClient() {
   });
 }
 
-export async function saveSocketConnection({ connectionId, eventId, userId }) {
+export async function saveSocketConnection({ connectionId, eventId, userId }: {
+  connectionId: string | undefined;
+  eventId: string;
+  userId: string;
+}) {
   const cmd = new PutCommand({
     TableName: BTX_SOCKETS_TABLE,
     Item: {
@@ -98,7 +102,7 @@ export async function saveSocketConnection({ connectionId, eventId, userId }) {
   await docClient.send(cmd);
 }
 
-export async function removeSocketConnection({ connectionId }) {
+export async function removeSocketConnection({ connectionId }: { connectionId: string | undefined }) {
   const cmd = new DeleteCommand({
     TableName: BTX_SOCKETS_TABLE,
     Key: { connectionId }
@@ -106,7 +110,7 @@ export async function removeSocketConnection({ connectionId }) {
   await docClient.send(cmd);
 }
 
-export async function listConnectionsByEvent(eventId) {
+export async function listConnectionsByEvent(eventId: string) {
   const cmd = new QueryCommand({
     TableName: BTX_SOCKETS_TABLE,
     IndexName: "byEvent",
@@ -119,7 +123,7 @@ export async function listConnectionsByEvent(eventId) {
   return res.Items || [];
 }
 
-export async function postToConnection(connectionId, payload) {
+export async function postToConnection(connectionId: string, payload: any) {
   const api = wsClient();
   if (!api) return;
   try {
@@ -129,9 +133,9 @@ export async function postToConnection(connectionId, payload) {
     });
   } catch (err) {
     const status =
-      err?.statusCode ||
-      err?.$metadata?.httpStatusCode ||
-      err?.$response?.statusCode;
+      (err as any)?.statusCode ||
+      (err as any)?.$metadata?.httpStatusCode ||
+      (err as any)?.$response?.statusCode;
 
     if (status === 410) {
       console.warn("[BTX] stale websocket connection, removing", {
@@ -159,6 +163,11 @@ export async function recordPriceHistory({
   eventId,
   price,
   source
+}: {
+  projectId: string;
+  eventId?: string;
+  price: any;
+  source?: string;
 }) {
   if (!projectId || price == null) return;
 
@@ -187,13 +196,13 @@ export async function recordPriceHistory({
 }
 
 export async function getPriceHistoryForProject(
-  projectId,
-  { limit = 500, sinceTs } = {}
+  projectId: string,
+  { limit = 500, sinceTs }: { limit?: number; sinceTs?: number } = {}
 ) {
   if (!projectId) return [];
 
   let KeyConditionExpression = "projectId = :p";
-  const ExpressionAttributeValues = { ":p": projectId };
+  const ExpressionAttributeValues: Record<string, any> = { ":p": projectId };
 
   if (sinceTs != null) {
     KeyConditionExpression += " AND ts >= :since";
@@ -227,7 +236,7 @@ export async function getPriceHistoryForProject(
 
 // Broadcast with price history
 
-export async function broadcastPriceUpdate(project, source = "UNKNOWN") {
+export async function broadcastPriceUpdate(project: any, source = "UNKNOWN") {
   try {
     const eventId = project.eventId || DEFAULT_EVENT_ID;
     const subs = await listConnectionsByEvent(eventId);
@@ -277,7 +286,7 @@ export async function broadcastPriceUpdate(project, source = "UNKNOWN") {
 
 //  Random drift (random walk + mean reversion)
 
-export async function maybeApplyRandomDrift(project) {
+export async function maybeApplyRandomDrift(project: Record<string, any>) {
   if (!DRIFT_ENABLED) return project;
 
   const now = Date.now();
@@ -358,7 +367,7 @@ export async function maybeApplyRandomDrift(project) {
   return updated;
 }
 
-export async function applyRandomDriftToProjects(projects) {
+export async function applyRandomDriftToProjects(projects: Record<string, any>[]) {
   if (!DRIFT_ENABLED) return projects;
   if (!projects || !projects.length) return projects;
 
@@ -370,7 +379,7 @@ export async function applyRandomDriftToProjects(projects) {
 
 // BTX helpers
 
-export async function getProject(projectId) {
+export async function getProject(projectId: string) {
   const cmd = new GetCommand({
     TableName: BTX_PROJECTS_TABLE,
     Key: { projectId }
@@ -379,7 +388,7 @@ export async function getProject(projectId) {
   return res.Item || null;
 }
 
-export async function getProjectOrThrow(projectId) {
+export async function getProjectOrThrow(projectId: string) {
   const project = await getProject(projectId);
   if (!project) {
     throw handlerHelpers.notFoundResponse("BTX project", projectId);
@@ -392,19 +401,19 @@ export async function getProjectOrThrow(projectId) {
   return project;
 }
 
-export function computeBasePriceFromSeed(seedAmount) {
+export function computeBasePriceFromSeed(seedAmount: number) {
   const seed = Number(seedAmount || 0);
   const base = DEFAULT_BASE_PRICE + seed * SEED_TO_PRICE_FACTOR;
   return clampPrice(base);
 }
 
-export function getPriceForNetShares(project, netShares) {
+export function getPriceForNetShares(project: Record<string, any>, netShares: number) {
   const basePrice = Number(project.basePrice || DEFAULT_BASE_PRICE);
   const rawPrice = basePrice + netShares * PRICE_SENSITIVITY_PER_SHARE;
   return clampPrice(rawPrice);
 }
 
-export function applyPriceFromNetShares(project, netSharesDelta) {
+export function applyPriceFromNetShares(project: Record<string, any>, netSharesDelta: number) {
   const currentNetShares = Number(project.netShares || 0);
   const newNetShares = currentNetShares + netSharesDelta;
 
@@ -417,7 +426,7 @@ export function applyPriceFromNetShares(project, netSharesDelta) {
 }
 
 // Ensure a BTX account exists for a user
-export async function ensureAccount(userId) {
+export async function ensureAccount(userId: string): Promise<Record<string, any>> {
   const cmd = new GetCommand({
     TableName: BTX_ACCOUNTS_TABLE,
     Key: { userId }
@@ -444,16 +453,18 @@ export async function ensureAccount(userId) {
     await docClient.send(putCmd);
     return newAccount;
   } catch (err) {
-    if (err.name === "ConditionalCheckFailedException") {
+    if ((err as { name?: string }).name === "ConditionalCheckFailedException") {
       // someone else created it; read again
       const res2 = await docClient.send(cmd);
-      return res2.Item;
+      // TS can't narrow `Item` here: the conditional put failed because another
+      // writer created the account, so the re-read returns it.
+      return res2.Item!;
     }
     throw err;
   }
 }
 
-export async function getHolding(userId, projectId) {
+export async function getHolding(userId: string, projectId: string) {
   const cmd = new GetCommand({
     TableName: BTX_HOLDINGS_TABLE,
     Key: {
@@ -465,7 +476,7 @@ export async function getHolding(userId, projectId) {
   return res.Item || null;
 }
 
-export function computeHoldingAfterBuy(holding, sharesToBuy, cost) {
+export function computeHoldingAfterBuy(holding: Record<string, any> | null, sharesToBuy: number, cost: number) {
   const existingShares = holding ? Number(holding.shares || 0) : 0;
   const existingAvgPrice = holding ? Number(holding.avgPrice || 0) : 0;
 
@@ -479,7 +490,7 @@ export function computeHoldingAfterBuy(holding, sharesToBuy, cost) {
   };
 }
 
-export function computeHoldingAfterSell(holding, sharesToSell) {
+export function computeHoldingAfterSell(holding: Record<string, any> | null, sharesToSell: number) {
   const existingShares = holding ? Number(holding.shares || 0) : 0;
   if (sharesToSell > existingShares) {
     throw handlerHelpers.createResponse(400, {
@@ -492,7 +503,12 @@ export function computeHoldingAfterSell(holding, sharesToSell) {
 
 // Execute a BUY or SELL trade atomically
 
-export async function executeTrade({ userId, projectId, side, shares }) {
+export async function executeTrade({ userId, projectId, side, shares }: {
+  userId: string;
+  projectId: string;
+  side: string;
+  shares: any;
+}) {
   const now = Date.now();
   const cleanSide = side === "SELL" ? "SELL" : "BUY";
   const sharesNum = Number(shares);
@@ -567,8 +583,8 @@ export async function executeTrade({ userId, projectId, side, shares }) {
   const tradeId = `ts#${now}#${randomUUID()}`;
 
   //  New holding state
-  let holdingPutOrUpdate = null;
-  let holdingDelete = null;
+  let holdingPutOrUpdate: any = null;
+  let holdingDelete: any = null;
 
   if (cleanSide === "BUY") {
     const { newShares, newAvgPrice } = computeHoldingAfterBuy(
@@ -604,8 +620,10 @@ export async function executeTrade({ userId, projectId, side, shares }) {
           userId,
           projectId,
           shares: newShares,
-          avgPrice: holding.avgPrice,
-          createdAt: holding.createdAt,
+          // TS can't narrow through `computeHoldingAfterSell`, which already threw
+          // if `holding` was null (newShares > 0 implies a holding exists).
+          avgPrice: holding!.avgPrice,
+          createdAt: holding!.createdAt,
           updatedAt: now
         }
       };
@@ -624,7 +642,7 @@ export async function executeTrade({ userId, projectId, side, shares }) {
     createdAt: now
   };
 
-  const projectUpdate = {
+  const projectUpdate: any = {
     TableName: BTX_PROJECTS_TABLE,
     Key: { projectId },
     UpdateExpression:
@@ -643,7 +661,7 @@ export async function executeTrade({ userId, projectId, side, shares }) {
     ReturnValues: "ALL_NEW"
   };
 
-  const accountUpdate = {
+  const accountUpdate: any = {
     TableName: BTX_ACCOUNTS_TABLE,
     Key: { userId },
     UpdateExpression:
@@ -697,7 +715,7 @@ export async function executeTrade({ userId, projectId, side, shares }) {
     };
   }
 
-  const transactItems = [
+  const transactItems: any[] = [
     { Update: projectUpdate },
     { Update: accountUpdate },
     {
@@ -758,6 +776,13 @@ export async function createOrUpdateProject({
   name,
   description,
   seedAmount = 0
+}: {
+  projectId: string;
+  eventId?: any;
+  ticker?: any;
+  name?: any;
+  description?: any;
+  seedAmount?: any;
 }) {
   const now = Date.now();
   const event = eventId || DEFAULT_EVENT_ID;
@@ -807,7 +832,11 @@ export async function createOrUpdateProject({
 }
 
 // Update project seed impact
-export async function applySeedUpdate({ projectId, seedDelta, seedAbsolute }) {
+export async function applySeedUpdate({ projectId, seedDelta, seedAbsolute }: {
+  projectId: string;
+  seedDelta?: any;
+  seedAbsolute?: any;
+}) {
   const project = await getProjectOrThrow(projectId);
   const now = Date.now();
 
@@ -855,6 +884,11 @@ export async function applyPhaseBump({
   bumpType,
   multiplier,
   delta
+}: {
+  projectId: string;
+  bumpType?: any;
+  multiplier?: any;
+  delta?: any;
 }) {
   const project = await getProjectOrThrow(projectId);
   const now = Date.now();
@@ -865,8 +899,9 @@ export async function applyPhaseBump({
 
   let newPrice = current;
 
-  if (bumpType && PHASE_BUMP_PRESETS[bumpType]) {
-    const pct = PHASE_BUMP_PRESETS[bumpType];
+  // `bumpType` is a dynamic string, so index the presets through a string-keyed view
+  if (bumpType && (PHASE_BUMP_PRESETS as Record<string, number>)[bumpType]) {
+    const pct = (PHASE_BUMP_PRESETS as Record<string, number>)[bumpType];
     newPrice = current * (1 + pct);
   } else if (bumpType === "MULTIPLY" && multiplier != null) {
     newPrice = current * Number(multiplier);
@@ -902,7 +937,7 @@ export async function applyPhaseBump({
 }
 
 // List projects for an event
-export async function listProjectsForEvent(eventId) {
+export async function listProjectsForEvent(eventId: string) {
   const ev = eventId || DEFAULT_EVENT_ID;
 
   const cmd = new QueryCommand({
@@ -921,6 +956,7 @@ export async function listProjectsForEvent(eventId) {
   } catch (err) {
     // fallback: scan if GSI isn't there yet in dev
     console.warn("[BTX] byEvent index missing? falling back to Scan", err);
+    // BUG (pre-existing, preserved): the "Scan" fallback is a QueryCommand whose KeyConditionExpression uses `<>` on the partition key, which DynamoDB rejects, so this fallback always throws.
     const scanCmd = new QueryCommand({
       TableName: BTX_PROJECTS_TABLE,
       KeyConditionExpression: "projectId <> :x",
@@ -935,7 +971,7 @@ export async function listProjectsForEvent(eventId) {
 }
 
 // Portfolio for a user
-export async function getPortfolioForUser(userId, eventId) {
+export async function getPortfolioForUser(userId: string, eventId: string) {
   const [account, holdingsRes] = await Promise.all([
     ensureAccount(userId),
     docClient.send(
@@ -1024,8 +1060,8 @@ export async function getPortfolioForUser(userId, eventId) {
 }
 
 export async function getTraderLeaderboard(
-  eventId,
-  { limitTop = 5, limitBottom = 5 } = {}
+  eventId: string,
+  { limitTop = 5, limitBottom = 5 }: { limitTop?: number; limitBottom?: number } = {}
 ) {
   const ev = eventId || DEFAULT_EVENT_ID;
 
@@ -1049,7 +1085,7 @@ export async function getTraderLeaderboard(
     projectPrice.set(p.projectId, currentPrice);
   }
 
-  const ensureStats = (userId) => {
+  const ensureStats = (userId: string) => {
     let stats = userStats.get(userId);
     if (!stats) {
       stats = {
@@ -1193,7 +1229,7 @@ export async function getTraderLeaderboard(
 }
 
 // Recent trades for a project
-export async function getRecentTrades(projectId, limit = 20) {
+export async function getRecentTrades(projectId: string, limit = 20) {
   const cmd = new QueryCommand({
     TableName: BTX_TRADES_TABLE,
     KeyConditionExpression: "projectId = :p",

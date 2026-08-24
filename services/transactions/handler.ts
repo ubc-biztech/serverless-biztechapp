@@ -9,10 +9,13 @@ import {
 import {
   TRANSACTIONS_TABLE, USERS_TABLE
 } from "../../constants/tables";
+import type {
+  APIGatewayEvent, LambdaCallback, LambdaContext, ScanFilters
+} from "../../lib/types";
 
-export const getAll = async (event, ctx, callback) => {
+export const getAll = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const filters = {
+    const filters: ScanFilters = {
     };
 
     // check if a query was provided
@@ -29,14 +32,16 @@ export const getAll = async (event, ctx, callback) => {
     // scan the table
     const transaction = await db.scan(TRANSACTIONS_TABLE, filters);
 
-    let items = {
+    // `items` is either a summary object or the raw scan array, depending on
+    // whether `userId` was supplied.
+    let items: any = {
     };
 
     // re-organize the response
     if(userId && transaction !== null) {
       items.count = transaction.length;
       items.transactions = transaction;
-      items.totalCredits = transaction.reduce((accumulator, item) => accumulator + item.credits, 0);
+      items.totalCredits = transaction.reduce((accumulator: number, item: any) => accumulator + item.credits, 0);
     }
     else if(userId) {
       items.count = 0;
@@ -50,14 +55,14 @@ export const getAll = async (event, ctx, callback) => {
 
     return response;
   } catch(err) {
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: (err as { message?: unknown }).message || err });
   }
 };
 
-export const create = async (event, ctx, callback) => {
+export const create = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
     const timestamp = new Date().getTime();
-    const data = JSON.parse(event.body);
+    const data = JSON.parse(event.body as string);
 
     // check request body
     helpers.checkPayloadProps(data, {
@@ -89,7 +94,9 @@ export const create = async (event, ctx, callback) => {
 
     // if credits is negative value, check if the user has enough credits
     if(data.credits < 0) {
-      const userCredits = existingUser.credits || 0;
+      // Non-null assertion only: the `isEmpty` guard above already returned for
+      // a null user, but TypeScript cannot narrow through it.
+      const userCredits = existingUser!.credits || 0;
       // 202 means "accepted, but not acted upon"
       if(userCredits + data.credits < 0) throw helpers.createResponse(202, {
         message: "Transaction was not created because user does not have enough credits!"
@@ -115,6 +122,6 @@ export const create = async (event, ctx, callback) => {
 
     return response;
   } catch(err) {
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: (err as { message?: unknown }).message || err });
   }
 };

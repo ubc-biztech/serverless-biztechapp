@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import type { EventCounts } from "../../lib/types";
-import registrationHelpers from "../registrations/helpers.js";
+import registrationHelpers from "../registrations/helpers";
 import type {
   RegistrationQuestion,
   RegistrationQuestionWithId,

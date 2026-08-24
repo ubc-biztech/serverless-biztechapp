@@ -14,7 +14,7 @@ import {
 import docClient from "../../lib/docClient.js";
 import db from "../../lib/db.js";
 import res from "../../lib/responseHelpers";
-import { isValidEmail } from "../../lib/utils.js";
+import { isValidEmail } from "../../lib/utils";
 import WebSocket from "ws";
 
 type QrScanBody = {

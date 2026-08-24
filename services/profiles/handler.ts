@@ -1,8 +1,8 @@
 import db from "../../lib/db.js";
-import helpers from "../../lib/handlerHelpers.js";
+import helpers from "../../lib/handlerHelpers";
 import {
   isEmpty
-} from "../../lib/utils.js";
+} from "../../lib/utils";
 import {
   humanId
 } from "human-id";
@@ -14,18 +14,19 @@ import {
   MUTABLE_PROFILE_ATTRIBUTES,
   PROFILE_TYPES,
   TYPES
-} from "./constants.js";
+} from "./constants";
 import {
   buildProfileUpdateParams,
   createProfile,
   filterPublicProfileFields
-} from "./helpers.js";
+} from "./helpers";
 import {
   S3Client, PutObjectCommand
 } from "@aws-sdk/client-s3";
 import {
   getSignedUrl
 } from "@aws-sdk/s3-request-presigner";
+import type { APIGatewayEvent, LambdaCallback, LambdaContext } from "../../lib/types";
 const REGISTRATIONS_TABLE = "biztechRegistrations";
 const QRS_TABLE = "biztechQRs";
 const S3 = new S3Client({
@@ -33,9 +34,9 @@ const S3 = new S3Client({
 });
 const PROFILE_BUCKET = "biztech-profile-pictures";
 
-export const create = async (event, ctx, callback) => {
+export const create = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const email = event.requestContext.authorizer.claims.email.toLowerCase();
+    const email = event.requestContext.authorizer!.claims!.email.toLowerCase();
     const response = await createProfile(
       email,
       email.endsWith("@ubcbiztech.com")
@@ -45,14 +46,14 @@ export const create = async (event, ctx, callback) => {
     return response;
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: (err as { message?: unknown }).message || err });
   }
 };
 
 // deprecated, will be done in another pr
-export const createPartialPartnerProfile = async (event, ctx, callback) => {
+export const createPartialPartnerProfile = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const data = JSON.parse(event.body);
+    const data = JSON.parse(event.body as string);
 
     // Validate input
     helpers.checkPayloadProps(data, {
@@ -165,14 +166,14 @@ export const createPartialPartnerProfile = async (event, ctx, callback) => {
     });
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: (err as { message?: unknown }).message || err });
   }
 };
 
-export const updatePublicProfile = async (event, ctx, callback) => {
+export const updatePublicProfile = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
-    const body = JSON.parse(event.body);
+    const userID = event.requestContext.authorizer!.claims!.email.toLowerCase();
+    const body = JSON.parse(event.body as string);
     helpers.checkPayloadProps(body, {
       viewableMap: {
         required: true
@@ -221,8 +222,10 @@ export const updatePublicProfile = async (event, ctx, callback) => {
     const profile = result[0];
 
     Object.keys(viewableMap).forEach((key) => {
+      // `Object.hasOwn` is ES2022; tsconfig still declares lib ES2020 even
+      // though the runtime is Node 22. Cast rather than change the build config.
       if (
-        Object.hasOwn(MUTABLE_PROFILE_ATTRIBUTES, key) &&
+        (Object as any).hasOwn(MUTABLE_PROFILE_ATTRIBUTES, key) &&
         typeof viewableMap[key] === "boolean"
       ) {
         profile.viewableMap[key] = viewableMap[key];
@@ -231,11 +234,11 @@ export const updatePublicProfile = async (event, ctx, callback) => {
 
     delete body["viewableMap"];
 
-    const updateBody = {
+    const updateBody: Record<string, unknown> = {
     };
     Object.keys(body).forEach((key) => {
       if (
-        Object.hasOwn(MUTABLE_PROFILE_ATTRIBUTES, key) &&
+        (Object as any).hasOwn(MUTABLE_PROFILE_ATTRIBUTES, key) &&
         typeof body[key] === "string"
       ) {
         updateBody[key] = body[key];
@@ -257,13 +260,17 @@ export const updatePublicProfile = async (event, ctx, callback) => {
     });
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: (err as { message?: unknown }).message || err });
   }
 };
 
-export const getPublicProfile = async (event, ctx, callback) => {
+export const getPublicProfile = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
     if (!event.pathParameters || !event.pathParameters.profileID) {
+      // BUG (pre-existing, preserved): `missingPathParamResponse` takes
+      // (type, paramName); called with one argument the message renders as
+      // "A(n) undefined path parameter was not provided for this profileID".
+      // @ts-expect-error TS2554 expected 2 arguments, but got 1
       throw helpers.missingPathParamResponse("profileID");
     }
 
@@ -290,13 +297,13 @@ export const getPublicProfile = async (event, ctx, callback) => {
     return helpers.createResponse(200, publicProfile);
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: (err as { message?: unknown }).message || err });
   }
 };
 
-export const getUserProfile = async (event, ctx, callback) => {
+export const getUserProfile = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    const userID = event.requestContext.authorizer!.claims!.email.toLowerCase();
 
     const user = await db.getOne(userID, USERS_TABLE);
     const {
@@ -323,14 +330,14 @@ export const getUserProfile = async (event, ctx, callback) => {
     return helpers.createResponse(200, result);
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: (err as { message?: unknown }).message || err });
   }
 };
 
 // deprecated, will be done in another pr
-export const createCompanyProfile = async (event, ctx, callback) => {
+export const createCompanyProfile = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const data = JSON.parse(event.body);
+    const data = JSON.parse(event.body as string);
 
     // Validate input
     helpers.checkPayloadProps(data, {
@@ -433,11 +440,11 @@ export const createCompanyProfile = async (event, ctx, callback) => {
     });
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: (err as { message?: unknown }).message || err });
   }
 };
 
-export const createProfilePicUploadUrl = async (event, ctx, callback) => {
+export const createProfilePicUploadUrl = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
     const claims = event.requestContext?.authorizer?.claims || {
     };
@@ -510,9 +517,9 @@ export const createProfilePicUploadUrl = async (event, ctx, callback) => {
   }
 };
 
-export const linkPartnerToCompany = async (event, ctx, callback) => {
+export const linkPartnerToCompany = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const data = JSON.parse(event.body);
+    const data = JSON.parse(event.body as string);
 
     // Validate input
     helpers.checkPayloadProps(data, {
@@ -625,11 +632,11 @@ export const linkPartnerToCompany = async (event, ctx, callback) => {
     });
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: (err as { message?: unknown }).message || err });
   }
 };
 
-export const syncPartnerData = async (event, ctx, callback) => {
+export const syncPartnerData = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
     // Get all partner profiles
     const partnerProfiles = await db.scan(PROFILES_TABLE, {
@@ -649,7 +656,7 @@ export const syncPartnerData = async (event, ctx, callback) => {
     }
 
     const results = await Promise.all(
-      partnerProfiles.map(async (profile) => {
+      partnerProfiles.map(async (profile: Record<string, any>) => {
         const [eventID, year] = profile["eventID;year"].split(";");
 
         // Try to find matching registration
@@ -723,7 +730,7 @@ export const syncPartnerData = async (event, ctx, callback) => {
               ":description":
                 dynamicResponses["6849bb7f-b8bd-438c-b03b-e046cede378a"] || "",
               ":updatedAt": new Date().getTime()
-            }
+            } as Record<string, unknown>
           };
 
           // Only update profile picture if it doesn't exist in profile and exists in registration
@@ -753,6 +760,6 @@ export const syncPartnerData = async (event, ctx, callback) => {
     });
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
+    return helpers.createResponse(500, { message: (err as { message?: unknown }).message || err });
   }
 };

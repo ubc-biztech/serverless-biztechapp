@@ -2,6 +2,7 @@
 
 import handlerHelpers from "../../lib/handlerHelpers";
 import helpersLib from "../../lib/handlerHelpers";
+import type { APIGatewayEvent, LambdaCallback, LambdaContext } from "../../lib/types";
 import { INVESTMENT_TO_SEED_FACTOR } from "./constants";
 
 import { DEFAULT_EVENT_ID } from "./constants";
@@ -26,9 +27,9 @@ const helpers = helpersLib;
 
 // HTTP handlers
 
-export const getProjects = async (event, ctx, callback) => {
+export const getProjects = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const qs = event.queryStringParameters || {};
+    const qs: Record<string, string | undefined> = event.queryStringParameters || {};
     const eventId = qs.eventId || DEFAULT_EVENT_ID;
 
     const projects = await listProjectsForEvent(eventId);
@@ -45,9 +46,9 @@ export const getProjects = async (event, ctx, callback) => {
   }
 };
 
-export const getMarketSnapshot = async (event, ctx, callback) => {
+export const getMarketSnapshot = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const qs = event.queryStringParameters || {};
+    const qs: Record<string, string | undefined> = event.queryStringParameters || {};
     const eventId = qs.eventId || DEFAULT_EVENT_ID;
 
     let projects = await listProjectsForEvent(eventId);
@@ -84,11 +85,11 @@ export const getMarketSnapshot = async (event, ctx, callback) => {
   }
 };
 
-export const postBuy = async (event, ctx, callback) => {
+export const postBuy = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
     const isOffline = process.env.IS_OFFLINE === "true";
 
-    let userId;
+    let userId: string;
     if (isOffline) {
       userId = "local-user@btx";
     } else {
@@ -134,11 +135,11 @@ export const postBuy = async (event, ctx, callback) => {
   }
 };
 
-export const postSell = async (event, ctx, callback) => {
+export const postSell = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
     const isOffline = process.env.IS_OFFLINE === "true";
 
-    let userId;
+    let userId: string;
     if (isOffline) {
       userId = "local-user@btx";
     } else {
@@ -184,11 +185,11 @@ export const postSell = async (event, ctx, callback) => {
   }
 };
 
-export const getPortfolio = async (event, ctx, callback) => {
+export const getPortfolio = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
     const isOffline = process.env.IS_OFFLINE === "true";
 
-    let userId;
+    let userId: string;
     if (isOffline) {
       userId = "local-user@btx";
     } else {
@@ -202,7 +203,7 @@ export const getPortfolio = async (event, ctx, callback) => {
       userId = email.toLowerCase();
     }
 
-    const qs = event.queryStringParameters || {};
+    const qs: Record<string, string | undefined> = event.queryStringParameters || {};
     const eventId = qs.eventId || DEFAULT_EVENT_ID;
 
     const portfolio = await getPortfolioForUser(userId, eventId);
@@ -219,9 +220,9 @@ export const getPortfolio = async (event, ctx, callback) => {
   }
 };
 
-export const getRecentTradesHandler = async (event, ctx, callback) => {
+export const getRecentTradesHandler = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const qs = event.queryStringParameters || {};
+    const qs: Record<string, string | undefined> = event.queryStringParameters || {};
     if (!qs.projectId) {
       return handlerHelpers.createResponse(400, {
         message: "Missing projectId"
@@ -244,9 +245,9 @@ export const getRecentTradesHandler = async (event, ctx, callback) => {
   }
 };
 
-export const getPriceHistory = async (event, ctx, callback) => {
+export const getPriceHistory = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const qs = event.queryStringParameters || {};
+    const qs: Record<string, string | undefined> = event.queryStringParameters || {};
     const projectId = qs.projectId;
     if (!projectId) {
       return handlerHelpers.createResponse(400, {
@@ -274,18 +275,19 @@ export const getPriceHistory = async (event, ctx, callback) => {
   }
 };
 
-export const postAdminProject = async (event, ctx, callback) => {
+export const postAdminProject = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   console.log("[BTX admin] postAdminProject START", {
     httpMethod: event.httpMethod,
-    path: event.path,
+    // `path` is not declared on the shared APIGatewayEvent type; cast to read it
+    path: (event as any).path,
     query: event.queryStringParameters,
     rawBody: event.body,
     isOffline: process.env.IS_OFFLINE
   });
 
   try {
-    const qs = event.queryStringParameters || {};
-    let body = {};
+    const qs: Record<string, string | undefined> = event.queryStringParameters || {};
+    let body: any = {};
 
     if (event.body) {
       try {
@@ -311,7 +313,7 @@ export const postAdminProject = async (event, ctx, callback) => {
     } catch (error) {
       console.warn("[BTX admin] payload validation error:", error);
       return helpers.createResponse(400, {
-        message: error.message || error
+        message: (error as { message?: unknown }).message || error
       });
     }
 
@@ -342,7 +344,7 @@ export const postAdminProject = async (event, ctx, callback) => {
   }
 };
 
-export const postAdminSeedUpdate = async (event, ctx, callback) => {
+export const postAdminSeedUpdate = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
     const body = JSON.parse(event.body || "{}");
 
@@ -374,7 +376,7 @@ export const postAdminSeedUpdate = async (event, ctx, callback) => {
   }
 };
 
-export const postAdminPhaseBump = async (event, ctx, callback) => {
+export const postAdminPhaseBump = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
     const body = JSON.parse(event.body || "{}");
 
@@ -408,9 +410,9 @@ export const postAdminPhaseBump = async (event, ctx, callback) => {
   }
 };
 
-export const getLeaderboard = async (event, ctx, callback) => {
+export const getLeaderboard = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
-    const qs = event.queryStringParameters || {};
+    const qs: Record<string, string | undefined> = event.queryStringParameters || {};
     const eventId = qs.eventId || DEFAULT_EVENT_ID;
     const limitTop = qs.limitTop ? Number(qs.limitTop) : 5;
     const limitBottom = qs.limitBottom ? Number(qs.limitBottom) : 5;
@@ -434,7 +436,7 @@ export const getLeaderboard = async (event, ctx, callback) => {
 
 // WebSocket handlers
 
-export const wsConnect = async (event, ctx, callback) => {
+export const wsConnect = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
     const connectionId = event.requestContext.connectionId;
     await saveSocketConnection({
@@ -455,7 +457,7 @@ export const wsConnect = async (event, ctx, callback) => {
   }
 };
 
-export const wsDisconnect = async (event, ctx, callback) => {
+export const wsDisconnect = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
     const connectionId = event.requestContext.connectionId;
     await removeSocketConnection({ connectionId });
@@ -472,7 +474,7 @@ export const wsDisconnect = async (event, ctx, callback) => {
   }
 };
 
-export const wsSubscribe = async (event, ctx, callback) => {
+export const wsSubscribe = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
     const connectionId = event.requestContext.connectionId;
     const body = JSON.parse(event.body || "{}");
@@ -498,12 +500,13 @@ export const wsSubscribe = async (event, ctx, callback) => {
   }
 };
 
-export const postInvestmentImpact = async (event, ctx, callback) => {
+export const postInvestmentImpact = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   try {
     const body = JSON.parse(event.body || "{}");
 
     const { teamId, amountDelta } = body;
 
+    // BUG (pre-existing, preserved): `amountDelta === null` misses `undefined`, so a missing amountDelta falls through to the Number.isFinite check instead of this branch.
     if (!teamId || amountDelta === null) {
       return handlerHelpers.createResponse(400, {
         message: "Missing teamId or amountDelta"

@@ -2,7 +2,7 @@ import { PRIZES_TABLE } from "../../constants/tables.js";
 import db from "../../lib/db.js";
 import helpers from "../../lib/handlerHelpers";
 import type { APIGatewayEvent, LambdaCallback, LambdaContext } from "../../lib/types";
-import { isEmpty } from "../../lib/utils.js";
+import { isEmpty } from "../../lib/utils";
 
 const errorMessage = (err: unknown): string =>
   err instanceof Error

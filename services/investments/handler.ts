@@ -1,9 +1,10 @@
-import helpers from "../../lib/handlerHelpers.js";
+import helpers from "../../lib/handlerHelpers";
 import db from "../../lib/db.js";
 import { TEAMS_TABLE, USER_REGISTRATIONS_TABLE, INVESTMENTS_TABLE } from "../../constants/tables.js";
 import crypto from "crypto";
+import type { APIGatewayEvent, LambdaCallback, LambdaContext } from "../../lib/types";
 
-export const invest = async (event, ctx, callback) => {
+export const invest = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   /*
     Responsible for:
     - Decrementing the balance of the investor
@@ -11,7 +12,7 @@ export const invest = async (event, ctx, callback) => {
     - Updating the DB with transaction + comments
     */
 
-  const data = JSON.parse(event.body);
+  const data = JSON.parse(event.body as string);
 
   helpers.checkPayloadProps(data, {
     investorId: {
@@ -129,7 +130,7 @@ export const invest = async (event, ctx, callback) => {
   });
 };
 
-export const teamStatus = async (event, ctx, callback) => {
+export const teamStatus = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   /*
     Responsible for:
     - Fetching team's current funding
@@ -172,7 +173,7 @@ export const teamStatus = async (event, ctx, callback) => {
   });
 };
 
-export const investments = async (event, ctx, callback) => {
+export const investments = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   /*
   Responsible for:
   - Fetching investments with optional limit, sorted by most recent first
@@ -184,7 +185,7 @@ export const investments = async (event, ctx, callback) => {
 
     const limit = event.queryStringParameters?.limit ? parseInt(event.queryStringParameters.limit) : undefined;
 
-    const data = investments.sort((a, b) => {
+    const data = investments.sort((a: any, b: any) => {
       return b.createdAt - a.createdAt;
     });
 
@@ -201,7 +202,7 @@ export const investments = async (event, ctx, callback) => {
   }
 };
 
-export const investorStatus = async (event, ctx, callback) => {
+export const investorStatus = async (event: APIGatewayEvent, ctx: LambdaContext, callback: LambdaCallback) => {
   /*
   Responsible for:
   - Fetching individual's balance left

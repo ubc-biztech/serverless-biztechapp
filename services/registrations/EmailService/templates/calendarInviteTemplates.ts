@@ -1,4 +1,4 @@
-export const getDefaultCalendarInviteTemplate = (emailParams) => {
+export const getDefaultCalendarInviteTemplate = (emailParams: { fname: string; ename: string; imageUrl: string; logoBase64: string }) => {
   const {
     fname, ename, imageUrl, logoBase64
   } = emailParams;
@@ -24,7 +24,7 @@ export const getDefaultCalendarInviteTemplate = (emailParams) => {
         </div>`;
 };
 
-export const getDefaultPaymentProcessedTemplate = (emailParams) => {
+export const getDefaultPaymentProcessedTemplate = (emailParams: { fname: string; ename: string; imageUrl: string; logoBase64: string }) => {
   const {
     fname, ename, imageUrl, logoBase64
   } = emailParams;
@@ -50,7 +50,7 @@ export const getDefaultPaymentProcessedTemplate = (emailParams) => {
         </div>`;
 };
 
-export const getPartnerCalendarInviteTemplate = (emailParams) => {
+export const getPartnerCalendarInviteTemplate = (emailParams: { fname: string; ename: string; imageUrl: string; logoBase64: string }) => {
   const {
     fname, ename, imageUrl, logoBase64
   } = emailParams;
