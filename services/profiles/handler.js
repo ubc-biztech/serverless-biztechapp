@@ -50,6 +50,10 @@ export const create = async (event, ctx, callback) => {
       year: data.levelOfStudy,
       gender: data.pronouns,
       diet: data.dietaryRestrictions,
+      international: data.internationalStudent === "Yes",
+      prevMember: data.previousMember === "Yes",
+      referral: data.referral,
+      topics: Array.isArray(data.topics) ? data.topics : [],
       onboardingYear
     }, USERS_TABLE);
 
@@ -64,10 +68,15 @@ export const create = async (event, ctx, callback) => {
     const profileType = email.endsWith("@ubcbiztech.com")
       ? PROFILE_TYPES.EXEC
       : PROFILE_TYPES.ATTENDEE;
-    const response = user?.profileID
-      ? await updateProfileFromMembershipData(user.profileID, profileData)
-      : await createProfile(email, profileType, profileData);
-    return response;
+    if (user?.profileID) {
+      await updateProfileFromMembershipData(user.profileID, profileData);
+      return helpers.createResponse(200, {
+        message: `Updated profile for ${email}`,
+        profileID: user.profileID
+      });
+    }
+
+    return createProfile(email, profileType, profileData);
   } catch (err) {
     console.error(err);
     return helpers.createResponse(500, { message: err.message || err });
