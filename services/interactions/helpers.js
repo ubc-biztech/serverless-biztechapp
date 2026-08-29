@@ -8,8 +8,12 @@ import {
 } from "@aws-sdk/client-apigatewaymanagementapi";
 import {
   PROFILES_TABLE,
+  USER_REGISTRATIONS_TABLE,
   USERS_TABLE
 } from "../../constants/tables";
+import {
+  MAX_BATCH_ITEM_COUNT
+} from "../../constants/dynamodb";
 import db from "../../lib/db";
 import handlerHelpers from "../../lib/handlerHelpers";
 import docClient from "../../lib/docClient";
@@ -270,6 +274,168 @@ export const handleConnection = async (userID, connProfileID, timestamp) => {
     }`
   });
 };
+
+/**
+ * Attach current profile fields onto journal rows.
+ * Existing CONNECTION records do not store these fields, so they are
+ * resolved from the live PROFILE item rather than the connection snapshot.
+ */
+export async function hydrateConnectionsFromProfiles(connections) {
+  if (!Array.isArray(connections) || connections.length === 0) {
+    return connections;
+  }
+
+  const uniqueIds = [
+    ...new Set(
+      connections
+        .map((connection) => connection.connectionID)
+        .filter(Boolean)
+    )
+  ];
+
+  if (uniqueIds.length === 0) {
+    return connections;
+  }
+
+  const keysForRequest = uniqueIds.map((connectionID) => ({
+    compositeID: `${TYPES.PROFILE}#${connectionID}`,
+    type: TYPES.PROFILE
+  }));
+
+  const tableName = PROFILES_TABLE + (process.env.ENVIRONMENT || "");
+  const keyBatches = [];
+
+  while (keysForRequest.length > 0) {
+    keyBatches.push(keysForRequest.splice(0, MAX_BATCH_ITEM_COUNT));
+  }
+
+  const results = await Promise.all(
+    keyBatches.map((batch) => db.batchGet(batch, tableName))
+  );
+
+  const profiles = results.flatMap((batchResult) => {
+    return batchResult?.Responses?.[tableName] ?? [];
+  });
+
+  const fieldsByCompositeId = new Map();
+  for (const profile of profiles) {
+    if (!profile.compositeID) {
+      continue;
+    }
+
+    const linkedin = profile.linkedIn || profile.linkedin;
+    const profilePictureURL = profile.profilePictureURL;
+    fieldsByCompositeId.set(profile.compositeID, {
+      ...(linkedin
+        ? {
+          linkedin
+        }
+        : {
+        }),
+      ...(profilePictureURL
+        ? {
+          profilePictureURL
+        }
+        : {
+        })
+    });
+  }
+
+  return connections.map((connection) => {
+    const fields = fieldsByCompositeId.get(
+      `${TYPES.PROFILE}#${connection.connectionID}`
+    );
+
+    if (!fields || Object.keys(fields).length === 0) {
+      return connection;
+    }
+
+    return {
+      ...connection,
+      ...fields
+    };
+  });
+}
+
+const EVENT_REGISTRANT_STATUSES = new Set([
+  "registered",
+  "checkedIn",
+  "accepted",
+  "acceptedComplete"
+]);
+
+async function getEmailForProfileId(profileID) {
+  const users = await db.query(USERS_TABLE, "profileID-index", {
+    expression: "#profileID = :profileID",
+    expressionNames: {
+      "#profileID": "profileID"
+    },
+    expressionValues: {
+      ":profileID": profileID
+    }
+  });
+
+  const email = users?.[0]?.id;
+  return email ? String(email).toLowerCase() : null;
+}
+
+export async function filterConnectionsRegisteredForEvent(
+  connections,
+  eventId,
+  year
+) {
+  if (!Array.isArray(connections) || connections.length === 0) {
+    return connections;
+  }
+
+  const registrations = await db.query(
+    USER_REGISTRATIONS_TABLE,
+    "event-query",
+    {
+      expression: "#eventIDYear = :eventIDYear",
+      expressionNames: {
+        "#eventIDYear": "eventID;year"
+      },
+      expressionValues: {
+        ":eventIDYear": `${eventId};${year}`
+      }
+    }
+  );
+
+  const registeredEmails = new Set(
+    (registrations || [])
+      .filter((registration) =>
+        EVENT_REGISTRANT_STATUSES.has(registration.registrationStatus)
+      )
+      .map((registration) => String(registration.id || "").toLowerCase())
+      .filter(Boolean)
+  );
+
+  if (registeredEmails.size === 0) {
+    return [];
+  }
+
+  const uniqueIds = [
+    ...new Set(
+      connections.map((connection) => connection.connectionID).filter(Boolean)
+    )
+  ];
+
+  const emailsByProfileId = new Map();
+  await Promise.all(
+    uniqueIds.map(async (profileID) => {
+      const email = await getEmailForProfileId(profileID);
+      if (email) {
+        emailsByProfileId.set(profileID, email);
+      }
+    })
+  );
+
+  return connections.filter((connection) => {
+    const email = emailsByProfileId.get(connection.connectionID);
+    return email && registeredEmails.has(email);
+  });
+}
 
 const isDuplicateRequest = async (userID, connID) => {
   const result = await db.getOneCustom({
