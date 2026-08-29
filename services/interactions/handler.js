@@ -18,7 +18,9 @@ import {
   handleConnection,
   saveSocketConnection,
   removeSocketConnection,
-  fetchRecentConnections
+  fetchRecentConnections,
+  hydrateConnectionsFromProfiles,
+  filterConnectionsRegisteredForEvent
 } from "./helpers";
 
 const CONNECTION = "CONNECTION";
@@ -191,9 +193,22 @@ export const getAllConnections = async (event, ctx, callback) => {
           data = data.filter(item => item.createdAt <= end);
         }
 
+        const registeredOnly =
+          qs.registeredOnly === "true" || qs.registeredOnly === "1";
+
+        if (registeredOnly) {
+          data = await filterConnectionsRegisteredForEvent(
+            data,
+            eventId,
+            year
+          );
+        }
+
         message = `all connections for ${userID} during event ${eventId} and year ${year}`;
       }
     }
+
+    data = await hydrateConnectionsFromProfiles(data);
 
     const response = handlerHelpers.createResponse(200, {
       message,
