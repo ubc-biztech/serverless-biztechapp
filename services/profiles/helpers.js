@@ -64,7 +64,7 @@ export async function createProfile(email, profileType, onboardingData = null) {
     hobby2: "",
     funQuestion1: "",
     funQuestion2: "",
-    linkedIn: "",
+    linkedIn: memberData.linkedIn || "",
     profilePictureURL: "",
     additionalLink: "",
     resumeURL: "",
@@ -115,7 +115,7 @@ export async function createProfile(email, profileType, onboardingData = null) {
 export async function updateProfileFromMembershipData(profileID, memberData) {
   const updateData = {};
 
-  ["pronouns", "major", "year"].forEach((key) => {
+  ["pronouns", "major", "year", "linkedIn"].forEach((key) => {
     if (memberData[key] !== undefined && memberData[key] !== null) {
       updateData[key] = memberData[key];
     }

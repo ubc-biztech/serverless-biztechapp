@@ -62,7 +62,8 @@ export const create = async (event) => {
       lastName: data.lastName,
       pronouns: data.pronouns,
       major: data.major,
-      year: data.levelOfStudy
+      year: data.levelOfStudy,
+      linkedIn: data.linkedIn || ""
     };
     const profileType = email.endsWith("@ubcbiztech.com")
       ? PROFILE_TYPES.EXEC
