@@ -1,7 +1,6 @@
 import helpers from "../../lib/handlerHelpers";
 import { isEmpty, isValidEmail } from "../../lib/utils";
 import { updateHelper } from "../registrations/handler";
-import registrationHelpers from "../registrations/helpers";
 import db from "../../lib/db";
 
 import {
@@ -56,7 +55,7 @@ const putIfMissing = async (item, table) => {
 };
 
 // Creates the member here
-export const webhook = async (event, ctx, callback) => {
+export const webhook = async (event) => {
   const membershipSignup = async (data) => {
     const timestamp = Date.now();
     const email = data.email.toLowerCase();
@@ -162,8 +161,6 @@ export const webhook = async (event, ctx, callback) => {
     }
 
     switch (data.paymentType) {
-    case "UserMember":
-    case "OAuthMember":
     case "Member":
       return membershipSignup(data);
     case "Event":
@@ -180,7 +177,7 @@ export const webhook = async (event, ctx, callback) => {
   });
 };
 
-export const payment = async (event, ctx, callback) => {
+export const payment = async (event) => {
   try {
     let data = JSON.parse(event.body);
     if (data.email) {
@@ -262,7 +259,7 @@ export const payment = async (event, ctx, callback) => {
   }
 };
 
-export const cancel = async (event, ctx, callback) => {
+export const cancel = async (event) => {
   // NOTE: cancel webhook currently only operates correctly for events i.e. payment incomplete
   const sig = event.headers["Stripe-Signature"];
   const eventData = stripe.webhooks.constructEvent(
@@ -271,8 +268,7 @@ export const cancel = async (event, ctx, callback) => {
     cancelSecret
   );
   const data = eventData.data.object.metadata;
-  const email = data.email ? data.email.toLowerCase() : data.email;
-  const { eventID, year, paymentType } = data;
+  const { paymentType } = data;
   if (paymentType === "Event") {
     try {
       // const eventIDAndYear = eventID + ";" + year;
