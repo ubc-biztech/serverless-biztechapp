@@ -9,7 +9,7 @@ import {
 } from "../../constants/tables";
 import docClient from "../../lib/docClient";
 
-export const create = async (event, ctx, callback) => {
+export const create = async (event) => {
   const timestamp = new Date().getTime();
   const data = JSON.parse(event.body);
   if (!isValidEmail(data.email))
@@ -138,10 +138,6 @@ export const ensureAuthenticatedUser = async (event) => {
   const claims = event.requestContext?.authorizer?.claims || {};
   const email = claims.email?.trim().toLowerCase();
 
-  if (!isValidEmail(email)) {
-    return helpers.inputError("Invalid authenticated email", email);
-  }
-
   try {
     const existingUser = await db.getOne(email, USERS_TABLE);
     if (!isEmpty(existingUser)) {
@@ -152,12 +148,9 @@ export const ensureAuthenticatedUser = async (event) => {
     }
 
     const timestamp = Date.now();
-    const nameParts = String(claims.name || "").trim().split(/\s+/).filter(Boolean);
     const user = {
       id: email,
       email,
-      fname: claims.given_name || nameParts[0] || "",
-      lname: claims.family_name || nameParts.slice(1).join(" ") || "",
       admin: email.endsWith("@ubcbiztech.com"),
       createdAt: timestamp,
       updatedAt: timestamp
@@ -180,7 +173,7 @@ export const ensureAuthenticatedUser = async (event) => {
   }
 };
 
-export const checkUser = async (event, ctx, callback) => {
+export const checkUser = async (event) => {
   try {
     const email = event.pathParameters.email;
     const user = await db.getOne(email, USERS_TABLE);
@@ -194,7 +187,7 @@ export const checkUser = async (event, ctx, callback) => {
   }
 };
 
-export const checkUserMembership = async (event, ctx, callback) => {
+export const checkUserMembership = async (event) => {
   console.log(event);
   try {
     const email = event.pathParameters?.email?.trim().toLowerCase();
@@ -208,7 +201,7 @@ export const checkUserMembership = async (event, ctx, callback) => {
   }
 };
 
-export const get = async (event, ctx, callback) => {
+export const get = async (event) => {
   try {
     let email = event.requestContext.authorizer.claims.email.toLowerCase();
 
@@ -236,7 +229,7 @@ export const get = async (event, ctx, callback) => {
   }
 };
 
-export const update = async (event, ctx, callback) => {
+export const update = async (event) => {
   try {
     if (!event.pathParameters || !event.pathParameters.email)
       throw helpers.missingIdQueryResponse("event");
@@ -268,7 +261,7 @@ export const update = async (event, ctx, callback) => {
   }
 };
 
-export const getAll = async (event, ctx, callback) => {
+export const getAll = async () => {
   try {
     const users = await db.scan(USERS_TABLE);
 
@@ -282,7 +275,7 @@ export const getAll = async (event, ctx, callback) => {
 };
 
 // TODO: Fix favouriteEvents 08/08/24
-export const favouriteEvent = async (event, ctx, callback) => {
+export const favouriteEvent = async (event) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -390,7 +383,7 @@ export const favouriteEvent = async (event, ctx, callback) => {
 };
 
 // TODO: refactor to abstract delete code among different endpoints
-export const del = async (event, ctx, callback) => {
+export const del = async (event) => {
   try {
     // check that the param was given
     if (!event.pathParameters || !event.pathParameters.email)

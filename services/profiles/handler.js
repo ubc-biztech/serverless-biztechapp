@@ -34,13 +34,13 @@ const S3 = new S3Client({
 });
 const PROFILE_BUCKET = "biztech-profile-pictures";
 
-export const create = async (event, ctx, callback) => {
+export const create = async (event) => {
   try {
     const email = event.requestContext.authorizer.claims.email.toLowerCase();
     const data = JSON.parse(event.body || "{}");
-    const onboardingYear = new Date().getFullYear();
+    const onboardingYear = Number(process.env.ONBOARDING_YEAR);
 
-    await db.updateDB(email, {
+    const user = await db.updateDB(email, {
       education: data.education,
       studentId: data.studentNumber,
       fname: data.firstName,
@@ -55,9 +55,8 @@ export const create = async (event, ctx, callback) => {
       referral: data.referral,
       topics: Array.isArray(data.topics) ? data.topics : [],
       onboardingYear
-    }, USERS_TABLE);
+    }, USERS_TABLE, "ALL_NEW");
 
-    const user = await db.getOne(email, USERS_TABLE);
     const profileData = {
       firstName: data.firstName,
       lastName: data.lastName,
@@ -84,7 +83,7 @@ export const create = async (event, ctx, callback) => {
 };
 
 // deprecated, will be done in another pr
-export const createPartialPartnerProfile = async (event, ctx, callback) => {
+export const createPartialPartnerProfile = async (event) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -203,7 +202,7 @@ export const createPartialPartnerProfile = async (event, ctx, callback) => {
   }
 };
 
-export const updatePublicProfile = async (event, ctx, callback) => {
+export const updatePublicProfile = async (event) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
     const body = JSON.parse(event.body);
@@ -246,7 +245,7 @@ export const updatePublicProfile = async (event, ctx, callback) => {
       }
     });
 
-    if (!result || result.length == 0) {
+    if (!result || result.length === 0) {
       throw helpers.createResponse(404, {
         message: `Profile: ${userID} not found`
       });
@@ -295,7 +294,7 @@ export const updatePublicProfile = async (event, ctx, callback) => {
   }
 };
 
-export const getPublicProfile = async (event, ctx, callback) => {
+export const getPublicProfile = async (event) => {
   try {
     if (!event.pathParameters || !event.pathParameters.profileID) {
       throw helpers.missingPathParamResponse("profileID");
@@ -328,7 +327,7 @@ export const getPublicProfile = async (event, ctx, callback) => {
   }
 };
 
-export const getUserProfile = async (event, ctx, callback) => {
+export const getUserProfile = async (event) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
 
@@ -362,7 +361,7 @@ export const getUserProfile = async (event, ctx, callback) => {
 };
 
 // deprecated, will be done in another pr
-export const createCompanyProfile = async (event, ctx, callback) => {
+export const createCompanyProfile = async (event) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -471,7 +470,7 @@ export const createCompanyProfile = async (event, ctx, callback) => {
   }
 };
 
-export const createProfilePicUploadUrl = async (event, ctx, callback) => {
+export const createProfilePicUploadUrl = async (event) => {
   try {
     const claims = event.requestContext?.authorizer?.claims || {
     };
@@ -544,7 +543,7 @@ export const createProfilePicUploadUrl = async (event, ctx, callback) => {
   }
 };
 
-export const linkPartnerToCompany = async (event, ctx, callback) => {
+export const linkPartnerToCompany = async (event) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -663,7 +662,7 @@ export const linkPartnerToCompany = async (event, ctx, callback) => {
   }
 };
 
-export const syncPartnerData = async (event, ctx, callback) => {
+export const syncPartnerData = async () => {
   try {
     // Get all partner profiles
     const partnerProfiles = await db.scan(PROFILES_TABLE, {
@@ -684,8 +683,6 @@ export const syncPartnerData = async (event, ctx, callback) => {
 
     const results = await Promise.all(
       partnerProfiles.map(async (profile) => {
-        const [eventID, year] = profile["eventID;year"].split(";");
-
         // Try to find matching registration
         const registration = await db.getOne(profile.id, REGISTRATIONS_TABLE, {
           "eventID;year": profile["eventID;year"]
