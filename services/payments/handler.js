@@ -287,7 +287,7 @@ export const cancel = async (event) => {
       return helpers.createResponse(500, { message: err.message || err });
     }
   } else {
-    return helpers.createResponse(400, {
+    return helpers.createResponse(200, {
       message: "Webhook Error: unidentified payment type"
     });
   }

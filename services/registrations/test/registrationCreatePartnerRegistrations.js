@@ -22,7 +22,7 @@ import {
 } from "../../../constants/tables";
 
 let wrapped = mochaPlugin.getWrapper(
-  "registrationCreatePartnerRegistrations",
+  "registrationPartnerBatch",
   "/handler.js",
   "createPartnerRegistrations"
 );

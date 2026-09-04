@@ -55,6 +55,7 @@ provider:
       Action:
         - dynamodb:GetItem
         - dynamodb:Query
+        - dynamodb:BatchGetItem
         - dynamodb:PutItem
         - dynamodb:TransactWriteItems
       Resource:
@@ -68,8 +69,22 @@ provider:
     - Effect: Allow
       Action:
         - dynamodb:GetItem
+        - dynamodb:Query
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechUsers${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechUsers${self:provider.environment.ENVIRONMENT}/index/profileID-index"
+    - Effect: Allow
+      Action:
+        - dynamodb:GetItem
+        - dynamodb:Query
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechRegistrations${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechRegistrations${self:provider.environment.ENVIRONMENT}/index/event-query"
+    - Effect: Allow
+      Action:
+        - dynamodb:GetItem
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechEvents${self:provider.environment.ENVIRONMENT}"
     - Effect: Allow
       Action:
         - dynamodb:PutItem
