@@ -65,6 +65,14 @@ provider:
         - s3:GetObject
       Resource:
         - arn:aws:s3:::biztech-event-images/*
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechEventQA${self:provider.environment.ENVIRONMENT}"
 
 
 custom: ${file(../../serverless.common.yml):custom}
@@ -210,6 +218,65 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  qaCreate:
+    handler: handler.qaCreate
+    events:
+      - http:
+          path: events/{id}/{year}/qa
+          method: post
+          request:
+            parameters:
+              paths:
+                id: true
+                year: true
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  qaGetAll:
+    handler: handler.qaGetAll
+    events:
+      - http:
+          path: events/{id}/{year}/qa
+          method: get
+          request:
+            parameters:
+              paths:
+                id: true
+                year: true
+          cors: true
+  qaUpvote:
+    handler: handler.qaUpvote
+    events:
+      - http:
+          path: events/{id}/{year}/qa/{questionId}/upvote
+          method: post
+          request:
+            parameters:
+              paths:
+                id: true
+                year: true
+                questionId: true
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  qaPatch:
+    handler: handler.qaPatch
+    events:
+      - http:
+          path: events/{id}/{year}/qa/{questionId}
+          method: patch
+          request:
+            parameters:
+              paths:
+                id: true
+                year: true
+                questionId: true
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
 
 resources:
   Resources:
@@ -247,4 +314,19 @@ resources:
                 KeyType: RANGE
             Projection:
               ProjectionType: ALL
+    BiztechEventQA:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: biztechEventQA${self:provider.environment.ENVIRONMENT}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: eventIDYear
+            AttributeType: S
+          - AttributeName: questionId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: eventIDYear
+            KeyType: HASH
+          - AttributeName: questionId
+            KeyType: RANGE
 

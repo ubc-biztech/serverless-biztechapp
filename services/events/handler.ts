@@ -10,6 +10,7 @@ import {
   EVENT_FEEDBACK_TABLE,
   USERS_TABLE,
   USER_REGISTRATIONS_TABLE,
+  EVENT_QA_TABLE,
 } from "../../constants/tables.js";
 import db from "../../lib/db.js";
 import helpers from "../../lib/handlerHelpers";
@@ -25,6 +26,7 @@ import {
 } from "../../lib/utils.js";
 import feedbackHelpers, { isValidationFail } from "./feedbackHelpers.js";
 import eventHelpers from "./helpers";
+import type { QaPatchFields } from "./helpers";
 import type {
   CreateEventBody,
   CreateThumbnailPicUploadUrlBody,
@@ -34,6 +36,12 @@ import type {
 
 const errorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
+
+/** Validators and db helpers throw ready-made API Gateway responses. */
+const asResponse = (error: unknown): APIGatewayResponse | null =>
+  error && typeof error === "object" && "statusCode" in error
+    ? (error as APIGatewayResponse)
+    : null;
 
 const S3 = new S3Client({
   region: "us-west-2"
@@ -199,18 +207,7 @@ export const create: LambdaHandler = async (event) => {
 // DELETE /events/{id}/{year}
 export const del: LambdaHandler = async (event) => {
   try {
-    if (!event.pathParameters || !event.pathParameters.id)
-      throw helpers.missingIdQueryResponse("event");
-    const id = event.pathParameters.id;
-    if (!event.pathParameters.year)
-      throw helpers.missingPathParamResponse("event", "year");
-
-    const year = parseInt(event.pathParameters.year, 10);
-    if (isNaN(year))
-      throw helpers.inputError(
-        "Year path parameter must be a number",
-        event.pathParameters
-      );
+    const { id, year } = eventHelpers.validateEventPath(event.pathParameters);
 
     const existingEvent = await db.getOne(id, EVENTS_TABLE, {
       year
@@ -265,18 +262,7 @@ export const getAll: LambdaHandler = async (event, ctx) => {
 // PATCH events/{id}/{year}
 export const update: LambdaHandler = async (event) => {
   try {
-    if (!event.pathParameters || !event.pathParameters.id)
-      throw helpers.missingIdQueryResponse("event");
-    const id = event.pathParameters.id;
-    if (!event.pathParameters.year)
-      throw helpers.missingPathParamResponse("event", "year");
-
-    const year = parseInt(event.pathParameters.year, 10);
-    if (isNaN(year))
-      throw helpers.inputError(
-        "Year path parameter must be a number",
-        event.pathParameters
-      );
+    const { id, year } = eventHelpers.validateEventPath(event.pathParameters);
 
     const existingEvent = await db.getOne(id, EVENTS_TABLE, {
       year
@@ -505,18 +491,9 @@ export const createThumbnailPicUploadUrl: LambdaHandler = async (event) => {
 // GET events/{id}/{year}
 export const get: LambdaHandler = async (event) => {
   try {
-    if (!event.pathParameters || !event.pathParameters.id)
-      throw helpers.missingIdQueryResponse("event");
-    const id = event.pathParameters.id;
-    if (!event.pathParameters.year)
-      throw helpers.missingPathParamResponse("event", "year");
-
-    const year = parseInt(event.pathParameters.year, 10);
-    if (isNaN(year))
-      throw helpers.inputError(
-        "Year path parameter must be a number",
-        event.pathParameters
-      );
+    const { id, year, eventIDYear } = eventHelpers.validateEventPath(
+      event.pathParameters
+    );
 
     const queryString = event.queryStringParameters;
 
@@ -546,7 +523,7 @@ export const get: LambdaHandler = async (event) => {
             "#idyear": "eventID;year"
           },
           ExpressionAttributeValues: {
-            ":query": `${id};${year}`
+            ":query": eventIDYear
           }
         };
 
@@ -636,24 +613,13 @@ export const get: LambdaHandler = async (event) => {
 // GET events/{id}/{year}/feedback/{formType}
 export const getFeedbackForm: LambdaHandler = async (event) => {
   try {
-    if (!event.pathParameters || !event.pathParameters.id)
-      throw helpers.missingIdQueryResponse("event");
-    const id = event.pathParameters.id;
-    const formType = parseFormType(event.pathParameters.formType);
+    const { id, year } = eventHelpers.validateEventPath(event.pathParameters);
+    const formType = parseFormType(event.pathParameters?.formType);
     if (!formType) {
       return helpers.createResponse(400, {
         message: "Feedback formType must be either 'attendee' or 'partner'."
       });
     }
-    if (!event.pathParameters.year)
-      throw helpers.missingPathParamResponse("event", "year");
-
-    const year = parseInt(event.pathParameters.year, 10);
-    if (isNaN(year))
-      throw helpers.inputError(
-        "Year path parameter must be a number",
-        event.pathParameters
-      );
 
     const eventItem = (await db.getOne(id, EVENTS_TABLE, {
       year,
@@ -689,18 +655,8 @@ export const getFeedbackForm: LambdaHandler = async (event) => {
 // POST events/{id}/{year}/feedback/{formType}
 export const submitFeedback: LambdaHandler = async (event) => {
   try {
-    if (!event.pathParameters || !event.pathParameters.id)
-      throw helpers.missingIdQueryResponse("event");
-    if (!event.pathParameters.year)
-      throw helpers.missingPathParamResponse("event", "year");
-    const id = event.pathParameters.id;
-    const year = parseInt(event.pathParameters.year, 10);
-    if (isNaN(year))
-      throw helpers.inputError(
-        "Year path parameter must be a number",
-        event.pathParameters
-      );
-    const formType = parseFormType(event.pathParameters.formType);
+    const { id, year } = eventHelpers.validateEventPath(event.pathParameters);
+    const formType = parseFormType(event.pathParameters?.formType);
     if (!formType) {
       return helpers.createResponse(400, {
         message: "Feedback formType must be either 'attendee' or 'partner'."
@@ -781,19 +737,8 @@ export const submitFeedback: LambdaHandler = async (event) => {
 // GET events/{id}/{year}/feedback/{formType}/submissions
 export const getFeedbackSubmissions: LambdaHandler = async (event) => {
   try {
-    if (!event.pathParameters || !event.pathParameters.id)
-      throw helpers.missingIdQueryResponse("event");
-    if (!event.pathParameters.year)
-      throw helpers.missingPathParamResponse("event", "year");
-
-    const id = event.pathParameters.id;
-    const year = parseInt(event.pathParameters.year, 10);
-    if (isNaN(year))
-      throw helpers.inputError(
-        "Year path parameter must be a number",
-        event.pathParameters
-      );
-    const formType = parseFormType(event.pathParameters.formType);
+    const { id, year } = eventHelpers.validateEventPath(event.pathParameters);
+    const formType = parseFormType(event.pathParameters?.formType);
     if (!formType) {
       return helpers.createResponse(400, {
         message: "Feedback formType must be either 'attendee' or 'partner'."
@@ -861,6 +806,164 @@ export const getActiveEvent: LambdaHandler = async () => {
     );
     return response;
   } catch (err) {
+    console.error(err);
+    return helpers.createResponse(500, { message: errorMessage(err) });
+  }
+};
+
+// POST events/{id}/{year}/qa
+export const qaCreate: LambdaHandler = async (event) => {
+  try {
+    const email = eventHelpers.requireAuthEmail(
+      event.requestContext?.authorizer?.claims?.email?.toLowerCase()
+    );
+    const { id, year, eventIDYear } = eventHelpers.validateEventPath(
+      event.pathParameters
+    );
+    const data = JSON.parse(event.body || "{}");
+    const body = eventHelpers.validateBody(data.body);
+
+    const existingEvent = await db.getOne(id, EVENTS_TABLE, { year });
+    if (isEmpty(existingEvent)) throw helpers.notFoundResponse("event", id, year);
+
+    const now = new Date().toISOString();
+    const questionId = uuidv4();
+    const item = {
+      eventIDYear,
+      questionId,
+      body,
+      isHidden: false,
+      isPinned: false,
+      upvotes: 0,
+      category: eventHelpers.validateCategory(data.category),
+      // Stored so admins can moderate; stripped by toPublicQuestion on every read.
+      authorId: email,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    await db.put(item, EVENT_QA_TABLE, true);
+    return helpers.createResponse(201, {
+      message: "Question submitted successfully.",
+      questionId
+    });
+  } catch (err) {
+    const known = asResponse(err);
+    if (known) return known;
+    console.error(err);
+    return helpers.createResponse(500, { message: errorMessage(err) });
+  }
+};
+
+// GET events/{id}/{year}/qa
+export const qaGetAll: LambdaHandler = async (event) => {
+  try {
+    const { eventIDYear } = eventHelpers.validateEventPath(event.pathParameters);
+    const questions = await db.query(EVENT_QA_TABLE, null, {
+      expression: "eventIDYear = :pk",
+      expressionValues: { ":pk": eventIDYear }
+    });
+
+    // This route has no authorizer — strip author and admin emails before responding.
+    const sorted = questions
+      .filter((q: any) => !q.isHidden)
+      .map((q: any) => eventHelpers.toPublicQuestion(q))
+      .sort(
+        (a: any, b: any) =>
+          Number(b.isPinned) - Number(a.isPinned) ||
+          (b.upvotes ?? 0) - (a.upvotes ?? 0)
+      );
+
+    return helpers.createResponse(200, sorted);
+  } catch (err) {
+    const known = asResponse(err);
+    if (known) return known;
+    console.error(err);
+    return helpers.createResponse(500, { message: errorMessage(err) });
+  }
+};
+
+// POST events/{id}/{year}/qa/{questionId}/upvote
+export const qaUpvote: LambdaHandler = async (event) => {
+  try {
+    const email = eventHelpers.requireAuthEmail(
+      event.requestContext?.authorizer?.claims?.email?.toLowerCase()
+    );
+    const { eventIDYear } = eventHelpers.validateEventPath(event.pathParameters);
+    if (!event.pathParameters?.questionId)
+      throw helpers.missingPathParamResponse("qa question", "questionId");
+
+    // upvotedBy is a set of voter emails; the condition makes upvotes idempotent per user.
+    const res = await db.updateDBCustom({
+      TableName: EVENT_QA_TABLE + (process.env.ENVIRONMENT || ""),
+      Key: { eventIDYear, questionId: event.pathParameters.questionId },
+      UpdateExpression:
+        "SET upvotes = if_not_exists(upvotes, :zero) + :inc, updatedAt = :now ADD upvotedBy :voter",
+      ExpressionAttributeValues: {
+        ":zero": 0,
+        ":inc": 1,
+        ":now": new Date().toISOString(),
+        ":voter": new Set([email]),
+        ":email": email
+      },
+      ConditionExpression:
+        "attribute_exists(eventIDYear) AND (attribute_not_exists(upvotedBy) OR NOT contains(upvotedBy, :email))",
+      ReturnValues: "UPDATED_NEW" as const
+    });
+
+    return helpers.createResponse(200, {
+      message: "Upvoted.",
+      upvotes: (res as any).Attributes?.upvotes
+    });
+  } catch (err) {
+    if ((err as { type?: string })?.type === "ConditionalCheckFailedException")
+      return helpers.createResponse(409, {
+        message: "You have already upvoted this question."
+      });
+    const known = asResponse(err);
+    if (known) return known;
+    console.error(err);
+    return helpers.createResponse(500, { message: errorMessage(err) });
+  }
+};
+
+// PATCH events/{id}/{year}/qa/{questionId}
+export const qaPatch: LambdaHandler = async (event) => {
+  try {
+    const email = eventHelpers.validateAdminEmail(
+      event.requestContext?.authorizer?.claims?.email?.toLowerCase()
+    );
+    const { eventIDYear } = eventHelpers.validateEventPath(event.pathParameters);
+    if (!event.pathParameters?.questionId)
+      throw helpers.missingPathParamResponse("qa question", "questionId");
+
+    const data = JSON.parse(event.body || "{}");
+    const { answer, isHidden, isPinned, body } = data;
+
+    if ([answer, isHidden, isPinned, body].every((value) => value === undefined)) {
+      throw helpers.inputError("No patchable fields provided");
+    }
+
+    const updates: QaPatchFields = { isHidden, isPinned };
+    if (answer !== undefined) updates.answer = eventHelpers.validateAnswer(answer);
+    if (body !== undefined) updates.body = eventHelpers.validateBody(body);
+
+    const now = new Date().toISOString();
+    const res = await db.updateDBCustom({
+      TableName: EVENT_QA_TABLE + (process.env.ENVIRONMENT || ""),
+      Key: { eventIDYear, questionId: event.pathParameters.questionId },
+      ...eventHelpers.buildQaUpdateExpression({ updates, email, now }),
+      ConditionExpression: "attribute_exists(eventIDYear)",
+      ReturnValues: "ALL_NEW" as const
+    });
+
+    return helpers.createResponse(200, {
+      message: "Question updated.",
+      question: eventHelpers.toPublicQuestion((res as any).Attributes || {})
+    });
+  } catch (err) {
+    const known = asResponse(err);
+    if (known) return known;
     console.error(err);
     return helpers.createResponse(500, { message: errorMessage(err) });
   }
