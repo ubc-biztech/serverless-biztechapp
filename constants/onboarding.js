@@ -1,0 +1,1 @@
+export const CURRENT_ONBOARDING_YEAR = 2027;

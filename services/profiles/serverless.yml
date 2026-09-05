@@ -20,7 +20,6 @@ provider:
   region: ${file(../../serverless.common.yml):provider.region}
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
-    ONBOARDING_YEAR: ${env:ONBOARDING_YEAR}
     NODE_ENV: ${env:NODE_ENV}
     PROFILE_BUCKET: biztech-profile-pictures
   apiGateway:

@@ -7,6 +7,7 @@ import {
   MEMBERS_TABLE,
   IMMUTABLE_USER_PROPS
 } from "../../constants/tables";
+import { CURRENT_ONBOARDING_YEAR } from "../../constants/onboarding";
 import docClient from "../../lib/docClient";
 
 export const create = async (event) => {
@@ -138,6 +139,10 @@ export const ensureAuthenticatedUser = async (event) => {
   const claims = event.requestContext?.authorizer?.claims || {};
   const email = claims.email?.trim().toLowerCase();
 
+  if (!isValidEmail(email)) {
+    return helpers.inputError("Invalid authenticated email", email);
+  }
+
   try {
     const existingUser = await db.getOne(email, USERS_TABLE);
     if (!isEmpty(existingUser)) {
@@ -221,7 +226,10 @@ export const get = async (event) => {
       return helpers.notFoundResponse("user", email);
     }
 
-    const response = helpers.createResponse(200, user);
+    const response = helpers.createResponse(200, {
+      ...user,
+      needsOnboarding: user.onboardingYear !== CURRENT_ONBOARDING_YEAR
+    });
     return response;
   } catch (err) {
     console.error(err);
@@ -257,7 +265,9 @@ export const update = async (event) => {
     return response;
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(err.statusCode || 500, { message: err.message || err });
+    return helpers.createResponse(err.statusCode || 500, {
+      message: err.message || err
+    });
   }
 };
 
@@ -377,7 +387,9 @@ export const favouriteEvent = async (event) => {
     });
   } catch (err) {
     console.error(err);
-    const response = helpers.createResponse(err.statusCode || 500, { message: err.message || err });
+    const response = helpers.createResponse(err.statusCode || 500, {
+      message: err.message || err
+    });
     return response;
   }
 };
@@ -402,6 +414,8 @@ export const del = async (event) => {
 
     return response;
   } catch (err) {
-    return helpers.createResponse(err.statusCode || 500, { message: err.message || err });
+    return helpers.createResponse(err.statusCode || 500, {
+      message: err.message || err
+    });
   }
 };
