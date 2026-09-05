@@ -7,9 +7,10 @@ import {
   MEMBERS_TABLE,
   IMMUTABLE_USER_PROPS
 } from "../../constants/tables";
+import { CURRENT_ONBOARDING_YEAR } from "../../constants/onboarding";
 import docClient from "../../lib/docClient";
 
-export const create = async (event, ctx, callback) => {
+export const create = async (event) => {
   const timestamp = new Date().getTime();
   const data = JSON.parse(event.body);
   if (!isValidEmail(data.email))
@@ -134,7 +135,50 @@ export const create = async (event, ctx, callback) => {
   }
 };
 
-export const checkUser = async (event, ctx, callback) => {
+export const ensureAuthenticatedUser = async (event) => {
+  const claims = event.requestContext?.authorizer?.claims || {};
+  const email = claims.email?.trim().toLowerCase();
+
+  if (!isValidEmail(email)) {
+    return helpers.inputError("Invalid authenticated email", email);
+  }
+
+  try {
+    const existingUser = await db.getOne(email, USERS_TABLE);
+    if (!isEmpty(existingUser)) {
+      return helpers.createResponse(200, {
+        message: "User already exists",
+        user: existingUser
+      });
+    }
+
+    const timestamp = Date.now();
+    const user = {
+      id: email,
+      email,
+      admin: email.endsWith("@ubcbiztech.com"),
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+
+    try {
+      await db.put(user, USERS_TABLE, true);
+    } catch (error) {
+      // Another request may have already created the user.
+      if (error.type !== "ConditionalCheckFailedException") throw error;
+    }
+
+    return helpers.createResponse(201, {
+      message: "Created user from Cognito sign-in",
+      user: (await db.getOne(email, USERS_TABLE)) || user
+    });
+  } catch (error) {
+    console.error(error);
+    return helpers.createResponse(502, "Internal Server Error occurred");
+  }
+};
+
+export const checkUser = async (event) => {
   try {
     const email = event.pathParameters.email;
     const user = await db.getOne(email, USERS_TABLE);
@@ -148,7 +192,7 @@ export const checkUser = async (event, ctx, callback) => {
   }
 };
 
-export const checkUserMembership = async (event, ctx, callback) => {
+export const checkUserMembership = async (event) => {
   console.log(event);
   try {
     const email = event.pathParameters?.email?.trim().toLowerCase();
@@ -162,7 +206,7 @@ export const checkUserMembership = async (event, ctx, callback) => {
   }
 };
 
-export const get = async (event, ctx, callback) => {
+export const get = async (event) => {
   try {
     let email = event.requestContext.authorizer.claims.email.toLowerCase();
 
@@ -182,7 +226,10 @@ export const get = async (event, ctx, callback) => {
       return helpers.notFoundResponse("user", email);
     }
 
-    const response = helpers.createResponse(200, user);
+    const response = helpers.createResponse(200, {
+      ...user,
+      needsOnboarding: user.onboardingYear !== CURRENT_ONBOARDING_YEAR
+    });
     return response;
   } catch (err) {
     console.error(err);
@@ -190,7 +237,7 @@ export const get = async (event, ctx, callback) => {
   }
 };
 
-export const update = async (event, ctx, callback) => {
+export const update = async (event) => {
   try {
     if (!event.pathParameters || !event.pathParameters.email)
       throw helpers.missingIdQueryResponse("event");
@@ -218,11 +265,13 @@ export const update = async (event, ctx, callback) => {
     return response;
   } catch (err) {
     console.error(err);
-    return helpers.createResponse(err.statusCode || 500, { message: err.message || err });
+    return helpers.createResponse(err.statusCode || 500, {
+      message: err.message || err
+    });
   }
 };
 
-export const getAll = async (event, ctx, callback) => {
+export const getAll = async () => {
   try {
     const users = await db.scan(USERS_TABLE);
 
@@ -236,7 +285,7 @@ export const getAll = async (event, ctx, callback) => {
 };
 
 // TODO: Fix favouriteEvents 08/08/24
-export const favouriteEvent = async (event, ctx, callback) => {
+export const favouriteEvent = async (event) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -338,13 +387,15 @@ export const favouriteEvent = async (event, ctx, callback) => {
     });
   } catch (err) {
     console.error(err);
-    const response = helpers.createResponse(err.statusCode || 500, { message: err.message || err });
+    const response = helpers.createResponse(err.statusCode || 500, {
+      message: err.message || err
+    });
     return response;
   }
 };
 
 // TODO: refactor to abstract delete code among different endpoints
-export const del = async (event, ctx, callback) => {
+export const del = async (event) => {
   try {
     // check that the param was given
     if (!event.pathParameters || !event.pathParameters.email)
@@ -363,6 +414,8 @@ export const del = async (event, ctx, callback) => {
 
     return response;
   } catch (err) {
-    return helpers.createResponse(err.statusCode || 500, { message: err.message || err });
+    return helpers.createResponse(err.statusCode || 500, {
+      message: err.message || err
+    });
   }
 };

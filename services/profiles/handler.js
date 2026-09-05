@@ -1,15 +1,9 @@
 import db from "../../lib/db.js";
 import helpers from "../../lib/handlerHelpers.js";
-import {
-  isEmpty
-} from "../../lib/utils.js";
-import {
-  humanId
-} from "human-id";
-import {
-  PROFILES_TABLE,
-  USERS_TABLE
-} from "../../constants/tables.js";
+import { isEmpty } from "../../lib/utils.js";
+import { humanId } from "human-id";
+import { PROFILES_TABLE, USERS_TABLE } from "../../constants/tables.js";
+import { CURRENT_ONBOARDING_YEAR } from "../../constants/onboarding.js";
 import {
   MUTABLE_PROFILE_ATTRIBUTES,
   PROFILE_TYPES,
@@ -18,14 +12,11 @@ import {
 import {
   buildProfileUpdateParams,
   createProfile,
-  filterPublicProfileFields
+  filterPublicProfileFields,
+  updateProfileFromMembershipData
 } from "./helpers.js";
-import {
-  S3Client, PutObjectCommand
-} from "@aws-sdk/client-s3";
-import {
-  getSignedUrl
-} from "@aws-sdk/s3-request-presigner";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 const REGISTRATIONS_TABLE = "biztechRegistrations";
 const QRS_TABLE = "biztechQRs";
 const S3 = new S3Client({
@@ -33,24 +24,156 @@ const S3 = new S3Client({
 });
 const PROFILE_BUCKET = "biztech-profile-pictures";
 
-export const create = async (event, ctx, callback) => {
+const validateOnboardingData = (data) => {
+  helpers.checkPayloadProps(data, {
+    firstName: {
+      required: true,
+      type: "string"
+    },
+    lastName: {
+      required: true,
+      type: "string"
+    },
+    education: {
+      required: true,
+      type: "string"
+    },
+    pronouns: {
+      required: true,
+      type: "string"
+    },
+    levelOfStudy: {
+      required: true,
+      type: "string"
+    },
+    faculty: {
+      required: true,
+      type: "string"
+    },
+    major: {
+      required: true,
+      type: "string"
+    },
+    internationalStudent: {
+      required: true,
+      type: "string"
+    },
+    previousMember: {
+      required: true,
+      type: "string"
+    },
+    dietaryRestrictions: {
+      required: true,
+      type: "string"
+    },
+    referral: {
+      required: true,
+      type: "string"
+    }
+  });
+
+  if (
+    !["Yes", "No"].includes(data.internationalStudent) ||
+    !["Yes", "No"].includes(data.previousMember)
+  ) {
+    throw helpers.inputError("Invalid yes/no onboarding response", data);
+  }
+
+  if (
+    !Array.isArray(data.topics) ||
+    data.topics.some((topic) => typeof topic !== "string")
+  ) {
+    throw helpers.inputError("topics must be an array of strings", data.topics);
+  }
+
+  if (
+    data.education === "UBC" &&
+    (typeof data.studentNumber !== "string" ||
+      !/^\d{8}$/.test(data.studentNumber))
+  ) {
+    throw helpers.inputError(
+      "Student number must be an 8 digit number for UBC students",
+      data.studentNumber
+    );
+  }
+
+  if (data.linkedIn !== undefined && typeof data.linkedIn !== "string") {
+    throw helpers.inputError("linkedIn must be a string", data.linkedIn);
+  }
+};
+
+export const create = async (event) => {
   try {
     const email = event.requestContext.authorizer.claims.email.toLowerCase();
-    const response = await createProfile(
+    const data = JSON.parse(event.body || "{}");
+    validateOnboardingData(data);
+
+    const updateResult = await db.updateDB(
       email,
-      email.endsWith("@ubcbiztech.com")
-        ? PROFILE_TYPES.EXEC
-        : PROFILE_TYPES.ATTENDEE
+      {
+        education: data.education,
+        studentId: data.studentNumber,
+        fname: data.firstName,
+        lname: data.lastName,
+        faculty: data.faculty,
+        major: data.major,
+        year: data.levelOfStudy,
+        gender: data.pronouns,
+        diet: data.dietaryRestrictions,
+        international: data.internationalStudent === "Yes",
+        prevMember: data.previousMember === "Yes",
+        referral: data.referral,
+        topics: data.topics
+      },
+      USERS_TABLE,
+      "ALL_NEW"
+    );
+    const user = updateResult.Attributes;
+
+    const profileData = {
+      firstName: data.firstName,
+      lastName: data.lastName,
+      pronouns: data.pronouns,
+      major: data.major,
+      year: data.levelOfStudy,
+      linkedIn: data.linkedIn || ""
+    };
+    const profileType = email.endsWith("@ubcbiztech.com")
+      ? PROFILE_TYPES.EXEC
+      : PROFILE_TYPES.ATTENDEE;
+    if (user?.profileID) {
+      await updateProfileFromMembershipData(user.profileID, profileData);
+      await db.updateDB(
+        email,
+        {
+          onboardingYear: CURRENT_ONBOARDING_YEAR
+        },
+        USERS_TABLE
+      );
+      return helpers.createResponse(200, {
+        message: `Updated profile for ${email}`,
+        profileID: user.profileID
+      });
+    }
+
+    const response = await createProfile(email, profileType, profileData);
+    await db.updateDB(
+      email,
+      {
+        onboardingYear: CURRENT_ONBOARDING_YEAR
+      },
+      USERS_TABLE
     );
     return response;
   } catch (err) {
     console.error(err);
+    if (err?.statusCode && err?.body) return err;
     return helpers.createResponse(500, { message: err.message || err });
   }
 };
 
 // deprecated, will be done in another pr
-export const createPartialPartnerProfile = async (event, ctx, callback) => {
+export const createPartialPartnerProfile = async (event) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -127,28 +250,28 @@ export const createPartialPartnerProfile = async (event, ctx, callback) => {
     // Create partial partner profile
     const timestamp = new Date().getTime();
     const profile = {
-      id: email,
+      "id": email,
       "eventID;year": eventIDAndYear,
       profileID,
       fname,
       lname,
       pronouns,
-      type: "Partner",
+      "type": "Partner",
       company,
       role,
       linkedIn,
       profilePictureURL,
-      createdAt: timestamp,
-      updatedAt: timestamp
+      "createdAt": timestamp,
+      "updatedAt": timestamp
     };
 
     // Create NFC entry
     const nfc = {
-      id: profileID,
+      "id": profileID,
       "eventID;year": eventIDAndYear,
-      type: "NFC_ATTENDEE",
-      isUnlimitedScans: true,
-      data: {
+      "type": "NFC_ATTENDEE",
+      "isUnlimitedScans": true,
+      "data": {
         email
       }
     };
@@ -169,7 +292,7 @@ export const createPartialPartnerProfile = async (event, ctx, callback) => {
   }
 };
 
-export const updatePublicProfile = async (event, ctx, callback) => {
+export const updatePublicProfile = async (event) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
     const body = JSON.parse(event.body);
@@ -178,9 +301,7 @@ export const updatePublicProfile = async (event, ctx, callback) => {
         required: true
       }
     });
-    const {
-      viewableMap
-    } = body;
+    const { viewableMap } = body;
 
     if (
       !viewableMap ||
@@ -190,10 +311,7 @@ export const updatePublicProfile = async (event, ctx, callback) => {
     }
 
     const user = await db.getOne(userID, USERS_TABLE);
-    const {
-      profileID = null
-    } = user || {
-    };
+    const { profileID = null } = user || {};
 
     if (!profileID) {
       throw helpers.notFoundResponse("Profile", userID);
@@ -212,7 +330,7 @@ export const updatePublicProfile = async (event, ctx, callback) => {
       }
     });
 
-    if (!result || result.length == 0) {
+    if (!result || result.length === 0) {
       throw helpers.createResponse(404, {
         message: `Profile: ${userID} not found`
       });
@@ -231,8 +349,7 @@ export const updatePublicProfile = async (event, ctx, callback) => {
 
     delete body["viewableMap"];
 
-    const updateBody = {
-    };
+    const updateBody = {};
     Object.keys(body).forEach((key) => {
       if (
         Object.hasOwn(MUTABLE_PROFILE_ATTRIBUTES, key) &&
@@ -261,15 +378,13 @@ export const updatePublicProfile = async (event, ctx, callback) => {
   }
 };
 
-export const getPublicProfile = async (event, ctx, callback) => {
+export const getPublicProfile = async (event) => {
   try {
     if (!event.pathParameters || !event.pathParameters.profileID) {
       throw helpers.missingPathParamResponse("profileID");
     }
 
-    const {
-      profileID
-    } = event.pathParameters;
+    const { profileID } = event.pathParameters;
 
     // Query using the GSI
     const result = await db.getOneCustom({
@@ -294,15 +409,12 @@ export const getPublicProfile = async (event, ctx, callback) => {
   }
 };
 
-export const getUserProfile = async (event, ctx, callback) => {
+export const getUserProfile = async (event) => {
   try {
     const userID = event.requestContext.authorizer.claims.email.toLowerCase();
 
     const user = await db.getOne(userID, USERS_TABLE);
-    const {
-      profileID = null
-    } = user || {
-    };
+    const { profileID = null } = user || {};
 
     if (!profileID) {
       throw helpers.notFoundResponse("Profile", userID);
@@ -328,7 +440,7 @@ export const getUserProfile = async (event, ctx, callback) => {
 };
 
 // deprecated, will be done in another pr
-export const createCompanyProfile = async (event, ctx, callback) => {
+export const createCompanyProfile = async (event) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -397,26 +509,26 @@ export const createCompanyProfile = async (event, ctx, callback) => {
     const timestamp = new Date().getTime();
 
     const companyProfile = {
-      id: companyId,
+      "id": companyId,
       "eventID;year": eventIDAndYear,
-      profileID: companyId,
-      type: "Company",
+      "profileID": companyId,
+      "type": "Company",
       name,
       description,
       profilePictureURL,
       links,
       delegateProfileIDs,
-      createdAt: timestamp,
-      updatedAt: timestamp
+      "createdAt": timestamp,
+      "updatedAt": timestamp
     };
 
     // Create QR entry for company
     const qr = {
-      id: companyId,
+      "id": companyId,
       "eventID;year": eventIDAndYear,
-      type: "NFC_COMPANY",
-      isUnlimitedScans: true,
-      data: {
+      "type": "NFC_COMPANY",
+      "isUnlimitedScans": true,
+      "data": {
         companyId
       }
     };
@@ -437,10 +549,9 @@ export const createCompanyProfile = async (event, ctx, callback) => {
   }
 };
 
-export const createProfilePicUploadUrl = async (event, ctx, callback) => {
+export const createProfilePicUploadUrl = async (event) => {
   try {
-    const claims = event.requestContext?.authorizer?.claims || {
-    };
+    const claims = event.requestContext?.authorizer?.claims || {};
     const userEmail = claims.email?.toLowerCase();
     if (!userEmail) {
       return helpers.createResponse(401, {
@@ -459,9 +570,7 @@ export const createProfilePicUploadUrl = async (event, ctx, callback) => {
       });
     }
 
-    const {
-      fileType, fileName, prefix
-    } = JSON.parse(event.body || "{}");
+    const { fileType, fileName, prefix } = JSON.parse(event.body || "{}");
     if (!fileType || !fileName) {
       return helpers.createResponse(400, {
         message: "Missing fileType or fileName"
@@ -510,7 +619,7 @@ export const createProfilePicUploadUrl = async (event, ctx, callback) => {
   }
 };
 
-export const linkPartnerToCompany = async (event, ctx, callback) => {
+export const linkPartnerToCompany = async (event) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -534,9 +643,7 @@ export const linkPartnerToCompany = async (event, ctx, callback) => {
       }
     });
 
-    const {
-      partnerProfileID, companyProfileID, eventID, year
-    } = data;
+    const { partnerProfileID, companyProfileID, eventID, year } = data;
     const eventIDAndYear = `${eventID};${year}`;
 
     // Get company profile
@@ -582,7 +689,7 @@ export const linkPartnerToCompany = async (event, ctx, callback) => {
     // Update partner profile with company information
     const partnerUpdateParams = {
       Key: {
-        id: partnerProfile.id,
+        "id": partnerProfile.id,
         "eventID;year": eventIDAndYear
       },
       TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
@@ -599,7 +706,7 @@ export const linkPartnerToCompany = async (event, ctx, callback) => {
     // Update company profile with new delegate
     const companyUpdateParams = {
       Key: {
-        id: companyProfile.id,
+        "id": companyProfile.id,
         "eventID;year": eventIDAndYear
       },
       TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
@@ -629,7 +736,7 @@ export const linkPartnerToCompany = async (event, ctx, callback) => {
   }
 };
 
-export const syncPartnerData = async (event, ctx, callback) => {
+export const syncPartnerData = async () => {
   try {
     // Get all partner profiles
     const partnerProfiles = await db.scan(PROFILES_TABLE, {
@@ -650,8 +757,6 @@ export const syncPartnerData = async (event, ctx, callback) => {
 
     const results = await Promise.all(
       partnerProfiles.map(async (profile) => {
-        const [eventID, year] = profile["eventID;year"].split(";");
-
         // Try to find matching registration
         const registration = await db.getOne(profile.id, REGISTRATIONS_TABLE, {
           "eventID;year": profile["eventID;year"]
@@ -661,22 +766,21 @@ export const syncPartnerData = async (event, ctx, callback) => {
           // Create registration entry if it doesn't exist
           const timestamp = new Date().getTime();
           const registrationData = {
-            id: profile.id,
+            "id": profile.id,
             "eventID;year": profile["eventID;year"],
-            isPartner: true,
-            profileID: profile.profileID,
-            basicInformation: {
+            "isPartner": true,
+            "profileID": profile.profileID,
+            "basicInformation": {
               fname: profile.fname || "",
               lname: profile.lname || "",
               companyName: profile.company || "",
               role: profile.role || "",
               gender: profile.pronouns || ""
             },
-            registrationStatus: "registered",
-            createdAt: timestamp,
-            updatedAt: timestamp,
-            dynamicResponses: {
-            } // Ensure this exists even if empty
+            "registrationStatus": "registered",
+            "createdAt": timestamp,
+            "updatedAt": timestamp,
+            "dynamicResponses": {} // Ensure this exists even if empty
           };
 
           await db.create(registrationData, REGISTRATIONS_TABLE);
@@ -687,13 +791,12 @@ export const syncPartnerData = async (event, ctx, callback) => {
           };
         } else {
           // Safely get dynamic responses with fallbacks
-          const dynamicResponses = registration.dynamicResponses || {
-          };
+          const dynamicResponses = registration.dynamicResponses || {};
 
           // Update profile with registration data
           const updateParams = {
             Key: {
-              id: profile.id,
+              "id": profile.id,
               "eventID;year": profile["eventID;year"]
             },
             TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),

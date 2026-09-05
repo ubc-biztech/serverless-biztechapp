@@ -1,16 +1,18 @@
 import humanId from "human-id";
 import {
-  MEMBERS_TABLE, PROFILES_TABLE, USERS_TABLE
+  MEMBERS_TABLE,
+  PROFILES_TABLE,
+  USERS_TABLE
 } from "../../constants/tables";
 import db from "../../lib/db";
 import helpers from "../../lib/handlerHelpers";
-import {
-  MUTABLE_PROFILE_ATTRIBUTES, TYPES
-} from "./constants";
+import { MUTABLE_PROFILE_ATTRIBUTES, TYPES } from "./constants";
 
-export async function createProfile(email, profileType) {
+export async function createProfile(email, profileType, onboardingData = null) {
   const [memberData, userData] = await Promise.all([
-    db.getOne(email, MEMBERS_TABLE),
+    onboardingData
+      ? Promise.resolve(onboardingData)
+      : db.getOne(email, MEMBERS_TABLE),
     db.getOne(email, USERS_TABLE)
   ]);
 
@@ -46,7 +48,7 @@ export async function createProfile(email, profileType) {
     resumeURL: false,
     description: true,
     company: true,
-    position: true,
+    position: true
   };
 
   // Map registration data to profile schema
@@ -64,7 +66,7 @@ export async function createProfile(email, profileType) {
     hobby2: "",
     funQuestion1: "",
     funQuestion2: "",
-    linkedIn: "",
+    linkedIn: memberData.linkedIn || "",
     profilePictureURL: "",
     additionalLink: "",
     resumeURL: "",
@@ -115,9 +117,18 @@ export async function createProfile(email, profileType) {
 export async function updateProfileFromMembershipData(profileID, memberData) {
   const updateData = {};
 
-  ["pronouns", "major", "year"].forEach((key) => {
-    if (memberData[key] !== undefined && memberData[key] !== null) {
-      updateData[key] = memberData[key];
+  const profileFields = {
+    firstName: "fname",
+    lastName: "lname",
+    pronouns: "pronouns",
+    major: "major",
+    year: "year",
+    linkedIn: "linkedIn"
+  };
+
+  Object.entries(profileFields).forEach(([sourceKey, profileKey]) => {
+    if (memberData[sourceKey] !== undefined && memberData[sourceKey] !== null) {
+      updateData[profileKey] = memberData[sourceKey];
     }
   });
 
@@ -156,8 +167,7 @@ export async function updateProfileFromMembershipData(profileID, memberData) {
 }
 
 export function filterPublicProfileFields(profile) {
-  const publicFields = {
-  };
+  const publicFields = {};
   const map = profile.viewableMap;
 
   for (const key in profile) {
@@ -180,17 +190,14 @@ export function filterPublicProfileFields(profile) {
  */
 export const buildProfileUpdateParams = (
   compositeID,
-  updateData = {
-  },
+  updateData = {},
   viewableMap,
   tableName,
   timestamp
 ) => {
   const updateExpressions = [];
-  const expressionAttributeValues = {
-  };
-  const expressionAttributeNames = {
-  };
+  const expressionAttributeValues = {};
+  const expressionAttributeNames = {};
 
   // Add timestamp to updates
   updateExpressions.push("#updatedAt = :updatedAt");
