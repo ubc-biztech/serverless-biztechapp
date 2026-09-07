@@ -31,6 +31,8 @@ export const QUIZZES_TABLE = "biztechQuizzes";
 
 export const IMMUTABLE_USER_PROPS = ["admin", "isMember"]; // make sure you check all calls to /user's patch in the frontend if you add to this list
 
+export const EVENT_QA_TABLE = "biztechEventQA";
+
 export const BTX_PROJECTS_TABLE = "bizBtxProjects";
 export const BTX_ACCOUNTS_TABLE = "bizBtxAccounts";
 export const BTX_HOLDINGS_TABLE = "bizBtxHoldings";

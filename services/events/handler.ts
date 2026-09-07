@@ -10,6 +10,7 @@ import {
   EVENT_FEEDBACK_TABLE,
   USERS_TABLE,
   USER_REGISTRATIONS_TABLE,
+  EVENT_QA_TABLE,
 } from "../../constants/tables.js";
 import db from "../../lib/db.js";
 import helpers from "../../lib/handlerHelpers";
@@ -24,7 +25,17 @@ import {
   isValidEmail,
 } from "../../lib/utils.js";
 import feedbackHelpers, { isValidationFail } from "./feedbackHelpers.js";
-import eventHelpers from "./helpers";
+import {
+  addIdsToRegistrationQuestions,
+  buildQaUpdateExpression,
+  getEventCounts,
+  toPublicQuestion,
+  validateAnswer,
+  validateCategory,
+  validateEventPath,
+  validateQuestionBody,
+} from "./helpers";
+import type { QaPatchFields } from "./helpers";
 import type {
   CreateEventBody,
   CreateThumbnailPicUploadUrlBody,
@@ -34,6 +45,16 @@ import type {
 
 const errorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
+
+const isApiResponse = (error: unknown): error is APIGatewayResponse =>
+  typeof error === "object" && error !== null && "statusCode" in error;
+
+/** Returns 4xx raised by this service as-is; logs anything else and hides it. */
+const clientError = (error: unknown): APIGatewayResponse => {
+  if (isApiResponse(error) && error.statusCode < 500) return error;
+  console.error(error);
+  return helpers.createResponse(502, { message: "Internal server error." });
+};
 
 const S3 = new S3Client({
   region: "us-west-2"
@@ -169,16 +190,15 @@ export const create: LambdaHandler = async (event) => {
     };
 
     if (Array.isArray(data.registrationQuestions)) {
-      item.registrationQuestions = eventHelpers.addIdsToRegistrationQuestions(
+      item.registrationQuestions = addIdsToRegistrationQuestions(
         data.registrationQuestions
       );
     }
 
     if (Array.isArray(data.partnerRegistrationQuestions)) {
-      item.partnerRegistrationQuestions =
-        eventHelpers.addIdsToRegistrationQuestions(
-          data.partnerRegistrationQuestions
-        );
+      item.partnerRegistrationQuestions = addIdsToRegistrationQuestions(
+        data.partnerRegistrationQuestions
+      );
     }
 
     const res = await db.create(item, EVENTS_TABLE);
@@ -199,18 +219,7 @@ export const create: LambdaHandler = async (event) => {
 // DELETE /events/{id}/{year}
 export const del: LambdaHandler = async (event) => {
   try {
-    if (!event.pathParameters || !event.pathParameters.id)
-      throw helpers.missingIdQueryResponse("event");
-    const id = event.pathParameters.id;
-    if (!event.pathParameters.year)
-      throw helpers.missingPathParamResponse("event", "year");
-
-    const year = parseInt(event.pathParameters.year, 10);
-    if (isNaN(year))
-      throw helpers.inputError(
-        "Year path parameter must be a number",
-        event.pathParameters
-      );
+    const { id, year } = validateEventPath(event.pathParameters);
 
     const existingEvent = await db.getOne(id, EVENTS_TABLE, {
       year
@@ -265,18 +274,7 @@ export const getAll: LambdaHandler = async (event, ctx) => {
 // PATCH events/{id}/{year}
 export const update: LambdaHandler = async (event) => {
   try {
-    if (!event.pathParameters || !event.pathParameters.id)
-      throw helpers.missingIdQueryResponse("event");
-    const id = event.pathParameters.id;
-    if (!event.pathParameters.year)
-      throw helpers.missingPathParamResponse("event", "year");
-
-    const year = parseInt(event.pathParameters.year, 10);
-    if (isNaN(year))
-      throw helpers.inputError(
-        "Year path parameter must be a number",
-        event.pathParameters
-      );
+    const { id, year } = validateEventPath(event.pathParameters);
 
     const existingEvent = await db.getOne(id, EVENTS_TABLE, {
       year
@@ -301,7 +299,7 @@ export const update: LambdaHandler = async (event) => {
       for (let i = 0; i < data.registrationQuestions.length; i++) {
         if (!data.registrationQuestions[i].questionId) {
           data.registrationQuestions[i] =
-            eventHelpers.addIdsToRegistrationQuestions([
+            addIdsToRegistrationQuestions([
               data.registrationQuestions[i]
             ])[0];
         }
@@ -312,7 +310,7 @@ export const update: LambdaHandler = async (event) => {
       for (let i = 0; i < data.partnerRegistrationQuestions.length; i++) {
         if (!data.partnerRegistrationQuestions[i].questionId) {
           data.partnerRegistrationQuestions[i] =
-            eventHelpers.addIdsToRegistrationQuestions([
+            addIdsToRegistrationQuestions([
               data.partnerRegistrationQuestions[i]
             ])[0];
         }
@@ -505,18 +503,7 @@ export const createThumbnailPicUploadUrl: LambdaHandler = async (event) => {
 // GET events/{id}/{year}
 export const get: LambdaHandler = async (event) => {
   try {
-    if (!event.pathParameters || !event.pathParameters.id)
-      throw helpers.missingIdQueryResponse("event");
-    const id = event.pathParameters.id;
-    if (!event.pathParameters.year)
-      throw helpers.missingPathParamResponse("event", "year");
-
-    const year = parseInt(event.pathParameters.year, 10);
-    if (isNaN(year))
-      throw helpers.inputError(
-        "Year path parameter must be a number",
-        event.pathParameters
-      );
+    const { id, year, eventIDYear } = validateEventPath(event.pathParameters);
 
     const queryString = event.queryStringParameters;
 
@@ -532,7 +519,7 @@ export const get: LambdaHandler = async (event) => {
       });
     } else if (queryString && queryString.count === "true") {
       // return counts
-      const counts = await eventHelpers.getEventCounts(id,year);
+      const counts = await getEventCounts(id,year);
 
       const response = helpers.createResponse(200, counts);
       return response;
@@ -546,7 +533,7 @@ export const get: LambdaHandler = async (event) => {
             "#idyear": "eventID;year"
           },
           ExpressionAttributeValues: {
-            ":query": `${id};${year}`
+            ":query": eventIDYear
           }
         };
 
@@ -636,24 +623,13 @@ export const get: LambdaHandler = async (event) => {
 // GET events/{id}/{year}/feedback/{formType}
 export const getFeedbackForm: LambdaHandler = async (event) => {
   try {
-    if (!event.pathParameters || !event.pathParameters.id)
-      throw helpers.missingIdQueryResponse("event");
-    const id = event.pathParameters.id;
-    const formType = parseFormType(event.pathParameters.formType);
+    const { id, year } = validateEventPath(event.pathParameters);
+    const formType = parseFormType(event.pathParameters?.formType);
     if (!formType) {
       return helpers.createResponse(400, {
         message: "Feedback formType must be either 'attendee' or 'partner'."
       });
     }
-    if (!event.pathParameters.year)
-      throw helpers.missingPathParamResponse("event", "year");
-
-    const year = parseInt(event.pathParameters.year, 10);
-    if (isNaN(year))
-      throw helpers.inputError(
-        "Year path parameter must be a number",
-        event.pathParameters
-      );
 
     const eventItem = (await db.getOne(id, EVENTS_TABLE, {
       year,
@@ -689,18 +665,8 @@ export const getFeedbackForm: LambdaHandler = async (event) => {
 // POST events/{id}/{year}/feedback/{formType}
 export const submitFeedback: LambdaHandler = async (event) => {
   try {
-    if (!event.pathParameters || !event.pathParameters.id)
-      throw helpers.missingIdQueryResponse("event");
-    if (!event.pathParameters.year)
-      throw helpers.missingPathParamResponse("event", "year");
-    const id = event.pathParameters.id;
-    const year = parseInt(event.pathParameters.year, 10);
-    if (isNaN(year))
-      throw helpers.inputError(
-        "Year path parameter must be a number",
-        event.pathParameters
-      );
-    const formType = parseFormType(event.pathParameters.formType);
+    const { id, year } = validateEventPath(event.pathParameters);
+    const formType = parseFormType(event.pathParameters?.formType);
     if (!formType) {
       return helpers.createResponse(400, {
         message: "Feedback formType must be either 'attendee' or 'partner'."
@@ -781,19 +747,8 @@ export const submitFeedback: LambdaHandler = async (event) => {
 // GET events/{id}/{year}/feedback/{formType}/submissions
 export const getFeedbackSubmissions: LambdaHandler = async (event) => {
   try {
-    if (!event.pathParameters || !event.pathParameters.id)
-      throw helpers.missingIdQueryResponse("event");
-    if (!event.pathParameters.year)
-      throw helpers.missingPathParamResponse("event", "year");
-
-    const id = event.pathParameters.id;
-    const year = parseInt(event.pathParameters.year, 10);
-    if (isNaN(year))
-      throw helpers.inputError(
-        "Year path parameter must be a number",
-        event.pathParameters
-      );
-    const formType = parseFormType(event.pathParameters.formType);
+    const { id, year } = validateEventPath(event.pathParameters);
+    const formType = parseFormType(event.pathParameters?.formType);
     if (!formType) {
       return helpers.createResponse(400, {
         message: "Feedback formType must be either 'attendee' or 'partner'."
@@ -863,5 +818,162 @@ export const getActiveEvent: LambdaHandler = async () => {
   } catch (err) {
     console.error(err);
     return helpers.createResponse(500, { message: errorMessage(err) });
+  }
+};
+
+// POST events/{id}/{year}/qa
+export const qaCreate: LambdaHandler = async (event) => {
+  try {
+    const email = event.requestContext?.authorizer?.claims?.email?.toLowerCase();
+    if (!email)
+      return helpers.createResponse(403, { message: "Authentication required." });
+
+    const { id, year, eventIDYear } = validateEventPath(event.pathParameters);
+    const data = JSON.parse(event.body || "{}");
+    const body = validateQuestionBody(data.body);
+
+    const existingEvent = await db.getOne(id, EVENTS_TABLE, { year });
+    if (isEmpty(existingEvent))
+      throw helpers.createResponse(404, { message: "Event not found." });
+
+    const now = new Date().toISOString();
+    const questionId = uuidv4();
+    const item = {
+      eventIDYear,
+      questionId,
+      body,
+      isHidden: false,
+      isPinned: false,
+      upvotes: 0,
+      category: validateCategory(data.category),
+      // Stored so admins can moderate; stripped by toPublicQuestion on every read.
+      authorId: email,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    await db.put(item, EVENT_QA_TABLE, true);
+    return helpers.createResponse(201, {
+      message: "Question submitted successfully.",
+      questionId
+    });
+  } catch (err) {
+    return clientError(err);
+  }
+};
+
+// GET events/{id}/{year}/qa
+export const qaGetAll: LambdaHandler = async (event) => {
+  try {
+    const { eventIDYear } = validateEventPath(event.pathParameters);
+    const questions = await db.query(
+      EVENT_QA_TABLE,
+      null,
+      {
+        expression: "eventIDYear = :pk",
+        expressionValues: { ":pk": eventIDYear }
+      },
+      {
+        FilterExpression: "isHidden = :isHidden",
+        ExpressionAttributeValues: { ":isHidden": false }
+      }
+    );
+
+    // This route has no authorizer — strip author and admin emails before responding.
+    const sorted = questions
+      .map((q: any) => toPublicQuestion(q))
+      .sort(
+        (a: any, b: any) =>
+          Number(b.isPinned) - Number(a.isPinned) ||
+          (b.upvotes ?? 0) - (a.upvotes ?? 0)
+      );
+
+    return helpers.createResponse(200, sorted);
+  } catch (err) {
+    return clientError(err);
+  }
+};
+
+// POST events/{id}/{year}/qa/{questionId}/upvote
+export const qaUpvote: LambdaHandler = async (event) => {
+  try {
+    const email = event.requestContext?.authorizer?.claims?.email?.toLowerCase();
+    if (!email)
+      return helpers.createResponse(403, { message: "Authentication required." });
+
+    const { eventIDYear } = validateEventPath(event.pathParameters);
+    if (!event.pathParameters?.questionId)
+      throw helpers.missingPathParamResponse("qa question", "questionId");
+
+    // upvotedBy is a set of voter emails; the condition makes upvotes idempotent per user.
+    const res = await db.updateDBCustom({
+      TableName: EVENT_QA_TABLE + (process.env.ENVIRONMENT || ""),
+      Key: { eventIDYear, questionId: event.pathParameters.questionId },
+      UpdateExpression:
+        "SET upvotes = if_not_exists(upvotes, :zero) + :inc, updatedAt = :now ADD upvotedBy :voter",
+      ExpressionAttributeValues: {
+        ":zero": 0,
+        ":inc": 1,
+        ":now": new Date().toISOString(),
+        ":voter": new Set([email]),
+        ":email": email
+      },
+      ConditionExpression:
+        "attribute_exists(eventIDYear) AND (attribute_not_exists(upvotedBy) OR NOT contains(upvotedBy, :email))",
+      ReturnValues: "UPDATED_NEW" as const
+    });
+
+    return helpers.createResponse(200, {
+      message: "Upvoted.",
+      upvotes: (res as any).Attributes?.upvotes
+    });
+  } catch (err) {
+    if ((err as { type?: string })?.type === "ConditionalCheckFailedException")
+      return helpers.createResponse(409, {
+        message: "You have already upvoted this question."
+      });
+    return clientError(err);
+  }
+};
+
+// PATCH events/{id}/{year}/qa/{questionId}
+export const qaPatch: LambdaHandler = async (event) => {
+  try {
+    const email = event.requestContext?.authorizer?.claims?.email?.toLowerCase();
+    if (!email || !email.endsWith("@ubcbiztech.com"))
+      return helpers.createResponse(403, { message: "Admin access required." });
+
+    const { eventIDYear } = validateEventPath(event.pathParameters);
+    if (!event.pathParameters?.questionId)
+      throw helpers.missingPathParamResponse("qa question", "questionId");
+
+    const data = JSON.parse(event.body || "{}");
+    const { answer, isHidden, isPinned, body } = data;
+
+    if ([answer, isHidden, isPinned, body].every((value) => value === undefined)) {
+      throw helpers.inputError("No patchable fields provided");
+    }
+
+    const updates: QaPatchFields = { isHidden, isPinned };
+    if (answer !== undefined) updates.answer = validateAnswer(answer);
+    if (body !== undefined) updates.body = validateQuestionBody(body);
+
+    const now = new Date().toISOString();
+    const res = await db.updateDBCustom({
+      TableName: EVENT_QA_TABLE + (process.env.ENVIRONMENT || ""),
+      Key: { eventIDYear, questionId: event.pathParameters.questionId },
+      ...buildQaUpdateExpression({ updates, email, now }),
+      ConditionExpression: "attribute_exists(eventIDYear)",
+      ReturnValues: "ALL_NEW" as const
+    });
+
+    return helpers.createResponse(200, {
+      message: "Question updated.",
+      question: toPublicQuestion((res as any).Attributes || {})
+    });
+  } catch (err) {
+    if ((err as { type?: string })?.type === "ConditionalCheckFailedException")
+      return helpers.createResponse(404, { message: "Question not found." });
+    return clientError(err);
   }
 };
