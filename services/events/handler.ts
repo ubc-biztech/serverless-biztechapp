@@ -841,7 +841,7 @@ export const qaCreate: LambdaHandler = async (event) => {
     const now = new Date().toISOString();
     const questionId = uuidv4();
     const item = {
-      eventIDYear,
+      ["eventID;year"]: eventIDYear,
       questionId,
       body,
       isHidden: false,
@@ -872,12 +872,9 @@ export const qaGetAll: LambdaHandler = async (event) => {
       EVENT_QA_TABLE,
       null,
       {
-        expression: "eventIDYear = :pk",
+        expression: "#eventIDYear = :pk",
+        expressionNames: { "#eventIDYear": "eventID;year" },
         expressionValues: { ":pk": eventIDYear }
-      },
-      {
-        FilterExpression: "isHidden = :isHidden",
-        ExpressionAttributeValues: { ":isHidden": false }
       }
     );
 
@@ -910,9 +907,13 @@ export const qaUpvote: LambdaHandler = async (event) => {
     // upvotedBy is a set of voter emails; the condition makes upvotes idempotent per user.
     const res = await db.updateDBCustom({
       TableName: EVENT_QA_TABLE + (process.env.ENVIRONMENT || ""),
-      Key: { eventIDYear, questionId: event.pathParameters.questionId },
+      Key: {
+        ["eventID;year"]: eventIDYear,
+        questionId: event.pathParameters.questionId
+      },
       UpdateExpression:
         "SET upvotes = if_not_exists(upvotes, :zero) + :inc, updatedAt = :now ADD upvotedBy :voter",
+      ExpressionAttributeNames: { "#eventIDYear": "eventID;year" },
       ExpressionAttributeValues: {
         ":zero": 0,
         ":inc": 1,
@@ -921,7 +922,7 @@ export const qaUpvote: LambdaHandler = async (event) => {
         ":email": email
       },
       ConditionExpression:
-        "attribute_exists(eventIDYear) AND (attribute_not_exists(upvotedBy) OR NOT contains(upvotedBy, :email))",
+        "attribute_exists(#eventIDYear) AND (attribute_not_exists(upvotedBy) OR NOT contains(upvotedBy, :email))",
       ReturnValues: "UPDATED_NEW" as const
     });
 
@@ -961,11 +962,19 @@ export const qaPatch: LambdaHandler = async (event) => {
     if (body !== undefined) updates.body = validateQuestionBody(body);
 
     const now = new Date().toISOString();
+    const updateExpression = buildQaUpdateExpression({ updates, email, now });
     const res = await db.updateDBCustom({
       TableName: EVENT_QA_TABLE + (process.env.ENVIRONMENT || ""),
-      Key: { eventIDYear, questionId: event.pathParameters.questionId },
-      ...buildQaUpdateExpression({ updates, email, now }),
-      ConditionExpression: "attribute_exists(eventIDYear)",
+      Key: {
+        ["eventID;year"]: eventIDYear,
+        questionId: event.pathParameters.questionId
+      },
+      ...updateExpression,
+      ExpressionAttributeNames: {
+        ...updateExpression.ExpressionAttributeNames,
+        "#eventIDYear": "eventID;year"
+      },
+      ConditionExpression: "attribute_exists(#eventIDYear)",
       ReturnValues: "ALL_NEW" as const
     });
 
