@@ -129,7 +129,48 @@ const buildPartnerMembershipRecords = (partner, profileID, timestamp) => {
   };
 };
 
+const buildExistingPartnerProfileUpdate = (profile) => {
+  const updatedFields = {
+    profileID: profile.profileID,
+    fname: profile.fname,
+    lname: profile.lname,
+    profileType: profile.profileType,
+    updatedAt: profile.updatedAt
+  };
+
+  ["pronouns", "linkedIn", "company", "position"].forEach((field) => {
+    if (profile[field]) updatedFields[field] = profile[field];
+  });
+
+  const expressionAttributeNames = {
+    "#compositeID": "compositeID"
+  };
+  const expressionAttributeValues = {};
+  const updateExpressions = Object.entries(updatedFields).map(([field, value]) => {
+    expressionAttributeNames[`#${field}`] = field;
+    expressionAttributeValues[`:${field}`] = value;
+    return `#${field} = :${field}`;
+  });
+
+  return {
+    Update: {
+      TableName: PROFILES_TABLE,
+      Key: {
+        compositeID: profile.compositeID,
+        type: profile.type
+      },
+      UpdateExpression: `SET ${updateExpressions.join(", ")}`,
+      ExpressionAttributeNames: expressionAttributeNames,
+      ExpressionAttributeValues: expressionAttributeValues,
+      ConditionExpression:
+        "attribute_exists(#compositeID) AND (#profileID = :profileID OR attribute_not_exists(#profileID))"
+    }
+  };
+};
+
 const buildPartnerMembershipTransaction = (records, existingUser) => {
+  const hasExistingProfile =
+    !isEmpty(existingUser) && Boolean(existingUser.profileID);
   const userWrite = isEmpty(existingUser)
     ? {
       Put: {
@@ -162,7 +203,19 @@ const buildPartnerMembershipTransaction = (records, existingUser) => {
           ":profileID": records.user.profileID,
           ":updatedAt": records.user.updatedAt
         },
-        ConditionExpression: "attribute_exists(id)"
+        ConditionExpression: hasExistingProfile
+          ? "attribute_exists(id) AND #profileID = :profileID"
+          : "attribute_exists(id) AND attribute_not_exists(#profileID)"
+      }
+    };
+
+  const profileWrite = hasExistingProfile
+    ? buildExistingPartnerProfileUpdate(records.profile)
+    : {
+      Put: {
+        TableName: PROFILES_TABLE,
+        Item: records.profile,
+        ConditionExpression: "attribute_not_exists(compositeID)"
       }
     };
 
@@ -175,13 +228,7 @@ const buildPartnerMembershipTransaction = (records, existingUser) => {
         ConditionExpression: "attribute_not_exists(id)"
       }
     },
-    {
-      Put: {
-        TableName: PROFILES_TABLE,
-        Item: records.profile,
-        ConditionExpression: "attribute_not_exists(compositeID)"
-      }
-    }
+    profileWrite
   ];
 };
 
@@ -423,14 +470,17 @@ export const createPartnerMemberships = async (event, ctx, callback) => {
         };
       }
 
-      const profileID = humanId();
+      const existingUser = await db.getOne(partner.email, USERS_TABLE);
+      const profileID =
+        !isEmpty(existingUser) && existingUser.profileID
+          ? existingUser.profileID
+          : humanId();
       const timestamp = new Date().getTime();
       const records = buildPartnerMembershipRecords(
         partner,
         profileID,
         timestamp
       );
-      const existingUser = await db.getOne(partner.email, USERS_TABLE);
       const transactionItems = buildPartnerMembershipTransaction(
         records,
         existingUser

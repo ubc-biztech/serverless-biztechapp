@@ -223,6 +223,83 @@ describe("memberCreatePartnerMemberships", () => {
     expect(profileWrite.Put.Item.position).to.equal("Mathematician");
   });
 
+  it("reuses an existing user's profile when creating their membership", async () => {
+    const partnerEmail = "existing-partner@example.com";
+    const existingProfileID = "steady-otter";
+    let transactionItems = [];
+
+    ddbMock.on(GetCommand).callsFake((params) => {
+      if (
+        params.TableName.includes(USERS_TABLE) &&
+        params.Key.id === partnerEmail
+      ) {
+        return {
+          Item: {
+            id: partnerEmail,
+            profileID: existingProfileID
+          }
+        };
+      }
+
+      return {
+        Item: null
+      };
+    });
+
+    ddbMock.on(TransactWriteCommand).callsFake((params) => {
+      transactionItems = params.TransactItems;
+      return {};
+    });
+
+    const response = await wrapped.run(
+      buildEvent({
+        email: adminEmail,
+        body: {
+          partners: [
+            {
+              email: partnerEmail,
+              firstName: "Margaret",
+              lastName: "Hamilton",
+              company: "NASA",
+              position: "Software Engineer"
+            }
+          ]
+        }
+      })
+    );
+
+    expect(response.statusCode).to.equal(200);
+    const responseBody = JSON.parse(response.body);
+    expect(responseBody.results[0].status).to.equal("created");
+    expect(responseBody.results[0].profileID).to.equal(existingProfileID);
+
+    const userWrite = transactionItems.find((item) =>
+      item.Update && item.Update.TableName.includes(USERS_TABLE)
+    );
+    const profileWrite = transactionItems.find((item) =>
+      item.Update && item.Update.TableName.includes(PROFILES_TABLE)
+    );
+
+    expect(userWrite.Update.ExpressionAttributeValues[":profileID"]).to.equal(
+      existingProfileID
+    );
+    expect(userWrite.Update.ConditionExpression).to.equal(
+      "attribute_exists(id) AND #profileID = :profileID"
+    );
+    expect(profileWrite.Update.Key.compositeID).to.equal(
+      `PROFILE#${existingProfileID}`
+    );
+    expect(profileWrite.Update.ExpressionAttributeValues[":profileID"]).to.equal(
+      existingProfileID
+    );
+    expect(profileWrite.Update.ExpressionAttributeValues[":company"]).to.equal(
+      "NASA"
+    );
+    expect(profileWrite.Update.ExpressionAttributeValues).not.to.have.property(
+      ":linkedIn"
+    );
+  });
+
   it("marks partner rows as failed when the transaction write fails", async () => {
     const partnerEmail = "partner@example.com";
 
