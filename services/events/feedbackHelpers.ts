@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 import type {
   EventRecord,
   FeedbackFormType,
+  FeedbackGrid,
   FeedbackHelpers,
   FeedbackQuestion,
   FeedbackQuestionType,
@@ -22,6 +23,7 @@ const FEEDBACK_QUESTION_TYPES = new Set<FeedbackQuestionType>([
   "MULTIPLE_CHOICE",
   "CHECKBOXES",
   "LINEAR_SCALE",
+  "MULTIPLE_CHOICE_GRID",
 ]);
 
 const FORM_CONFIG: Record<
@@ -265,6 +267,66 @@ const appendScaleQuestionFields = (
   };
 };
 
+// Validate the grid definition once, before create/update persists it on the event.
+const normalizeGrid = (
+  rawGrid: unknown,
+  prefix: string,
+  questionIdSet: Set<string>,
+): ValidationFail | { isValid: true; grid: FeedbackGrid } => {
+  if (!rawGrid || typeof rawGrid !== "object" || Array.isArray(rawGrid)) {
+    return fail(`${prefix}.grid must contain rows and columns.`);
+  }
+  const { rows, columns } = rawGrid as Record<string, unknown>;
+  if (!Array.isArray(rows) || rows.length < 1 || rows.length > 20) {
+    return fail(`${prefix}.grid must have 1–20 rows.`);
+  }
+  if (!Array.isArray(columns) || columns.length < 1 || columns.length > 10) {
+    return fail(`${prefix}.grid must have 1–10 columns.`);
+  }
+
+  const normalizedColumns = columns.map(normalizeText);
+  if (normalizedColumns.some((label) => !label || label.length > 200)) {
+    return fail(`${prefix}.grid column labels must have 1–200 characters.`);
+  }
+  if (new Set(normalizedColumns).size !== normalizedColumns.length) {
+    return fail(`${prefix}.grid column labels must be unique.`);
+  }
+
+  const normalizedRows: FeedbackGrid["rows"] = [];
+  const rowLabels = new Set<string>();
+  for (const row of rows) {
+    if (!row || typeof row !== "object" || Array.isArray(row)) {
+      return fail(`${prefix}.grid rows must contain an id and label.`);
+    }
+    const id = normalizeText(row.id);
+    const label = normalizeText(row.label);
+    if (!/^[a-zA-Z0-9_-]{1,120}$/.test(id)) {
+      return fail(
+        `${prefix}.grid row ids must use 1–120 letters, digits, hyphens or underscores.`,
+      );
+    }
+    if (id === OVERALL_RATING_QUESTION_ID || questionIdSet.has(id)) {
+      return fail(
+        `${prefix}.grid row id '${id}' is already used in this form.`,
+      );
+    }
+    if (!label || label.length > 200) {
+      return fail(`${prefix}.grid row labels must have 1–200 characters.`);
+    }
+    if (rowLabels.has(label)) {
+      return fail(`${prefix}.grid row labels must be unique.`);
+    }
+    questionIdSet.add(id);
+    rowLabels.add(label);
+    normalizedRows.push({ id, label });
+  }
+
+  return {
+    isValid: true,
+    grid: { rows: normalizedRows, columns: normalizedColumns },
+  };
+};
+
 const normalizeSingleQuestion = (
   rawQuestion: unknown,
   index: number,
@@ -305,6 +367,12 @@ const normalizeSingleQuestion = (
       prefix,
     );
     if (isValidationFail(selectableResult)) return selectableResult;
+  }
+
+  if (question.type === "MULTIPLE_CHOICE_GRID") {
+    const gridResult = normalizeGrid(questionInput.grid, prefix, questionIdSet);
+    if (isValidationFail(gridResult)) return gridResult;
+    question.grid = gridResult.grid;
   }
 
   if (question.type === "LINEAR_SCALE") {
@@ -425,8 +493,8 @@ const validateTextResponse = (
 const validateMultipleChoiceResponse = (
   question: FeedbackQuestion,
   answer: unknown,
+  options = normalizeChoices(question.choices),
 ): ValidationFail | { isValid: true; hasValue: false } | { isValid: true; hasValue: true; value: string } => {
-  const options = normalizeChoices(question.choices);
   const text = normalizeText(answer);
 
   if (!text && question.required) {
@@ -577,6 +645,10 @@ const validateAnswerForQuestion = (
     return validateTextResponse(question, answer);
   }
 
+  if (question.type === "MULTIPLE_CHOICE_GRID") {
+    return validateMultipleChoiceResponse(question, answer, question.grid!.columns);
+  }
+
   if (question.type === "MULTIPLE_CHOICE") {
     return validateMultipleChoiceResponse(question, answer);
   }
@@ -596,12 +668,18 @@ const validateFeedbackPayload = (
   if (isValidationFail(shapeResult)) return shapeResult;
 
   const responses = (rawResponses as Record<string, unknown>) || {};
-  const unknownIdResult = validateNoUnknownQuestionIds(questions, responses);
+  // Expand only for answer validation; the persisted definition stays one grid object.
+  const answerFields = questions.flatMap((question) =>
+    question.type === "MULTIPLE_CHOICE_GRID"
+      ? question.grid!.rows.map((row) => ({ ...question, questionId: row.id }))
+      : [question],
+  );
+  const unknownIdResult = validateNoUnknownQuestionIds(answerFields, responses);
   if (isValidationFail(unknownIdResult)) return unknownIdResult;
 
   const normalized: Record<string, unknown> = {};
 
-  for (const question of questions) {
+  for (const question of answerFields) {
     const answer = responses[question.questionId];
     const answerResult = validateAnswerForQuestion(question, answer);
 
