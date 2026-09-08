@@ -245,13 +245,15 @@ export const getWallSnapshot = async (event, ctx, callback) => {
         nodeMap.set(from.id, {
           id: from.id,
           name: from.name ?? "",
-          avatar: from.avatar
+          avatar: from.avatar,
+          archetype: from.archetype
         });
       if (to?.id)
         nodeMap.set(to.id, {
           id: to.id,
           name: to.name ?? "",
-          avatar: to.avatar
+          avatar: to.avatar,
+          archetype: to.archetype
         });
 
       if (from?.id && to?.id) {
