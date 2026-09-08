@@ -21,7 +21,7 @@ provider:
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
-    WS_API_ENDPOINT: https://bn27jq3bal.execute-api.us-west-2.amazonaws.com/prod
+    WS_API_ENDPOINT: https://${self:custom.wsApiId}.execute-api.us-west-2.amazonaws.com/${self:custom.stage}
     ALGOLIA_APP_ID: ${env:ALGOLIA_APP_ID}
     ALGOLIA_API_KEY: ${env:ALGOLIA_API_KEY}
   timeout: 15 # in seconds
@@ -105,7 +105,7 @@ provider:
       Action:
         - execute-api:ManageConnections
       Resource:
-        - arn:aws:execute-api:${self:provider.region}:${aws:accountId}:bn27jq3bal/*/@connections/*
+        - arn:aws:execute-api:${self:provider.region}:${aws:accountId}:${self:custom.wsApiId}/*/@connections/*
 
 custom:
   prune:
@@ -119,6 +119,12 @@ custom:
     testTemplate: ../../lib/testTemplate.ejs
 
   stage: ${opt:stage, self:provider.stage}
+  # API Gateway WebSocket API ids per stage (the wall's live push channel).
+  # Must match WS_URL in bt-web-v2/src/lib/dbconfig.ts for the same stage.
+  wsApiIds:
+    prod: bn27jq3bal
+    dev: bwiujsprij
+  wsApiId: ${self:custom.wsApiIds.${self:custom.stage}, 'bn27jq3bal'}
   domains:
     prod: api.ubcbiztech.com
     staging: api-staging.ubcbiztech.com
