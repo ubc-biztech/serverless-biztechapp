@@ -247,7 +247,10 @@ async function main() {
     if (profileIdCounts.get(profileID) > 1) {
       stats.skippedDuplicateMemberProfileID++;
       if (samples.duplicateMemberProfileIDs.length < 10) {
-        samples.duplicateMemberProfileIDs.push({ email, profileID });
+        samples.duplicateMemberProfileIDs.push({
+          email,
+          profileID
+        });
       }
       continue;
     }
@@ -256,7 +259,10 @@ async function main() {
     if (!user) {
       stats.skippedMissingUser++;
       if (samples.missingUsers.length < 10) {
-        samples.missingUsers.push({ email, profileID });
+        samples.missingUsers.push({
+          email,
+          profileID
+        });
       }
       continue;
     }

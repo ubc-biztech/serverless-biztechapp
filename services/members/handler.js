@@ -568,7 +568,8 @@ export const grantMembership = async (event, ctx, callback) => {
     if (userWithProfile && userWithProfile.profileID) {
       await updateProfileFromMembershipData(
         userWithProfile.profileID,
-        memberDataForProfile
+        memberDataForProfile,
+        isBiztechAdmin ? PROFILE_TYPES.EXEC : PROFILE_TYPES.ATTENDEE
       );
     } else {
       await createProfile(

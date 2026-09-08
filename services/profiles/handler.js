@@ -142,7 +142,11 @@ export const create = async (event) => {
       ? PROFILE_TYPES.EXEC
       : PROFILE_TYPES.ATTENDEE;
     if (user?.profileID) {
-      await updateProfileFromMembershipData(user.profileID, profileData);
+      await updateProfileFromMembershipData(
+        user.profileID,
+        profileData,
+        profileType
+      );
       await db.updateDB(
         email,
         {
