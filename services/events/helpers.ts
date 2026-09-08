@@ -93,6 +93,13 @@ export function toPublicQuestion(question: Record<string, any>): Record<string, 
   const publicQuestion = { ...question };
   for (const field of PRIVATE_QA_FIELDS) delete publicQuestion[field];
 
+  // Keep the API response stable while the table uses the repository's
+  // conventional DynamoDB attribute name for the composite event/year key.
+  if (typeof publicQuestion["eventID;year"] === "string") {
+    publicQuestion.eventIDYear = publicQuestion["eventID;year"];
+    delete publicQuestion["eventID;year"];
+  }
+
   // The UI credits whoever answered, so send the name but never the address.
   if (typeof publicQuestion.answeredBy === "string") {
     publicQuestion.answeredBy = publicQuestion.answeredBy.split("@")[0];
