@@ -3,10 +3,59 @@ import {
   MEMBERS_TABLE,
   PROFILES_TABLE,
   USERS_TABLE
-} from "../../constants/tables";
-import db from "../../lib/db";
-import helpers from "../../lib/handlerHelpers";
-import { MUTABLE_PROFILE_ATTRIBUTES, TYPES } from "./constants";
+} from "../../constants/tables.js";
+import db from "../../lib/db.js";
+import helpers from "../../lib/handlerHelpers.js";
+import { MUTABLE_PROFILE_ATTRIBUTES, TYPES } from "./constants.js";
+
+const PROFILE_VIEWABLE_MAP = {
+  fname: true,
+  lname: true,
+  pronouns: true,
+  major: true,
+  year: true,
+  profileType: true,
+  hobby1: false,
+  hobby2: false,
+  funQuestion1: false,
+  funQuestion2: false,
+  linkedIn: true,
+  profilePictureURL: true,
+  additionalLink: true,
+  resumeURL: false,
+  description: true,
+  company: true,
+  position: true
+};
+
+const buildProfileItem = (
+  profileID,
+  profileType,
+  memberData,
+  timestamp = Date.now()
+) => ({
+  compositeID: `PROFILE#${profileID}`,
+  type: TYPES.PROFILE,
+  profileID,
+  fname: memberData.firstName,
+  lname: memberData.lastName,
+  pronouns: memberData.pronouns || "",
+  major: memberData.major,
+  year: memberData.year,
+  hobby1: "",
+  hobby2: "",
+  funQuestion1: "",
+  funQuestion2: "",
+  linkedIn: memberData.linkedIn || "",
+  profilePictureURL: "",
+  additionalLink: "",
+  resumeURL: "",
+  description: "",
+  createdAt: timestamp,
+  updatedAt: timestamp,
+  profileType,
+  viewableMap: PROFILE_VIEWABLE_MAP
+});
 
 export async function createProfile(email, profileType, onboardingData = null) {
   const [memberData, userData] = await Promise.all([
@@ -31,51 +80,14 @@ export async function createProfile(email, profileType, onboardingData = null) {
   // Generate profileID
   const profileID = humanId();
 
-  const viewableMap = {
-    fname: true,
-    lname: true,
-    pronouns: true,
-    major: true,
-    year: true,
-    profileType: true,
-    hobby1: false,
-    hobby2: false,
-    funQuestion1: false,
-    funQuestion2: false,
-    linkedIn: true,
-    profilePictureURL: true,
-    additionalLink: true,
-    resumeURL: false,
-    description: true,
-    company: true,
-    position: true
-  };
-
   // Map registration data to profile schema
   const timestamp = new Date().getTime();
-  const profile = {
-    compositeID: `PROFILE#${profileID}`,
-    type: TYPES.PROFILE,
+  const profile = buildProfileItem(
     profileID,
-    fname: memberData.firstName,
-    lname: memberData.lastName,
-    pronouns: memberData.pronouns || "",
-    major: memberData.major,
-    year: memberData.year,
-    hobby1: "",
-    hobby2: "",
-    funQuestion1: "",
-    funQuestion2: "",
-    linkedIn: memberData.linkedIn || "",
-    profilePictureURL: "",
-    additionalLink: "",
-    resumeURL: "",
-    description: "",
-    createdAt: timestamp,
-    updatedAt: timestamp,
     profileType,
-    viewableMap
-  };
+    memberData,
+    timestamp
+  );
 
   const updateParams = {
     UpdateExpression: "set profileID = :profileID, updatedAt = :updatedAt",
@@ -114,9 +126,75 @@ export async function createProfile(email, profileType, onboardingData = null) {
   return response;
 }
 
-export async function updateProfileFromMembershipData(profileID, memberData) {
-  const updateData = {};
+export function buildProfileUpsertParams(
+  profileID,
+  memberData,
+  profileType,
+  timestamp = Date.now()
+) {
+  // Some migrated users have a profileID but no corresponding profile row.
+  // Preserve customized fields on existing profiles while supplying a complete
+  // default record when DynamoDB creates the missing item during this update.
+  const profile = buildProfileItem(
+    profileID,
+    profileType,
+    memberData,
+    timestamp
+  );
+  // Only fields the caller actually supplied overwrite an existing profile.
+  // buildProfileItem defaults absent pronouns/linkedIn to "", so checking the
+  // built item alone would clobber existing values (e.g. on membership grant).
+  const profileKeyToSource = {
+    fname: "firstName",
+    lname: "lastName",
+    pronouns: "pronouns",
+    major: "major",
+    year: "year",
+    linkedIn: "linkedIn"
+  };
+  const updateExpressions = [];
+  const expressionAttributeNames = {};
+  const expressionAttributeValues = {};
 
+  Object.entries(profile).forEach(([key, value]) => {
+    if (key === "compositeID" || key === "type" || value === undefined) return;
+
+    const sourceKey = profileKeyToSource[key];
+    const wasProvided =
+      key === "updatedAt" ||
+      (sourceKey !== undefined && memberData[sourceKey] !== undefined);
+
+    const nameKey = `#${key}`;
+    const valueKey = `:${key}`;
+    expressionAttributeNames[nameKey] = key;
+    expressionAttributeValues[valueKey] = value;
+    updateExpressions.push(
+      wasProvided
+        ? `${nameKey} = ${valueKey}`
+        : `${nameKey} = if_not_exists(${nameKey}, ${valueKey})`
+    );
+  });
+
+  return {
+    Key: {
+      compositeID: `PROFILE#${profileID}`,
+      type: TYPES.PROFILE
+    },
+    TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
+    UpdateExpression: `SET ${updateExpressions.join(", ")}`,
+    ExpressionAttributeNames: expressionAttributeNames,
+    ExpressionAttributeValues: expressionAttributeValues,
+    ReturnValues: "ALL_NEW",
+    ConditionExpression:
+      "attribute_not_exists(#profileID) OR #profileID = :profileID"
+  };
+}
+
+export async function updateProfileFromMembershipData(
+  profileID,
+  memberData,
+  profileType
+) {
   const profileFields = {
     firstName: "fname",
     lastName: "lname",
@@ -126,44 +204,16 @@ export async function updateProfileFromMembershipData(profileID, memberData) {
     linkedIn: "linkedIn"
   };
 
-  Object.entries(profileFields).forEach(([sourceKey, profileKey]) => {
+  const normalizedMemberData = {};
+  Object.keys(profileFields).forEach((sourceKey) => {
     if (memberData[sourceKey] !== undefined && memberData[sourceKey] !== null) {
-      updateData[profileKey] = memberData[sourceKey];
+      normalizedMemberData[sourceKey] = memberData[sourceKey];
     }
   });
 
-  if (Object.keys(updateData).length === 0) {
-    return null;
-  }
-
-  const updateExpressions = ["#updatedAt = :updatedAt"];
-  const expressionAttributeNames = {
-    "#updatedAt": "updatedAt",
-    "#type": "type"
-  };
-  const expressionAttributeValues = {
-    ":updatedAt": Date.now()
-  };
-
-  Object.entries(updateData).forEach(([key, value]) => {
-    expressionAttributeNames[`#${key}`] = key;
-    expressionAttributeValues[`:${key}`] = value;
-    updateExpressions.push(`#${key} = :${key}`);
-  });
-
-  return db.updateDBCustom({
-    Key: {
-      compositeID: `PROFILE#${profileID}`,
-      type: TYPES.PROFILE
-    },
-    TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
-    UpdateExpression: `SET ${updateExpressions.join(", ")}`,
-    ExpressionAttributeNames: expressionAttributeNames,
-    ExpressionAttributeValues: expressionAttributeValues,
-    ReturnValues: "UPDATED_NEW",
-    ConditionExpression:
-      "attribute_exists(compositeID) AND attribute_exists(#type)"
-  });
+  return db.updateDBCustom(
+    buildProfileUpsertParams(profileID, normalizedMemberData, profileType)
+  );
 }
 
 export function filterPublicProfileFields(profile) {
