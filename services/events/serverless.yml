@@ -314,18 +314,3 @@ resources:
                 KeyType: RANGE
             Projection:
               ProjectionType: ALL
-    BiztechEventQA:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: biztechEventQA${self:provider.environment.ENVIRONMENT}
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: eventID;year
-            AttributeType: S
-          - AttributeName: questionId
-            AttributeType: S
-        KeySchema:
-          - AttributeName: eventID;year
-            KeyType: HASH
-          - AttributeName: questionId
-            KeyType: RANGE
