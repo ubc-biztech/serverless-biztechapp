@@ -30,7 +30,11 @@ import {
 
 const WS_TABLE = `bizWallSockets${process.env.ENVIRONMENT || ""}`;
 const LIVE_TABLE = `bizLiveConnections${process.env.ENVIRONMENT || ""}`;
-const WS_ENDPOINT = process.env.WS_API_ENDPOINT;
+// serverless-offline sets IS_OFFLINE; broadcast to its local websocket server
+// (custom.serverless-offline.websocketPort) instead of the deployed API.
+const WS_ENDPOINT = process.env.IS_OFFLINE
+  ? "http://localhost:3002"
+  : process.env.WS_API_ENDPOINT;
 
 export const handleConnection = async (userID, connProfileID, timestamp) => {
   const userData = await db.getOne(userID, USERS_TABLE);
@@ -199,7 +203,8 @@ export const handleConnection = async (userID, connProfileID, timestamp) => {
           ? connProfile.profilePictureURL
           : userProfile.profilePictureURL,
         major: swap ? connProfile.major : userProfile.major,
-        year: swap ? connProfile.year : userProfile.year
+        year: swap ? connProfile.year : userProfile.year,
+        archetype: swap ? connProfile.archetype : userProfile.archetype
       };
 
       const toNode = {
@@ -211,7 +216,8 @@ export const handleConnection = async (userID, connProfileID, timestamp) => {
           ? userProfile.profilePictureURL
           : connProfile.profilePictureURL,
         major: swap ? userProfile.major : connProfile.major,
-        year: swap ? userProfile.year : connProfile.year
+        year: swap ? userProfile.year : connProfile.year,
+        archetype: swap ? userProfile.archetype : connProfile.archetype
       };
 
       console.log("[WALL] new connection", {
@@ -520,7 +526,8 @@ export async function postToConnection(connectionId, payload) {
     });
   } catch (err) {
     console.error("[WS] postToConnection error", err);
-    if (err.statusCode === 410) {
+    const status = err?.statusCode || err?.$metadata?.httpStatusCode;
+    if (status === 410) {
       await removeSocketConnection({
         connectionId
       });

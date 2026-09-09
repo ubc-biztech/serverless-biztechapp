@@ -1,4 +1,8 @@
-export const CURRENT_EVENT = "blueprint-2026";
+// Event that new connections are stamped with for the live wall.
+// Uses the same `eventID;year` key as the events/registrations tables.
+// Prod and dev have different event records for MIS Night 2026.
+export const CURRENT_EVENT =
+  process.env.ENVIRONMENT === "PROD" ? "MISNight;2026" : "MIS_Night_2026;2026";
 
 export const EXEC = "Exec";
 export const PARTNER = "Partner";
