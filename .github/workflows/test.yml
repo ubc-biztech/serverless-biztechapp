@@ -11,7 +11,17 @@ jobs:
       SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
       ESBUILD_BINARY_PATH: ${{ github.workspace }}/node_modules/@esbuild/linux-x64/bin/esbuild
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2      # @ubc-biztech/sdk is a git dependency. If that repo is private, CI needs a token that can
+      # read it (a fine-grained PAT with Contents: read on ubc-biztech/sdk, stored as SDK_READ_TOKEN).
+      # If the sdk repo is public this step is a no-op.
+      - name: Allow npm to fetch @ubc-biztech/sdk
+        if: env.SDK_READ_TOKEN != ''
+        env:
+          SDK_READ_TOKEN: ${{ secrets.SDK_READ_TOKEN }}
+        run: |
+          git config --global url."https://x-access-token:${SDK_READ_TOKEN}@github.com/".insteadOf "https://github.com/"
+          git config --global --add url."https://x-access-token:${SDK_READ_TOKEN}@github.com/".insteadOf "ssh://git@github.com/"
+
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
@@ -37,6 +47,7 @@ jobs:
       - name: "Run Serverless Package Deployable Check"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          JUDGING_BOOTSTRAP_CODE: ${{ secrets.JUDGING_BOOTSTRAP_CODE }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           DISCORD_APPLICATION_ID: ${{ secrets.DISCORD_APPLICATION_ID }}
           DISCORD_PUBLIC_KEY: ${{ secrets.DISCORD_PUBLIC_KEY }}
@@ -80,6 +91,7 @@ jobs:
         if: github.base_ref == 'refs/heads/master'
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          JUDGING_BOOTSTRAP_CODE: ${{ secrets.JUDGING_BOOTSTRAP_CODE }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           DISCORD_APPLICATION_ID: ${{ secrets.DISCORD_APPLICATION_ID }}
           DISCORD_PUBLIC_KEY: ${{ secrets.DISCORD_PUBLIC_KEY }}

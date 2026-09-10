@@ -21,6 +21,7 @@
     "@aws-sdk/s3-request-presigner": "^3.965.0",
     "@sendgrid/mail": "^7.4.0",
     "@types/express": "^5.0.0",
+    "@ubc-biztech/sdk": "git+https://github.com/ubc-biztech/sdk.git#92ea1d0",
     "algoliasearch": "^5.46.2",
     "concurrently": "^6.2.0",
     "copy-dynamodb-table": "^2.2.1",
@@ -43,10 +44,12 @@
     "serverless-apigateway-plugin": "^0.0.6",
     "serverless-esbuild": "1.57.0",
     "stripe": "^8.160.0",
+    "tsx": "^4.23.13",
     "tweetnacl": "^1.0.3",
     "uuid": "^8.3.1",
     "ws": "^8.16.0",
-    "yaml": "^1.10.2"
+    "yaml": "^1.10.2",
+    "zod": "^4.6.2"
   },
   "scripts": {
     "lint": "eslint . --fix",

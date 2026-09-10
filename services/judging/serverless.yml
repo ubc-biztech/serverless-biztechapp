@@ -1,0 +1,78 @@
+service: biztechApi-judging
+org: ianmh
+app: biztechapp
+
+frameworkVersion: "^4.0.0"
+
+build:
+  esbuild: false
+
+plugins:
+  - serverless-dynamodb
+  - serverless-offline
+  - serverless-domain-manager
+  - serverless-esbuild
+  - serverless-mocha-plugin
+
+# The judging service is GENERATED from the ontology in ubc-biztech/sdk: its routes, auth
+# rules, validation and error mapping come from @ubc-biztech/sdk/server/judging. This
+# directory contains only the business logic (impl.ts) and storage (store.ts).
+# Adding an endpoint = declaring it in the sdk, then implementing the new Impl method here.
+
+provider:
+  name: aws
+  stage: ${file(../../serverless.common.yml):provider.stage}
+  runtime: ${file(../../serverless.common.yml):provider.runtime}
+  region: ${file(../../serverless.common.yml):provider.region}
+  environment:
+    ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
+    NODE_ENV: ${env:NODE_ENV}
+    JUDGING_TABLE: biztechJudging${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
+    # Organizer bootstrap code. Grants judgingAdmin for every event on this stage, so the
+    # first `settings.set` for a new event is possible. Set per stage in the deploy workflow's
+    # env; leave unset to disable bootstrap (then only judge codes with isAdmin work).
+    JUDGING_BOOTSTRAP_CODE: ${env:JUDGING_BOOTSTRAP_CODE, ''}
+
+  apiGateway:
+    restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
+    restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
+
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:DeleteItem
+        - dynamodb:Query
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechJudging${self:provider.environment.ENVIRONMENT}"
+
+custom: ${file(../../serverless.common.yml):custom}
+
+functions:
+  # One function, one proxy route. The generated router dispatches on method + path.
+  api:
+    handler: handler.api
+    events:
+      - http:
+          path: judging/{proxy+}
+          method: any
+          cors: true
+
+resources:
+  Resources:
+    BiztechJudging:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: biztechJudging${self:provider.environment.ENVIRONMENT}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: pk
+            AttributeType: S
+          - AttributeName: sk
+            AttributeType: S
+        KeySchema:
+          - AttributeName: pk
+            KeyType: HASH
+          - AttributeName: sk
+            KeyType: RANGE
