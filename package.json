@@ -21,7 +21,7 @@
     "@aws-sdk/s3-request-presigner": "^3.965.0",
     "@sendgrid/mail": "^7.4.0",
     "@types/express": "^5.0.0",
-    "@ubc-biztech/sdk": "git+https://github.com/ubc-biztech/sdk.git#92ea1d0",
+    "@ubc-biztech/sdk": "git+https://github.com/ubc-biztech/sdk.git#325be3d",
     "algoliasearch": "^5.46.2",
     "concurrently": "^6.2.0",
     "copy-dynamodb-table": "^2.2.1",

@@ -37,7 +37,7 @@ let teamY: { id: string; code: string };
 
 describe("judging service", () => {
   before(async () => {
-    await ok("PUT", `${E}/settings`, { token: BOOT, body: { eventName: "HelloHacks 2027", phase: "setup", perTeamJudges: 2, finalsTopN: 2, finalsTeamIds: [], finalsJudgeIds: [], resultsPublic: false } });
+    await ok("PUT", `${E}/settings`, { token: BOOT, body: { eventName: "HelloHacks 2027", phase: "submission", perTeamJudges: 2, finalsTopN: 2, finalsTeamIds: [], finalsJudgeIds: [], showTeamFeedback: false, allowJudgeSeeOthers: true, anonymizeTeams: false, lockSubmissions: false, maxImages: 10 } });
     await ok("PUT", `${E}/rubric`, { token: BOOT, body: { name: "Official", scaleMax: 5, scoreMode: "weighted", criteria: [{ id: "design", label: "Design", weight: 1 }, { id: "impact", label: "Impact", weight: 2 }] } });
     judgeA = await ok("POST", `${E}/judges`, { token: BOOT, body: { name: "Ada" } });
     judgeB = await ok("POST", `${E}/judges`, { token: BOOT, body: { name: "Bob" } });
@@ -72,11 +72,26 @@ describe("judging service", () => {
     assert.equal((await call("GET", `${E}/teams`)).status, 401);
   });
 
-  test("a team may edit only itself", async () => {
+  test("a team may edit only itself, only during submission, within the image cap", async () => {
     const r = await call("PUT", `${E}/teams/${teamX.id}`, { token: teamX.code, body: { name: "X!", members: ["x1"], github: "https://g" } });
     assert.equal(r.status, 200);
     assert.equal(r.body.github, "https://g");
     assert.equal((await call("PUT", `${E}/teams/${teamY.id}`, { token: teamX.code, body: { name: "hack", members: [] } })).status, 403);
+    const tooMany = await call("PUT", `${E}/teams/${teamX.id}`, { token: teamX.code, body: { name: "X!", members: ["x1"], imageUrls: Array(11).fill("https://i") } });
+    assert.equal(tooMany.body.error, "SubmissionsLocked");
+  });
+
+  test("judges see only their own reviews when allowJudgeSeeOthers is off", async () => {
+    // phase is still submission here; flip to prelim with visibility off, submit as A, read as B.
+    await ok("PUT", `${E}/settings`, { token: BOOT, body: { eventName: "HelloHacks 2027", phase: "prelim", perTeamJudges: 2, finalsTopN: 2, finalsTeamIds: [], finalsJudgeIds: [], showTeamFeedback: false, allowJudgeSeeOthers: false, anonymizeTeams: false, lockSubmissions: false, maxImages: 10 } });
+    await ok("POST", `${E}/reviews`, { token: judgeA.code, body: { teamId: teamY.id, scores: { design: 1, impact: 1 } } });
+    assert.equal((await ok("GET", `${E}/reviews`, { token: judgeB.code })).length, 0);
+    assert.equal((await ok("GET", `${E}/reviews`, { token: judgeA.code })).length, 1);
+    assert.equal((await call("GET", `${E}/reviews`, { token: judgeB.code, query: { judgeId: judgeA.id } })).status, 403);
+    // and once submissions have closed, the team can no longer edit itself
+    assert.equal((await call("PUT", `${E}/teams/${teamX.id}`, { token: teamX.code, body: { name: "late", members: [] } })).body.error, "SubmissionsLocked");
+    await ok("DELETE", `${E}/reviews/prelim__${teamY.id}__${judgeA.id}`, { token: BOOT });
+    await ok("PUT", `${E}/settings`, { token: BOOT, body: { eventName: "HelloHacks 2027", phase: "submission", perTeamJudges: 2, finalsTopN: 2, finalsTeamIds: [], finalsJudgeIds: [], showTeamFeedback: false, allowJudgeSeeOthers: true, anonymizeTeams: false, lockSubmissions: false, maxImages: 10 } });
   });
 
   test("autoAssign round-robins teams across non-admin judges", async () => {
@@ -89,7 +104,7 @@ describe("judging service", () => {
 
   test("submit is refused while phase is setup, validated against the rubric, computes totals, and replaces on resubmit", async () => {
     assert.equal((await call("POST", `${E}/reviews`, { token: judgeA.code, body: { teamId: teamX.id, scores: { design: 5, impact: 4 } } })).body.error, "PhaseClosed");
-    await ok("PUT", `${E}/settings`, { token: BOOT, body: { eventName: "HelloHacks 2027", phase: "prelim", perTeamJudges: 2, finalsTopN: 2, finalsTeamIds: [], finalsJudgeIds: [], resultsPublic: false } });
+    await ok("PUT", `${E}/settings`, { token: BOOT, body: { eventName: "HelloHacks 2027", phase: "prelim", perTeamJudges: 2, finalsTopN: 2, finalsTeamIds: [], finalsJudgeIds: [], showTeamFeedback: false, allowJudgeSeeOthers: true, anonymizeTeams: false, lockSubmissions: false, maxImages: 10 } });
     const bad = await call("POST", `${E}/reviews`, { token: judgeA.code, body: { teamId: teamX.id, scores: { design: 5 } } });
     assert.equal(bad.body.error, "InvalidScores");
     assert.equal((await call("POST", `${E}/reviews`, { token: judgeA.code, body: { teamId: teamX.id, scores: { design: 9, impact: 4 } } })).body.error, "InvalidScores");
@@ -106,14 +121,15 @@ describe("judging service", () => {
 
   test("teams see their own reviews only when results are public", async () => {
     assert.equal((await call("GET", `${E}/reviews`, { token: teamX.code, query: { teamId: teamX.id } })).status, 403);
-    await ok("PUT", `${E}/settings`, { token: BOOT, body: { eventName: "HelloHacks 2027", phase: "prelim", perTeamJudges: 2, finalsTopN: 2, finalsTeamIds: [], finalsJudgeIds: [], resultsPublic: true } });
+    await ok("PUT", `${E}/settings`, { token: BOOT, body: { eventName: "HelloHacks 2027", phase: "prelim", perTeamJudges: 2, finalsTopN: 2, finalsTeamIds: [], finalsJudgeIds: [], showTeamFeedback: true, allowJudgeSeeOthers: true, anonymizeTeams: false, lockSubmissions: false, maxImages: 10 } });
     assert.equal((await ok("GET", `${E}/reviews`, { token: teamX.code, query: { teamId: teamX.id } })).length, 1);
     assert.equal((await call("GET", `${E}/reviews`, { token: teamX.code, query: { teamId: teamY.id } })).status, 403);
-    assert.equal((await call("GET", `${E}/reviews`, { token: teamX.code })).status, 403);
+    const unfiltered = await ok("GET", `${E}/reviews`, { token: teamX.code });
+    assert.ok(unfiltered.every((r: any) => r.teamId === teamX.id), "a team asking for everything gets only its own rows");
   });
 
   test("finals: only finals judges may score finalist teams", async () => {
-    await ok("PUT", `${E}/settings`, { token: BOOT, body: { eventName: "HelloHacks 2027", phase: "finals", perTeamJudges: 2, finalsTopN: 1, finalsTeamIds: [teamX.id], finalsJudgeIds: [judgeB.id], resultsPublic: true } });
+    await ok("PUT", `${E}/settings`, { token: BOOT, body: { eventName: "HelloHacks 2027", phase: "finals", perTeamJudges: 2, finalsTopN: 1, finalsTeamIds: [teamX.id], finalsJudgeIds: [judgeB.id], showTeamFeedback: true, allowJudgeSeeOthers: true, anonymizeTeams: false, lockSubmissions: false, maxImages: 10 } });
     assert.equal((await call("POST", `${E}/reviews`, { token: judgeA.code, body: { teamId: teamX.id, scores: { design: 1, impact: 1 } } })).body.error, "PhaseClosed");
     assert.equal((await call("POST", `${E}/reviews`, { token: judgeB.code, body: { teamId: teamY.id, scores: { design: 1, impact: 1 } } })).body.error, "PhaseClosed");
     const f = await ok("POST", `${E}/reviews`, { token: judgeB.code, body: { teamId: teamX.id, scores: { design: 5, impact: 5 } } });

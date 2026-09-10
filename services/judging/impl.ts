@@ -148,7 +148,13 @@ export class JudgingImpl implements Impl {
   async teamUpdate(ctx: C, input: Scope & { id: string } & Omit<JudgingTeam, "id" | "code" | "createdAt" | "imageUrls"> & { imageUrls?: string[] }): Promise<JudgingTeam> {
     const existing = await this.team(ctx, input.id);
     const p = ctx.principal!;
-    if (!isAdmin(ctx) && !(p.role === "judgingCode" && p.id === input.id)) throw new ActionError("Forbidden", "Only the team itself or an organizer may edit a team.");
+    if (!isAdmin(ctx)) {
+      if (!(p.role === "judgingCode" && p.id === input.id)) throw new ActionError("Forbidden", "Only the team itself or an organizer may edit a team.");
+      const settings = await this.store.get(pk(ctx.scope), "SETTINGS");
+      if (settings?.phase !== "submission" || settings?.lockSubmissions) throw new ActionError("SubmissionsLocked", "Submissions are closed.");
+      const max = Number(settings?.maxImages ?? 10);
+      if ((input.imageUrls?.length ?? 0) > max) throw new ActionError("SubmissionsLocked", `At most ${max} images.`);
+    }
     const { eventID: _e, year: _y, id: _i, ...fields } = input;
     const item: Item = { ...existing, ...fields, imageUrls: fields.imageUrls ?? [] };
     await this.store.put(item);
@@ -225,19 +231,31 @@ export class JudgingImpl implements Impl {
 
   // ─── Reviews ───────────────────────────────────────────────────────
 
-  private async canSeeReviews(ctx: C, teamId: string | undefined) {
+  /**
+   * Row-level visibility. Returns a filter for the caller: admins see all; judges see all when
+   * `allowJudgeSeeOthers`, else their own; a team sees its own team's reviews when `showTeamFeedback`.
+   * Throws Forbidden when the caller asked for something outside that.
+   */
+  private async reviewFilter(ctx: C, asked: { teamId?: string; judgeId?: string }): Promise<(r: Review) => boolean> {
     const p = ctx.principal!;
-    if (p.role !== "judgingCode") return; // judges and admins see everything
+    if (isAdmin(ctx)) return () => true;
     const settings = await this.store.get(pk(ctx.scope), "SETTINGS");
-    if (!settings?.resultsPublic) throw new ActionError("Forbidden", "Results are not public yet.");
-    if (teamId !== p.id) throw new ActionError("Forbidden", "A team may only see its own reviews.");
+    if (p.role === "judge") {
+      if (settings?.allowJudgeSeeOthers !== false) return () => true;
+      if (asked.judgeId && asked.judgeId !== p.id) throw new ActionError("Forbidden", "Judges may only see their own reviews for this event.");
+      return (r) => r.judgeId === p.id;
+    }
+    if (!settings?.showTeamFeedback) throw new ActionError("Forbidden", "Results are not public yet.");
+    if (asked.teamId && asked.teamId !== p.id) throw new ActionError("Forbidden", "A team may only see its own reviews.");
+    return (r) => r.teamId === p.id;
   }
 
   async reviewsList(ctx: C, input: Scope & { round?: Round; teamId?: string; judgeId?: string }): Promise<Review[]> {
-    await this.canSeeReviews(ctx, input.teamId);
+    const visible = await this.reviewFilter(ctx, input);
     const items = await this.store.list(pk(ctx.scope), "REVIEW#");
     return items
       .map((i) => strip<Review>(i))
+      .filter(visible)
       .filter((r) => (!input.round || r.round === input.round) && (!input.teamId || r.teamId === input.teamId) && (!input.judgeId || r.judgeId === input.judgeId))
       .sort((a, b) => b.completedAt.localeCompare(a.completedAt));
   }
@@ -245,7 +263,7 @@ export class JudgingImpl implements Impl {
   async reviewsSubmit(ctx: C, input: Scope & { teamId: string; scores: Record<string, number>; feedback?: string }): Promise<Review> {
     const p = ctx.principal!;
     const settings = await this.store.get(pk(ctx.scope), "SETTINGS");
-    const phase = String(settings?.phase ?? "setup");
+    const phase = String(settings?.phase ?? "submission");
     if (phase !== "prelim" && phase !== "finals") throw new ActionError("PhaseClosed", `Judging is not open (phase is "${phase}").`);
     const round = phase as Round;
     await this.team(ctx, input.teamId);
@@ -281,8 +299,10 @@ export class JudgingImpl implements Impl {
   async reviewGet(ctx: C, input: { id: string }): Promise<Review> {
     const r = await this.store.get(pk(ctx.scope), `REVIEW#${input.id}`);
     if (!r) throw new ActionError("ReviewNotFound", `No review ${input.id}.`);
-    await this.canSeeReviews(ctx, String(r.teamId));
-    return strip<Review>(r);
+    const review = strip<Review>(r);
+    const visible = await this.reviewFilter(ctx, { teamId: review.teamId, judgeId: review.judgeId });
+    if (!visible(review)) throw new ActionError("Forbidden", "Not visible to this caller.");
+    return review;
   }
 
   async reviewDelete(ctx: C, input: { id: string }) {
