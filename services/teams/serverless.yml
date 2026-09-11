@@ -22,6 +22,8 @@ provider:
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
+    # Organizer code for hackathon judging, valid for every event on the stage (handlerJudging.ts)
+    JUDGING_BOOTSTRAP_CODE: ${env:JUDGING_BOOTSTRAP_CODE, ''}
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
     restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
@@ -232,5 +234,42 @@ functions:
             parameters:
               paths:
                 round: true
+          method: put
+          cors: true
+
+  # ─── Hackathon judging (bt-judging): handlerJudging.ts ───────────────────
+  judgingGet:
+    handler: handlerJudging.judgingGet
+    events:
+      - http:
+          path: judging/{eventID}/{year}
+          method: get
+          cors: true
+  judgingPut:
+    handler: handlerJudging.judgingPut
+    events:
+      - http:
+          path: judging/{eventID}/{year}
+          method: put
+          cors: true
+  judgingPutTeam:
+    handler: handlerJudging.judgingPutTeam
+    events:
+      - http:
+          path: judging/{eventID}/{year}/teams/{id}
+          method: put
+          cors: true
+  judgingGetReviews:
+    handler: handlerJudging.judgingGetReviews
+    events:
+      - http:
+          path: judging/{eventID}/{year}/reviews
+          method: get
+          cors: true
+  judgingPutReview:
+    handler: handlerJudging.judgingPutReview
+    events:
+      - http:
+          path: judging/{eventID}/{year}/reviews/{teamId}
           method: put
           cors: true
