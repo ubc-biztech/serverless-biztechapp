@@ -87,12 +87,12 @@ const validateOnboardingData = (data) => {
   }
 
   if (
-    data.education === "UBC" &&
+    data.studentNumber !== undefined &&
     (typeof data.studentNumber !== "string" ||
-      !/^\d{8}$/.test(data.studentNumber))
+      !/^\d{0,8}$/.test(data.studentNumber))
   ) {
     throw helpers.inputError(
-      "Student number must be an 8 digit number for UBC students",
+      "Student number must contain up to 8 digits, or be left empty",
       data.studentNumber
     );
   }
@@ -106,13 +106,18 @@ export const create = async (event) => {
   try {
     const email = event.requestContext.authorizer.claims.email.toLowerCase();
     const data = JSON.parse(event.body || "{}");
+    if (typeof data.studentNumber === "string") {
+      data.studentNumber = data.studentNumber.trim();
+    }
     validateOnboardingData(data);
 
     const updateResult = await db.updateDB(
       email,
       {
         education: data.education,
-        studentId: data.studentNumber,
+        ...(data.studentNumber !== undefined
+          ? { studentId: data.studentNumber }
+          : {}),
         fname: data.firstName,
         lname: data.lastName,
         faculty: data.faculty,
