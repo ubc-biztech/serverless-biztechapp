@@ -1,46 +1,58 @@
 # judging
 
-The judging service behind `bt.judging(eventID, year)` in `@ubc-biztech/sdk`. **Generated.**
+Backs the HelloHacks judging portal (`ubc-biztech/bt-judging`): settings, rubric, teams, judges, reviews
+and links for one event, with code-based login for judges and teams.
 
-| What | Where it comes from |
+**This service is generated.** Its routes, auth rules, input/output validation and error statuses come
+from the ontology in [`ubc-biztech/sdk`](https://github.com/ubc-biztech/sdk)
+(`src/ontology/entities/judging.ts`) via `@ubc-biztech/sdk/server/judging`. This directory holds the
+business logic and storage, the same split as the other services minus the hand-written routing:
+
+| File | Role |
 |---|---|
-| Routes, auth rules, input/output validation, error statuses | `@ubc-biztech/sdk/server/judging` — generated from `ubc-biztech/sdk/src/ontology/entities/judging.ts` |
-| Business logic | `impl.ts` here, implementing the generated `Impl` interface |
-| Storage | `store.ts` — one DynamoDB table, one partition per event, key-value with prefix listing |
-| HTTP entry | `handler.ts` — three lines binding the two together |
+| `handler.ts` | binds the generated router to `JudgingImpl`; one function on `ANY /judging/{proxy+}` |
+| `impl.ts` | the `Impl` interface the SDK generates: one method per declared action |
+| `store.ts` | `lib/db` calls, behind a four-method interface so tests run in memory |
+| `constants.ts` | table name (from `constants/tables.js`), sort-key prefixes, code alphabet |
+| `local.ts` | run the real router + impl on localhost with a file-backed store |
 
-## Changing the API
+Not to be confused with the older five-metric judging flow in `services/teams` (`bizJudge`,
+`bizFeedback`, `scripts/migratePartnerRegistrationsToJudges.js`), exposed by the SDK as `bt.legacyJudge`.
+The two do not share tables; that flow is keyed by judge email and `teamID;round` and has no rubric,
+settings or team codes.
 
-1. Declare the change in `ubc-biztech/sdk` (`src/ontology/entities/judging.ts`), run its `npm run check`, merge.
-2. Bump the pinned commit in this repo's root `package.json` (`@ubc-biztech/sdk`) and `npm i --legacy-peer-deps`.
-3. `npx tsc -p tsconfig.json` here fails until every new action has a method in `impl.ts`. Write it.
-4. `npm test` here runs the whole flow through the real router with an in-memory store.
+## Table
 
-You never touch `serverless.yml` for a new endpoint: there is one function on `ANY /judging/{proxy+}` and
-the router dispatches by method and path.
-
-## Auth
-
-Nobody here has a BizTech account. Judges and teams log in with codes minted by `judges.create` /
-`teams.create` and passed as `Authorization: Bearer <code>`. `impl.authenticate` resolves them.
-
-`JUDGING_BOOTSTRAP_CODE` (env, from the `JUDGING_BOOTSTRAP_CODE` GitHub secret) is an organizer code
-that works for every event on the stage. It is how the first `settings.set` for a new event happens.
-Create an admin judge (`judges.create { isAdmin: true }`) right after, and keep the bootstrap code out of
-the portal.
-
-## Storage layout
+`biztechJudging${ENVIRONMENT}` (constant `JUDGING_EVENTS_TABLE`), keyed like the rest of the repo:
 
 ```
-pk = EVENT#<eventID>#<year>
+id = "<eventID>;<year>"        the event partition
 sk = SETTINGS | RUBRIC | TEAM#<id> | JUDGE#<id> | REVIEW#<round>__<teamId>__<judgeId> | LINK#<id> | CODE#<CODE>
 ```
 
-`CODE#` rows point at the judge or team that owns the code. Deleting a team or judge deletes its code.
+Rows carry the entity's own id as `recordId`; `strip()` in `impl.ts` maps it back to `id` on the way out.
+`CODE#` rows point at the judge or team that owns the code. Created by CloudFormation on first deploy.
+
+## Auth
+
+`Authorization: Bearer <code>`. `impl.authenticate` resolves codes; roles `judgingAdmin > judge > judgingCode`.
+`JUDGING_BOOTSTRAP_CODE` (GitHub secret → env) is an organizer code valid for every event on the stage; it
+is how an event's first settings get created. Create an admin judge right after and keep the bootstrap
+code out of the portal.
+
+## Changing the API
+
+1. Declare the change in `ubc-biztech/sdk`, merge.
+2. Bump the pinned commit of `@ubc-biztech/sdk` in the root `package.json`; `npm i --legacy-peer-deps`.
+3. `npx tsc -p tsconfig.json` here fails until `impl.ts` has the new method. Write it.
+4. `npm test` runs the whole flow through the real router against `MemoryStore`.
+
+Never a new function in `serverless.yml`.
 
 ## Local
 
 ```sh
-npm test                      # in-memory, no AWS
+npm test                          # in-memory, no AWS
+npx tsx local.ts                  # http://localhost:4000, bootstrap code ORG-BOOT
 npx serverless package --stage dev
 ```
