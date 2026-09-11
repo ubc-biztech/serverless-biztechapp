@@ -14,11 +14,6 @@ plugins:
   - serverless-esbuild
   - serverless-mocha-plugin
 
-# The judging service is GENERATED from the ontology in ubc-biztech/sdk: its routes, auth
-# rules, validation and error mapping come from @ubc-biztech/sdk/server/judging. This
-# directory contains only the business logic (impl.ts) and storage (store.ts).
-# Adding an endpoint = declaring it in the sdk, then implementing the new Impl method here.
-
 provider:
   name: aws
   stage: ${file(../../serverless.common.yml):provider.stage}
@@ -27,10 +22,7 @@ provider:
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
-    JUDGING_TABLE: biztechJudging${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
-    # Organizer bootstrap code. Grants judgingAdmin for every event on this stage, so the
-    # first `settings.set` for a new event is possible. Set per stage in the deploy workflow's
-    # env; leave unset to disable bootstrap (then only judge codes with isAdmin work).
+    # Organizer code valid for every event on this stage; how an event's first settings get created.
     JUDGING_BOOTSTRAP_CODE: ${env:JUDGING_BOOTSTRAP_CODE, ''}
 
   apiGateway:
@@ -50,7 +42,8 @@ provider:
 custom: ${file(../../serverless.common.yml):custom}
 
 functions:
-  # One function, one proxy route. The generated router dispatches on method + path.
+  # Every /judging route is served by the router generated from the ontology (ubc-biztech/sdk).
+  # Adding an endpoint is a change there and an Impl method in impl.ts, never a new function here.
   api:
     handler: handler.api
     events:
@@ -67,12 +60,12 @@ resources:
         TableName: biztechJudging${self:provider.environment.ENVIRONMENT}
         BillingMode: PAY_PER_REQUEST
         AttributeDefinitions:
-          - AttributeName: pk
+          - AttributeName: id
             AttributeType: S
           - AttributeName: sk
             AttributeType: S
         KeySchema:
-          - AttributeName: pk
+          - AttributeName: id
             KeyType: HASH
           - AttributeName: sk
             KeyType: RANGE

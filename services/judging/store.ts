@@ -1,71 +1,58 @@
+import db from "../../lib/db.js";
+import { JUDGING_EVENTS_TABLE } from "./constants";
+
+/** A row in biztechJudging. `id` is the event key, `sk` the record key within the event. */
+export type Item = { id: string; sk: string; [k: string]: unknown };
+
 /**
- * Storage for the judging service: one DynamoDB table, one partition per event.
- *
- *   pk = EVENT#<eventID>#<year>
- *   sk = SETTINGS | RUBRIC | TEAM#<id> | JUDGE#<id> | REVIEW#<id> | LINK#<id> | CODE#<code>
- *
- * `Store` is deliberately a four-method key-value interface so the implementation can be
- * tested against `MemoryStore` without AWS. Nothing in impl.ts knows it is DynamoDB.
+ * The four operations impl.ts needs, so it can be tested against MemoryStore without AWS.
+ * DynamoStore is a thin pass-through to lib/db, like every other service.
  */
-import { DeleteCommand, GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
-import docClient from "../../lib/docClient";
-
-export type Item = { pk: string; sk: string; [k: string]: unknown };
-
 export interface Store {
-  get(pk: string, sk: string): Promise<Item | null>;
-  put(item: Item): Promise<void>;
-  delete(pk: string, sk: string): Promise<void>;
-  /** Every item in the partition whose sk starts with `skPrefix`. */
-  list(pk: string, skPrefix: string): Promise<Item[]>;
+  get(id: string, sk: string): Promise<Item | null>;
+  put(item: Item, createNew: boolean): Promise<void>;
+  delete(id: string, sk: string): Promise<void>;
+  /** Every row in the event whose sk starts with `skPrefix`. */
+  list(id: string, skPrefix: string): Promise<Item[]>;
 }
 
 export class DynamoStore implements Store {
-  constructor(private readonly table: string) {}
-  async get(pk: string, sk: string) {
-    const r = await docClient.send(new GetCommand({ TableName: this.table, Key: { pk, sk } }));
-    return (r.Item as Item | undefined) ?? null;
+  async get(id: string, sk: string) {
+    return (await db.getOne(id, JUDGING_EVENTS_TABLE, { sk })) as Item | null;
   }
-  async put(item: Item) {
-    await docClient.send(new PutCommand({ TableName: this.table, Item: item }));
+  async put(item: Item, createNew: boolean) {
+    await db.put(item, JUDGING_EVENTS_TABLE, createNew);
   }
-  async delete(pk: string, sk: string) {
-    await docClient.send(new DeleteCommand({ TableName: this.table, Key: { pk, sk } }));
+  async delete(id: string, sk: string) {
+    await db.deleteOne(id, JUDGING_EVENTS_TABLE, { sk });
   }
-  async list(pk: string, skPrefix: string) {
-    const out: Item[] = [];
-    let ExclusiveStartKey: Record<string, unknown> | undefined;
-    do {
-      const r = await docClient.send(
-        new QueryCommand({
-          TableName: this.table,
-          KeyConditionExpression: "pk = :pk AND begins_with(sk, :p)",
-          ExpressionAttributeValues: { ":pk": pk, ":p": skPrefix },
-          ExclusiveStartKey,
-        }),
-      );
-      out.push(...((r.Items as Item[] | undefined) ?? []));
-      ExclusiveStartKey = r.LastEvaluatedKey as Record<string, unknown> | undefined;
-    } while (ExclusiveStartKey);
-    return out;
+  async list(id: string, skPrefix: string) {
+    return (await db.query(JUDGING_EVENTS_TABLE, null, {
+      expression: "#id = :id AND begins_with(#sk, :p)",
+      expressionValues: { ":id": id, ":p": skPrefix },
+      expressionNames: { "#id": "id", "#sk": "sk" }
+    })) as Item[];
   }
 }
 
 export class MemoryStore implements Store {
   readonly items = new Map<string, Item>();
-  private k(pk: string, sk: string) {
-    return `${pk} ${sk}`;
+  private k(id: string, sk: string) {
+    return `${id} ${sk}`;
   }
-  async get(pk: string, sk: string) {
-    return structuredClone(this.items.get(this.k(pk, sk)) ?? null);
+  async get(id: string, sk: string) {
+    return structuredClone(this.items.get(this.k(id, sk)) ?? null);
   }
-  async put(item: Item) {
-    this.items.set(this.k(item.pk, item.sk), structuredClone(item));
+  async put(item: Item, createNew: boolean) {
+    const exists = this.items.has(this.k(item.id, item.sk));
+    if (createNew && exists) throw new Error("ConditionalCheckFailedException: item exists");
+    if (!createNew && !exists) throw new Error("ConditionalCheckFailedException: item missing");
+    this.items.set(this.k(item.id, item.sk), structuredClone(item));
   }
-  async delete(pk: string, sk: string) {
-    this.items.delete(this.k(pk, sk));
+  async delete(id: string, sk: string) {
+    this.items.delete(this.k(id, sk));
   }
-  async list(pk: string, skPrefix: string) {
-    return [...this.items.values()].filter((i) => i.pk === pk && i.sk.startsWith(skPrefix)).map((i) => structuredClone(i));
+  async list(id: string, skPrefix: string) {
+    return [...this.items.values()].filter((i) => i.id === id && i.sk.startsWith(skPrefix)).map((i) => structuredClone(i));
   }
 }

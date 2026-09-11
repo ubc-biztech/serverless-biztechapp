@@ -25,3 +25,4 @@ scripts/data/*_judges.txt
 # agents
 .openclaude-profile.json
 .claude/settings.local.json
+services/judging/.local-store.json
