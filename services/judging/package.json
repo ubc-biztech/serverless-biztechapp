@@ -2,7 +2,6 @@
   "name": "biztechapi-judging",
   "version": "1.0.0",
   "scripts": {
-    "prestart": "node ../../scripts/fix-sls-offline.js",
-    "test": "node --import tsx --test test/*.test.ts"
+    "prestart": "node ../../scripts/fix-sls-offline.js"
   }
 }
