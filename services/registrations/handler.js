@@ -547,8 +547,18 @@ export const put = async (event, ctx, callback) => {
     if (!event.pathParameters || !event.pathParameters.email)
       throw helpers.missingIdQueryResponse("user");
 
-    // Normalize email to lowercase
-    const email = event.pathParameters.email.toLowerCase();
+    // API Gateway can forward URL-encoded path parameters. Decode once before
+    // validating or looking up the registration; preserve literal + characters.
+    let email;
+    let fname;
+    try {
+      email = decodeURIComponent(event.pathParameters.email).toLowerCase();
+      fname = event.pathParameters.fname
+        ? decodeURIComponent(event.pathParameters.fname)
+        : undefined;
+    } catch {
+      throw helpers.inputError("Invalid registration path parameters");
+    }
 
     const data = JSON.parse(event.body);
     if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
@@ -614,7 +624,7 @@ export const put = async (event, ctx, callback) => {
       data,
       false,
       email,
-      event.pathParameters.fname
+      fname
     );
 
     return response;
