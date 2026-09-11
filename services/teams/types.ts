@@ -240,3 +240,34 @@ export interface TeamsHelpers {
     team_name: string,
   ): Promise<unknown>;
 }
+// ─── Hackathon judging (handlerJudging.ts) ────────────────────────────────
+
+export interface JudgingDocument {
+  settings: {
+    eventName: string;
+    phase: "submission" | "prelim" | "finals" | "closed";
+    finalsTeamIds: string[];
+    finalsJudgeIds: string[];
+    showTeamFeedback: boolean;
+    allowJudgeSeeOthers: boolean;
+    anonymizeTeams: boolean;
+    lockSubmissions: boolean;
+    maxImages: number;
+  };
+  rubric: {
+    name: string;
+    scaleMax: number;
+    scoreMode: "points" | "weighted";
+    criteria: Array<{ id: string; label: string; description?: string; weight: number; maxScore?: number }>;
+  } | null;
+  links: Array<{ id: string; label: string; url: string }>;
+  judges: Array<{ id: string; name: string; isAdmin?: boolean; assignedTeamIds?: string[]; code?: string }>;
+  teams: Array<{ id: string; name: string; members: string[]; description?: string; github?: string; devpost?: string; imageUrls?: string[]; code?: string }>;
+  updatedAt: string;
+}
+
+export interface JudgingPrincipal {
+  role: "admin" | "judge" | "team";
+  id: string;
+  name: string;
+}
