@@ -8,8 +8,7 @@ export const PARTNERSHIP_EVENTS_TABLE = "biztechPartnershipEvents";
 export const PARTNER_DOCUMENTS_TABLE = "biztechPartnerDocuments";
 export const PARTNER_COMMUNICATIONS_TABLE = "biztechPartnerCommunications";
 export const PARTNERSHIPS_META_TABLE = "biztechPartnershipsMeta";
-export const JUDGING_TABLE = "bizJudge"; // teams service: judge → current team, round (five-metric flow)
-export const JUDGING_EVENTS_TABLE = "biztechJudging"; // judging service: settings, rubric, teams, judges, reviews per event
+export const JUDGING_TABLE = "bizJudge";
 export const MEMBERSHIPS2021_TABLE = "biztechMemberships2021";
 export const MEMBERS2022_TABLE = "biztechMembers2022";
 // CHANGE EVERY YEAR
