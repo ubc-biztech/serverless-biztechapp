@@ -1,19 +1,81 @@
 /**
- * Business logic for the judging service. Implements the `Impl` interface generated from the
- * ontology; the router (routing, auth, validation, error mapping) is generated too. If this
- * file does not compile, an action was added or changed in the ontology and needs a method here.
+ * Judging for hackathons (HelloHacks): settings, rubric, teams, judges, reviews and links per
+ * event, with code-based login. Backs ubc-biztech/bt-judging.
  *
- * Conventions:
- *  - `ctx.principal` is already authenticated and its role already satisfies the action's
- *    declared `auth`. Only row-level rules (a team sees its own reviews) are decided here.
- *  - Throw `ActionError("<DeclaredName>", …)` for declared errors. Anything else is a 500.
- *  - Codes are stored upper-case without whitespace; login normalizes the same way.
+ * This is a GENERATED-router service: routes, auth, validation and error statuses come from the
+ * ontology in ubc-biztech/sdk (src/ontology/entities/judging.ts) via
+ * @ubc-biztech/sdk/server/judging. This file supplies the business logic (JudgingImpl, one method
+ * per declared action) and storage (DynamoStore over biztechJudging via lib/db). To change the API,
+ * declare it in the sdk, bump the pinned commit in the root package.json, and the missing Impl
+ * method here is a compile error.
+ *
+ * Distinct from the five-metric flow in handler.ts (bizJudge, bizFeedback); the two share no tables.
+ *
+ * Table biztechJudging: id = "<eventID>;<year>" (the event partition), sk = record key below.
  */
 import { randomBytes, randomUUID } from "node:crypto";
 import { ActionError, type Ctx, type Impl, type Scope } from "@ubc-biztech/sdk/server/judging";
 import type { Judge, JudgingLink, JudgingSettings, JudgingTeam, Review, Rubric } from "@ubc-biztech/sdk";
-import { CODE_ALPHABET, SK, eventKey } from "./constants";
-import type { Item, Store } from "./store";
+import db from "../../lib/db.js";
+import { JUDGING_EVENTS_TABLE } from "../../constants/tables.js";
+
+// ─── Keys and codes ────────────────────────────────────────────────
+
+/**
+ * One partition per event in biztechJudging: id = "<eventID>;<year>" (the repo's usual
+ * composite event key), sk = one of the prefixes below + the record id.
+ */
+const eventKey = (eventID: string, year: number) => `${eventID};${year}`;
+
+const SK = {
+  SETTINGS: "SETTINGS",
+  RUBRIC: "RUBRIC",
+  TEAM: "TEAM#",
+  JUDGE: "JUDGE#",
+  REVIEW: "REVIEW#",
+  LINK: "LINK#",
+  CODE: "CODE#"
+} as const;
+
+/** Login codes: XXXX-XXXX from an alphabet without 0/O/1/I. */
+const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+// ─── Storage ───────────────────────────────────────────────────────
+
+/** A row in biztechJudging. `id` is the event key, `sk` the record key within the event. */
+export type Item = { id: string; sk: string; [k: string]: unknown };
+
+/**
+ * The four operations JudgingImpl needs; DynamoStore is a thin pass-through to lib/db.
+ */
+export interface Store {
+  get(id: string, sk: string): Promise<Item | null>;
+  put(item: Item, createNew: boolean): Promise<void>;
+  delete(id: string, sk: string): Promise<void>;
+  /** Every row in the event whose sk starts with `skPrefix`. */
+  list(id: string, skPrefix: string): Promise<Item[]>;
+}
+
+export class DynamoStore implements Store {
+  async get(id: string, sk: string) {
+    return (await db.getOne(id, JUDGING_EVENTS_TABLE, { sk })) as Item | null;
+  }
+  async put(item: Item, createNew: boolean) {
+    await db.put(item, JUDGING_EVENTS_TABLE, createNew);
+  }
+  async delete(id: string, sk: string) {
+    await db.deleteOne(id, JUDGING_EVENTS_TABLE, { sk });
+  }
+  async list(id: string, skPrefix: string) {
+    return (await db.query(JUDGING_EVENTS_TABLE, null, {
+      expression: "#id = :id AND begins_with(#sk, :p)",
+      expressionValues: { ":id": id, ":p": skPrefix },
+      expressionNames: { "#id": "id", "#sk": "sk" }
+    })) as Item[];
+  }
+}
+
+// ─── Implementation ────────────────────────────────────────────────
 
 type C = Ctx<Scope>;
 type Round = Review["round"];

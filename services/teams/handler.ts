@@ -13,6 +13,8 @@ import {
 import db from "../../lib/db.js";
 import { WEIGHTS, ROUND } from "./constants.js";
 import { LambdaHandler } from "../../lib/types";
+import { createHandler as createJudgingHandler } from "@ubc-biztech/sdk/server/judging";
+import { DynamoStore, JudgingImpl } from "./judging";
 import {
   AddMultipleQuestionsBody,
   AddQRScanBody,
@@ -1115,3 +1117,8 @@ export const updateCurrentTeamForJudge: LambdaHandler = async (event) => {
 // export const getTeamInventory = async (event, ctx, callback) => {
 
 // };
+
+// ─── Judging (generated router; see judging.ts) ─────────────────────────────
+export const judgingApi = createJudgingHandler(
+  new JudgingImpl(new DynamoStore(), { bootstrapCode: process.env.JUDGING_BOOTSTRAP_CODE || null })
+);
