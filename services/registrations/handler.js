@@ -3,6 +3,7 @@ import registrationHelpers from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import { sendSNSNotification } from "../../lib/snsHelper";
 import db from "../../lib/db";
+import { protect, Access } from "../../lib/auth";
 import { isEmpty, isValidEmail } from "../../lib/utils";
 import {
   EVENTS_TABLE,
@@ -419,15 +420,8 @@ export const post = async (event, ctx, callback) => {
   }
 };
 
-export const createPartnerRegistrations = async (event, ctx, callback) => {
+export const createPartnerRegistrations = protect(Access.ADMIN, async (event, ctx, callback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
-    if (!userID.endsWith("@ubcbiztech.com")) {
-      return helpers.createResponse(403, {
-        message: "unauthorized"
-      });
-    }
-
     const data = JSON.parse(event.body || "{}");
     const { eventID, year } = data;
 
@@ -523,7 +517,7 @@ export const createPartnerRegistrations = async (event, ctx, callback) => {
       message: err.message || "Internal server error"
     });
   }
-};
+});
 
 /**
  * Update a registration entry.
@@ -774,7 +768,7 @@ export const get = async (event, ctx, callback) => {
 };
 
 // (used for testing)
-export const del = async (event, ctx, callback) => {
+export const del = protect(Access.USER, async (event, ctx, callback) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -784,6 +778,12 @@ export const del = async (event, ctx, callback) => {
     // Normalize email to lowercase
     const email = event.pathParameters.email.toLowerCase();
     if (!isValidEmail(email)) throw helpers.inputError("Invalid email", email);
+
+    // Only the owner (or an admin) may delete this registration.
+    if (!event.auth.isAdmin && email !== event.auth.email)
+      return helpers.createResponse(403, {
+        message: "You can only delete your own registration"
+      });
     helpers.checkPayloadProps(data, {
       eventID: {
         required: true,
@@ -814,17 +814,10 @@ export const del = async (event, ctx, callback) => {
       message: (err && err.message) || "Internal server error"
     });
   }
-};
+});
 
-export const delMany = async (event, ctx, callback) => {
+export const delMany = protect(Access.ADMIN, async (event, ctx, callback) => {
   try {
-    const email = event.requestContext.authorizer.claims.email.toLowerCase();
-    if (!email.endsWith("@ubcbiztech.com")) {
-      return helpers.createResponse(403, {
-        message: "Unauthorized"
-      });
-    }
-
     const data = JSON.parse(event.body);
 
     helpers.checkPayloadProps(data, {
@@ -871,7 +864,7 @@ export const delMany = async (event, ctx, callback) => {
       message: (err && err.message) || "Internal server error"
     });
   }
-};
+});
 
 export const leaderboard = async (event, ctx, callback) => {
   try {
