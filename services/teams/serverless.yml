@@ -234,3 +234,73 @@ functions:
                 round: true
           method: put
           cors: true
+
+  # ─── Hackathon judging (bt-judging): handlerJudging.ts ───────────────────
+  # Organizer routes use the Cognito authorizer + protect(Access.ADMIN).
+  # Team and judge routes take the code an organizer minted, in X-Judging-Code.
+  judgingGet:
+    handler: handlerJudging.judgingGet
+    events:
+      - http:
+          path: judging/{eventID}/{year}
+          method: get
+          cors: &judgingCors
+            origin: "*"
+            headers:
+              - Content-Type
+              - Authorization
+              - X-Judging-Code
+              - X-Amz-Date
+              - X-Api-Key
+              - X-Amz-Security-Token
+  judgingGetAdmin:
+    handler: handlerJudging.judgingGetAdmin
+    events:
+      - http:
+          path: judging/{eventID}/{year}/admin
+          method: get
+          cors: *judgingCors
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  judgingPut:
+    handler: handlerJudging.judgingPut
+    events:
+      - http:
+          path: judging/{eventID}/{year}
+          method: put
+          cors: *judgingCors
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  judgingPutTeam:
+    handler: handlerJudging.judgingPutTeam
+    events:
+      - http:
+          path: judging/{eventID}/{year}/teams/{id}
+          method: put
+          cors: *judgingCors
+  judgingGetReviews:
+    handler: handlerJudging.judgingGetReviews
+    events:
+      - http:
+          path: judging/{eventID}/{year}/reviews
+          method: get
+          cors: *judgingCors
+  judgingGetAdminReviews:
+    handler: handlerJudging.judgingGetAdminReviews
+    events:
+      - http:
+          path: judging/{eventID}/{year}/admin/reviews
+          method: get
+          cors: *judgingCors
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  judgingPutReview:
+    handler: handlerJudging.judgingPutReview
+    events:
+      - http:
+          path: judging/{eventID}/{year}/reviews/{teamId}
+          method: put
+          cors: *judgingCors
