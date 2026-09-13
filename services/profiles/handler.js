@@ -17,6 +17,7 @@ import {
 } from "./helpers.js";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { protect } from "../../lib/auth";
 const REGISTRATIONS_TABLE = "biztechRegistrations";
 const QRS_TABLE = "biztechQRs";
 const S3 = new S3Client({
@@ -102,9 +103,9 @@ const validateOnboardingData = (data) => {
   }
 };
 
-export const create = async (event) => {
+export const create = protect("user", async (event) => {
   try {
-    const email = event.requestContext.authorizer.claims.email.toLowerCase();
+    const email = event.auth.email;
     const data = JSON.parse(event.body || "{}");
     if (typeof data.studentNumber === "string") {
       data.studentNumber = data.studentNumber.trim();
@@ -179,7 +180,7 @@ export const create = async (event) => {
     if (err?.statusCode && err?.body) return err;
     return helpers.createResponse(500, { message: err.message || err });
   }
-};
+});
 
 // deprecated, will be done in another pr
 export const createPartialPartnerProfile = async (event) => {
@@ -301,9 +302,9 @@ export const createPartialPartnerProfile = async (event) => {
   }
 };
 
-export const updatePublicProfile = async (event) => {
+export const updatePublicProfile = protect("user", async (event) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    const userID = event.auth.email;
     const body = JSON.parse(event.body);
     helpers.checkPayloadProps(body, {
       viewableMap: {
@@ -385,7 +386,7 @@ export const updatePublicProfile = async (event) => {
     console.error(err);
     return helpers.createResponse(500, { message: err.message || err });
   }
-};
+});
 
 export const getPublicProfile = async (event) => {
   try {
@@ -418,9 +419,9 @@ export const getPublicProfile = async (event) => {
   }
 };
 
-export const getUserProfile = async (event) => {
+export const getUserProfile = protect("user", async (event) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    const userID = event.auth.email;
 
     const user = await db.getOne(userID, USERS_TABLE);
     const { profileID = null } = user || {};
@@ -446,7 +447,7 @@ export const getUserProfile = async (event) => {
     console.error(err);
     return helpers.createResponse(500, { message: err.message || err });
   }
-};
+});
 
 // deprecated, will be done in another pr
 export const createCompanyProfile = async (event) => {
@@ -558,21 +559,15 @@ export const createCompanyProfile = async (event) => {
   }
 };
 
-export const createProfilePicUploadUrl = async (event) => {
+export const createProfilePicUploadUrl = protect("user", async (event) => {
   try {
-    const claims = event.requestContext?.authorizer?.claims || {};
-    const userEmail = claims.email?.toLowerCase();
-    if (!userEmail) {
-      return helpers.createResponse(401, {
-        message: "Unauthorized"
-      });
-    }
+    const userEmail = event.auth.email;
 
-    let profileId = event.queryStringParameters?.profileId;
-    if (!profileId) {
-      const user = await db.getOne(userEmail, USERS_TABLE);
-      profileId = user?.profileID;
-    }
+    // Always resolve the profile from the authenticated caller's own record.
+    // Any caller-supplied queryStringParameters.profileId is ignored to prevent
+    // uploading to another user's profile prefix (IDOR).
+    const user = await db.getOne(userEmail, USERS_TABLE);
+    const profileId = user?.profileID;
     if (!profileId) {
       return helpers.createResponse(400, {
         message: "Missing profileId"
@@ -626,7 +621,7 @@ export const createProfilePicUploadUrl = async (event) => {
       message: "Failed to get upload URL"
     });
   }
-};
+});
 
 export const linkPartnerToCompany = async (event) => {
   try {

@@ -11,6 +11,7 @@ import {
 import db from "../../lib/db";
 import handlerHelpers from "../../lib/handlerHelpers";
 import helpers from "../../lib/handlerHelpers";
+import { protect } from "../../lib/auth";
 // import search from "../../lib/search";
 import { TYPES } from "../profiles/constants";
 import {
@@ -57,9 +58,9 @@ const BOOTH = "BOOTH";
 //   }
 // };
 
-export const postInteraction = async (event, ctx, callback) => {
+export const postInteraction = protect("user", async (event, ctx, callback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    const userID = event.auth.email;
     const data = JSON.parse(event.body);
 
     const membership = await db.getOne(userID, MEMBERS_TABLE);
@@ -97,9 +98,9 @@ export const postInteraction = async (event, ctx, callback) => {
     console.error(err);
     return helpers.createResponse(500, { message: err.message || err });
   }
-};
+});
 
-export const checkConnection = async (event, ctx, callback) => {
+export const checkConnection = protect("user", async (event, ctx, callback) => {
   try {
     if (
       !event.pathParameters ||
@@ -109,7 +110,7 @@ export const checkConnection = async (event, ctx, callback) => {
       throw helpers.missingIdQueryResponse("profile ID in request path");
 
     const connectionID = event.pathParameters.id;
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    const userID = event.auth.email;
     const userData = await db.getOne(userID, USERS_TABLE);
 
     if (!userData?.profileID)
@@ -143,11 +144,11 @@ export const checkConnection = async (event, ctx, callback) => {
       message: "internal server error, contact a biztech exec"
     });
   }
-};
+});
 
-export const getAllConnections = async (event, ctx, callback) => {
+export const getAllConnections = protect("user", async (event, ctx, callback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
+    const userID = event.auth.email;
 
     const userData = await db.getOne(userID, USERS_TABLE);
     const { profileID } = userData || {};
@@ -220,7 +221,7 @@ export const getAllConnections = async (event, ctx, callback) => {
       message: "Internal server error"
     });
   }
-};
+});
 
 export const getWallSnapshot = async (event, ctx, callback) => {
   try {

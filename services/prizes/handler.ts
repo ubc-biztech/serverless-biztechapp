@@ -1,7 +1,7 @@
 import { PRIZES_TABLE } from "../../constants/tables.js";
 import db from "../../lib/db.js";
 import helpers from "../../lib/handlerHelpers";
-import type { APIGatewayEvent, LambdaCallback, LambdaContext } from "../../lib/types";
+import { protect } from "../../lib/auth";
 import { isEmpty } from "../../lib/utils.js";
 
 const errorMessage = (err: unknown): string =>
@@ -11,11 +11,7 @@ const errorMessage = (err: unknown): string =>
       ? String((err as { message: unknown }).message)
       : String(err);
 
-export const getAll = async (
-  _event: APIGatewayEvent,
-  _ctx: LambdaContext,
-  _callback: LambdaCallback,
-) => {
+export const getAll = protect("user", async () => {
   try {
     const prizes = await db.scan(PRIZES_TABLE);
 
@@ -26,13 +22,9 @@ export const getAll = async (
   } catch (err: unknown) {
     return helpers.createResponse(500, { message: errorMessage(err) });
   }
-};
+});
 
-export const create = async (
-  event: APIGatewayEvent,
-  _ctx: LambdaContext,
-  _callback: LambdaCallback,
-) => {
+export const create = protect("admin", async (event) => {
   try {
     const timestamp = new Date().getTime();
     const data = JSON.parse(event.body as string) as Record<string, unknown>;
@@ -79,13 +71,9 @@ export const create = async (
   } catch (err: unknown) {
     return helpers.createResponse(500, { message: errorMessage(err) });
   }
-};
+});
 
-export const update = async (
-  event: APIGatewayEvent,
-  _ctx: LambdaContext,
-  _callback: LambdaCallback,
-) => {
+export const update = protect("admin", async (event) => {
   try {
     const data = JSON.parse(event.body as string) as Record<string, unknown>;
 
@@ -122,13 +110,9 @@ export const update = async (
   } catch (err: unknown) {
     return helpers.createResponse(500, { message: errorMessage(err) });
   }
-};
+});
 
-export const del = async (
-  event: APIGatewayEvent,
-  _ctx: LambdaContext,
-  _callback: LambdaCallback,
-) => {
+export const del = protect("admin", async (event) => {
   try {
     if (!event.pathParameters || !event.pathParameters.id)
       throw helpers.missingIdQueryResponse("prize");
@@ -147,4 +131,4 @@ export const del = async (
   } catch (err: unknown) {
     return helpers.createResponse(500, { message: errorMessage(err) });
   }
-};
+});

@@ -9,21 +9,18 @@ import {
   type EmailTemplateMetadata,
 } from "@aws-sdk/client-sesv2";
 import helpers from "../../lib/handlerHelpers";
+import { protect } from "../../lib/auth";
 import res from "../../lib/responseHelpers";
 import { sesClient } from "../../lib/sesV2Client.js";
 import type { APIGatewayEvent, LambdaCallback, LambdaContext } from "../../lib/types";
 import emailHelpers from "./helpers";
 
-export const getEmailTemplate = async (
+export const getEmailTemplate = protect("admin", async (
   event: APIGatewayEvent,
   _ctx: LambdaContext,
   _callback: LambdaCallback,
 ) => {
   try {
-    if (emailHelpers.isUnauthorized(event)) {
-      return res.unauthorized("Unauthorized");
-    }
-
     const templateName = event.pathParameters?.templateName;
     if (!templateName) {
       return helpers.missingPathParamResponse("template", "templateName");
@@ -38,18 +35,14 @@ export const getEmailTemplate = async (
     console.error("Error getting email template:", error);
     return res.error("Error getting email template", emailHelpers.errorMessage(error));
   }
-};
+});
 
-export const createEmailTemplate = async (
+export const createEmailTemplate = protect("admin", async (
   event: APIGatewayEvent,
   _ctx: LambdaContext,
   _callback: LambdaCallback,
 ) => {
   try {
-    if (emailHelpers.isUnauthorized(event)) {
-      return res.unauthorized("Unauthorized");
-    }
-
     const data = emailHelpers.parseBody(event);
     const response = await sesClient.send(
       new CreateEmailTemplateCommand({
@@ -70,18 +63,14 @@ export const createEmailTemplate = async (
     console.error("Error creating email template:", error);
     return res.error("Error creating email template", emailHelpers.errorMessage(error));
   }
-};
+});
 
-export const updateEmailTemplate = async (
+export const updateEmailTemplate = protect("admin", async (
   event: APIGatewayEvent,
   _ctx: LambdaContext,
   _callback: LambdaCallback,
 ) => {
   try {
-    if (emailHelpers.isUnauthorized(event)) {
-      return res.unauthorized("Unauthorized");
-    }
-
     const data = emailHelpers.parseBody(event);
     const response = await sesClient.send(
       new UpdateEmailTemplateCommand({
@@ -102,18 +91,14 @@ export const updateEmailTemplate = async (
     console.error("Error updating email template:", error);
     return res.error("Error updating email template", emailHelpers.errorMessage(error));
   }
-};
+});
 
-export const deleteEmailTemplate = async (
+export const deleteEmailTemplate = protect("admin", async (
   event: APIGatewayEvent,
   _ctx: LambdaContext,
   _callback: LambdaCallback,
 ) => {
   try {
-    if (emailHelpers.isUnauthorized(event)) {
-      return res.unauthorized("Unauthorized");
-    }
-
     const templateName = event.pathParameters?.templateName;
     if (!templateName) {
       return helpers.missingPathParamResponse("template", "templateName");
@@ -131,18 +116,14 @@ export const deleteEmailTemplate = async (
     console.error("Error deleting email template:", error);
     return res.error("Error deleting email template", emailHelpers.errorMessage(error));
   }
-};
+});
 
-export const listEmailTemplates = async (
-  event: APIGatewayEvent,
+export const listEmailTemplates = protect("admin", async (
+  _event: APIGatewayEvent,
   _ctx: LambdaContext,
   _callback: LambdaCallback,
 ) => {
   try {
-    if (emailHelpers.isUnauthorized(event)) {
-      return res.unauthorized("Unauthorized");
-    }
-
     const emailTemplates: EmailTemplateMetadata[] = [];
     const input: ListEmailTemplatesCommandInput = {};
 
@@ -163,4 +144,4 @@ export const listEmailTemplates = async (
     console.error("Error listing email templates:", error);
     return res.error("Error listing email templates", emailHelpers.errorMessage(error));
   }
-};
+});

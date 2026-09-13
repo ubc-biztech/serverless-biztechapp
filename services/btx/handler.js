@@ -2,6 +2,7 @@
 
 import handlerHelpers from "../../lib/handlerHelpers";
 import helpersLib from "../../lib/handlerHelpers";
+import { protect } from "../../lib/auth";
 import { INVESTMENT_TO_SEED_FACTOR } from "./constants";
 
 import { DEFAULT_EVENT_ID } from "./constants";
@@ -84,23 +85,9 @@ export const getMarketSnapshot = async (event, ctx, callback) => {
   }
 };
 
-export const postBuy = async (event, ctx, callback) => {
+export const postBuy = protect("user", async (event, ctx, callback) => {
   try {
-    const isOffline = process.env.IS_OFFLINE === "true";
-
-    let userId;
-    if (isOffline) {
-      userId = "local-user@btx";
-    } else {
-      const claims = event.requestContext?.authorizer?.claims;
-      const email = claims?.email;
-      if (!email) {
-        return handlerHelpers.createResponse(401, {
-          message: "Not authenticated for BTX buy"
-        });
-      }
-      userId = email.toLowerCase();
-    }
+    const userId = event.auth.email;
 
     const body = JSON.parse(event.body || "{}");
 
@@ -132,25 +119,11 @@ export const postBuy = async (event, ctx, callback) => {
       message: "Internal server error (BTX buy)"
     });
   }
-};
+});
 
-export const postSell = async (event, ctx, callback) => {
+export const postSell = protect("user", async (event, ctx, callback) => {
   try {
-    const isOffline = process.env.IS_OFFLINE === "true";
-
-    let userId;
-    if (isOffline) {
-      userId = "local-user@btx";
-    } else {
-      const claims = event.requestContext?.authorizer?.claims;
-      const email = claims?.email;
-      if (!email) {
-        return handlerHelpers.createResponse(401, {
-          message: "Not authenticated for BTX sell"
-        });
-      }
-      userId = email.toLowerCase();
-    }
+    const userId = event.auth.email;
 
     const body = JSON.parse(event.body || "{}");
 
@@ -182,25 +155,11 @@ export const postSell = async (event, ctx, callback) => {
       message: "Internal server error (BTX sell)"
     });
   }
-};
+});
 
-export const getPortfolio = async (event, ctx, callback) => {
+export const getPortfolio = protect("user", async (event, ctx, callback) => {
   try {
-    const isOffline = process.env.IS_OFFLINE === "true";
-
-    let userId;
-    if (isOffline) {
-      userId = "local-user@btx";
-    } else {
-      const claims = event.requestContext?.authorizer?.claims;
-      const email = claims?.email;
-      if (!email) {
-        return handlerHelpers.createResponse(401, {
-          message: "Not authenticated for BTX portfolio"
-        });
-      }
-      userId = email.toLowerCase();
-    }
+    const userId = event.auth.email;
 
     const qs = event.queryStringParameters || {};
     const eventId = qs.eventId || DEFAULT_EVENT_ID;
@@ -217,7 +176,7 @@ export const getPortfolio = async (event, ctx, callback) => {
       message: "Internal server error (BTX portfolio)"
     });
   }
-};
+});
 
 export const getRecentTradesHandler = async (event, ctx, callback) => {
   try {

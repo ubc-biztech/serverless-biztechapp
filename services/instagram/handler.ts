@@ -1,11 +1,12 @@
 import type { APIGatewayEvent, LambdaCallback, LambdaContext } from "../../lib/types";
+import { protect } from "../../lib/auth";
 import instagramHelpers from "./helpers";
 
-export const refreshTokenManual = async (
+export const refreshTokenManual = protect("admin", async (
   _event: APIGatewayEvent,
   _ctx: LambdaContext,
   _callback: LambdaCallback,
-) => instagramHelpers.refreshTokenManual();
+) => instagramHelpers.refreshTokenManual());
 
 export const refreshTokenScheduled = async (
   _event: APIGatewayEvent,
@@ -13,14 +14,14 @@ export const refreshTokenScheduled = async (
   _callback: LambdaCallback,
 ) => instagramHelpers.refreshTokenScheduled();
 
-export const getTokenStatus = async (
+export const getTokenStatus = protect("admin", async (
   _event: APIGatewayEvent,
   _ctx: LambdaContext,
   _callback: LambdaCallback,
-) => instagramHelpers.getTokenStatus();
+) => instagramHelpers.getTokenStatus());
 
-export const getAnalytics = async (
+export const getAnalytics = protect("admin", async (
   event: APIGatewayEvent,
   _ctx: LambdaContext,
   _callback: LambdaCallback,
-) => instagramHelpers.getAnalytics(event);
+) => instagramHelpers.getAnalytics(event));

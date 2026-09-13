@@ -9,6 +9,7 @@ import {
 } from "../../constants/tables";
 import { CURRENT_ONBOARDING_YEAR } from "../../constants/onboarding";
 import docClient from "../../lib/docClient";
+import { protect, fromPath } from "../../lib/auth";
 
 export const create = async (event) => {
   const timestamp = new Date().getTime();
@@ -135,9 +136,8 @@ export const create = async (event) => {
   }
 };
 
-export const ensureAuthenticatedUser = async (event) => {
-  const claims = event.requestContext?.authorizer?.claims || {};
-  const email = claims.email?.trim().toLowerCase();
+export const ensureAuthenticatedUser = protect("user", async (event) => {
+  const email = event.auth.email;
 
   if (!isValidEmail(email)) {
     return helpers.inputError("Invalid authenticated email", email);
@@ -156,7 +156,7 @@ export const ensureAuthenticatedUser = async (event) => {
     const user = {
       id: email,
       email,
-      admin: email.endsWith("@ubcbiztech.com"),
+      admin: event.auth.isAdmin,
       createdAt: timestamp,
       updatedAt: timestamp
     };
@@ -176,7 +176,7 @@ export const ensureAuthenticatedUser = async (event) => {
     console.error(error);
     return helpers.createResponse(502, "Internal Server Error occurred");
   }
-};
+});
 
 export const checkUser = async (event) => {
   try {
@@ -206,12 +206,12 @@ export const checkUserMembership = async (event) => {
   }
 };
 
-export const get = async (event) => {
+export const get = protect("user", async (event) => {
   try {
-    let email = event.requestContext.authorizer.claims.email.toLowerCase();
+    let email = event.auth.email;
 
     if (
-      email.endsWith("@ubcbiztech.com") &&
+      event.auth.isAdmin &&
       event.pathParameters &&
       event.pathParameters.email &&
       isValidEmail(event.pathParameters.email)
@@ -235,9 +235,9 @@ export const get = async (event) => {
     console.error(err);
     return helpers.createResponse(500, { message: err.message || err });
   }
-};
+});
 
-export const update = async (event) => {
+export const update = protect({ self: fromPath("email") }, async (event) => {
   try {
     if (!event.pathParameters || !event.pathParameters.email)
       throw helpers.missingIdQueryResponse("event");
@@ -269,9 +269,9 @@ export const update = async (event) => {
       message: err.message || err
     });
   }
-};
+});
 
-export const getAll = async () => {
+export const getAll = protect("admin", async () => {
   try {
     const users = await db.scan(USERS_TABLE);
 
@@ -282,10 +282,10 @@ export const getAll = async () => {
     console.error(err);
     return helpers.createResponse(500, { message: err.message || err });
   }
-};
+});
 
 // TODO: Fix favouriteEvents 08/08/24
-export const favouriteEvent = async (event) => {
+export const favouriteEvent = protect({ self: fromPath("email") }, async (event) => {
   try {
     const data = JSON.parse(event.body);
 
@@ -392,10 +392,10 @@ export const favouriteEvent = async (event) => {
     });
     return response;
   }
-};
+});
 
 // TODO: refactor to abstract delete code among different endpoints
-export const del = async (event) => {
+export const del = protect({ self: fromPath("email") }, async (event) => {
   try {
     // check that the param was given
     if (!event.pathParameters || !event.pathParameters.email)
@@ -418,4 +418,4 @@ export const del = async (event) => {
       message: err.message || err
     });
   }
-};
+});
