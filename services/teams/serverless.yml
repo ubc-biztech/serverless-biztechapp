@@ -85,6 +85,9 @@ functions:
           path: team/points
           method: put
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   addMultipleQRScans:
     handler: handler.addMultipleQuestions
     events:
@@ -92,6 +95,9 @@ functions:
           path: team/addQuestions
           method: put
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   joinTeam:
     handler: handler.joinTeam
     events:
@@ -129,6 +135,9 @@ functions:
           path: team/getTeamFromUserID
           method: post
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   teamsGetAll:
     handler: handler.get
     events:
@@ -151,6 +160,9 @@ functions:
           path: team/changeTeamName
           method: post
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   getNormalizedRoundScores:
     handler: handler.getNormalizedRoundScores
     events:
@@ -158,6 +170,9 @@ functions:
           path: team/scores-all
           method: get
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   getTeamFeedback:
     handler: handler.getTeamFeedbackScore
     events:
@@ -169,6 +184,9 @@ functions:
                 teamID: true
           method: get
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   getJudgeCurrentTeam:
     handler: handler.getJudgeCurrentTeam
     events:
@@ -180,6 +198,9 @@ functions:
                 judgeID: true
           method: get
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   getJudgeSubmissions:
     handler: handler.getJudgeSubmissions
     events:
@@ -191,6 +212,9 @@ functions:
                 judgeID: true
           method: get
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   createJudgeSubmissions:
     handler: handler.createJudgeSubmissions
     events:
@@ -198,6 +222,9 @@ functions:
           path: team/judge/feedback
           method: post
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   updateJudgeSubmission:
     handler: handler.updateJudgeSubmission
     events:
@@ -205,6 +232,9 @@ functions:
           path: team/judge/feedback
           method: put
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   updateCurrentTeamForJudge:
     handler: handler.updateCurrentTeamForJudge
     events:
@@ -216,6 +246,9 @@ functions:
                 teamID: true
           method: put
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   getCurrentRound:
     handler: handler.getCurrentRound
     events:
@@ -223,6 +256,9 @@ functions:
           path: team/round
           method: get
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   setCurrentRound:
     handler: handler.setCurrentRound
     events:
@@ -234,3 +270,6 @@ functions:
                 round: true
           method: put
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
