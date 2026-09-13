@@ -56,7 +56,7 @@ const errorMessage = (error: unknown): string =>
     "metadata": object
  */
 
-export const updateTeamPoints: LambdaHandler = async (event) => {
+export const updateTeamPoints = protect(Access.ADMIN, async (event) => {
   try {
     const data = JSON.parse(event.body as string) as UpdateTeamPointsBody;
 
@@ -107,7 +107,7 @@ export const updateTeamPoints: LambdaHandler = async (event) => {
       error: errorMessage(error),
     });
   }
-};
+});
 
 export const leaveTeam = protect(Access.USER, async (event) => {
   try {
@@ -231,7 +231,7 @@ export const makeTeam = protect(Access.USER, async (event) => {
   }
 });
 
-export const getTeamFromUserID: LambdaHandler = async (event) => {
+export const getTeamFromUserID = protect(Access.USER, async (event) => {
   /*
     Returns the team object of the team that the user is on from the user's ID.
 
@@ -273,7 +273,7 @@ export const getTeamFromUserID: LambdaHandler = async (event) => {
       error: errorMessage(error)
     });
   }
-};
+});
 
 export const get = protect(Access.USER, async (event) => {
   // Admins see raw memberIDs; everyone else gets them stripped.
@@ -325,7 +325,7 @@ export const get = protect(Access.USER, async (event) => {
 
 // };
 
-export const changeTeamName: LambdaHandler = async (event) => {
+export const changeTeamName = protect(Access.USER, async (event) => {
   /*
     Changes the team name of the team with the given user_id.
    */
@@ -363,7 +363,7 @@ export const changeTeamName: LambdaHandler = async (event) => {
       error: errorMessage(error)
     });
   }
-};
+});
 
 // export const viewPoints = async (event, ctx, callback) => {
 
@@ -425,7 +425,7 @@ export const addQRScan: LambdaHandler = async (event) => {
   }
 };
 
-export const addMultipleQuestions: LambdaHandler = async (event) => {
+export const addMultipleQuestions = protect(Access.ADMIN, async (event) => {
   /*
     !!!! NOTE: This is specifically for Dataverse, where we are using the
     scannedQRs field to store correctly answered questions.
@@ -481,7 +481,7 @@ export const addMultipleQuestions: LambdaHandler = async (event) => {
       error: errorMessage(error)
     });
   }
-};
+});
 
 export const checkQRScanned: LambdaHandler = async (event) => {
   /*
@@ -530,7 +530,7 @@ export const checkQRScanned: LambdaHandler = async (event) => {
   }
 };
 
-export const getNormalizedRoundScores: LambdaHandler = async () => {
+export const getNormalizedRoundScores = protect(Access.ADMIN, async () => {
   let scores: FeedbackRecord[];
 
   try {
@@ -619,9 +619,9 @@ export const getNormalizedRoundScores: LambdaHandler = async () => {
   res.sort((a, b) => b.zScoreWeighted - a.zScoreWeighted);
 
   return helpers.createResponse(200, res);
-};
+});
 
-export const createJudgeSubmissions: LambdaHandler = async (event) => {
+export const createJudgeSubmissions = protect(Access.ADMIN, async (event) => {
   const data = JSON.parse(event.body as string) as CreateJudgeSubmissionsBody;
 
   try {
@@ -748,9 +748,9 @@ export const createJudgeSubmissions: LambdaHandler = async (event) => {
     message: "Feedback created successfully",
     newFeedback
   });
-};
+});
 
-export const getJudgeSubmissions: LambdaHandler = async (event) => {
+export const getJudgeSubmissions = protect(Access.ADMIN, async (event) => {
   try {
     const judgeID = event.pathParameters?.judgeID;
 
@@ -809,9 +809,9 @@ export const getJudgeSubmissions: LambdaHandler = async (event) => {
       message: "Internal server error"
     });
   }
-};
+});
 
-export const getJudgeCurrentTeam: LambdaHandler = async (event) => {
+export const getJudgeCurrentTeam = protect(Access.ADMIN, async (event) => {
   try {
     const judgeID = event.pathParameters?.judgeID;
 
@@ -844,9 +844,9 @@ export const getJudgeCurrentTeam: LambdaHandler = async (event) => {
       message: "Internal server error"
     });
   }
-};
+});
 
-export const getCurrentRound: LambdaHandler = async () => {
+export const getCurrentRound = protect(Access.ADMIN, async () => {
   try {
     const round = (await db.getOne(ROUND, JUDGING_TABLE)) as RoundRecord;
 
@@ -859,9 +859,9 @@ export const getCurrentRound: LambdaHandler = async () => {
       message: "unable to fetch current round"
     });
   }
-};
+});
 
-export const setCurrentRound: LambdaHandler = async (event) => {
+export const setCurrentRound = protect(Access.ADMIN, async (event) => {
   try {
     const round = event.pathParameters?.round;
 
@@ -888,9 +888,9 @@ export const setCurrentRound: LambdaHandler = async (event) => {
       message: "unable to set current round"
     });
   }
-};
+});
 
-export const getTeamFeedbackScore: LambdaHandler = async (event) => {
+export const getTeamFeedbackScore = protect(Access.ADMIN, async (event) => {
   try {
     const teamID = event.pathParameters?.teamID;
     if (!teamID) {
@@ -949,9 +949,9 @@ export const getTeamFeedbackScore: LambdaHandler = async (event) => {
       message: "Internal server error"
     });
   }
-};
+});
 
-export const updateJudgeSubmission: LambdaHandler = async (event) => {
+export const updateJudgeSubmission = protect(Access.ADMIN, async (event) => {
   try {
     const data = JSON.parse(event.body as string) as UpdateJudgeSubmissionBody;
 
@@ -1033,9 +1033,9 @@ export const updateJudgeSubmission: LambdaHandler = async (event) => {
       message: "Internal server error"
     });
   }
-};
+});
 
-export const updateCurrentTeamForJudge: LambdaHandler = async (event) => {
+export const updateCurrentTeamForJudge = protect(Access.ADMIN, async (event) => {
   try {
     const data = JSON.parse(event.body as string) as UpdateCurrentTeamForJudgeBody;
 
@@ -1105,7 +1105,7 @@ export const updateCurrentTeamForJudge: LambdaHandler = async (event) => {
       message: "Internal server error"
     });
   }
-};
+});
 
 // export const addTransaction = async (event, ctx, callback) => {
 
