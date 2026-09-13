@@ -9,8 +9,9 @@ import {
 import {
   TRANSACTIONS_TABLE, USERS_TABLE
 } from "../../constants/tables";
+import { protect, Access } from "../../lib/auth";
 
-export const getAll = async (event, ctx, callback) => {
+export const getAll = protect(Access.ADMIN, async (event) => {
   try {
     const filters = {
     };
@@ -52,9 +53,9 @@ export const getAll = async (event, ctx, callback) => {
   } catch(err) {
     return helpers.createResponse(500, { message: err.message || err });
   }
-};
+});
 
-export const create = async (event, ctx, callback) => {
+export const create = protect(Access.ADMIN, async (event) => {
   try {
     const timestamp = new Date().getTime();
     const data = JSON.parse(event.body);
@@ -117,4 +118,4 @@ export const create = async (event, ctx, callback) => {
   } catch(err) {
     return helpers.createResponse(500, { message: err.message || err });
   }
-};
+});
