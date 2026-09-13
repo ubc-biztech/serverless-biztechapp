@@ -536,7 +536,7 @@ export const createPartnerRegistrations = protect(Access.ADMIN, async (event, ct
  *
  * Returns: The response object
  */
-export const put = async (event, ctx, callback) => {
+export const put = protect(Access.USER, async (event, ctx, callback) => {
   try {
     if (!event.pathParameters || !event.pathParameters.email)
       throw helpers.missingIdQueryResponse("user");
@@ -552,6 +552,15 @@ export const put = async (event, ctx, callback) => {
         : undefined;
     } catch {
       throw helpers.inputError("Invalid registration path parameters");
+    }
+
+    if (
+      !event.auth.isAdmin &&
+      event.pathParameters.email.toLowerCase() !== event.auth.email
+    ) {
+      return helpers.createResponse(403, {
+        message: "You can only modify your own registration"
+      });
     }
 
     const data = JSON.parse(event.body);
@@ -632,10 +641,10 @@ export const put = async (event, ctx, callback) => {
       message: (err && err.message) || "Internal server error"
     });
   }
-};
+});
 
 // Updates a batch of registration statuses
-export async function massUpdate(event, ctx, callback) {
+export const massUpdate = protect(Access.ADMIN, async (event, ctx, callback) => {
   try {
     const { eventID, eventYear, updates } = JSON.parse(event.body);
 
@@ -686,10 +695,10 @@ export async function massUpdate(event, ctx, callback) {
       error: "Internal server error"
     });
   }
-}
+});
 
 // Return list of entries with the matching id
-export const get = async (event, ctx, callback) => {
+export const get = protect(Access.ADMIN, async (event, ctx, callback) => {
   try {
     const queryString = event.queryStringParameters;
     if (
@@ -765,7 +774,7 @@ export const get = async (event, ctx, callback) => {
       message: (err && err.message) || "Internal server error"
     });
   }
-};
+});
 
 // (used for testing)
 export const del = protect(Access.USER, async (event, ctx, callback) => {
