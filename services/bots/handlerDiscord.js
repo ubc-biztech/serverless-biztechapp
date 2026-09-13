@@ -1,5 +1,6 @@
 import db from "../../lib/db";
 import handlerHelpers from "../../lib/handlerHelpers";
+import { protect } from "../../lib/auth";
 import { InteractionResponseType, InteractionType } from "discord-interactions";
 import {
   verifyRequestSignature,
@@ -64,7 +65,7 @@ export const webhook = (event, ctx, callback) => {
   //stub
 };
 
-export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
+export const mapDiscordAccountToMembership = protect("user", async (event, ctx, callback) => {
   const data = JSON.parse(event.body);
 
   handlerHelpers.checkPayloadProps(data, {
@@ -78,7 +79,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
     }
   });
 
-  const email = event.requestContext.authorizer.claims.email.toLowerCase();
+  const email = event.auth.email;
   const { discordId } = data;
 
   if (!email || !discordId) {
@@ -127,7 +128,7 @@ export const mapDiscordAccountToMembership = async (event, ctx, callback) => {
       message: err.message || err
     });
   }
-};
+});
 
 export const assignRoles = async (event, ctx, callback) => {
   try {

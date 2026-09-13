@@ -1,9 +1,10 @@
 import helpers from "../../lib/handlerHelpers.js";
 import db from "../../lib/db.js";
 import { TEAMS_TABLE, USER_REGISTRATIONS_TABLE, INVESTMENTS_TABLE } from "../../constants/tables.js";
+import { protect } from "../../lib/auth";
 import crypto from "crypto";
 
-export const invest = async (event, ctx, callback) => {
+export const invest = protect("user", async (event) => {
   /*
     Responsible for:
     - Decrementing the balance of the investor
@@ -12,12 +13,10 @@ export const invest = async (event, ctx, callback) => {
     */
 
   const data = JSON.parse(event.body);
+  // Identity comes from the verified token, never the request body.
+  const investorId = event.auth.email;
 
   helpers.checkPayloadProps(data, {
-    investorId: {
-      required: true,
-      type: "string"
-    },
     teamId: {
       required: true,
       type: "string"
@@ -32,14 +31,20 @@ export const invest = async (event, ctx, callback) => {
     }
   });
 
-  let investor = await db.getOne(data.investorId, USER_REGISTRATIONS_TABLE, {
+  if (data.amount <= 0) {
+    return helpers.createResponse(400, {
+      message: "Investment amount must be greater than zero"
+    });
+  }
+
+  let investor = await db.getOne(investorId, USER_REGISTRATIONS_TABLE, {
     "eventID;year": "kickstart;2025" // hardcoded
   });
   let eventUsed = "kickstart;2025";
 
   if (!investor) {
     // if not an attendee, check if they are part of audience, as they can invest too
-    investor = await db.getOne(data.investorId, USER_REGISTRATIONS_TABLE, {
+    investor = await db.getOne(investorId, USER_REGISTRATIONS_TABLE, {
       "eventID;year": "kickstart-showcase;2025" // hardcoded
     });
     eventUsed = "kickstart-showcase;2025";
@@ -82,7 +87,7 @@ export const invest = async (event, ctx, callback) => {
   const updateInvestorPromise = db.updateDBCustom({
     TableName: USER_REGISTRATIONS_TABLE + (process.env.ENVIRONMENT || ""),
     Key: {
-      id: data.investorId,
+      id: investorId,
       "eventID;year": eventUsed // update for specific event (differentiate between showcase)
     },
     UpdateExpression: "SET balance = :newBalance",
@@ -112,7 +117,7 @@ export const invest = async (event, ctx, callback) => {
   const createInvestmentPromise = db.create({
     id: crypto.randomUUID(), // partition key
     ["eventID;year"]: eventUsed, // sort key
-    investorId: data.investorId,
+    investorId: investorId,
     investorName: investor.fname,
     teamId: data.teamId,
     teamName: team.teamName,
@@ -127,9 +132,9 @@ export const invest = async (event, ctx, callback) => {
   return helpers.createResponse(200, {
     message: "Investment successful"
   });
-};
+});
 
-export const teamStatus = async (event, ctx, callback) => {
+export const teamStatus = protect("user", async (event) => {
   /*
     Responsible for:
     - Fetching team's current funding
@@ -170,9 +175,9 @@ export const teamStatus = async (event, ctx, callback) => {
     funding: team.funding,
     investments: teamInvestments // each entry includes comment, investorId, investorName, amount
   });
-};
+});
 
-export const investments = async (event, ctx, callback) => {
+export const investments = protect("user", async (event) => {
   /*
   Responsible for:
   - Fetching investments with optional limit, sorted by most recent first
@@ -199,9 +204,9 @@ export const investments = async (event, ctx, callback) => {
       message: "Internal Server Error"
     });
   }
-};
+});
 
-export const investorStatus = async (event, ctx, callback) => {
+export const investorStatus = protect("user", async (event) => {
   /*
   Responsible for:
   - Fetching individual's balance left
@@ -248,4 +253,4 @@ export const investorStatus = async (event, ctx, callback) => {
     balance: investor.balance,
     investments: investorInvestments // each entry includes comment, teamId, teamName, amount
   });
-};
+});

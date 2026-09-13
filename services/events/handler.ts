@@ -13,6 +13,7 @@ import {
   EVENT_QA_TABLE,
 } from "../../constants/tables.js";
 import db from "../../lib/db.js";
+import { protect } from "../../lib/auth";
 import helpers from "../../lib/handlerHelpers";
 import type {
   APIGatewayResponse,
@@ -72,7 +73,7 @@ const {
 } = feedbackHelpers;
 
 
-export const create: LambdaHandler = async (event) => {
+export const create = protect("admin", async (event) => {
   try {
     const timestamp = new Date().getTime();
     const data = JSON.parse(event.body as string) as CreateEventBody;
@@ -216,12 +217,12 @@ export const create: LambdaHandler = async (event) => {
     console.error(err);
     return helpers.createResponse(500, { message: errorMessage(err) });
   }
-};
+}) as LambdaHandler;
 
 // DELETE /events/{id}/{year}
-export const del: LambdaHandler = async (event) => {
+export const del = protect("admin", async (event) => {
   try {
-    const { id, year } = validateEventPath(event.pathParameters);
+    const { id, year } = validateEventPath(event.pathParameters ?? null);
 
     const existingEvent = await db.getOne(id, EVENTS_TABLE, {
       year
@@ -241,7 +242,7 @@ export const del: LambdaHandler = async (event) => {
     console.error(err);
     return helpers.createResponse(500, { message: errorMessage(err) });
   }
-};
+}) as LambdaHandler;
 
 export const getAll: LambdaHandler = async (event, ctx) => {
   try {
@@ -274,9 +275,9 @@ export const getAll: LambdaHandler = async (event, ctx) => {
 };
 
 // PATCH events/{id}/{year}
-export const update: LambdaHandler = async (event) => {
+export const update = protect("admin", async (event) => {
   try {
-    const { id, year } = validateEventPath(event.pathParameters);
+    const { id, year } = validateEventPath(event.pathParameters ?? null);
 
     const existingEvent = await db.getOne(id, EVENTS_TABLE, {
       year
@@ -422,10 +423,10 @@ export const update: LambdaHandler = async (event) => {
     console.error(err);
     return helpers.createResponse(500, { message: errorMessage(err) });
   }
-};
+}) as LambdaHandler;
 
 // POST events/event-thumbnail-upload-url/{id}/{year}
-export const createThumbnailPicUploadUrl: LambdaHandler = async (event) => {
+export const createThumbnailPicUploadUrl = protect("admin", async (event) => {
   try {
     const data = JSON.parse(event.body as string) as CreateThumbnailPicUploadUrlBody;
     helpers.checkPayloadProps(data, {
@@ -500,7 +501,7 @@ export const createThumbnailPicUploadUrl: LambdaHandler = async (event) => {
     });
     return res;
   }
-};
+}) as LambdaHandler;
 
 // GET events/{id}/{year}
 export const get: LambdaHandler = async (event) => {
@@ -747,9 +748,9 @@ export const submitFeedback: LambdaHandler = async (event) => {
 };
 
 // GET events/{id}/{year}/feedback/{formType}/submissions
-export const getFeedbackSubmissions: LambdaHandler = async (event) => {
+export const getFeedbackSubmissions = protect("admin", async (event) => {
   try {
-    const { id, year } = validateEventPath(event.pathParameters);
+    const { id, year } = validateEventPath(event.pathParameters ?? null);
     const formType = parseFormType(event.pathParameters?.formType);
     if (!formType) {
       return helpers.createResponse(400, {
@@ -792,7 +793,7 @@ export const getFeedbackSubmissions: LambdaHandler = async (event) => {
     console.error(err);
     return helpers.createResponse(500, { message: errorMessage(err) });
   }
-};
+}) as LambdaHandler;
 
 // GET events/getActiveEvent
 export const getActiveEvent: LambdaHandler = async () => {
@@ -824,13 +825,11 @@ export const getActiveEvent: LambdaHandler = async () => {
 };
 
 // POST events/{id}/{year}/qa
-export const qaCreate: LambdaHandler = async (event) => {
+export const qaCreate = protect("user", async (event) => {
   try {
-    const email = event.requestContext?.authorizer?.claims?.email?.toLowerCase();
-    if (!email)
-      return helpers.createResponse(403, { message: "Authentication required." });
+    const email = event.auth!.email;
 
-    const { id, year, eventIDYear } = validateEventPath(event.pathParameters);
+    const { id, year, eventIDYear } = validateEventPath(event.pathParameters ?? null);
     const data = JSON.parse(event.body || "{}");
     const body = validateQuestionBody(data.body);
 
@@ -862,7 +861,7 @@ export const qaCreate: LambdaHandler = async (event) => {
   } catch (err) {
     return clientError(err);
   }
-};
+}) as LambdaHandler;
 
 // GET events/{id}/{year}/qa
 export const qaGetAll: LambdaHandler = async (event) => {
@@ -894,13 +893,11 @@ export const qaGetAll: LambdaHandler = async (event) => {
 };
 
 // POST events/{id}/{year}/qa/{questionId}/upvote
-export const qaUpvote: LambdaHandler = async (event) => {
+export const qaUpvote = protect("user", async (event) => {
   try {
-    const email = event.requestContext?.authorizer?.claims?.email?.toLowerCase();
-    if (!email)
-      return helpers.createResponse(403, { message: "Authentication required." });
+    const email = event.auth!.email;
 
-    const { eventIDYear } = validateEventPath(event.pathParameters);
+    const { eventIDYear } = validateEventPath(event.pathParameters ?? null);
     if (!event.pathParameters?.questionId)
       throw helpers.missingPathParamResponse("qa question", "questionId");
 
@@ -937,16 +934,14 @@ export const qaUpvote: LambdaHandler = async (event) => {
       });
     return clientError(err);
   }
-};
+}) as LambdaHandler;
 
 // PATCH events/{id}/{year}/qa/{questionId}
-export const qaPatch: LambdaHandler = async (event) => {
+export const qaPatch = protect("admin", async (event) => {
   try {
-    const email = event.requestContext?.authorizer?.claims?.email?.toLowerCase();
-    if (!email || !email.endsWith("@ubcbiztech.com"))
-      return helpers.createResponse(403, { message: "Admin access required." });
+    const email = event.auth!.email;
 
-    const { eventIDYear } = validateEventPath(event.pathParameters);
+    const { eventIDYear } = validateEventPath(event.pathParameters ?? null);
     if (!event.pathParameters?.questionId)
       throw helpers.missingPathParamResponse("qa question", "questionId");
 
@@ -987,4 +982,4 @@ export const qaPatch: LambdaHandler = async (event) => {
       return helpers.createResponse(404, { message: "Question not found." });
     return clientError(err);
   }
-};
+}) as LambdaHandler;

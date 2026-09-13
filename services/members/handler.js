@@ -15,6 +15,7 @@ import {
   TYPES
 } from "../profiles/constants";
 import humanId from "human-id";
+import { protect } from "../../lib/auth";
 
 const validProfileTypes = new Set(Object.values(PROFILE_TYPES));
 
@@ -232,13 +233,7 @@ const buildPartnerMembershipTransaction = (records, existingUser) => {
   ];
 };
 
-export const create = async (event, ctx, callback) => {
-  const userID = event.requestContext.authorizer.claims.email.toLowerCase();
-  if (!userID.endsWith("@ubcbiztech.com"))
-    throw helpers.createResponse(403, {
-      message: "unauthorized to perform this action"
-    });
-
+export const create = protect("admin", async (event, ctx, callback) => {
   const timestamp = new Date().getTime();
   const data = JSON.parse(event.body);
   if (!isValidEmail(data.email)) {
@@ -290,17 +285,10 @@ export const create = async (event, ctx, callback) => {
     }
     return response;
   }
-};
+});
 
-export const getEmailFromProfile = async (event, ctx, callback) => {
+export const getEmailFromProfile = protect("admin", async (event, ctx, callback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
-
-    if (!userID.endsWith("@ubcbiztech.com"))
-      throw helpers.createResponse(403, {
-        message: "unauthorized for this action"
-      });
-
     if (!event.pathParameters || !event.pathParameters.profileID)
       throw helpers.missingIdQueryResponse("profileID");
 
@@ -327,16 +315,10 @@ export const getEmailFromProfile = async (event, ctx, callback) => {
     console.log(err);
     return err;
   }
-};
+});
 
-export const get = async (event, ctx, callback) => {
+export const get = protect("admin", async (event, ctx, callback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
-    if (!userID.endsWith("@ubcbiztech.com"))
-      throw helpers.createResponse(403, {
-        message: "unauthorized for this action"
-      });
-
     if (!event.pathParameters || !event.pathParameters.id)
       throw helpers.missingIdQueryResponse("id");
 
@@ -352,16 +334,10 @@ export const get = async (event, ctx, callback) => {
     console.log(err);
     return err;
   }
-};
+});
 
-export const getAll = async (event, ctx, callback) => {
+export const getAll = protect("admin", async (event, ctx, callback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
-    if (!userID.endsWith("@ubcbiztech.com"))
-      throw helpers.createResponse(403, {
-        message: "unauthorized for this action"
-      });
-
     const members = await db.scan(MEMBERS_TABLE);
 
     let response = {};
@@ -371,16 +347,10 @@ export const getAll = async (event, ctx, callback) => {
   } catch (err) {
     return err;
   }
-};
+});
 
-export const update = async (event, ctx, callback) => {
+export const update = protect("admin", async (event, ctx, callback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
-    if (!userID.endsWith("@ubcbiztech.com"))
-      throw helpers.createResponse(403, {
-        message: "unauthorized for this action"
-      });
-
     // eslint-disable-next-line
     if (!event.pathParameters || !event.pathParameters.id)
       throw helpers.missingIdQueryResponse("id");
@@ -405,16 +375,10 @@ export const update = async (event, ctx, callback) => {
     console.error(err);
     return err;
   }
-};
+});
 
-export const del = async (event, ctx, callback) => {
+export const del = protect("admin", async (event, ctx, callback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
-    if (!userID.endsWith("@ubcbiztech.com"))
-      throw helpers.createResponse(403, {
-        message: "unauthorized for this action"
-      });
-
     if (!event.pathParameters || !event.pathParameters.id)
       throw helpers.missingIdQueryResponse("id");
 
@@ -434,17 +398,10 @@ export const del = async (event, ctx, callback) => {
   } catch (err) {
     return err;
   }
-};
+});
 
-export const createPartnerMemberships = async (event, ctx, callback) => {
+export const createPartnerMemberships = protect("admin", async (event, ctx, callback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
-    if (!userID.endsWith("@ubcbiztech.com")) {
-      return helpers.createResponse(403, {
-        message: "unauthorized"
-      });
-    }
-
     const data = JSON.parse(event.body || "{}");
     if (!Array.isArray(data.partners)) {
       return helpers.inputError("partners must be an array", data);
@@ -517,7 +474,7 @@ export const createPartnerMemberships = async (event, ctx, callback) => {
       message: err.message || "Internal server error"
     });
   }
-};
+});
 
 // type CreateMemberRequest = {
 //   email: string,
@@ -537,16 +494,8 @@ export const createPartnerMemberships = async (event, ctx, callback) => {
 //   adminCreated: true,
 // };
 
-export const grantMembership = async (event, ctx, callback) => {
+export const grantMembership = protect("admin", async (event, ctx, callback) => {
   try {
-    const userID = event.requestContext.authorizer.claims.email.toLowerCase();
-    if (!userID.endsWith("@ubcbiztech.com")) {
-      callback(null, helpers.createResponse(403, {
-        message: "unauthorized"
-      }));
-      return null;
-    }
-
     const data = JSON.parse(event.body);
 
     const email = data && data.email ? data.email.toLowerCase() : undefined;
@@ -636,4 +585,4 @@ export const grantMembership = async (event, ctx, callback) => {
     console.error(err);
     return err;
   }
-};
+});

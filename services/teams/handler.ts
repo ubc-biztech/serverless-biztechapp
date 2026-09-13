@@ -13,6 +13,7 @@ import {
 import db from "../../lib/db.js";
 import { WEIGHTS, ROUND } from "./constants.js";
 import { LambdaHandler } from "../../lib/types";
+import { protect } from "../../lib/auth";
 import {
   AddMultipleQuestionsBody,
   AddQRScanBody,
@@ -108,7 +109,7 @@ export const updateTeamPoints: LambdaHandler = async (event) => {
   }
 };
 
-export const leaveTeam: LambdaHandler = async (event) => {
+export const leaveTeam = protect("user", async (event) => {
   try {
     const data = JSON.parse(event.body as string) as LeaveTeamBody;
 
@@ -127,7 +128,10 @@ export const leaveTeam: LambdaHandler = async (event) => {
       }
     });
 
-    await teamHelpers.leaveTeam(data.memberID, data.eventID, data.year);
+    // Non-admins can only act on themselves; admins may target the body memberID.
+    const memberID = event.auth?.isAdmin ? data.memberID : event.auth!.email;
+
+    await teamHelpers.leaveTeam(memberID, data.eventID, data.year);
 
     return helpers.createResponse(200, {
       message: "Successfully left team.",
@@ -141,9 +145,9 @@ export const leaveTeam: LambdaHandler = async (event) => {
       error: errorMessage(error)
     });
   }
-};
+});
 
-export const joinTeam: LambdaHandler = async (event) => {
+export const joinTeam = protect("user", async (event) => {
   try {
     const data = JSON.parse(event.body as string) as JoinTeamBody;
 
@@ -166,7 +170,10 @@ export const joinTeam: LambdaHandler = async (event) => {
       }
     });
 
-    const { memberIDs, teamName } = await teamHelpers.joinTeam(data.memberID, data.eventID, data.year, data.teamID);
+    // Non-admins can only act on themselves; admins may target the body memberID.
+    const memberID = event.auth?.isAdmin ? data.memberID : event.auth!.email;
+
+    const { memberIDs, teamName } = await teamHelpers.joinTeam(memberID, data.eventID, data.year, data.teamID);
 
     return helpers.createResponse(200, {
       message: "Successfully joined team.",
@@ -182,9 +189,9 @@ export const joinTeam: LambdaHandler = async (event) => {
       error: errorMessage(error)
     });
   }
-};
+});
 
-export const makeTeam: LambdaHandler = async (event) => {
+export const makeTeam = protect("user", async (event) => {
   try {
     const data = JSON.parse(event.body as string) as MakeTeamBody;
 
@@ -207,7 +214,11 @@ export const makeTeam: LambdaHandler = async (event) => {
       } // 'object' means array in this case
     });
 
-    const res = await teamHelpers.makeTeam(data.team_name, data.eventID, data.year, data.memberIDs);
+    // Non-admins can only create a team for themselves; admins may pass the
+    // full body memberIDs list.
+    const memberIDs = event.auth?.isAdmin ? data.memberIDs : [event.auth!.email];
+
+    const res = await teamHelpers.makeTeam(data.team_name, data.eventID, data.year, memberIDs);
     return helpers.createResponse(200, {
       message: "Successfully created new team.",
       response: res
@@ -218,7 +229,7 @@ export const makeTeam: LambdaHandler = async (event) => {
       message: errorMessage(err)
     });
   }
-};
+});
 
 export const getTeamFromUserID: LambdaHandler = async (event) => {
   /*
@@ -264,13 +275,9 @@ export const getTeamFromUserID: LambdaHandler = async (event) => {
   }
 };
 
-export const get: LambdaHandler = async (event) => {
-  let obfuscateEmails = true;
-
-  const userID = event.requestContext.authorizer?.claims?.email?.toLowerCase() ?? "";
-  if (userID.endsWith("@ubcbiztech.com")) {
-    obfuscateEmails = false;
-  }
+export const get = protect("user", async (event) => {
+  // Admins see raw memberIDs; everyone else gets them stripped.
+  const obfuscateEmails = !event.auth?.isAdmin;
 
   if (
     !event.pathParameters ||
@@ -306,7 +313,7 @@ export const get: LambdaHandler = async (event) => {
       error: errorMessage(error)
     });
   }
-};
+});
 
 // STUBS or unused functions below
 

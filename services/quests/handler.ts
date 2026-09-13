@@ -1,7 +1,8 @@
 import { QUESTS_TABLE, USERS_TABLE } from "../../constants/tables.js";
 import db from "../../lib/db.js";
+import { protect } from "../../lib/auth";
 import handlerHelpers from "../../lib/handlerHelpers";
-import type { APIGatewayEvent, LambdaCallback, LambdaContext } from "../../lib/types";
+import type { APIGatewayEvent, LambdaCallback, LambdaContext, LambdaHandler } from "../../lib/types";
 import { QUEST_DEFS } from "./constants.js";
 import { applyQuestEvent, initStoredQuest, parseEvents } from "./helper.js";
 
@@ -155,11 +156,7 @@ async function updateUserQuestProgress(
   }
 }
 
-export const updateQuest = async (
-  event: APIGatewayEvent,
-  _ctx: LambdaContext,
-  _callback: LambdaCallback,
-) => {
+export const updateQuest = protect("user", async (event) => {
   try {
     if (
       !event.pathParameters ||
@@ -174,8 +171,7 @@ export const updateQuest = async (
 
     const { event_id, year } = event.pathParameters;
 
-    const userID =
-      event.requestContext.authorizer?.claims?.email?.toLowerCase() as string;
+    const userID = event.auth!.email;
     const body = JSON.parse(event.body as string) as Record<string, unknown>;
 
     try {
@@ -251,8 +247,8 @@ export const updateQuest = async (
           try {
             const userAMember = await db.getOne(userID, USERS_TABLE);
             userAProfileId =
-              userA && (userA.profileID as string | undefined)
-                ? (userA.profileID as string)
+              userAMember && (userAMember.profileID as string | undefined)
+                ? (userAMember.profileID as string)
                 : null;
           } catch (_e: unknown) {
             console.warn(`Could not get profileId for ${userID}`);
@@ -288,13 +284,9 @@ export const updateQuest = async (
       message: "Internal server error",
     });
   }
-};
+}) as LambdaHandler;
 
-export const getQuest = async (
-  event: APIGatewayEvent,
-  _ctx: LambdaContext,
-  _callback: LambdaCallback,
-) => {
+export const getQuest = protect("user", async (event) => {
   try {
     if (
       !event.pathParameters ||
@@ -307,8 +299,7 @@ export const getQuest = async (
     }
 
     const { event_id, year } = event.pathParameters;
-    const userID =
-      event.requestContext.authorizer?.claims?.email?.toLowerCase() as string;
+    const userID = event.auth!.email;
 
     let userItem = await db.getOne(userID, QUESTS_TABLE, {
       "eventID#year": `${event_id}#${year}`,
@@ -362,13 +353,9 @@ export const getQuest = async (
       message: "Internal server error",
     });
   }
-};
+}) as LambdaHandler;
 
-export const getQuestsByEvent = async (
-  event: APIGatewayEvent,
-  _ctx: LambdaContext,
-  _callback: LambdaCallback,
-) => {
+export const getQuestsByEvent = protect("admin", async (event) => {
   try {
     if (
       !event.pathParameters ||
@@ -378,12 +365,6 @@ export const getQuestsByEvent = async (
       return handlerHelpers.createResponse(400, {
         message: "missing path parameters",
       });
-    }
-
-    const userID =
-      event.requestContext.authorizer?.claims?.email?.toLowerCase() as string;
-    if (!userID.endsWith("@ubcbiztech.com")) {
-      return handlerHelpers.createResponse(401, { message: "Unauthorized" });
     }
 
     const { event_id, year } = event.pathParameters;
@@ -417,7 +398,7 @@ export const getQuestsByEvent = async (
       message: "Internal server error",
     });
   }
-};
+}) as LambdaHandler;
 
 async function resolveEmailFromProfileId(
   profileId: string,
