@@ -13,7 +13,7 @@ import {
   EVENT_QA_TABLE,
 } from "../../constants/tables.js";
 import db from "../../lib/db.js";
-import { protect, Access } from "../../lib/auth";
+import { protect, Access, readCaller } from "../../lib/auth";
 import helpers from "../../lib/handlerHelpers";
 import type {
   APIGatewayResponse,
@@ -527,6 +527,13 @@ export const get: LambdaHandler = async (event) => {
       const response = helpers.createResponse(200, counts);
       return response;
     } else if (queryString && queryString.users === "true") {
+      // Keep the base route public, but require an admin for the user dump.
+      if (!readCaller(event)?.isAdmin) {
+        return helpers.createResponse(403, {
+          message: "Admin access required"
+        });
+      }
+
       let registrationList = [];
 
       try {
@@ -666,7 +673,7 @@ export const getFeedbackForm: LambdaHandler = async (event) => {
 };
 
 // POST events/{id}/{year}/feedback/{formType}
-export const submitFeedback: LambdaHandler = async (event) => {
+export const submitFeedback = protect(Access.USER, async (event) => {
   try {
     const { id, year } = validateEventPath(event.pathParameters);
     const formType = parseFormType(event.pathParameters?.formType);
@@ -712,7 +719,7 @@ export const submitFeedback: LambdaHandler = async (event) => {
       });
     }
 
-    const respondentEmail = normalizeText(data.respondentEmail).toLowerCase();
+    const respondentEmail = normalizeText(event.auth!.email).toLowerCase();
     if (respondentEmail && !isValidEmail(respondentEmail)) {
       return helpers.createResponse(406, {
         message: "respondentEmail must be a valid email address."
@@ -745,7 +752,7 @@ export const submitFeedback: LambdaHandler = async (event) => {
     console.error(err);
     return helpers.createResponse(500, { message: errorMessage(err) });
   }
-};
+}) as LambdaHandler;
 
 // GET events/{id}/{year}/feedback/{formType}/submissions
 export const getFeedbackSubmissions = protect(Access.ADMIN, async (event) => {
