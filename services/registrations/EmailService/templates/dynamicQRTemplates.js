@@ -38,7 +38,7 @@ export const getDefaultApplicationTemplate = (emailParams) => {
       <div>
           <p>Hello ${fname},</p>
           <p>Thank you for registering for HelloHacks 2026! We’re excited to receive your application and will be reviewing it shortly.</p>
-          <p>If you have any questions or concerns about your application, please reach out to our Event Director at <a href="mailto:jade@ubcbiztech.com">jade@ubcbiztech.com</a>.</p>
+          <p>If you have any questions or concerns about your application, please reach out to our Event Director at <a href="mailto:jade@ubcbiztech.com">allison@ubcbiztech.com</a>.</p>
           <p>We’ll be in touch by email once the applicant review process is complete.</p>
           <p>Best,<br>BizTech Team</p>
       </div>
