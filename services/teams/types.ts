@@ -240,3 +240,35 @@ export interface TeamsHelpers {
     team_name: string,
   ): Promise<unknown>;
 }
+// ─── Hackathon judging (handlerJudging.ts) ────────────────────────────────
+
+export interface JudgingDocument {
+  settings: {
+    eventName: string;
+    phase: "submission" | "prelim" | "finals" | "closed";
+    finalsTeamIds: string[];
+    finalsJudgeIds: string[];
+    showTeamFeedback: boolean;
+    allowJudgeSeeOthers: boolean;
+    anonymizeTeams: boolean;
+    lockSubmissions: boolean;
+    maxImages: number;
+  };
+  rubric: {
+    name: string;
+    scaleMax: number;
+    scoreMode: "points" | "weighted";
+    criteria: Array<{ id: string; label: string; description?: string; weight: number; maxScore?: number }>;
+  } | null;
+  links: Array<{ id: string; label: string; url: string }>;
+  judges: Array<{ id: string; name: string; assignedTeamIds?: string[]; code?: string }>;
+  teams: Array<{ id: string; name: string; members: string[]; description?: string; github?: string; devpost?: string; imageUrls?: string[]; code?: string }>;
+  updatedAt: string;
+}
+
+/** A team or judge signed in with a code. Organizers are Cognito admins, not principals. */
+export interface JudgingPrincipal {
+  role: "judge" | "team";
+  id: string;
+  name: string;
+}

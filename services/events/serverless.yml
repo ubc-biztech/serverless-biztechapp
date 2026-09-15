@@ -202,6 +202,9 @@ functions:
                 year: true
                 formType: true
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   eventGetFeedbackSubmissions:
     handler: handler.getFeedbackSubmissions
     events:
