@@ -3,7 +3,7 @@ import db from "../../lib/db.js";
 import helpers from "../../lib/handlerHelpers";
 import { Access, protect } from "../../lib/auth";
 import { APIGatewayEvent } from "../../lib/types";
-import { FEEDBACK_TABLE } from "../../constants/tables.js";
+import { FEEDBACK_TABLE, JUDGING_TABLE } from "../../constants/tables.js";
 import { JudgingDocument } from "./types";
 import {
   JUDGING_PHASES,
@@ -17,6 +17,161 @@ import {
   redact,
   toReview
 } from "./helpersJudging";
+
+const PORTAL_ID = "JUDGING_PORTAL";
+const validScope = (data: { eventID?: unknown; year?: unknown }) =>
+  typeof data.eventID === "string" &&
+  /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(data.eventID) &&
+  data.eventID.length <= 80 &&
+  Number.isInteger(data.year) &&
+  Number(data.year) >= 2000 &&
+  Number(data.year) <= 2100;
+
+const readBody = (body: string | null) => {
+  try {
+    const data = JSON.parse(body || "{}");
+    if (data && typeof data === "object" && !Array.isArray(data)) return data;
+  } catch {
+    /* Report malformed input below. */
+  }
+  throw helpers.inputError("Send a JSON object.");
+};
+
+/** Public metadata only. db.scan follows every DynamoDB page. */
+export const judgingListEvents = protect(
+  Access.PUBLIC,
+  handle(async () => {
+    const [rows, config] = await Promise.all([
+      db.scan(JUDGING_TABLE, {
+        FilterExpression: "begins_with(#id, :prefix)",
+        ProjectionExpression:
+          "#id, #settings.#name, #settings.#phase, #settings.#image",
+        ExpressionAttributeNames: {
+          "#id": "id",
+          "#settings": "settings",
+          "#name": "eventName",
+          "#phase": "phase",
+          "#image": "imageUrl"
+        },
+        ExpressionAttributeValues: { ":prefix": "JUDGING#" }
+      }),
+      db.getOne(PORTAL_ID, JUDGING_TABLE)
+    ]);
+    const events = rows
+      .flatMap((row) => {
+        const match = /^JUDGING#(.+);(\d{4})$/.exec(String(row.id));
+        const settings = row.settings as JudgingDocument["settings"] | undefined;
+        if (
+          !match ||
+          !settings ||
+          typeof settings.eventName !== "string" ||
+          !JUDGING_PHASES.includes(settings.phase)
+        )
+          return [];
+        const scope = { eventID: match[1], year: Number(match[2]) };
+        if (!validScope(scope)) return [];
+        return [
+          {
+            ...scope,
+            eventName: settings.eventName,
+            phase: settings.phase,
+            ...(typeof settings.imageUrl === "string"
+              ? { imageUrl: settings.imageUrl }
+              : {})
+          }
+        ];
+      })
+      .sort((a, b) => b.year - a.year || a.eventName.localeCompare(b.eventName));
+    const defaultEvent = events.find(
+      (e) => e.eventID === config?.eventID && e.year === config?.year
+    );
+    return helpers.createResponse(200, {
+      events,
+      defaultEvent: defaultEvent
+        ? { eventID: defaultEvent.eventID, year: defaultEvent.year }
+        : null
+    });
+  })
+);
+
+/** Set the landing event without changing any event data. */
+export const judgingSetDefault = protect(
+  Access.ADMIN,
+  handle(async (event) => {
+    const data = readBody(event.body);
+    if (!validScope(data))
+      return helpers.inputError("Enter a valid event ID and year.");
+    if (!(await getDocument(`${data.eventID};${data.year}`)))
+      return helpers.notFoundResponse("judging", data.eventID);
+    await db.updateDBCustom({
+      TableName: JUDGING_TABLE + (process.env.ENVIRONMENT || ""),
+      Key: { id: PORTAL_ID },
+      UpdateExpression: "SET #eventID = :eventID, #year = :year",
+      ExpressionAttributeNames: { "#eventID": "eventID", "#year": "year" },
+      ExpressionAttributeValues: {
+        ":eventID": data.eventID,
+        ":year": data.year
+      }
+    });
+    return helpers.createResponse(200, {
+      eventID: data.eventID,
+      year: data.year
+    });
+  })
+);
+
+/** Conditional create: choosing an existing ID cannot erase an event. */
+export const judgingCreateEvent = protect(
+  Access.ADMIN,
+  handle(async (event) => {
+    const data = readBody(event.body);
+    if (
+      !validScope(data) ||
+      typeof data.eventName !== "string" ||
+      !data.eventName.trim() ||
+      data.eventName.trim().length > 120
+    ) {
+      return helpers.inputError(
+        "Enter an event name (up to 120 characters), ID and year."
+      );
+    }
+    const doc: JudgingDocument = {
+      settings: {
+        eventName: data.eventName.trim(),
+        phase: "submission",
+        finalsTeamIds: [],
+        finalsJudgeIds: [],
+        showTeamFeedback: false,
+        allowJudgeSeeOthers: false,
+        anonymizeTeams: false,
+        lockSubmissions: false,
+        maxImages: 10
+      },
+      rubric: null,
+      links: [],
+      judges: [],
+      teams: [],
+      updatedAt: new Date().toISOString()
+    };
+    try {
+      await putDocument(`${data.eventID};${data.year}`, doc, true);
+    } catch (error) {
+      if (
+        error &&
+        typeof error === "object" &&
+        "type" in error &&
+        error.type === "ConditionalCheckFailedException"
+      ) {
+        return helpers.createResponse(409, {
+          message:
+            "An event with this ID and year already exists. Select it from Events."
+        });
+      }
+      throw error;
+    }
+    return helpers.createResponse(201, redact(doc, "admin"));
+  })
+);
 
 /** GET /judging/{eventID}/{year} — public view, or a team's/judge's view with X-Judging-Code */
 export const judgingGet = handle(async (event) => {
@@ -55,6 +210,10 @@ export const judgingPut = protect(Access.ADMIN, handle(async (event) => {
   });
   if (!JUDGING_PHASES.includes(data.settings.phase)) {
     return helpers.inputError(`settings.phase must be one of ${JUDGING_PHASES.join(", ")}`);
+  }
+  if (data.settings.imageUrl !== undefined && (typeof data.settings.imageUrl !== "string" ||
+      (data.settings.imageUrl && !/^https:\/\//i.test(data.settings.imageUrl)))) {
+    return helpers.inputError("Event image must be an HTTPS URL.");
   }
   const criteria: Array<{ id: string }> = data.rubric?.criteria || [];
   if (new Set(criteria.map((c) => c.id)).size !== criteria.length) {
