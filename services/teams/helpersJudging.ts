@@ -93,7 +93,8 @@ export const redact = (doc: JudgingDocument, role: JudgingPrincipal["role"] | "a
     return {
       settings: {
         eventName: doc.settings.eventName,
-        phase: doc.settings.phase
+        phase: doc.settings.phase,
+        ...(doc.settings.imageUrl ? { imageUrl: doc.settings.imageUrl } : {})
       },
       links: doc.links
     };
