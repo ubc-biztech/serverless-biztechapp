@@ -245,6 +245,7 @@ export interface TeamsHelpers {
 export interface JudgingDocument {
   settings: {
     eventName: string;
+    imageUrl?: string;
     phase: "submission" | "prelim" | "finals" | "closed";
     finalsTeamIds: string[];
     finalsJudgeIds: string[];

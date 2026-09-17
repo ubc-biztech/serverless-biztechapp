@@ -129,6 +129,7 @@ export interface KeyCondition {
 }
 
 export interface ScanFilters {
+  ProjectionExpression?: string;
   FilterExpression?: string;
   ExpressionAttributeValues?: Record<string, unknown>;
   ExpressionAttributeNames?: Record<string, string>;
