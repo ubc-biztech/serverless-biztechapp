@@ -5,6 +5,7 @@ import {
 } from "../../constants/tables";
 import sgMail from "@sendgrid/mail";
 import db from "../../lib/db";
+import { REGISTRATION_STATUS } from "./constants";
 const ics = require("ics");
 
 sgMail.setApiKey(process.env.SENDGRID_KEY);
@@ -90,13 +91,13 @@ export default {
         result.forEach((item) => {
           if (item.isPartner === undefined || !item.isPartner) {
             switch (item.registrationStatus) {
-            case "registered":
+            case REGISTRATION_STATUS.REGISTERED:
               counts.registeredCount++;
               break;
-            case "checkedIn":
+            case REGISTRATION_STATUS.CHECKED_IN:
               counts.checkedInCount++;
               break;
-            case "waitlist":
+            case REGISTRATION_STATUS.WAITLIST:
               counts.waitlistCount++;
               break;
             }

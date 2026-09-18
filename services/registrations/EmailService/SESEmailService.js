@@ -1,10 +1,8 @@
 import {
   SESClient,
-  CreateTemplateCommand,
-  SendEmailCommand
+  CreateTemplateCommand
 } from "@aws-sdk/client-ses";
 import nodemailer from "nodemailer";
-import QRCode from "qrcode";
 import {
   logoBase64
 } from "./constants";
@@ -18,6 +16,7 @@ import {
   getRegisteredQRTemplate,
   getDefaultApplicationTemplate
 } from "./templates/dynamicQRTemplates";
+import { REGISTRATION_STATUS } from "../constants";
 const ics = require("ics");
 
 export default class SESEmailService {
@@ -63,11 +62,9 @@ export default class SESEmailService {
     }
   }
 
-  async sendCalendarInvite(event, user) {
+  async sendCalendarInvite(event, user, registrationStatus) {
     let {
       ename,
-      eventID,
-      year,
       description,
       elocation,
       startDate,
@@ -76,8 +73,7 @@ export default class SESEmailService {
     } = event;
     let {
       fname,
-      id,
-      isPartner
+      id
     } = user;
 
     const emailParams = {
@@ -86,11 +82,17 @@ export default class SESEmailService {
       imageUrl,
       logoBase64
     };
-    const rawHtml = user.isPartner ?
-      getPartnerCalendarInviteTemplate(emailParams) :
-      event.isApplicationBased ?
-        getDefaultPaymentProcessedTemplate(emailParams) :
-        getDefaultCalendarInviteTemplate(emailParams);
+    let rawHtml;
+    if (user.isPartner) {
+      rawHtml = getPartnerCalendarInviteTemplate(emailParams);
+    } else if (
+      registrationStatus === REGISTRATION_STATUS.ACCEPTED_COMPLETE ||
+      !event.isApplicationBased
+    ) {
+      rawHtml = getDefaultCalendarInviteTemplate(emailParams);
+    } else {
+      rawHtml = getDefaultPaymentProcessedTemplate(emailParams);
+    }
 
     startDate = new Date(startDate);
     endDate = new Date(endDate);
@@ -140,7 +142,7 @@ export default class SESEmailService {
     }
     // Email details
     // TODO: refactor to pass in template to make this method more reusuable
-    let mailOptions = {
+    const mailOptions = {
       from: "dev@ubcbiztech.com",
       to: id,
       subject: `[BizTech Confirmation] ${ename} on ${startDate}`,
@@ -152,16 +154,6 @@ export default class SESEmailService {
         content: value
       }
     };
-
-    if (isPartner) {
-      const qr = (await QRCode.toDataURL(`${id};${eventID};${year};${fname}`)).toString();
-      mailOptions.attachments = [{
-        filename: "qr.png",
-        content: qr.split("base64,")[1],
-        encoding: "base64",
-        cid: "qr"
-      }];
-    }
 
     try {
       await this.transporter.sendMail(mailOptions);
@@ -175,10 +167,8 @@ export default class SESEmailService {
       id: email, fname
     } = user;
     const {
-      id, ename, year, isApplicationBased
+      ename, isApplicationBased
     } = event;
-
-    const qr = await QRCode.toDataURL(`${email};${id};${year};${fname}`);
 
     const currentYear = new Date().getFullYear();
     const emailParams = {
@@ -186,11 +176,10 @@ export default class SESEmailService {
       ename,
       registrationStatus,
       logoBase64,
-      qrCode: qr,
       currentYear
     };
 
-    const rawHtml = registrationStatus === "registered"
+    const rawHtml = registrationStatus === REGISTRATION_STATUS.REGISTERED
       ? getRegisteredQRTemplate(emailParams)
       : isApplicationBased
         ? getDefaultApplicationTemplate(emailParams)
@@ -198,18 +187,12 @@ export default class SESEmailService {
 
     const subject = `BizTech ${ename} Event ${emailType === "application" ? "Application" : "Registration"} Status`;
 
-    let mailOptions = {
+    const mailOptions = {
       from: "dev@ubcbiztech.com",
       to: email,
       subject: subject,
       html: rawHtml,
-      attachDataUrls: true,
-      attachments: [{
-        filename: "qr.png",
-        content: qr.split("base64,")[1],
-        encoding: "base64",
-        cid: "qr@biztech.com"
-      }]
+      attachDataUrls: true
     };
 
     try {

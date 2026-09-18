@@ -12,6 +12,7 @@ import {
 } from "../../constants/tables";
 import SESEmailService from "./EmailService/SESEmailService";
 import awsConfig from "../../lib/config";
+import { REGISTRATION_STATUS, STATUS_FIELD } from "./constants";
 
 // const CHECKIN_COUNT_SANITY_CHECK = 500;
 
@@ -129,7 +130,7 @@ export async function updateHelper(
     }
   } else if (dynamicRegistrationStatus) {
     // Check if the event is full
-    if (dynamicRegistrationStatus === "registered") {
+    if (dynamicRegistrationStatus === REGISTRATION_STATUS.REGISTERED) {
       const counts = await registrationHelpers.getEventCounts(eventID, year);
       if (counts === null) {
         throw db.dynamoErrorResponse({
@@ -139,7 +140,7 @@ export async function updateHelper(
       }
 
       if (counts.registeredCount >= existingEvent.capac)
-        dynamicRegistrationStatus = "waitlist";
+        dynamicRegistrationStatus = REGISTRATION_STATUS.WAITLIST;
 
       // backend check if workshop is full. No longer needed for applicable.
       // counts.dynamicCounts.forEach(count => {
@@ -315,12 +316,12 @@ export async function sendEmail(
   emailType = ""
 ) {
   if (
-    userStatus === "incomplete" ||
-    userStatus === "rejected" ||
-    userStatus === "accepted"
+    userStatus === REGISTRATION_STATUS.INCOMPLETE ||
+    userStatus === REGISTRATION_STATUS.REJECTED ||
+    userStatus === REGISTRATION_STATUS.ACCEPTED
   )
     return;
-  if (userStatus !== "checkedIn") {
+  if (userStatus !== REGISTRATION_STATUS.CHECKED_IN) {
     const userEmail = user.id;
 
     if (!userEmail) {
@@ -336,16 +337,27 @@ export async function sendEmail(
     if (existingReg && existingReg.isPartner) {
       return;
     }
+    const statusField = emailType === "application"
+      ? STATUS_FIELD.APPLICATION
+      : STATUS_FIELD.REGISTRATION;
+    if (existingReg && existingReg[statusField] === userStatus) {
+      return;
+    }
 
     const EmailService = new SESEmailService(awsConfig);
+    if (userStatus === REGISTRATION_STATUS.ACCEPTED_COMPLETE) {
+      await EmailService.sendCalendarInvite(existingEvent, user, userStatus);
+      return;
+    }
+
     await EmailService.sendDynamicQR(
       existingEvent,
       user,
       userStatus,
       emailType
     );
-    if (userStatus === "registered")
-      await EmailService.sendCalendarInvite(existingEvent, user);
+    if (userStatus === REGISTRATION_STATUS.REGISTERED)
+      await EmailService.sendCalendarInvite(existingEvent, user, userStatus);
   }
 }
 
@@ -391,7 +403,7 @@ export const post = async (event, ctx, callback) => {
       "eventID;year": `${data.eventID};${data.year}`
     });
     if (existingReg) {
-      if (existingReg.registrationStatus === "incomplete") {
+      if (existingReg.registrationStatus === REGISTRATION_STATUS.INCOMPLETE) {
         await updateHelper(data, false, data.email, data.fname);
         return helpers.createResponse(200, {
           message: "Redirect to link",
@@ -479,7 +491,7 @@ export const createPartnerRegistrations = protect(Access.ADMIN, async (event, ct
             year,
             email: partner.email,
             fname: partner.firstName,
-            registrationStatus: "acceptedComplete",
+            registrationStatus: REGISTRATION_STATUS.ACCEPTED_COMPLETE,
             isPartner: true
           },
           true,
@@ -592,7 +604,7 @@ export const put = async (event, ctx, callback) => {
     }
 
     // application based events
-    const isAccepted = data.registrationStatus === "accepted";
+    const isAccepted = data.registrationStatus === REGISTRATION_STATUS.ACCEPTED;
 
     if (isAccepted) {
       const member = await db.getOne(email, MEMBERS_TABLE);
@@ -610,7 +622,7 @@ export const put = async (event, ctx, callback) => {
 
       // Set status to complete if pricing is free or zero
       if (pricing === 0) {
-        data.registrationStatus = "acceptedPending";
+        data.registrationStatus = REGISTRATION_STATUS.ACCEPTED_PENDING;
       }
     }
 
