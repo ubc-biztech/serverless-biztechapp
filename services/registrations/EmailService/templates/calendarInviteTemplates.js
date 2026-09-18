@@ -9,8 +9,7 @@ export const getDefaultCalendarInviteTemplate = (emailParams) => {
         <div style="width: 700px; height: 400px;">
         <img src="${imageUrl}" alt="banner" style="width: 100%; max-height: 100%"/>
         </div>
-        <p>Your QR code is attached to a separate event confirmation email. Please have it ready to scan at the event.</p>
-        <p>Further, if you decline your calendar invitation, you will also need to cancel your registration through the link below.</p>
+        <p>Show your registration at check-in using the link below. If you no longer wish to attend, you must also cancel your registration through this link.</p>
         <a href="https://app.ubcbiztech.com/events">Manage your registration</a>
         <br>
         <p><b>See more upcoming events</b></p>
@@ -35,8 +34,7 @@ export const getDefaultPaymentProcessedTemplate = (emailParams) => {
         <div style="width: 700px; height: 400px;">
         <img src="${imageUrl}" alt="banner" style="width: 100%; max-height: 100%"/>
         </div>
-        <p>Your QR code is attached to a separate event confirmation email. Please have it ready to scan at the event.</p>
-        <p>Further, if you decline your calendar invitation, you will also need to cancel your registration through the link below.</p>
+        <p>Show your registration at check-in using the link below. If you no longer wish to attend, you must also cancel your registration through this link.</p>
         <a href="https://app.ubcbiztech.com/events">Manage your registration</a>
         <br>
         <p><b>See more upcoming events</b></p>
@@ -63,7 +61,6 @@ export const getPartnerCalendarInviteTemplate = (emailParams) => {
       <img src="${imageUrl}" alt="banner" style="width: 100%; max-height:100%"/>
       </div>
       <p>You have been registered for UBC BizTech's <b>${ename}</b> event.</p>
-      <p>Please scan the attached QR code at the sign-in desk at the event.</p>
       <p>We look forward to hosting you!</p>
       <p><b>See more upcoming events</b></p>
       <p>You can find the details for this event and other upcoming events on your <a href="https://app.ubcbiztech.com/">home page</a>.
