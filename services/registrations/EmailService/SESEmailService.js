@@ -16,6 +16,7 @@ import {
   getRegisteredQRTemplate,
   getDefaultApplicationTemplate
 } from "./templates/dynamicQRTemplates";
+import { REGISTRATION_STATUS } from "../constants";
 const ics = require("ics");
 
 export default class SESEmailService {
@@ -61,7 +62,7 @@ export default class SESEmailService {
     }
   }
 
-  async sendCalendarInvite(event, user) {
+  async sendCalendarInvite(event, user, registrationStatus) {
     let {
       ename,
       description,
@@ -81,11 +82,17 @@ export default class SESEmailService {
       imageUrl,
       logoBase64
     };
-    const rawHtml = user.isPartner ?
-      getPartnerCalendarInviteTemplate(emailParams) :
-      event.isApplicationBased ?
-        getDefaultPaymentProcessedTemplate(emailParams) :
-        getDefaultCalendarInviteTemplate(emailParams);
+    let rawHtml;
+    if (user.isPartner) {
+      rawHtml = getPartnerCalendarInviteTemplate(emailParams);
+    } else if (
+      registrationStatus === REGISTRATION_STATUS.ACCEPTED_COMPLETE ||
+      !event.isApplicationBased
+    ) {
+      rawHtml = getDefaultCalendarInviteTemplate(emailParams);
+    } else {
+      rawHtml = getDefaultPaymentProcessedTemplate(emailParams);
+    }
 
     startDate = new Date(startDate);
     endDate = new Date(endDate);
@@ -172,7 +179,7 @@ export default class SESEmailService {
       currentYear
     };
 
-    const rawHtml = registrationStatus === "registered"
+    const rawHtml = registrationStatus === REGISTRATION_STATUS.REGISTERED
       ? getRegisteredQRTemplate(emailParams)
       : isApplicationBased
         ? getDefaultApplicationTemplate(emailParams)
