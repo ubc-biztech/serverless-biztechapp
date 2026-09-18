@@ -1,15 +1,13 @@
 export const getDefaultQRTemplate = (emailParams) => {
   const {
-    fname, ename, registrationStatus, logoBase64, qrCode, currentYear
+    fname, ename, registrationStatus, logoBase64, currentYear
   } = emailParams;
 
   return `<div style="font-size: 15px; text-align: left;">
     <div>
         <p>Hello ${fname},</p>
         <p>Your registration status for UBC BizTech's ${ename} event is: <b>${registrationStatus}</b>.</p>
-        <p>Please reach out to our Experiences Team Lead at <a href="mailto:grace@ubcbiztech.com">grace@ubcbiztech.com</a> if this is a mistake.</p>
-        <p>Here's your QR code (if it doesn't display, please speak to the sign-in desk):</p>
-        <img src="cid:qr@biztech.com" alt="Attached QR Code" style="max-width: 200px;" />
+        <p>Please reach out to our Experiences Team Lead at <a href="mailto:jay@ubcbiztech.com">jay@ubcbiztech.com</a> if this is a mistake.</p>
     </div>
     <img src="${logoBase64}" width="40" height="40" alt="BizTech Logo">
     <br>
@@ -31,14 +29,14 @@ export const getDefaultQRTemplate = (emailParams) => {
 
 export const getDefaultApplicationTemplate = (emailParams) => {
   const {
-    fname, ename, registrationStatus, logoBase64, qrCode, currentYear
+    fname, logoBase64, currentYear
   } = emailParams;
 
   return `<div style="font-size: 15px; text-align: left;">
       <div>
           <p>Hello ${fname},</p>
           <p>Thank you for registering for HelloHacks 2026! We’re excited to receive your application and will be reviewing it shortly.</p>
-          <p>If you have any questions or concerns about your application, please reach out to our Event Director at <a href="mailto:jade@ubcbiztech.com">allison@ubcbiztech.com</a>.</p>
+          <p>If you have any questions or concerns about your application, please reach out to our Experiences Team Lead at <a href="mailto:jay@ubcbiztech.com">jay@ubcbiztech.com</a>.</p>
           <p>We’ll be in touch by email once the applicant review process is complete.</p>
           <p>Best,<br>BizTech Team</p>
       </div>
@@ -64,7 +62,7 @@ export const getDefaultApplicationTemplate = (emailParams) => {
 
 export const getRegisteredQRTemplate = (emailParams) => {
   const {
-    fname, ename, logoBase64, qrCode, currentYear
+    fname, ename, logoBase64, currentYear
   } = emailParams;
 
   return `
@@ -72,8 +70,6 @@ export const getRegisteredQRTemplate = (emailParams) => {
     <div>
         <p>Hello ${fname},</p>
         <p>You have been registered for UBC BizTech's <b>${ename}</b> event.</p>
-        <p>Please scan the QR code below at the sign-in desk at the event. If the QR code doesn't display, please speak to the sign-in desk.</p>
-        <img src="cid:qr@biztech.com" alt="Attached QR Code" style="max-width: 200px;" />
         <p>We look forward to hosting you!</p>
     </div>
     <img src="${logoBase64}" width="40" height="40" alt="BizTech Logo">
@@ -94,4 +90,3 @@ export const getRegisteredQRTemplate = (emailParams) => {
   </div>
   `;
 };
-
