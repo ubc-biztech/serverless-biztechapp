@@ -160,3 +160,65 @@ export function buildQaUpdateExpression({
     }),
   };
 }
+
+/** Slack mrkdwn reserves these three — without escaping, a question body can render as a link. */
+function escapeSlackText(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+/** Builds the Slack message announcing a new Q&A question. Pure — the caller posts it. */
+export function buildQaSlackMessage({
+  eventName,
+  eventId,
+  year,
+  body,
+  category,
+}: {
+  eventName: string;
+  eventId: string;
+  year: number;
+  body: string;
+  category: string;
+}) {
+  const appUrl =
+    process.env.ENVIRONMENT === "PROD"
+      ? "https://app.ubcbiztech.com"
+      : "https://dev.app.ubcbiztech.com";
+  const qaUrl = `${appUrl}/event/${encodeURIComponent(eventId)}/${year}/qa`;
+
+  return {
+    // Fallback shown in the notification popup, so it must stand on its own.
+    text: `New Q&A question for ${eventName}`,
+    blocks: [
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `*🙋 New Q&A question* · *${escapeSlackText(eventName)}*`,
+        },
+      },
+      {
+        // ">>>" quotes every line; a bare ">" would only quote the first.
+        type: "section",
+        text: { type: "mrkdwn", text: `>>> ${escapeSlackText(body)}` },
+      },
+      {
+        type: "actions",
+        elements: [
+          {
+            type: "button",
+            text: { type: "plain_text", text: "Answer in portal", emoji: true },
+            url: qaUrl,
+          },
+        ],
+      },
+      {
+        type: "context",
+        elements: [{ type: "mrkdwn", text: `Category: *${category}*` }],
+      },
+    ],
+  };
+}

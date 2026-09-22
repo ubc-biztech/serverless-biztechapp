@@ -9,9 +9,13 @@ import {
 } from "./constants.js";
 import { ensureDocsIndexLoaded } from "./docsIndexStore.js";
 import db from "../../lib/db.js";
+import { getSlackBotToken, slackApi } from "../../lib/slackHelper.js";
 import { STORY_POINTS_TABLE } from "../../constants/tables.js";
 import jwt from "jsonwebtoken";
 import fetch from "node-fetch";
+
+// Re-exported so handlerSlack.js keeps importing it from here.
+export { slackApi };
 
 const DOCS_QA_MODEL = process.env.OPENAI_DOCS_MODEL || "gpt-5.4-mini";
 const DOCS_MAX_CONTEXT_SOURCES = 8;
@@ -377,47 +381,6 @@ function buildDocsReply(docsBaseUrl, answer, sources) {
     .join("\n");
 
   return `📚 *Answer from BizWiki docs*\n${answer}\n\n*Sources*\n${sourceLines}`;
-}
-
-export async function slackApi(method, endpoint, body) {
-  const SLACK_BOT_TOKEN = getSlackBotToken();
-  if (!SLACK_BOT_TOKEN) {
-    console.error("SLACK_BOT_TOKEN is missing or invalid.");
-    return;
-  }
-  try {
-    const res = await fetch(`https://slack.com/api/${endpoint}`, {
-      method,
-      headers: {
-        "Authorization": `Bearer ${SLACK_BOT_TOKEN}`,
-        "Content-Type": "application/json; charset=utf-8"
-      },
-      body: body ? JSON.stringify(body) : undefined
-    });
-    const data = await res.json();
-    if (!data.ok) {
-      console.error("Slack API Error occurred:", JSON.stringify(data));
-      return;
-    }
-    return data;
-  } catch (error) {
-    console.error("Failed to call Slack API:", error);
-  }
-}
-
-function getSlackBotToken() {
-  const cleaned = String(process.env.SLACK_BOT_TOKEN || "")
-    .replace(/^["']+|["']+$/g, "")
-    .replace(/\s+/g, "")
-    .trim();
-
-  if (!cleaned) return "";
-  // Extract a valid Slack token and ignore accidental extra text/characters.
-  const tokenMatch = cleaned.match(/xox[baprs]-[A-Za-z0-9-]+/);
-  const token = tokenMatch ? tokenMatch[0] : "";
-  if (!token) return "";
-  if (/[^\x20-\x7E]/.test(token)) return "";
-  return token;
 }
 
 function normalizeSlackUsername(username = "") {
