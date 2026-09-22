@@ -2,7 +2,7 @@ name: CI Test
 on:
   pull_request:
   push:
-    branches: [dev, master]
+    branches: [master]
 
 jobs:
   sls-package:
@@ -77,7 +77,7 @@ jobs:
           done
 
       - name: "Run Serverless Deployable to Production Check"
-        if: github.base_ref == 'refs/heads/master'
+        if: github.base_ref == 'master'
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

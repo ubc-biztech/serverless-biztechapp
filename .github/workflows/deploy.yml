@@ -1,102 +1,55 @@
-name: Deploy on merge
+name: Deploy
+
+# master -> dev stage (staging). Published release -> prod, if the tag is on
+# master. Manual run with an older tag -> prod, for rollback.
 on:
   push:
-    branches: [dev, master]
+    branches: [master]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to deploy to prod"
+        required: true
+
+env:
+  STAGE: ${{ github.event_name == 'push' && 'dev' || 'prod' }}
+
+concurrency:
+  group: deploy-${{ github.event_name == 'push' && 'dev' || 'prod' }}
 
 jobs:
   deploy:
+    if: github.event_name != 'release' || !github.event.release.prerelease
     runs-on: ubuntu-latest
     env:
-      SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
       ESBUILD_BINARY_PATH: ${{ github.workspace }}/node_modules/@esbuild/linux-x64/bin/esbuild
     steps:
-      - uses: actions/checkout@v2
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
         with:
           node-version: "22.x"
+          cache: "npm"
 
-      # https://help.github.com/en/actions/configuring-and-managing-workflows/caching-dependencies-to-speed-up-workflows
-      - name: Cache node modules
-        uses: actions/cache@v4
-        env:
-          cache-name: cache-node-modules
-        with:
-          # npm cache files are stored in `~/.npm` on Linux/macOS
-          path: ~/.npm
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
-
-      - name: Validate Serverless auth secret is configured
-        run: |
-          if [ -z "${SERVERLESS_ACCESS_KEY}" ]; then
-            echo "Missing Serverless auth in CI. Set SERVERLESS_ACCESS_KEY."
-            exit 1
-          fi
-
-      - name: Install Serverless CLI and dependencies
-        run: |
-          sudo npm i -g serverless@4 --legacy-peer-deps
-          sls -v
+      - run: |
           npm ci --legacy-peer-deps
           npm rebuild esbuild --force
           "$ESBUILD_BINARY_PATH" --version
 
-      - name: "Deploy Dev"
-        if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          DISCORD_APPLICATION_ID: ${{ secrets.DISCORD_APPLICATION_ID }}
-          DISCORD_PUBLIC_KEY: ${{ secrets.DISCORD_PUBLIC_KEY }}
-          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
-          GH_CLIENT_ID: ${{ secrets.GH_CLIENT_ID }}
-          GH_PRIVATE_KEY: ${{ secrets.GH_PRIVATE_KEY }}
-          GH_PROJECT_ACCESS_KEY: ${{ secrets.GH_PROJECT_ACCESS_KEY }}
-          SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
-          STRIPE_DEV_CANCEL: ${{ secrets.STRIPE_DEV_CANCEL }}
-          STRIPE_DEV_ENDPOINT: ${{ secrets.STRIPE_DEV_ENDPOINT }}
-          STRIPE_PROD_CANCEL: ${{ secrets.STRIPE_PROD_CANCEL }}
-          STRIPE_PROD_ENDPOINT: ${{ secrets.STRIPE_PROD_ENDPOINT }}
-          STRIPE_PROD_KEY: ${{ secrets.STRIPE_PROD_KEY}}
-          STRIPE_DEV_KEY: ${{ secrets.STRIPE_DEV_KEY}}
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          SLACK_SIGNING_SECRET: ${{ secrets.SLACK_SIGNING_SECRET }}
-          SLACK_APP_TOKEN: ${{ secrets.SLACK_APP_TOKEN }}
-          NODE_ENV: ${{ secrets.NODE_ENV }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          DOCS_INDEX_S3_BUCKET: ${{ vars.DOCS_INDEX_S3_BUCKET || vars.DOCS_INDEX_BUCKET || 'biztech-docs-index' }}
-          DOCS_INDEX_S3_KEY: ${{ vars.DOCS_INDEX_S3_KEY || vars.DOCS_INDEX_KEY }}
-          DOCS_INDEX_S3_REGION: ${{ vars.DOCS_INDEX_S3_REGION || vars.DOCS_INDEX_AWS_REGION }}
-          DOCS_INDEX_REFRESH_SECONDS: ${{ vars.DOCS_INDEX_REFRESH_SECONDS }}
-          DOCS_INDEX_ERROR_RETRY_SECONDS: ${{ vars.DOCS_INDEX_ERROR_RETRY_SECONDS }}
-          DOCS_INDEX_MAX_BYTES: ${{ vars.DOCS_INDEX_MAX_BYTES }}
-          ALGOLIA_APP_ID: ${{ secrets.ALGOLIA_APP_ID }}
-          ALGOLIA_API_KEY: ${{ secrets.ALGOLIA_API_KEY }}
-          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
-          PARTNERSHIPS_GSHEETS_ENABLED: ${{ secrets.PARTNERSHIPS_GSHEETS_ENABLED }}
-          PARTNERSHIPS_GSHEETS_AUTO_SYNC: ${{ secrets.PARTNERSHIPS_GSHEETS_AUTO_SYNC }}
-          PARTNERSHIPS_GSHEETS_SPREADSHEET_ID: ${{ secrets.PARTNERSHIPS_GSHEETS_SPREADSHEET_ID }}
-          PARTNERSHIPS_GSHEETS_SHEET_NAME: ${{ secrets.PARTNERSHIPS_GSHEETS_SHEET_NAME }}
-          PARTNERSHIPS_GSHEETS_SERVICE_ACCOUNT_JSON: ${{ secrets.PARTNERSHIPS_GSHEETS_SERVICE_ACCOUNT_JSON }}
-          PARTNERSHIPS_GSHEETS_SERVICE_ACCOUNT_EMAIL: ${{ secrets.PARTNERSHIPS_GSHEETS_SERVICE_ACCOUNT_EMAIL }}
-          PARTNERSHIPS_GSHEETS_PRIVATE_KEY: ${{ secrets.PARTNERSHIPS_GSHEETS_PRIVATE_KEY }}
-        run: |
-          cd services
-          for DIR in *; do
-            cd "$DIR"
-            sls deploy --conceal --stage dev
-            cd ..
-          done
+      - if: env.STAGE == 'prod'
+        run: scripts/check-release.sh "${{ inputs.tag || github.ref_name }}"
 
-      - name: "Deploy Prod"
-        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+      - run: scripts/deploy.sh "$STAGE"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
+          NODE_ENV: ${{ secrets.NODE_ENV }}
           DISCORD_APPLICATION_ID: ${{ secrets.DISCORD_APPLICATION_ID }}
           DISCORD_PUBLIC_KEY: ${{ secrets.DISCORD_PUBLIC_KEY }}
           DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
@@ -105,24 +58,16 @@ jobs:
           GH_CLIENT_ID: ${{ secrets.GH_CLIENT_ID }}
           GH_PRIVATE_KEY: ${{ secrets.GH_PRIVATE_KEY }}
           GH_PROJECT_ACCESS_KEY: ${{ secrets.GH_PROJECT_ACCESS_KEY }}
-          SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
-          STRIPE_DEV_CANCEL: ${{ secrets.STRIPE_DEV_CANCEL }}
+          STRIPE_DEV_KEY: ${{ secrets.STRIPE_DEV_KEY }}
           STRIPE_DEV_ENDPOINT: ${{ secrets.STRIPE_DEV_ENDPOINT }}
-          STRIPE_PROD_CANCEL: ${{ secrets.STRIPE_PROD_CANCEL }}
+          STRIPE_DEV_CANCEL: ${{ secrets.STRIPE_DEV_CANCEL }}
+          STRIPE_PROD_KEY: ${{ secrets.STRIPE_PROD_KEY }}
           STRIPE_PROD_ENDPOINT: ${{ secrets.STRIPE_PROD_ENDPOINT }}
-          STRIPE_PROD_KEY: ${{ secrets.STRIPE_PROD_KEY}}
-          STRIPE_DEV_KEY: ${{ secrets.STRIPE_DEV_KEY}}
+          STRIPE_PROD_CANCEL: ${{ secrets.STRIPE_PROD_CANCEL }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_SIGNING_SECRET: ${{ secrets.SLACK_SIGNING_SECRET }}
           SLACK_APP_TOKEN: ${{ secrets.SLACK_APP_TOKEN }}
-          NODE_ENV: ${{ secrets.NODE_ENV }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          DOCS_INDEX_S3_BUCKET: ${{ vars.DOCS_INDEX_S3_BUCKET || vars.DOCS_INDEX_BUCKET || 'biztech-docs-index' }}
-          DOCS_INDEX_S3_KEY: ${{ vars.DOCS_INDEX_S3_KEY || vars.DOCS_INDEX_KEY }}
-          DOCS_INDEX_S3_REGION: ${{ vars.DOCS_INDEX_S3_REGION || vars.DOCS_INDEX_AWS_REGION }}
-          DOCS_INDEX_REFRESH_SECONDS: ${{ vars.DOCS_INDEX_REFRESH_SECONDS }}
-          DOCS_INDEX_ERROR_RETRY_SECONDS: ${{ vars.DOCS_INDEX_ERROR_RETRY_SECONDS }}
-          DOCS_INDEX_MAX_BYTES: ${{ vars.DOCS_INDEX_MAX_BYTES }}
           ALGOLIA_APP_ID: ${{ secrets.ALGOLIA_APP_ID }}
           ALGOLIA_API_KEY: ${{ secrets.ALGOLIA_API_KEY }}
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
@@ -133,10 +78,9 @@ jobs:
           PARTNERSHIPS_GSHEETS_SERVICE_ACCOUNT_JSON: ${{ secrets.PARTNERSHIPS_GSHEETS_SERVICE_ACCOUNT_JSON }}
           PARTNERSHIPS_GSHEETS_SERVICE_ACCOUNT_EMAIL: ${{ secrets.PARTNERSHIPS_GSHEETS_SERVICE_ACCOUNT_EMAIL }}
           PARTNERSHIPS_GSHEETS_PRIVATE_KEY: ${{ secrets.PARTNERSHIPS_GSHEETS_PRIVATE_KEY }}
-        run: |
-          cd services
-          for DIR in *; do
-            cd "$DIR"
-            sls deploy --conceal --stage prod
-            cd ..
-          done
+          DOCS_INDEX_S3_BUCKET: ${{ vars.DOCS_INDEX_S3_BUCKET || vars.DOCS_INDEX_BUCKET || 'biztech-docs-index' }}
+          DOCS_INDEX_S3_KEY: ${{ vars.DOCS_INDEX_S3_KEY || vars.DOCS_INDEX_KEY }}
+          DOCS_INDEX_S3_REGION: ${{ vars.DOCS_INDEX_S3_REGION || vars.DOCS_INDEX_AWS_REGION }}
+          DOCS_INDEX_REFRESH_SECONDS: ${{ vars.DOCS_INDEX_REFRESH_SECONDS }}
+          DOCS_INDEX_ERROR_RETRY_SECONDS: ${{ vars.DOCS_INDEX_ERROR_RETRY_SECONDS }}
+          DOCS_INDEX_MAX_BYTES: ${{ vars.DOCS_INDEX_MAX_BYTES }}
