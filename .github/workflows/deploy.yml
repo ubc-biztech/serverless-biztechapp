@@ -31,6 +31,11 @@ jobs:
           ref: ${{ inputs.tag || github.ref }}
           fetch-depth: 0
 
+      - if: env.STAGE == 'prod'
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: scripts/check-release.sh "$TAG"
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22.x"
@@ -40,9 +45,6 @@ jobs:
           npm ci --legacy-peer-deps
           npm rebuild esbuild --force
           "$ESBUILD_BINARY_PATH" --version
-
-      - if: env.STAGE == 'prod'
-        run: scripts/check-release.sh "${{ inputs.tag || github.ref_name }}"
 
       - run: scripts/deploy.sh "$STAGE"
         env:

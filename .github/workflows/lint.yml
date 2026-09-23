@@ -2,6 +2,9 @@ name: Lint
 
 on:
   pull_request:
+    # edited is included so fixing a title or description re-runs pr-rules
+    # without a dummy commit.
+    types: [opened, edited, synchronize, reopened]
   push:
     branches: ["master"]
 
@@ -9,6 +12,7 @@ permissions: {}
 
 jobs:
   eslint:
+    if: github.event.action != 'edited'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,13 +35,15 @@ jobs:
         # message, so those are what get checked.
         with:
           script: |
-            const { title, body } = context.payload.pull_request;
+            const { title, body, number } = context.payload.pull_request;
 
-            if (title.length > 60) {
-              core.setFailed(`PR title must be ≤60 characters (got ${title.length})`);
+            // Squash merge writes the subject as "<title> (#<number>)".
+            const subject = `${title} (#${number})`;
+            if (subject.length > 60) {
+              core.setFailed(`Squash commit subject "${subject}" must be ≤60 characters (got ${subject.length})`);
             }
 
-            const bodyLines = (body ?? '').split('\n');
+            const bodyLines = (body ?? '').split(/\r?\n/);
             for (let i = 0; i < bodyLines.length; i++) {
               const line = bodyLines[i];
               if (line.length > 72) {
