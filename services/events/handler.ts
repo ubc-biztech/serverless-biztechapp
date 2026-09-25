@@ -15,6 +15,7 @@ import {
 import db from "../../lib/db.js";
 import { protect, Access, readCaller } from "../../lib/auth";
 import helpers from "../../lib/handlerHelpers";
+import { postSlackMessage } from "../../lib/slackHelper.js";
 import type {
   APIGatewayResponse,
   LambdaHandler,
@@ -28,6 +29,7 @@ import {
 import feedbackHelpers, { isValidationFail } from "./feedbackHelpers.js";
 import {
   addIdsToRegistrationQuestions,
+  buildQaSlackMessage,
   buildQaUpdateExpression,
   getEventCounts,
   toPublicQuestion,
@@ -861,6 +863,23 @@ export const qaCreate = protect(Access.USER, async (event) => {
     };
 
     await db.put(item, EVENT_QA_TABLE, true);
+
+    // Best-effort: a Slack outage must never fail a question submission.
+    try {
+      await postSlackMessage({
+        channel: process.env.SLACK_QA_CHANNEL_ID,
+        ...buildQaSlackMessage({
+          eventName: existingEvent?.ename || id,
+          eventId: id,
+          year,
+          body,
+          category: item.category
+        })
+      });
+    } catch (err) {
+      console.error("Failed to post Q&A question to Slack:", err);
+    }
+
     return helpers.createResponse(201, {
       message: "Question submitted successfully.",
       questionId
