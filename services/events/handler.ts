@@ -673,7 +673,7 @@ export const getFeedbackForm: LambdaHandler = async (event) => {
 };
 
 // POST events/{id}/{year}/feedback/{formType}
-export const submitFeedback = protect(Access.USER, async (event) => {
+export const submitFeedback = protect(Access.PUBLIC, async (event) => {
   try {
     const { id, year } = validateEventPath(event.pathParameters);
     const formType = parseFormType(event.pathParameters?.formType);
@@ -719,7 +719,8 @@ export const submitFeedback = protect(Access.USER, async (event) => {
       });
     }
 
-    const respondentEmail = normalizeText(event.auth!.email).toLowerCase();
+    // Public feedback collects contact details, not a verified account identity.
+    const respondentEmail = normalizeText(data.respondentEmail).toLowerCase();
     if (respondentEmail && !isValidEmail(respondentEmail)) {
       return helpers.createResponse(406, {
         message: "respondentEmail must be a valid email address."
