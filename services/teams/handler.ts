@@ -2,7 +2,11 @@ import teamHelpers, {
   scoreObjectAverage,
   normalizeScores,
   scoreObjectAverageWeighted,
-  toTeamResponse
+  toTeamResponse,
+  resolveTeamMembership,
+  getEventTeam,
+  retryOnTeamConflict,
+  removeMemberAsLeader
 } from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import {
@@ -278,6 +282,62 @@ export const getTeamFromUserID = protect(Access.USER, async (event) => {
 
     return helpers.createResponse(403, {
       message: "Could not retrieve team.",
+      error: errorMessage(error)
+    });
+  }
+});
+
+export const removeTeamMember = protect(Access.USER, async (event) => {
+  /*
+    The team leader removes another member. Members can remove themselves via leaveTeam.
+
+    Path: eventID, year, user_id
+   */
+  const { eventID, year: yearParam, user_id: userIDParam } = event.pathParameters || {};
+  if (!eventID || !yearParam || !userIDParam) {
+    return helpers.missingPathParamResponse("team member", "eventID, year, or user_id");
+  }
+
+  const year = Number(yearParam);
+  if (!Number.isInteger(year)) {
+    return helpers.inputError("Year path parameter must be a number", yearParam);
+  }
+
+  const callerID = event.auth!.email;
+  const targetID = decodeURIComponent(userIDParam).trim().toLowerCase();
+  if (targetID === callerID) {
+    return helpers.createResponse(400, { message: "Use the leave endpoint to remove yourself" });
+  }
+
+  try {
+    if (!(await db.getOne(eventID, EVENTS_TABLE, { year }))) {
+      return helpers.createResponse(404, { message: "Event not found" });
+    }
+
+    const eventKey = `${eventID};${year}`;
+
+    return await retryOnTeamConflict(async () => {
+      const [callerTeamCode, targetTeamCode] = await Promise.all([
+        resolveTeamMembership(callerID, eventKey),
+        resolveTeamMembership(targetID, eventKey)
+      ]);
+      const team = callerTeamCode ? await getEventTeam(callerTeamCode, eventKey) : null;
+
+      if (!team?.member_ids?.has(callerID) || team.leader_user_id !== callerID) {
+        return helpers.createResponse(403, { message: "Only the team leader can remove members" });
+      }
+      if (targetTeamCode !== team.id || !team.member_ids.has(targetID)) {
+        return helpers.createResponse(404, { message: "User is not on your team" });
+      }
+
+      await removeMemberAsLeader(team, callerID, targetID);
+      return helpers.createResponse(204);
+    });
+  } catch (error) {
+    console.error("Error removing team member:", error);
+
+    return helpers.createResponse(500, {
+      message: "Failed to remove team member",
       error: errorMessage(error)
     });
   }

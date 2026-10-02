@@ -7,6 +7,7 @@ import {
 } from "../../constants/tables";
 import helpers from "../../lib/handlerHelpers.js";
 import db from "../../lib/db.js";
+import type { APIGatewayResponse } from "../../lib/types";
 import type {
   EventTeamRecord,
   JudgeScore,
@@ -622,6 +623,77 @@ export const toTeamResponse = async (team: EventTeamRecord): Promise<Team> => {
       name: [users.get(user_id)?.fname, users.get(user_id)?.lname].filter(Boolean).join(" ") || "Participant",
     })),
   };
+};
+
+/** The team code from the user's membership for this event, or null if they are not on a team. */
+export const resolveTeamMembership = async (
+  userID: string,
+  eventKey: string,
+): Promise<string | null> => {
+  const registration = (await db.getOne(userID, USER_REGISTRATIONS_TABLE, {
+    "eventID;year": eventKey,
+  })) as RegistrationRecord | null;
+  return registration?.teamID || null;
+};
+
+export const getEventTeam = async (
+  teamCode: string,
+  eventKey: string,
+): Promise<EventTeamRecord | null> =>
+  (await db.getOne(teamCode, TEAMS_TABLE, {
+    "eventID;year": eventKey,
+  })) as EventTeamRecord | null;
+
+/**
+ * Runs `attempt`, re-running it from scratch when one of its conditional writes
+ * is rejected because the team changed underneath it. `attempt` should re-read
+ * and re-validate each time. Returns 409 if it never settles.
+ */
+export const retryOnTeamConflict = async (
+  attempt: () => Promise<APIGatewayResponse>,
+): Promise<APIGatewayResponse> => {
+  for (let i = 0; i < 3; i++) {
+    try {
+      return await attempt();
+    } catch (err) {
+      if (!db.isConflict(err)) throw err;
+    }
+  }
+  return helpers.createResponse(409, {
+    message: "Team changed during the request. Try again.",
+  });
+};
+
+/** Removes `memberID`'s membership and their entry in `member_ids` together. */
+export const removeMemberAsLeader = (
+  team: EventTeamRecord,
+  leaderID: string,
+  memberID: string,
+): Promise<void> => {
+  const eventKey = team["eventID;year"];
+
+  return db.atomic([
+    {
+      table: USER_REGISTRATIONS_TABLE,
+      key: { id: memberID, "eventID;year": eventKey },
+      update: "REMOVE teamID",
+      condition: "teamID = :teamCode",
+      values: { ":teamCode": team.id },
+    },
+    {
+      table: TEAMS_TABLE,
+      key: { id: team.id, "eventID;year": eventKey },
+      // The leader stays on the team, so member_ids is never emptied here
+      update: "DELETE member_ids :removed",
+      condition:
+        "leader_user_id = :leaderID AND contains(member_ids, :leaderID) AND contains(member_ids, :memberID)",
+      values: {
+        ":removed": new Set([memberID]),
+        ":leaderID": leaderID,
+        ":memberID": memberID,
+      },
+    },
+  ]);
 };
 
 export const normalizeScores = (

@@ -149,6 +149,22 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  removeTeamMember:
+    handler: handler.removeTeamMember
+    events:
+      - http:
+          path: team/{eventID}/{year}/members/{user_id}
+          request:
+            parameters:
+              paths:
+                eventID: true
+                year: true
+                user_id: true
+          method: delete
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   changeTeamName:
     handler: handler.changeTeamName
     events:
