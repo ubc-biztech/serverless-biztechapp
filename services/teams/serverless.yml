@@ -171,6 +171,51 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  createEventTeam:
+    handler: handler.createEventTeam
+    events:
+      - http:
+          path: team/{eventID}/{year}
+          request:
+            parameters:
+              paths:
+                eventID: true
+                year: true
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  joinEventTeam:
+    handler: handler.joinEventTeam
+    events:
+      - http:
+          path: team/{eventID}/{year}/join
+          request:
+            parameters:
+              paths:
+                eventID: true
+                year: true
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  leaveEventTeam:
+    handler: handler.leaveEventTeam
+    events:
+      - http:
+          path: team/{eventID}/{year}/leave
+          request:
+            parameters:
+              paths:
+                eventID: true
+                year: true
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   changeTeamName:
     handler: handler.changeTeamName
     events:

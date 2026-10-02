@@ -1,12 +1,16 @@
+import { randomInt } from "node:crypto";
 import teamHelpers, {
   scoreObjectAverage,
   normalizeScores,
   scoreObjectAverageWeighted,
   toTeamResponse,
   resolveTeamMembership,
+  getEventRegistration,
   getEventTeam,
   retryOnTeamConflict,
-  removeMemberAsLeader
+  removeMemberAsLeader,
+  generateTeamCode,
+  cleanupTeamData
 } from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import {
@@ -18,16 +22,18 @@ import {
 } from "../../constants/tables";
 import db from "../../lib/db.js";
 import { WEIGHTS, ROUND } from "./constants.js";
-import { LambdaHandler } from "../../lib/types";
+import { AtomicWrite, LambdaHandler } from "../../lib/types";
 import { protect, Access } from "../../lib/auth";
 import {
   AddMultipleQuestionsBody,
   AddQRScanBody,
   ChangeTeamNameBody,
   CheckQRScannedBody,
+  CreateEventTeamBody,
   CreateJudgeSubmissionsBody,
   EventTeamRecord,
   FeedbackRecord,
+  JoinEventTeamBody,
   JoinTeamBody,
   JudgeRegistrationRecord,
   JudgeScore,
@@ -337,6 +343,289 @@ export const removeTeamMember = protect(Access.USER, async (event) => {
 
     return helpers.createResponse(500, {
       message: "Failed to remove team member",
+      error: errorMessage(error)
+    });
+  }
+});
+
+export const createEventTeam = protect(Access.USER, async (event) => {
+  /*
+    Creates a team for this event with the caller as its only member and leader.
+
+    Path: eventID, year
+    Body: team_name
+   */
+  try {
+    const { eventID, year: yearParam } = event.pathParameters || {};
+    if (!eventID || !yearParam) {
+      return helpers.missingPathParamResponse("team", "eventID or year");
+    }
+
+    const year = Number(yearParam);
+    if (!Number.isInteger(year)) {
+      return helpers.inputError("Year path parameter must be a number", yearParam);
+    }
+
+    const data = JSON.parse(event.body || "{}") as CreateEventTeamBody;
+    const teamName = typeof data.team_name === "string" ? data.team_name.trim() : "";
+    if (!teamName) {
+      return helpers.inputError("team_name is required", data.team_name);
+    }
+
+    if (!(await db.getOne(eventID, EVENTS_TABLE, { year }))) {
+      return helpers.createResponse(404, { message: "Event not found" });
+    }
+
+    const eventKey = `${eventID};${year}`;
+    const userID = event.auth!.email;
+
+    return await retryOnTeamConflict(async () => {
+      const registration = await getEventRegistration(userID, eventKey);
+      if (!registration) {
+        return helpers.createResponse(403, {
+          message: "Register for this event before creating a team"
+        });
+      }
+      if (registration.teamID) {
+        return helpers.createResponse(409, {
+          message: "You are already on a team for this event"
+        });
+      }
+
+      // A fresh code per attempt, so a collision clears itself on retry.
+      const teamCode = generateTeamCode();
+      const team: EventTeamRecord = {
+        id: teamCode,
+        "eventID;year": eventKey,
+        team_name: teamName,
+        leader_user_id: userID,
+        member_ids: new Set([userID])
+      };
+
+      await db.atomic([
+        {
+          table: TEAMS_TABLE,
+          item: team,
+          condition: "attribute_not_exists(id)"
+        },
+        {
+          table: USER_REGISTRATIONS_TABLE,
+          key: { id: userID, "eventID;year": eventKey },
+          update: "SET teamID = :teamCode",
+          // attribute_exists stops the update from upserting a bare registration
+          condition: "attribute_exists(id) AND attribute_not_exists(teamID)",
+          values: { ":teamCode": teamCode }
+        }
+      ]);
+
+      return helpers.createResponse(201, await toTeamResponse(team));
+    });
+  } catch (error) {
+    console.error("Error creating team:", error);
+
+    return helpers.createResponse(500, {
+      message: "Failed to create team",
+      error: errorMessage(error)
+    });
+  }
+});
+
+export const joinEventTeam = protect(Access.USER, async (event) => {
+  /*
+    Joins the team holding this 6-digit code within the event.
+
+    Path: eventID, year
+    Body: team_code
+   */
+  try {
+    const { eventID, year: yearParam } = event.pathParameters || {};
+    if (!eventID || !yearParam) {
+      return helpers.missingPathParamResponse("team", "eventID or year");
+    }
+
+    const year = Number(yearParam);
+    if (!Number.isInteger(year)) {
+      return helpers.inputError("Year path parameter must be a number", yearParam);
+    }
+
+    const data = JSON.parse(event.body || "{}") as JoinEventTeamBody;
+    const teamCode = typeof data.team_code === "string" ? data.team_code.trim() : "";
+    if (!/^\d{6}$/.test(teamCode)) {
+      return helpers.inputError("team_code must be 6 digits", data.team_code);
+    }
+
+    if (!(await db.getOne(eventID, EVENTS_TABLE, { year }))) {
+      return helpers.createResponse(404, { message: "Event not found" });
+    }
+
+    const eventKey = `${eventID};${year}`;
+    const userID = event.auth!.email;
+
+    return await retryOnTeamConflict(async () => {
+      const [registration, team] = await Promise.all([
+        getEventRegistration(userID, eventKey),
+        getEventTeam(teamCode, eventKey)
+      ]);
+
+      if (!registration) {
+        return helpers.createResponse(403, {
+          message: "Register for this event before joining a team"
+        });
+      }
+      if (registration.teamID) {
+        return helpers.createResponse(409, {
+          message: "You are already on a team for this event"
+        });
+      }
+      if (!team) {
+        return helpers.createResponse(404, { message: "Team not found" });
+      }
+
+      await db.atomic([
+        {
+          table: USER_REGISTRATIONS_TABLE,
+          key: { id: userID, "eventID;year": eventKey },
+          update: "SET teamID = :teamCode",
+          condition: "attribute_exists(id) AND attribute_not_exists(teamID)",
+          values: { ":teamCode": teamCode }
+        },
+        {
+          table: TEAMS_TABLE,
+          key: { id: teamCode, "eventID;year": eventKey },
+          update: "ADD member_ids :joined",
+          condition: "attribute_exists(id)",
+          values: { ":joined": new Set([userID]) }
+        }
+      ]);
+
+      // Re-read so a member who joined alongside us shows up in the response.
+      const joined = (await getEventTeam(teamCode, eventKey)) || {
+        ...team,
+        member_ids: new Set([...team.member_ids, userID])
+      };
+
+      return helpers.createResponse(200, await toTeamResponse(joined));
+    });
+  } catch (error) {
+    console.error("Error joining team:", error);
+
+    return helpers.createResponse(500, {
+      message: "Failed to join team",
+      error: errorMessage(error)
+    });
+  }
+});
+
+export const leaveEventTeam = protect(Access.USER, async (event) => {
+  /*
+    Removes the caller from their team for this event. A departing leader hands off
+    to a random remaining member; the last member out takes the team with them.
+
+    Path: eventID, year
+   */
+  try {
+    const { eventID, year: yearParam } = event.pathParameters || {};
+    if (!eventID || !yearParam) {
+      return helpers.missingPathParamResponse("team", "eventID or year");
+    }
+
+    const year = Number(yearParam);
+    if (!Number.isInteger(year)) {
+      return helpers.inputError("Year path parameter must be a number", yearParam);
+    }
+
+    if (!(await db.getOne(eventID, EVENTS_TABLE, { year }))) {
+      return helpers.createResponse(404, { message: "Event not found" });
+    }
+
+    const eventKey = `${eventID};${year}`;
+    const userID = event.auth!.email;
+
+    return await retryOnTeamConflict(async () => {
+      const teamCode = await resolveTeamMembership(userID, eventKey);
+      const team = teamCode ? await getEventTeam(teamCode, eventKey) : null;
+
+      if (!teamCode || !team?.member_ids?.has(userID)) {
+        return helpers.createResponse(404, {
+          message: "You are not on a team for this event"
+        });
+      }
+
+      const dropMembership: AtomicWrite = {
+        table: USER_REGISTRATIONS_TABLE,
+        key: { id: userID, "eventID;year": eventKey },
+        update: "REMOVE teamID",
+        condition: "teamID = :teamCode",
+        values: { ":teamCode": teamCode }
+      };
+      const teamKey = { id: teamCode, "eventID;year": eventKey };
+      const remaining = [...team.member_ids].filter((id) => id !== userID);
+
+      // Last one out: the row goes with them, since an empty String Set cannot be stored.
+      if (remaining.length === 0) {
+        await db.atomic([
+          dropMembership,
+          {
+            table: TEAMS_TABLE,
+            key: teamKey,
+            delete: true,
+            // Re-confirms the team is empty; a concurrent join fails this and the retry re-routes.
+            condition: "size(member_ids) = :one AND contains(member_ids, :userID)",
+            values: { ":one": 1, ":userID": userID }
+          }
+        ]);
+
+        await cleanupTeamData(eventKey, teamCode);
+        return helpers.createResponse(204);
+      }
+
+      if (team.leader_user_id === userID) {
+        const newLeader = remaining[randomInt(0, remaining.length)];
+
+        await db.atomic([
+          dropMembership,
+          {
+            table: TEAMS_TABLE,
+            key: teamKey,
+            update: "SET leader_user_id = :newLeader DELETE member_ids :leaving",
+            // contains(:newLeader) keeps the handoff from naming someone who just left
+            condition:
+              "leader_user_id = :userID AND contains(member_ids, :userID) AND contains(member_ids, :newLeader)",
+            values: {
+              ":leaving": new Set([userID]),
+              ":newLeader": newLeader,
+              ":userID": userID
+            }
+          }
+        ]);
+
+        return helpers.createResponse(204);
+      }
+
+      await db.atomic([
+        dropMembership,
+        {
+          table: TEAMS_TABLE,
+          key: teamKey,
+          update: "DELETE member_ids :leaving",
+          // The leader stays behind, so member_ids is never emptied here
+          condition:
+            "contains(member_ids, :userID) AND contains(member_ids, :leaderID) AND leader_user_id <> :userID",
+          values: {
+            ":leaving": new Set([userID]),
+            ":userID": userID,
+            ":leaderID": team.leader_user_id
+          }
+        }
+      ]);
+
+      return helpers.createResponse(204);
+    });
+  } catch (error) {
+    console.error("Error leaving team:", error);
+
+    return helpers.createResponse(500, {
+      message: "Failed to leave team",
       error: errorMessage(error)
     });
   }

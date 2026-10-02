@@ -41,6 +41,18 @@ export interface Team {
   }[];
 }
 
+/** Body for createEventTeam. Event context comes from the path. */
+export interface CreateEventTeamBody {
+  team_name: string;
+  [key: string]: unknown;
+}
+
+/** Body for joinEventTeam. */
+export interface JoinEventTeamBody {
+  team_code: string;
+  [key: string]: unknown;
+}
+
 export interface ScoreMetrics {
   metric1: number;
   metric2: number;
