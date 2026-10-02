@@ -21,6 +21,26 @@ export interface TeamRecord {
 /** New team payload written in makeTeam. */
 export type NewTeamRecord = TeamRecord;
 
+/** Team widget item in biztechTeams. `id` is the 6-digit team code. */
+export interface EventTeamRecord {
+  id: string;
+  "eventID;year": string;
+  team_name: string;
+  leader_user_id: string;
+  member_ids: Set<string>;
+}
+
+/** Team widget response shape. */
+export interface Team {
+  team_code: string;
+  team_name: string;
+  leader_user_id: string;
+  members: {
+    user_id: string;
+    name: string;
+  }[];
+}
+
 export interface ScoreMetrics {
   metric1: number;
   metric2: number;
@@ -86,7 +106,6 @@ export interface MakeTeamBody {
 }
 
 export interface GetTeamFromUserIDBody {
-  user_id: string;
   eventID: string;
   year: number;
   [key: string]: unknown;

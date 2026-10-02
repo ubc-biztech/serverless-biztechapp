@@ -1,11 +1,13 @@
 import teamHelpers, {
   scoreObjectAverage,
   normalizeScores,
-  scoreObjectAverageWeighted
+  scoreObjectAverageWeighted,
+  toTeamResponse
 } from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import {
   TEAMS_TABLE,
+  EVENTS_TABLE,
   JUDGING_TABLE,
   FEEDBACK_TABLE,
   USER_REGISTRATIONS_TABLE
@@ -20,6 +22,7 @@ import {
   ChangeTeamNameBody,
   CheckQRScannedBody,
   CreateJudgeSubmissionsBody,
+  EventTeamRecord,
   FeedbackRecord,
   GetTeamFromUserIDBody,
   JoinTeamBody,
@@ -231,20 +234,16 @@ export const makeTeam = protect(Access.USER, async (event) => {
   }
 });
 
-export const getTeamFromUserID: LambdaHandler = async (event) => {
+export const getTeamFromUserID = protect(Access.USER, async (event) => {
   /*
-    Returns the team object of the team that the user is on from the user's ID.
+    Returns the caller's team for the event, or null if they are not on one.
 
-    Requires: user_id, eventID, year
+    Requires: eventID, year
    */
   try {
     const data = JSON.parse(event.body as string) as GetTeamFromUserIDBody;
 
     helpers.checkPayloadProps(data, {
-      user_id: {
-        required: true,
-        type: "string"
-      },
       eventID: {
         required: true,
         type: "string"
@@ -255,16 +254,25 @@ export const getTeamFromUserID: LambdaHandler = async (event) => {
       }
     });
 
-    const res = await teamHelpers._getTeamFromUserRegistration(data.user_id, data.eventID, data.year);
-
-    if (res) {
-      return helpers.createResponse(200, {
-        message: "Successfully retrieved team.",
-        response: res
-      });
+    if (!(await db.getOne(data.eventID, EVENTS_TABLE, { year: data.year }))) {
+      return helpers.createResponse(404, { message: "Event not found" });
     }
 
-    return helpers.createResponse(404, { message: "Team not found" });
+    // Membership: the caller's registration for this event holds their team code
+    const eventKey = `${data.eventID};${data.year}`;
+    const registration = (await db.getOne(event.auth!.email, USER_REGISTRATIONS_TABLE, {
+      "eventID;year": eventKey
+    })) as { teamID?: string } | null;
+    const team = registration?.teamID
+      ? (await db.getOne(registration.teamID, TEAMS_TABLE, { "eventID;year": eventKey })) as EventTeamRecord | null
+      : null;
+
+    // Fail closed if the team is gone or does not list the caller
+    if (!team?.member_ids?.has(event.auth!.email)) {
+      return helpers.createResponse(200, null);
+    }
+
+    return helpers.createResponse(200, await toTeamResponse(team));
   } catch (error) {
     console.error("Error retrieving team:", error);
 
@@ -273,7 +281,7 @@ export const getTeamFromUserID: LambdaHandler = async (event) => {
       error: errorMessage(error)
     });
   }
-};
+});
 
 export const get = protect(Access.USER, async (event) => {
   // Admins see raw memberIDs; everyone else gets them stripped.
