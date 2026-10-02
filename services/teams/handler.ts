@@ -18,7 +18,7 @@ import {
 } from "../../constants/tables";
 import db from "../../lib/db.js";
 import { WEIGHTS, ROUND } from "./constants.js";
-import { APIGatewayResponse, LambdaHandler } from "../../lib/types";
+import { LambdaHandler } from "../../lib/types";
 import { protect, Access } from "../../lib/auth";
 import {
   AddMultipleQuestionsBody,
@@ -28,7 +28,6 @@ import {
   CreateJudgeSubmissionsBody,
   EventTeamRecord,
   FeedbackRecord,
-  GetTeamFromUserIDBody,
   JoinTeamBody,
   JudgeRegistrationRecord,
   JudgeScore,
@@ -240,47 +239,39 @@ export const makeTeam = protect(Access.USER, async (event) => {
 
 export const getTeamFromUserID = protect(Access.USER, async (event) => {
   /*
-    Returns the caller's team for the event, or null if they are not on one.
+    Returns the user's team for the event, or null if they are not on one.
 
-    Requires: eventID, year
+    Path: eventID, year, user_id
    */
-  let data: GetTeamFromUserIDBody;
   try {
-    data = JSON.parse(event.body || "{}") as GetTeamFromUserIDBody;
+    const { eventID, year: yearParam, user_id: userIDParam } = event.pathParameters || {};
+    if (!eventID || !yearParam || !userIDParam) {
+      return helpers.missingPathParamResponse("team", "eventID, year, or user_id");
+    }
 
-    helpers.checkPayloadProps(data, {
-      eventID: {
-        required: true,
-        type: "string"
-      },
-      year: {
-        required: true,
-        type: "number"
-      }
-    });
-  } catch (error) {
-    // checkPayloadProps throws a ready-made 406; JSON.parse throws a SyntaxError
-    return error instanceof SyntaxError
-      ? helpers.inputError("Request body must be valid JSON", event.body)
-      : (error as APIGatewayResponse);
-  }
+    const year = Number(yearParam);
+    if (!Number.isInteger(year)) {
+      return helpers.inputError("Year path parameter must be a number", yearParam);
+    }
 
-  try {
-    if (!(await db.getOne(data.eventID, EVENTS_TABLE, { year: data.year }))) {
+    const targetID = decodeURIComponent(userIDParam).trim().toLowerCase();
+    if (!event.auth?.isAdmin && targetID !== event.auth!.email) {
+      return helpers.createResponse(403, { message: "You can only look up your own team" });
+    }
+
+    if (!(await db.getOne(eventID, EVENTS_TABLE, { year }))) {
       return helpers.createResponse(404, { message: "Event not found" });
     }
 
-    // Membership: the caller's registration for this event holds their team code
-    const eventKey = `${data.eventID};${data.year}`;
-    const registration = (await db.getOne(event.auth!.email, USER_REGISTRATIONS_TABLE, {
+    const eventKey = `${eventID};${year}`;
+    const registration = (await db.getOne(targetID, USER_REGISTRATIONS_TABLE, {
       "eventID;year": eventKey
     })) as { teamID?: string } | null;
     const team = registration?.teamID
       ? (await db.getOne(registration.teamID, TEAMS_TABLE, { "eventID;year": eventKey })) as EventTeamRecord | null
       : null;
 
-    // Fail closed if the team is gone or does not list the caller
-    if (!team?.member_ids?.has(event.auth!.email)) {
+    if (!team?.member_ids?.has(targetID)) {
       return helpers.createResponse(200, null);
     }
 

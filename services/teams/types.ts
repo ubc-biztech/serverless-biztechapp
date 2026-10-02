@@ -105,12 +105,6 @@ export interface MakeTeamBody {
   [key: string]: unknown;
 }
 
-export interface GetTeamFromUserIDBody {
-  eventID: string;
-  year: number;
-  [key: string]: unknown;
-}
-
 export interface ChangeTeamNameBody {
   user_id: string;
   eventID: string;

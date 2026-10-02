@@ -128,8 +128,14 @@ functions:
     handler: handler.getTeamFromUserID
     events:
       - http:
-          path: team/getTeamFromUserID
-          method: post
+          path: team/{eventID}/{year}/{user_id}
+          request:
+            parameters:
+              paths:
+                eventID: true
+                year: true
+                user_id: true
+          method: get
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS
