@@ -18,7 +18,7 @@ import {
 } from "../../constants/tables";
 import db from "../../lib/db.js";
 import { WEIGHTS, ROUND } from "./constants.js";
-import { LambdaHandler } from "../../lib/types";
+import { APIGatewayResponse, LambdaHandler } from "../../lib/types";
 import { protect, Access } from "../../lib/auth";
 import {
   AddMultipleQuestionsBody,
@@ -244,8 +244,9 @@ export const getTeamFromUserID = protect(Access.USER, async (event) => {
 
     Requires: eventID, year
    */
+  let data: GetTeamFromUserIDBody;
   try {
-    const data = JSON.parse(event.body as string) as GetTeamFromUserIDBody;
+    data = JSON.parse(event.body || "{}") as GetTeamFromUserIDBody;
 
     helpers.checkPayloadProps(data, {
       eventID: {
@@ -257,7 +258,14 @@ export const getTeamFromUserID = protect(Access.USER, async (event) => {
         type: "number"
       }
     });
+  } catch (error) {
+    // checkPayloadProps throws a ready-made 406; JSON.parse throws a SyntaxError
+    return error instanceof SyntaxError
+      ? helpers.inputError("Request body must be valid JSON", event.body)
+      : (error as APIGatewayResponse);
+  }
 
+  try {
     if (!(await db.getOne(data.eventID, EVENTS_TABLE, { year: data.year }))) {
       return helpers.createResponse(404, { message: "Event not found" });
     }
@@ -280,7 +288,7 @@ export const getTeamFromUserID = protect(Access.USER, async (event) => {
   } catch (error) {
     console.error("Error retrieving team:", error);
 
-    return helpers.createResponse(403, {
+    return helpers.createResponse(500, {
       message: "Could not retrieve team.",
       error: errorMessage(error)
     });
@@ -293,23 +301,23 @@ export const removeTeamMember = protect(Access.USER, async (event) => {
 
     Path: eventID, year, user_id
    */
-  const { eventID, year: yearParam, user_id: userIDParam } = event.pathParameters || {};
-  if (!eventID || !yearParam || !userIDParam) {
-    return helpers.missingPathParamResponse("team member", "eventID, year, or user_id");
-  }
-
-  const year = Number(yearParam);
-  if (!Number.isInteger(year)) {
-    return helpers.inputError("Year path parameter must be a number", yearParam);
-  }
-
-  const callerID = event.auth!.email;
-  const targetID = decodeURIComponent(userIDParam).trim().toLowerCase();
-  if (targetID === callerID) {
-    return helpers.createResponse(400, { message: "Use the leave endpoint to remove yourself" });
-  }
-
   try {
+    const { eventID, year: yearParam, user_id: userIDParam } = event.pathParameters || {};
+    if (!eventID || !yearParam || !userIDParam) {
+      return helpers.missingPathParamResponse("team member", "eventID, year, or user_id");
+    }
+
+    const year = Number(yearParam);
+    if (!Number.isInteger(year)) {
+      return helpers.inputError("Year path parameter must be a number", yearParam);
+    }
+
+    const callerID = event.auth!.email;
+    const targetID = decodeURIComponent(userIDParam).trim().toLowerCase();
+    if (targetID === callerID) {
+      return helpers.createResponse(400, { message: "Use the leave endpoint to remove yourself" });
+    }
+
     if (!(await db.getOne(eventID, EVENTS_TABLE, { year }))) {
       return helpers.createResponse(404, { message: "Event not found" });
     }
