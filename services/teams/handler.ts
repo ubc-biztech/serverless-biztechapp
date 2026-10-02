@@ -8,9 +8,7 @@ import teamHelpers, {
   getEventRegistration,
   getEventTeam,
   retryOnTeamConflict,
-  removeMemberAsLeader,
-  generateTeamCode,
-  cleanupTeamData
+  removeMemberAsLeader
 } from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import {
@@ -22,8 +20,8 @@ import {
 } from "../../constants/tables";
 import db from "../../lib/db.js";
 import { WEIGHTS, ROUND } from "./constants.js";
-import { AtomicWrite, LambdaHandler } from "../../lib/types";
-import { protect, Access } from "../../lib/auth";
+import { APIGatewayResponse, AtomicWrite, LambdaHandler } from "../../lib/types";
+import { protect, Access, AuthEvent } from "../../lib/auth";
 import {
   AddMultipleQuestionsBody,
   AddQRScanBody,
@@ -348,38 +346,68 @@ export const removeTeamMember = protect(Access.USER, async (event) => {
   }
 });
 
-export const createEventTeam = protect(Access.USER, async (event) => {
-  /*
-    Creates a team for this event with the caller as its only member and leader.
+/** A 6-digit team code. Kept a string so leading zeros survive. */
+const generateTeamCode = (): string =>
+  String(randomInt(0, 1_000_000)).padStart(6, "0");
 
-    Path: eventID, year
-    Body: team_name
-   */
-  try {
-    const { eventID, year: yearParam } = event.pathParameters || {};
-    if (!eventID || !yearParam) {
-      return helpers.missingPathParamResponse("team", "eventID or year");
-    }
+type EventScope = { eventKey: string; userID: string };
 
-    const year = Number(yearParam);
-    if (!Number.isInteger(year)) {
-      return helpers.inputError("Year path parameter must be a number", yearParam);
-    }
+/**
+ * Shared preamble for the event-team membership routes: validates the
+ * {eventID}/{year} path, confirms the event exists, and hands `inner` the
+ * derived scope. Composes inside protect() so route auth stays greppable.
+ */
+const withEventScope =
+  (
+    action: string,
+    inner: (event: AuthEvent, scope: EventScope) => Promise<APIGatewayResponse>
+  ) =>
+    async (event: AuthEvent): Promise<APIGatewayResponse> => {
+      const { eventID, year: yearParam } = event.pathParameters || {};
+      if (!eventID || !yearParam) {
+        return helpers.missingPathParamResponse("team", "eventID or year");
+      }
 
+      const year = Number(yearParam);
+      if (!Number.isInteger(year)) {
+        return helpers.inputError("Year path parameter must be a number", yearParam);
+      }
+
+      try {
+        if (!(await db.getOne(eventID, EVENTS_TABLE, { year }))) {
+          return helpers.createResponse(404, { message: "Event not found" });
+        }
+
+        return await inner(event, {
+          eventKey: `${eventID};${year}`,
+          userID: event.auth!.email
+        });
+      } catch (error) {
+        console.error(`Error during team ${action}:`, error);
+
+        return helpers.createResponse(500, {
+          message: `Failed to ${action} team`,
+          error: errorMessage(error)
+        });
+      }
+    };
+
+export const createEventTeam = protect(
+  Access.USER,
+  withEventScope("create", async (event, { eventKey, userID }) => {
+    /*
+      Creates a team for this event with the caller as its only member and leader.
+
+      Path: eventID, year
+      Body: team_name
+     */
     const data = JSON.parse(event.body || "{}") as CreateEventTeamBody;
     const teamName = typeof data.team_name === "string" ? data.team_name.trim() : "";
     if (!teamName) {
       return helpers.inputError("team_name is required", data.team_name);
     }
 
-    if (!(await db.getOne(eventID, EVENTS_TABLE, { year }))) {
-      return helpers.createResponse(404, { message: "Event not found" });
-    }
-
-    const eventKey = `${eventID};${year}`;
-    const userID = event.auth!.email;
-
-    return await retryOnTeamConflict(async () => {
+    return retryOnTeamConflict(async () => {
       const registration = await getEventRegistration(userID, eventKey);
       if (!registration) {
         return helpers.createResponse(403, {
@@ -420,48 +448,25 @@ export const createEventTeam = protect(Access.USER, async (event) => {
 
       return helpers.createResponse(201, await toTeamResponse(team));
     });
-  } catch (error) {
-    console.error("Error creating team:", error);
+  })
+);
 
-    return helpers.createResponse(500, {
-      message: "Failed to create team",
-      error: errorMessage(error)
-    });
-  }
-});
+export const joinEventTeam = protect(
+  Access.USER,
+  withEventScope("join", async (event, { eventKey, userID }) => {
+    /*
+      Joins the team holding this 6-digit code within the event.
 
-export const joinEventTeam = protect(Access.USER, async (event) => {
-  /*
-    Joins the team holding this 6-digit code within the event.
-
-    Path: eventID, year
-    Body: team_code
-   */
-  try {
-    const { eventID, year: yearParam } = event.pathParameters || {};
-    if (!eventID || !yearParam) {
-      return helpers.missingPathParamResponse("team", "eventID or year");
-    }
-
-    const year = Number(yearParam);
-    if (!Number.isInteger(year)) {
-      return helpers.inputError("Year path parameter must be a number", yearParam);
-    }
-
+      Path: eventID, year
+      Body: team_code
+     */
     const data = JSON.parse(event.body || "{}") as JoinEventTeamBody;
     const teamCode = typeof data.team_code === "string" ? data.team_code.trim() : "";
     if (!/^\d{6}$/.test(teamCode)) {
       return helpers.inputError("team_code must be 6 digits", data.team_code);
     }
 
-    if (!(await db.getOne(eventID, EVENTS_TABLE, { year }))) {
-      return helpers.createResponse(404, { message: "Event not found" });
-    }
-
-    const eventKey = `${eventID};${year}`;
-    const userID = event.auth!.email;
-
-    return await retryOnTeamConflict(async () => {
+    return retryOnTeamConflict(async () => {
       const [registration, team] = await Promise.all([
         getEventRegistration(userID, eventKey),
         getEventTeam(teamCode, eventKey)
@@ -498,54 +503,33 @@ export const joinEventTeam = protect(Access.USER, async (event) => {
         }
       ]);
 
-      // Re-read so a member who joined alongside us shows up in the response.
-      const joined = (await getEventTeam(teamCode, eventKey)) || {
-        ...team,
-        member_ids: new Set([...team.member_ids, userID])
-      };
-
-      return helpers.createResponse(200, await toTeamResponse(joined));
+      // Built locally rather than re-read: getOne is eventually consistent, so a
+      // read this soon after the write can come back without the caller in it.
+      return helpers.createResponse(
+        200,
+        await toTeamResponse({
+          ...team,
+          member_ids: new Set([...team.member_ids, userID])
+        })
+      );
     });
-  } catch (error) {
-    console.error("Error joining team:", error);
+  })
+);
 
-    return helpers.createResponse(500, {
-      message: "Failed to join team",
-      error: errorMessage(error)
-    });
-  }
-});
+export const leaveEventTeam = protect(
+  Access.USER,
+  withEventScope("leave", async (_event, { eventKey, userID }) => {
+    /*
+      Removes the caller from their team for this event. A departing leader hands off
+      to a random remaining member; the last member out takes the team with them.
 
-export const leaveEventTeam = protect(Access.USER, async (event) => {
-  /*
-    Removes the caller from their team for this event. A departing leader hands off
-    to a random remaining member; the last member out takes the team with them.
-
-    Path: eventID, year
-   */
-  try {
-    const { eventID, year: yearParam } = event.pathParameters || {};
-    if (!eventID || !yearParam) {
-      return helpers.missingPathParamResponse("team", "eventID or year");
-    }
-
-    const year = Number(yearParam);
-    if (!Number.isInteger(year)) {
-      return helpers.inputError("Year path parameter must be a number", yearParam);
-    }
-
-    if (!(await db.getOne(eventID, EVENTS_TABLE, { year }))) {
-      return helpers.createResponse(404, { message: "Event not found" });
-    }
-
-    const eventKey = `${eventID};${year}`;
-    const userID = event.auth!.email;
-
-    return await retryOnTeamConflict(async () => {
+      Path: eventID, year
+     */
+    return retryOnTeamConflict(async () => {
       const teamCode = await resolveTeamMembership(userID, eventKey);
       const team = teamCode ? await getEventTeam(teamCode, eventKey) : null;
 
-      if (!teamCode || !team?.member_ids?.has(userID)) {
+      if (!team?.member_ids?.has(userID)) {
         return helpers.createResponse(404, {
           message: "You are not on a team for this event"
         });
@@ -556,57 +540,41 @@ export const leaveEventTeam = protect(Access.USER, async (event) => {
         key: { id: userID, "eventID;year": eventKey },
         update: "REMOVE teamID",
         condition: "teamID = :teamCode",
-        values: { ":teamCode": teamCode }
+        values: { ":teamCode": team.id }
       };
-      const teamKey = { id: teamCode, "eventID;year": eventKey };
+      const teamTarget = {
+        table: TEAMS_TABLE,
+        key: { id: team.id, "eventID;year": eventKey }
+      };
       const remaining = [...team.member_ids].filter((id) => id !== userID);
 
-      // Last one out: the row goes with them, since an empty String Set cannot be stored.
+      let teamWrite: AtomicWrite;
       if (remaining.length === 0) {
-        await db.atomic([
-          dropMembership,
-          {
-            table: TEAMS_TABLE,
-            key: teamKey,
-            delete: true,
-            // Re-confirms the team is empty; a concurrent join fails this and the retry re-routes.
-            condition: "size(member_ids) = :one AND contains(member_ids, :userID)",
-            values: { ":one": 1, ":userID": userID }
-          }
-        ]);
-
-        await cleanupTeamData(eventKey, teamCode);
-        return helpers.createResponse(204);
-      }
-
-      if (team.leader_user_id === userID) {
+        // Last one out: the row goes with them, since an empty String Set cannot be stored.
+        // The condition re-confirms emptiness; a concurrent join fails it and the retry re-routes.
+        teamWrite = {
+          ...teamTarget,
+          delete: true,
+          condition: "size(member_ids) = :one AND contains(member_ids, :userID)",
+          values: { ":one": 1, ":userID": userID }
+        };
+      } else if (team.leader_user_id === userID) {
         const newLeader = remaining[randomInt(0, remaining.length)];
-
-        await db.atomic([
-          dropMembership,
-          {
-            table: TEAMS_TABLE,
-            key: teamKey,
-            update: "SET leader_user_id = :newLeader DELETE member_ids :leaving",
-            // contains(:newLeader) keeps the handoff from naming someone who just left
-            condition:
-              "leader_user_id = :userID AND contains(member_ids, :userID) AND contains(member_ids, :newLeader)",
-            values: {
-              ":leaving": new Set([userID]),
-              ":newLeader": newLeader,
-              ":userID": userID
-            }
+        teamWrite = {
+          ...teamTarget,
+          update: "SET leader_user_id = :newLeader DELETE member_ids :leaving",
+          // contains(:newLeader) keeps the handoff from naming someone who just left
+          condition:
+            "leader_user_id = :userID AND contains(member_ids, :userID) AND contains(member_ids, :newLeader)",
+          values: {
+            ":leaving": new Set([userID]),
+            ":newLeader": newLeader,
+            ":userID": userID
           }
-        ]);
-
-        return helpers.createResponse(204);
-      }
-
-      await db.atomic([
-        dropMembership,
-        {
-          table: TEAMS_TABLE,
-          key: teamKey,
+        };
+      } else {
+        teamWrite = {
+          ...teamTarget,
           update: "DELETE member_ids :leaving",
           // The leader stays behind, so member_ids is never emptied here
           condition:
@@ -616,20 +584,20 @@ export const leaveEventTeam = protect(Access.USER, async (event) => {
             ":userID": userID,
             ":leaderID": team.leader_user_id
           }
-        }
-      ]);
+        };
+      }
 
+      await db.atomic([dropMembership, teamWrite]);
+
+      // TODO(workflow-2): a team that empties out leaves its Product Plus submission
+      // and PRD objects behind. Durable cleanup belongs on a DynamoDB stream over
+      // biztechTeams, or in the submissions service reaping its own orphans — not
+      // here: this runs after the transaction commits with no retry behind it, and
+      // anything thrown at this point would turn a committed leave into a 500.
       return helpers.createResponse(204);
     });
-  } catch (error) {
-    console.error("Error leaving team:", error);
-
-    return helpers.createResponse(500, {
-      message: "Failed to leave team",
-      error: errorMessage(error)
-    });
-  }
-});
+  })
+);
 
 export const get = protect(Access.USER, async (event) => {
   // Admins see raw memberIDs; everyone else gets them stripped.

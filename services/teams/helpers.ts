@@ -1,4 +1,3 @@
-import { randomInt } from "node:crypto";
 import { v4 as uuidv4 } from "uuid";
 import {
   USER_REGISTRATIONS_TABLE,
@@ -645,29 +644,6 @@ export const resolveTeamMembership = async (
   eventKey: string,
 ): Promise<string | null> =>
   (await getEventRegistration(userID, eventKey))?.teamID || null;
-
-/** A 6-digit team code. Kept a string so leading zeros survive. */
-export const generateTeamCode = (): string =>
-  String(randomInt(0, 1_000_000)).padStart(6, "0");
-
-/**
- * Drops the event-specific data belonging to a team that just emptied out.
- *
- * TODO(workflow-2): delete the Product Plus submission for this team and the PRD
- * objects under `productplus/{eventKey}/{teamCode}/`. That service does not exist
- * yet, so this is a no-op and every other event keeps working without a Product
- * Plus dependency. Must stay idempotent — it runs after the team row is already
- * gone and has no retry driver behind it.
- */
-export const cleanupTeamData = async (
-  eventKey: string,
-  teamCode: string,
-): Promise<void> => {
-  console.info("Team emptied, no event-specific cleanup registered", {
-    eventKey,
-    teamCode,
-  });
-};
 
 export const getEventTeam = async (
   teamCode: string,

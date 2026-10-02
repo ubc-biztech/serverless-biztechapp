@@ -81,7 +81,7 @@ function fixture({
     module: { exports: {} }, process: { env: {} }, console,
     infrastructure: {
       db,
-      randomInt: (min, max) => (intQueue.length ? intQueue.shift() : min ?? 0) % (max ?? Infinity),
+      randomInt: (_min, max) => (intQueue.length ? intQueue.shift() : 0) % max,
     },
   });
   vm.runInContext(bundle.outputFiles[0].text, context);
@@ -163,7 +163,7 @@ test("create: a missing event is a 404", async () => {
 
 test("join: adds the caller to member_ids and claims their membership", async () => {
   const { handler, event, writes } = fixture({ team: teamOf() });
-  const res = await handler.joinEventTeam(event({ team_code: "123456" }, OTHER), OTHER);
+  const res = await handler.joinEventTeam(event({ team_code: "123456" }, OTHER));
 
   assert.equal(res.statusCode, 200);
   const [membershipWrite, teamWrite] = writes[0];
@@ -172,7 +172,7 @@ test("join: adds the caller to member_ids and claims their membership", async ()
   assert.deepEqual([...teamWrite.values[":joined"]], [OTHER]);
 });
 
-for (const code of ["12345", "abcdef", "1234567", ""]) {
+for (const code of ["12345", "abcdef", "1234567", 7]) {
   test(`join: rejects malformed code ${JSON.stringify(code)}`, async () => {
     const { handler, event, writes } = fixture({ team: teamOf() });
     assert.equal((await handler.joinEventTeam(event({ team_code: code }))).statusCode, 406);
@@ -227,8 +227,7 @@ test("leave: a departing leader hands off to a remaining member", async () => {
   const teamWrite = writes[0][1];
   assert.match(teamWrite.update, /SET leader_user_id = :newLeader/);
   assert.match(teamWrite.update, /DELETE member_ids :leaving/);
-  assert.equal(teamWrite.values[":newLeader"], THIRD);
-  assert.notEqual(teamWrite.values[":newLeader"], USER, "the leaver never inherits");
+  assert.equal(teamWrite.values[":newLeader"], THIRD, "the leaver never inherits");
   assert.match(teamWrite.condition, /contains\(member_ids, :newLeader\)/);
 });
 
