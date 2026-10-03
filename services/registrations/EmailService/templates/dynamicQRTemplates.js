@@ -31,15 +31,15 @@ export const getDefaultQRTemplate = (emailParams) => {
 
 export const getDefaultApplicationTemplate = (emailParams) => {
   const {
-    fname, registrationStatus, logoBase64, currentYear
+    fname, ename, registrationStatus, logoBase64, currentYear
   } = emailParams;
   let content;
   if (registrationStatus === REGISTRATION_STATUS.ACCEPTED_PENDING) {
-    content = `<p>You've been accepted to HelloHacks 2026! Please use the link below to confirm your attendance.</p>
+    content = `<p>You've been accepted to ${ename}! Please use the link below to confirm your attendance.</p>
           <a href="https://app.ubcbiztech.com/events">Confirm your attendance</a>
           <p>If you have any questions or concerns, please reach out to our Experiences Team Lead at <a href="mailto:jay@ubcbiztech.com">jay@ubcbiztech.com</a>.</p>`;
   } else {
-    content = `<p>Thank you for registering for HelloHacks 2026! We’re excited to receive your application and will be reviewing it shortly.</p>
+    content = `<p>Thank you for registering for ${ename}! We’re excited to receive your application and will be reviewing it shortly.</p>
           <p>If you have any questions or concerns about your application, please reach out to our Experiences Team Lead at <a href="mailto:jay@ubcbiztech.com">jay@ubcbiztech.com</a>.</p>
           <p>We’ll be in touch by email once the applicant review process is complete.</p>`;
   }
