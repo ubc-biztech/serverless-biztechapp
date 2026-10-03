@@ -143,6 +143,9 @@ export interface DynamoErrorResponse {
 }
 
 export interface DB {
+  build: typeof import("./db/build.js").build;
+  txn: typeof import("./db/txn.js").txn;
+  isConflict: typeof import("./db/txn.js").isConflict;
   dynamoErrorResponse(err: unknown): DynamoErrorResponse;
   createUpdateExpression(obj: Record<string, unknown>): UpdateExpressionResult;
   create(item: Record<string, unknown>, table: string): Promise<unknown>;
