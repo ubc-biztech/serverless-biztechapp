@@ -318,7 +318,8 @@ export async function sendEmail(
   if (
     userStatus === REGISTRATION_STATUS.INCOMPLETE ||
     userStatus === REGISTRATION_STATUS.REJECTED ||
-    userStatus === REGISTRATION_STATUS.ACCEPTED
+    userStatus === REGISTRATION_STATUS.ACCEPTED ||
+    userStatus === REGISTRATION_STATUS.ACCEPTED_PENDING
   )
     return;
   if (userStatus !== REGISTRATION_STATUS.CHECKED_IN) {

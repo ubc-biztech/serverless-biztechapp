@@ -141,37 +141,35 @@ For example, from inside `service/hello`, you will be able to run:
 `npm run utest <function_name>` and
 `npm run itest <function_name>`
 
-## Deployment (CHANGE README AFTER MICROSERVICE CHANGES COMPLETE)
+## Deployment
 
-Our serverless API is deployed into different environments:
+There is one long-lived branch, `master`. Two environments are deployed from it:
 
-### Development (dev)
-- Used for active **backend development**
-- Uses databases `biztechUsers`, `biztechegistrations`, etc.
-To deploy to this environment, run the following in each service file:
+| Environment | Stage | Deployed by |
+| --- | --- | --- |
+| Staging (`api-dev.ubcbiztech.com`) | `dev` | every push to `master` |
+| Production (`api.ubcbiztech.com`) | `prod` | publishing a GitHub release |
 
-```
-npm run dev
-```
+Production database names are appended with `PROD`. Production endpoints should
+only be called by `bt-web`.
 
-### Staging
-- Used for active **frontend development**
-- Uses the same databases as development environment
-Merges to our **master** branch are automatically deployed to stage using Travis CI.
+### Releasing to production
 
-### Production (prod)
-- Used by active users
-- Production endpoints should only be called by `bt-web`
-- Database names are appended with `PROD`
-Deploying to our **production** environment can be done through a Github release. Github actions are set up to automatically trigger a deploy during a release. For more information on creating a release, take a look at our [notion doc](https://www.notion.so/ubcbiztech/Production-Releases-76b97d59214d4d29b4db6b9e5c4692e1).
+1. Merge to `master` and check staging.
+2. GitHub → Releases → *Draft a new release*. Tag `vMAJOR.MINOR.PATCH`, target
+   `master`, *Generate release notes*, *Publish*.
+3. The Deploy workflow refuses tags that are not on `master`, and skips
+   releases marked as pre-release.
 
-Generally, deployments to each environment can be done by adding the "-stage" argument like the following:
+### Rolling back
 
-```
-sls deploy -stage staging
-```
+Actions → Deploy → *Run workflow* and enter the previous release tag. This
+redeploys that code; it does not undo data or table changes.
 
-However, it is not recommended to deploy to our **staging** or **production** environments this way.
+### Deploying by hand
+
+`scripts/deploy.sh <dev|prod>` runs the same deploy CI does, using your own AWS
+credentials and `SERVERLESS_ACCESS_KEY`. Use it only when Actions is down.
 
 
 ## Contributing
