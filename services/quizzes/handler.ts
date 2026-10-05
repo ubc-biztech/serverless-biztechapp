@@ -1,4 +1,5 @@
 import { PROFILES_TABLE, QUIZZES_TABLE } from "../../constants/tables.js";
+import { protect, Access } from "../../lib/auth";
 import db from "../../lib/db.js";
 import helpers from "../../lib/handlerHelpers";
 import type { APIGatewayEvent, LambdaCallback, LambdaContext } from "../../lib/types";
@@ -9,7 +10,7 @@ import {
   validateQuestionScores,
 } from "./helpers";
 
-export const upload = async (
+export const upload = protect(Access.USER, async (
   event: APIGatewayEvent,
   _ctx: LambdaContext,
   _callback: LambdaCallback,
@@ -111,9 +112,9 @@ export const upload = async (
       message: "Internal Server Error",
     });
   }
-};
+});
 
-export const report = async (
+export const report = protect(Access.USER, async (
   event: APIGatewayEvent,
   _ctx: LambdaContext,
   _callback: LambdaCallback,
@@ -145,9 +146,9 @@ export const report = async (
       message: "Internal Server Error",
     });
   }
-};
+});
 
-export const all = async (
+export const all = protect(Access.USER, async (
   event: APIGatewayEvent,
   _ctx: LambdaContext,
   _callback: LambdaCallback,
@@ -177,9 +178,9 @@ export const all = async (
       message: "Internal Server Error",
     });
   }
-};
+});
 
-export const aggregate = async (
+export const aggregate = protect(Access.USER, async (
   event: APIGatewayEvent,
   _ctx: LambdaContext,
   _callback: LambdaCallback,
@@ -256,9 +257,9 @@ export const aggregate = async (
       message: "Internal Server Error",
     });
   }
-};
+});
 
-export const wrapped = async (
+export const wrapped = protect(Access.USER, async (
   event: APIGatewayEvent,
   _ctx: LambdaContext,
   _callback: LambdaCallback,
@@ -303,9 +304,9 @@ export const wrapped = async (
       message: "Internal Server Error",
     });
   }
-};
+});
 
-export const perMbti = async (
+export const perMbti = protect(Access.USER, async (
   event: APIGatewayEvent,
   _ctx: LambdaContext,
   _callback: LambdaCallback,
@@ -341,4 +342,4 @@ export const perMbti = async (
       message: "Internal Server Error",
     });
   }
-};
+});
