@@ -223,7 +223,7 @@ export const getAllConnections = protect(Access.USER, async (event, ctx, callbac
   }
 });
 
-export const getWallSnapshot = async (event, ctx, callback) => {
+export const getWallSnapshot = protect(Access.USER, async (event, ctx, callback) => {
   try {
     const qs = event.queryStringParameters || {};
     console.log("[WALL] snapshot request", qs);
@@ -282,7 +282,7 @@ export const getWallSnapshot = async (event, ctx, callback) => {
       message: "wall snapshot error"
     });
   }
-};
+});
 
 // WebSocket connect
 export const wsConnect = async (event, ctx, callback) => {
