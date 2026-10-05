@@ -56,38 +56,6 @@ functions:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
 
-  createPartialPartnerProfile:
-    handler: handler.createPartialPartnerProfile
-    events:
-      - http:
-          path: profiles/partner/partial
-          method: post
-          cors: true
-
-  createCompanyProfile:
-    handler: handler.createCompanyProfile
-    events:
-      - http:
-          path: profiles/company
-          method: post
-          cors: true
-
-  linkPartnerToCompany:
-    handler: handler.linkPartnerToCompany
-    events:
-      - http:
-          path: profiles/company/link-partner
-          method: post
-          cors: true
-
-  syncPartnerData:
-    handler: handler.syncPartnerData
-    events:
-      - http:
-          path: profiles/sync-partner-data
-          method: post
-          cors: true
-
   getPublicProfile:
     handler: handler.getPublicProfile
     events:
