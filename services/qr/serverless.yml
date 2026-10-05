@@ -59,6 +59,9 @@ functions:
           path: qrscan/
           method: post
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   qrGetAll:
     handler: handler.get
     events:
@@ -89,6 +92,9 @@ functions:
           path: qr/
           method: post
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   qrUpdate:
     handler: handler.update
     events:

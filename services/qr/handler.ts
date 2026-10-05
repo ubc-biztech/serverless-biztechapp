@@ -1,8 +1,9 @@
 import { EVENTS_TABLE, QRS_TABLE } from "../../constants/tables.js";
 import db from "../../lib/db.js";
+import { protect, Access } from "../../lib/auth";
 import helpers from "../../lib/handlerHelpers";
 import res from "../../lib/responseHelpers";
-import type { APIGatewayEvent, LambdaCallback, LambdaContext } from "../../lib/types";
+import type { APIGatewayEvent, LambdaCallback, LambdaContext, LambdaHandler } from "../../lib/types";
 import { isEmpty } from "../../lib/utils.js";
 import registrationHelpers from "./helpers";
 
@@ -21,12 +22,9 @@ const errorMessage = (err: unknown): string =>
 */
 
 // Endpoint: POST /qrscan/
-export const post = async (
-  event: APIGatewayEvent,
-  _ctx: LambdaContext,
-  _callback: LambdaCallback,
-) => {
+export const post = protect(Access.USER, async (event) => {
   try {
+    const email = event.auth!.email;
     const data = JSON.parse(event.body as string) as Record<string, unknown>;
 
     helpers.checkPayloadProps(data, {
@@ -42,10 +40,6 @@ export const post = async (
         required: true,
         type: "number",
       },
-      email: {
-        required: true,
-        type: "string",
-      },
       negativePointsConfirmed: {
         required: true,
         type: "boolean",
@@ -58,7 +52,7 @@ export const post = async (
 
     const scanRes = (await registrationHelpers.qrScanPostHelper(
       data as never,
-      data.email as string,
+      email,
     )) as Record<string, unknown>;
 
     console.log(scanRes);
@@ -80,7 +74,7 @@ export const post = async (
     try {
       await registrationHelpers.logQRScan(
         data.qrCodeID as string,
-        data.email as string,
+        email,
       );
     } catch (logErr) {
       console.error("Error logging QR scan:", logErr);
@@ -94,7 +88,7 @@ export const post = async (
     console.error(err);
     return res.send(500, { message: errorMessage(err) });
   }
-};
+}) as LambdaHandler;
 
 export const get = async (
   _event: APIGatewayEvent,
@@ -136,11 +130,7 @@ export const getOne = async (
   }
 };
 
-export const create = async (
-  event: APIGatewayEvent,
-  _ctx: LambdaContext,
-  _callback: LambdaCallback,
-) => {
+export const create = protect(Access.ADMIN, async (event) => {
   try {
     const timestamp = new Date().getTime();
     const data = JSON.parse(event.body as string) as Record<string, unknown>;
@@ -218,7 +208,7 @@ export const create = async (
     console.log(err);
     return res.send(500, { message: errorMessage(err) });
   }
-};
+}) as LambdaHandler;
 
 export const update = async (
   event: APIGatewayEvent,
