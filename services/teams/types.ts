@@ -3,6 +3,7 @@ import type { APIGatewayResponse } from "../../lib/types";
 /** Team item stored in biztechTeams. */
 export interface TeamRecord {
   id: string;
+  team_code?: string; // Product Plus uses a separate six-digit code; other events need none.
   teamName: string;
   "eventID;year": string;
   memberIDs: string[];

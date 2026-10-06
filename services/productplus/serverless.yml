@@ -25,16 +25,20 @@ provider:
     PRODUCTPLUS_PRD_BUCKET: ${file(../../config.${self:provider.stage}.json):PRODUCTPLUS_PRD_BUCKET}
     PRODUCTPLUS_SUBMISSIONS_TABLE: biztechPPSubmissions${self:provider.environment.ENVIRONMENT}
     PRODUCTPLUS_UPLOADS_TABLE: biztechPPUploads${self:provider.environment.ENVIRONMENT}
+    # TODO: switch these and their IAM resources to the new event membership tables.
     PRODUCTPLUS_TEAMS_TABLE: biztechTeams${self:provider.environment.ENVIRONMENT}
     PRODUCTPLUS_REGISTRATIONS_TABLE: biztechRegistrations${self:provider.environment.ENVIRONMENT}
     PRODUCTPLUS_EVENT_KEY: "productplus;2026"
     PRODUCTPLUS_MAX_PRD_BYTES: "5000000"
-    # Abandoned uploads become eligible after URL expiry plus this grace period.
-    PRODUCTPLUS_UPLOAD_GRACE_SECONDS: "120"
+    PRODUCTPLUS_CLEANUP_FUNCTION: ${self:service}-${self:provider.stage}-productplusCleanup
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
     restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
   iamRoleStatements:
+    # HEAD needs ListBucket to report a missing PDF as 404 rather than 403.
+    - Effect: Allow
+      Action: s3:ListBucket
+      Resource: "arn:aws:s3:::${self:provider.environment.PRODUCTPLUS_PRD_BUCKET}"
     # Upload, validate, view, and clean up PRDs in this stage's existing bucket.
     - Effect: Allow
       Action:
@@ -62,19 +66,24 @@ provider:
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/${self:provider.environment.PRODUCTPLUS_TEAMS_TABLE}"
         - "arn:aws:dynamodb:us-west-2:432714361962:table/${self:provider.environment.PRODUCTPLUS_REGISTRATIONS_TABLE}"
-    # Find team files and uploads that are due for cleanup.
+    # Strong, paginated reads for deleted-team cleanup.
     - Effect: Allow
       Action:
-        - dynamodb:Query
+        - dynamodb:Scan
       Resource:
-        - "arn:aws:dynamodb:us-west-2:432714361962:table/${self:provider.environment.PRODUCTPLUS_SUBMISSIONS_TABLE}"
         - "arn:aws:dynamodb:us-west-2:432714361962:table/${self:provider.environment.PRODUCTPLUS_UPLOADS_TABLE}"
-        - "arn:aws:dynamodb:us-west-2:432714361962:table/${self:provider.environment.PRODUCTPLUS_UPLOADS_TABLE}/index/team-uploads-query"
-        - "arn:aws:dynamodb:us-west-2:432714361962:table/${self:provider.environment.PRODUCTPLUS_UPLOADS_TABLE}/index/upload-cleanup-query"
+    - Effect: Allow
+      Action: lambda:InvokeFunction
+      Resource: "arn:aws:lambda:us-west-2:432714361962:function:${self:provider.environment.PRODUCTPLUS_CLEANUP_FUNCTION}"
 
 custom: ${file(../../serverless.common.yml):custom}
 
 functions:
+  productplusCleanup:
+    handler: handler.cleanup
+    timeout: 60
+    maximumRetryAttempts: 2
+    maximumEventAge: 21600
   productplusGetSubmission:
     handler: handler.getSubmission
     events:
@@ -97,6 +106,7 @@ functions:
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   productplusPutSubmission:
     handler: handler.putSubmission
+    timeout: 30
     events:
       - http:
           path: productplus/submissions
@@ -126,7 +136,7 @@ functions:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
 
-# Apply CORS to an existing bucket; the bucket itself stays manually managed.
+# Apply CORS and temporary-file Lifecycle to the existing manually owned bucket.
 resources:
   Conditions:
     ProductPlusIsProduction:
@@ -153,7 +163,10 @@ resources:
               Version: "2012-10-17"
               Statement:
                 - Effect: Allow
-                  Action: s3:PutBucketCORS
+                  Action:
+                    - s3:PutBucketCORS
+                    - s3:GetLifecycleConfiguration
+                    - s3:PutLifecycleConfiguration
                   Resource: "arn:aws:s3:::${self:provider.environment.PRODUCTPLUS_PRD_BUCKET}"
                 - Effect: Allow
                   Action:
@@ -166,7 +179,7 @@ resources:
       DependsOn: ProductPlusCorsLogGroup
       Properties:
         FunctionName: ${self:service}-${self:provider.stage}-prd-cors
-        Description: Apply YAML CORS rules to the existing Product Plus PRD bucket.
+        Description: Apply CORS and temporary PDF expiration to the existing bucket.
         Runtime: ${self:provider.runtime}
         Handler: index.handler
         Timeout: 60
@@ -174,28 +187,49 @@ resources:
           Fn::GetAtt: [ProductPlusCorsRole, Arn]
         Code:
           ZipFile: |
-            const { S3Client, PutBucketCorsCommand } = require("@aws-sdk/client-s3");
+            const { S3Client, PutBucketCorsCommand, GetBucketLifecycleConfigurationCommand,
+              PutBucketLifecycleConfigurationCommand } = require("@aws-sdk/client-s3");
             const s3 = new S3Client({ maxAttempts: 2 });
 
             exports.handler = async (event) => {
               let status = "SUCCESS";
-              let reason = "CORS configuration applied.";
+              let reason = "Bucket configuration applied.";
               try {
                 if (event.RequestType === "Create" || event.RequestType === "Update") {
                   await s3.send(new PutBucketCorsCommand({
                     Bucket: event.ResourceProperties.BucketName,
                     CORSConfiguration: { CORSRules: event.ResourceProperties.CorsRules }
                   }), { abortSignal: AbortSignal.timeout(20000) });
+                  let existing = [];
+                  let transitionMinimum;
+                  try {
+                    const result = await s3.send(new GetBucketLifecycleConfigurationCommand({
+                      Bucket: event.ResourceProperties.BucketName
+                    }), { abortSignal: AbortSignal.timeout(10000) });
+                    existing = result.Rules || [];
+                    transitionMinimum = result.TransitionDefaultMinimumObjectSize;
+                  } catch (error) {
+                    if (error.name !== "NoSuchLifecycleConfiguration") throw error;
+                  }
+                  const ownedRules = event.ResourceProperties.LifecycleRules;
+                  const ownedIds = new Set(ownedRules.map(rule => rule.ID));
+                  await s3.send(new PutBucketLifecycleConfigurationCommand({
+                    Bucket: event.ResourceProperties.BucketName,
+                    TransitionDefaultMinimumObjectSize: transitionMinimum,
+                    LifecycleConfiguration: {
+                      Rules: [...existing.filter(rule => !ownedIds.has(rule.ID)), ...ownedRules]
+                    }
+                  }), { abortSignal: AbortSignal.timeout(10000) });
                 } else if (event.RequestType === "Delete") {
-                  // Leave the external bucket, PDFs, and its CORS rules intact.
-                  reason = "Existing bucket CORS retained.";
+                  // Retain the external bucket, files, CORS, and Lifecycle rules.
+                  reason = "Existing bucket configuration retained.";
                 } else {
                   throw new Error("Unsupported request type.");
                 }
               } catch (error) {
                 status = "FAILED";
                 reason = String(error.message || error).slice(0, 1000);
-                console.error("Bucket CORS setup failed:", reason);
+                console.error("Bucket configuration setup failed:", reason);
               }
               const body = JSON.stringify({
                 Status: status,
@@ -229,6 +263,13 @@ resources:
           Fn::GetAtt: [ProductPlusCorsFunction, Arn]
         ServiceTimeout: 120
         BucketName: ${self:provider.environment.PRODUCTPLUS_PRD_BUCKET}
+        LifecycleRules:
+          - ID: productplus-temp-expiration
+            Status: Enabled
+            Filter:
+              Prefix: productplus/temp/
+            Expiration:
+              Days: 1
         CorsRules:
           - AllowedOrigins:
               Fn::If:

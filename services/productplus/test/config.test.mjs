@@ -155,9 +155,9 @@ test("PUT preserves supplied UTC timestamps and atomically creates/updates only 
   assert.equal(input.ExpressionAttributeValues[":voting"], supplied.voting_deadline);
   assert.match(input.ExpressionAttributeValues[":updated"], /^\d{4}-\d{2}-\d{2}T.+Z$/);
   assert.deepEqual(Object.values(input.ExpressionAttributeNames).sort(), [
-    "submission_deadline", "updated_at", "version", "voting_deadline"
+    "submission_deadline", "updated_at", "voting_deadline"
   ]);
-  assert.match(input.UpdateExpression, /if_not_exists\(#version, :zero\) \+ :one/);
+  assert.doesNotMatch(input.UpdateExpression, /version/);
   assert.equal(database.commandCalls(GetCommand).length, 0);
 });
 
