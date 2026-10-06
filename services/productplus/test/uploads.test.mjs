@@ -242,12 +242,11 @@ test("database failure returns a generic error and expiry during tracking return
   assert.equal(transaction()[0].Put.Item.status, "pending");
 });
 
-test("base64 bodies and PROD table/bucket names use the injected environment", async () => {
+test("PROD table/bucket names use the injected environment", async () => {
   for (const key of ["PRODUCTPLUS_SUBMISSIONS_TABLE", "PRODUCTPLUS_UPLOADS_TABLE",
     "PRODUCTPLUS_TEAMS_TABLE", "PRODUCTPLUS_REGISTRATIONS_TABLE"]) process.env[key] += "PROD";
   process.env.PRODUCTPLUS_PRD_BUCKET = "biztech-pp-prd-prod";
-  const request = event(Buffer.from(JSON.stringify({ content_type: "application/pdf" })).toString("base64"));
-  request.isBase64Encoded = true;
+  const request = event({ content_type: "application/pdf" });
   const result = await invoke(request);
   assert.equal(result.status, 200);
   assert.equal(new URL(result.body.upload_url).hostname, "biztech-pp-prd-prod.s3.us-west-2.amazonaws.com");

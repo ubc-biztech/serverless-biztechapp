@@ -38,13 +38,7 @@ export const getSubmission = protect(Access.USER, async (event) => {
 
 export const createUpload = protect(Access.USER, async (event) => {
   try {
-    return response.ok(
-      await createPrdUpload(
-        event.auth!.email,
-        event.body,
-        event.isBase64Encoded
-      )
-    );
+    return response.ok(await createPrdUpload(event.auth!.email, event.body));
   } catch (error) {
     if (error instanceof ProductPlusError) {
       return response.send(error.statusCode, { message: error.message });
@@ -63,9 +57,7 @@ export const createUpload = protect(Access.USER, async (event) => {
 
 export const putSubmission = protect(Access.USER, async (event) => {
   try {
-    return response.ok(
-      await saveSubmission(event.auth!.email, event.body, event.isBase64Encoded)
-    );
+    return response.ok(await saveSubmission(event.auth!.email, event.body));
   } catch (error) {
     if (error instanceof ProductPlusError) {
       return response.send(error.statusCode, { message: error.message });
@@ -107,7 +99,7 @@ export const getConfig = protect(Access.ADMIN, async () => {
 
 export const putConfig = protect(Access.ADMIN, async (event) => {
   try {
-    const config = parseConfigBody(event.body, event.isBase64Encoded);
+    const config = parseConfigBody(event.body);
 
     return response.ok(await saveConfig(config));
   } catch (error) {

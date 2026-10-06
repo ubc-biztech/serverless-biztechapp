@@ -161,14 +161,13 @@ test("PUT preserves supplied UTC timestamps and atomically creates/updates only 
   assert.equal(database.commandCalls(GetCommand).length, 0);
 });
 
-test("PUT supports base64 JSON, valid leap days, and fractional seconds", async () => {
+test("PUT supports valid leap days and fractional seconds", async () => {
   const supplied = {
     submission_deadline: "2028-02-29T10:00:00.1Z",
     voting_deadline: "2028-02-29T10:00:00.12Z"
   };
   database.on(UpdateCommand).resolves({ Attributes: supplied });
-  const request = event(Buffer.from(JSON.stringify(supplied)).toString("base64"));
-  request.isBase64Encoded = true;
+  const request = event(supplied);
   const result = await invoke(putConfig, request);
   assert.equal(result.status, 200);
   assert.deepEqual(result.body, supplied);
