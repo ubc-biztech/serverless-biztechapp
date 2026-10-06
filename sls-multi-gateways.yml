@@ -40,6 +40,9 @@ services:
   - srvName: teams
     srvPath: teams
     srvSource: services/teams
+  - srvName: productplus
+    srvPath: productplus
+    srvSource: services/productplus
   - srvName: transactions
     srvPath: transactions
     srvSource: services/transactions
