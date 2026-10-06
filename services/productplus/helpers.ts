@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 import {
-  GetCommand,
   UpdateCommand,
   TransactWriteCommand,
   ScanCommand,
@@ -16,6 +15,8 @@ import {
 } from "@aws-sdk/client-s3";
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import db from "../../lib/db.js";
+// Writes use the shared client directly so conditional errors remain available for retries.
 import docClient from "../../lib/docClient.js";
 import type {
   Config,
@@ -29,6 +30,8 @@ import type {
   CleanupTask
 } from "./types";
 
+// Deadline configuration: parse admin input and store one config row per event.
+// Handlers turn this validation error into a 400 response.
 export class ConfigValidationError extends Error {}
 
 /** Validate and select the two public deadline fields. */
@@ -72,18 +75,12 @@ export function configResponse(value: Record<string, unknown>): Config {
   return { submission_deadline, voting_deadline };
 }
 
-export function parseConfigBody(
-  body: string | null,
-  isBase64Encoded = false
-): Config {
+/** Parse the JSON body and reject fields outside the admin configuration contract. */
+export function parseConfigBody(body: string | null): Config {
   let value: unknown;
 
   try {
-    value = JSON.parse(
-      isBase64Encoded
-        ? Buffer.from(body || "", "base64").toString("utf8")
-        : body || ""
-    );
+    value = JSON.parse(body || "");
   } catch {
     throw new ConfigValidationError("Request body must be valid JSON.");
   }
@@ -101,6 +98,7 @@ export function parseConfigBody(
   return configResponse(value as Record<string, unknown>);
 }
 
+/** Configuration shares the submissions table, using the reserved team code "config". */
 function configLocation() {
   const TableName = process.env.PRODUCTPLUS_SUBMISSIONS_TABLE;
   const event_key = process.env.PRODUCTPLUS_EVENT_KEY;
@@ -113,17 +111,15 @@ function configLocation() {
   return { TableName, Key: { event_key, team_code: "config" } };
 }
 
+/** Read the latest committed config; the custom wrapper accepts our actual key names. */
 export async function getConfigRecord(): Promise<ConfigRecord | null> {
-  const result = await docClient.send(
-    new GetCommand({
-      ...configLocation(),
-      ConsistentRead: true
-    })
-  );
-
-  return result.Item ? (result.Item as ConfigRecord) : null;
+  return db.getOneCustom({
+    ...configLocation(),
+    ConsistentRead: true
+  }) as Promise<ConfigRecord | null>;
 }
 
+/** Create or update the deadlines without replacing other attributes on the config row. */
 export async function saveConfig(config: Config): Promise<Config> {
   const result = await docClient.send(
     new UpdateCommand({
@@ -155,12 +151,15 @@ export async function saveConfig(config: Config): Promise<Config> {
 // The browser supplies PDF bytes later; do not sign an empty-body checksum.
 const s3 = new S3Client({ requestChecksumCalculation: "WHEN_REQUIRED" });
 
+// Shared storage and membership checks used by uploads, submissions, and cleanup.
+// Expected participant errors carry the HTTP status that handlers should return.
 export class ProductPlusError extends Error {
   constructor(public statusCode: number, message: string) {
     super(message);
   }
 }
 
+/** Fail early if deployment is missing a table, bucket, or event setting. */
 function storageSettings() {
   const eventKey = process.env.PRODUCTPLUS_EVENT_KEY;
   const submissionsTable = process.env.PRODUCTPLUS_SUBMISSIONS_TABLE;
@@ -196,37 +195,33 @@ type TransactionItems = NonNullable<TransactWriteCommandInput["TransactItems"]>;
 // TODO: use the new event membership tables once their keys and user_id contract
 // are finalized. Keep membershipChecks and absentTeam aligned with this adapter.
 async function currentTeam(email: string, settings: StorageSettings) {
+  // The registration links this verified caller to a team within the configured event.
   const registrationKey = { "id": email, "eventID;year": settings.eventKey };
-  const registration = await docClient.send(
-    new GetCommand({
-      TableName: settings.registrationsTable,
-      Key: registrationKey,
-      ConsistentRead: true
-    })
-  );
-  const teamId = registration.Item?.teamID;
+  const registration = await db.getOneCustom({
+    TableName: settings.registrationsTable,
+    Key: registrationKey,
+    ConsistentRead: true
+  });
+  const teamId = registration?.teamID;
 
   if (typeof teamId !== "string" || !teamId) {
     throw new ProductPlusError(403, "Current team membership is required.");
   }
 
+  // Check the team's member list too: a stale registration alone cannot grant access.
   const teamKey = { "id": teamId, "eventID;year": settings.eventKey };
-  const team = await docClient.send(
-    new GetCommand({
-      TableName: settings.teamsTable,
-      Key: teamKey,
-      ConsistentRead: true
-    })
-  );
+  const team = await db.getOneCustom({
+    TableName: settings.teamsTable,
+    Key: teamKey,
+    ConsistentRead: true
+  });
 
-  if (
-    !Array.isArray(team.Item?.memberIDs) ||
-    !team.Item.memberIDs.includes(email)
-  ) {
+  if (!Array.isArray(team?.memberIDs) || !team.memberIDs.includes(email)) {
     throw new ProductPlusError(403, "Current team membership is required.");
   }
 
-  const teamCode = team.Item.team_code;
+  // The public six-digit code is separate from the old schema's internal team ID.
+  const teamCode = team.team_code;
 
   if (typeof teamCode !== "string" || !/^\d{6}$/.test(teamCode)) {
     throw new ProductPlusError(
@@ -240,6 +235,7 @@ async function currentTeam(email: string, settings: StorageSettings) {
 
 type CurrentTeam = Awaited<ReturnType<typeof currentTeam>>;
 
+/** Recheck both membership records inside a write, so a concurrent removal blocks it. */
 function membershipChecks(
   email: string,
   team: CurrentTeam,
@@ -270,6 +266,7 @@ function membershipChecks(
   ];
 }
 
+/** Reject a write if an admin changed the deadline after this request read it. */
 function deadlineCheck(
   deadline: string,
   settings: StorageSettings
@@ -285,30 +282,30 @@ function deadlineCheck(
   };
 }
 
+/** Load the latest team submission; preserve undefined for existing internal callers. */
 async function readSubmission(teamCode: string, settings: StorageSettings) {
-  const result = await docClient.send(
-    new GetCommand({
-      TableName: settings.submissionsTable,
-      Key: { event_key: settings.eventKey, team_code: teamCode },
-      ConsistentRead: true
-    })
-  );
+  const item = await db.getOneCustom({
+    TableName: settings.submissionsTable,
+    Key: { event_key: settings.eventKey, team_code: teamCode },
+    ConsistentRead: true
+  });
 
-  return result.Item as SubmissionRecord | undefined;
+  return (item as SubmissionRecord | null) ?? undefined;
 }
 
+/** Look up server-owned upload tracking before trusting a client-supplied PDF path. */
 async function readUpload(prdPath: string, settings: StorageSettings) {
-  const result = await docClient.send(
-    new GetCommand({
-      TableName: settings.uploadsTable,
-      Key: { prd_path: prdPath },
-      ConsistentRead: true
-    })
-  );
+  const item = await db.getOneCustom({
+    TableName: settings.uploadsTable,
+    Key: { prd_path: prdPath },
+    ConsistentRead: true
+  });
 
-  return result.Item as UploadRecord | undefined;
+  return (item as UploadRecord | null) ?? undefined;
 }
 
+// Object keys and upload state: ownership comes from tracking, not a supplied URL.
+/** Derive the permanent destination from the upload's server-generated ID. */
 function permanentPath(upload: UploadRecord, settings: StorageSettings) {
   return `productplus/submitted/${settings.eventKey}/${upload.team_code}/${upload.upload_id}/prd.pdf`;
 }
@@ -318,6 +315,7 @@ function storedPath(upload: UploadRecord) {
   return upload.permanent_path || upload.prd_path;
 }
 
+/** Require both matching ownership fields and the exact key generated for this upload. */
 function ownedUpload(
   upload: UploadRecord,
   settings: StorageSettings,
@@ -343,6 +341,7 @@ function ownedUpload(
   );
 }
 
+/** Tracking stays under the temporary key even after the submission uses a permanent key. */
 async function submissionUpload(path: string, settings: StorageSettings) {
   const key = path.startsWith("productplus/submitted/")
     ? path.replace("productplus/submitted/", "productplus/temp/")
@@ -351,6 +350,7 @@ async function submissionUpload(path: string, settings: StorageSettings) {
   return readUpload(key, settings);
 }
 
+/** Retry changed conditions or competing writes; other database failures must propagate. */
 function transactionConflict(error: unknown) {
   if (!(error instanceof Error)) {
     return false;
@@ -387,17 +387,15 @@ function uploadCondition(upload: UploadRecord) {
   };
 }
 
+// Upload URLs: authorize a direct browser PUT to S3 and record who owns its key.
 const MAX_URL_SECONDS = 300;
 
-function validateUploadBody(body: string | null, isBase64Encoded: boolean) {
+/** Accept PDF content type only; callers cannot choose their team, key, or upload ID. */
+function validateUploadBody(body: string | null) {
   let value;
 
   try {
-    value = JSON.parse(
-      isBase64Encoded
-        ? Buffer.from(body || "", "base64").toString("utf8")
-        : body || ""
-    );
+    value = JSON.parse(body || "");
   } catch {
     throw new ProductPlusError(400, "Request body must be valid JSON.");
   }
@@ -416,13 +414,14 @@ function validateUploadBody(body: string | null, isBase64Encoded: boolean) {
   }
 }
 
+/** Issue a temporary upload URL only while the caller is a member and submissions are open. */
 export async function createPrdUpload(
   email: string,
-  body: string | null,
-  isBase64Encoded = false
+  body: string | null
 ): Promise<UploadSubmissionResponse> {
-  validateUploadBody(body, isBase64Encoded);
+  validateUploadBody(body);
 
+  // Membership and deadlines are independent reads, so load them together.
   const settings = storageSettings();
   const [team, record] = await Promise.all([
     currentTeam(email, settings),
@@ -436,6 +435,7 @@ export async function createPrdUpload(
     );
   }
 
+  // Cap the URL lifetime at the deadline; fractional seconds cannot extend access.
   const config = configResponse(record);
   const deadline = Date.parse(config.submission_deadline);
   const signingDate = new Date();
@@ -451,6 +451,7 @@ export async function createPrdUpload(
     );
   }
 
+  // A fresh key and signed If-None-Match header prevent overwriting an existing PDF.
   const uploadId = randomUUID();
   const prdPath = `productplus/temp/${settings.eventKey}/${team.teamCode}/${uploadId}/prd.pdf`;
   const uploadUrl = await getSignedUrl(
@@ -478,6 +479,7 @@ export async function createPrdUpload(
     );
   }
 
+  // This record establishes ownership before the browser uploads any bytes.
   const timestamp = signingDate.toISOString();
   const upload: UploadRecord = {
     prd_path: prdPath,
@@ -492,6 +494,7 @@ export async function createPrdUpload(
     upload_expires_at: new Date(expiresAt).toISOString()
   };
 
+  // Save tracking and check membership/deadline in one all-or-nothing transaction.
   try {
     await docClient.send(
       new TransactWriteCommand({
@@ -535,6 +538,8 @@ export async function createPrdUpload(
   };
 }
 
+// Submission reads and validation: build the public response and validate form input.
+/** Resolve the current team, deadlines, and submission together for each read/save attempt. */
 async function submissionContext(email: string, settings: StorageSettings) {
   const [team, record] = await Promise.all([
     currentTeam(email, settings),
@@ -551,6 +556,7 @@ async function submissionContext(email: string, settings: StorageSettings) {
   const config = configResponse(record);
   const submission = await readSubmission(team.teamCode, settings);
 
+  // Until the new team schema is integrated, internal IDs also protect ownership.
   if (submission && submission.team_id !== team.teamId) {
     throw new ProductPlusError(
       409,
@@ -570,6 +576,7 @@ export async function submissionResponse(
     throw new Error("Product Plus PDF bucket is required.");
   }
 
+  // Viewing uses a separate short-lived GET URL; it grants no upload permission.
   const prdViewUrl = await getSignedUrl(
     s3,
     new GetObjectCommand({
@@ -581,6 +588,7 @@ export async function submissionResponse(
     { expiresIn: 300, signingDate: new Date() }
   );
 
+  // Select public fields explicitly so upload, judging, and voting metadata stays private.
   return {
     team_code: record.team_code,
     team_name: record.team_name,
@@ -593,6 +601,7 @@ export async function submissionResponse(
   };
 }
 
+/** Viewing stays available after the deadline; only can_edit changes when time expires. */
 export async function loadSubmission(
   email: string
 ): Promise<GetSubmissionResponse> {
@@ -608,6 +617,7 @@ export async function loadSubmission(
   };
 }
 
+/** Validate YouTube URL structure only; this does not check visibility or video duration. */
 function supportedVideo(value: string) {
   let url: URL;
 
@@ -623,6 +633,7 @@ function supportedVideo(value: string) {
 
   let videoId: string | null | undefined;
 
+  // Extract the video ID from supported hosts/paths, then validate its exact format.
   if (url.hostname === "youtu.be") {
     videoId = /^\/([^/]+)\/?$/.exec(url.pathname)?.[1];
   } else if (
@@ -642,20 +653,17 @@ function supportedVideo(value: string) {
   return typeof videoId === "string" && /^[A-Za-z0-9_-]{11}$/.test(videoId);
 }
 
-function parseSubmissionBody(
-  body: string | null,
-  base64: boolean
-): PutSubmissionBody {
+/** Accept exactly the four editable fields and trim their text before storing it. */
+function parseSubmissionBody(body: string | null): PutSubmissionBody {
   let value;
 
   try {
-    value = JSON.parse(
-      base64 ? Buffer.from(body || "", "base64").toString("utf8") : body || ""
-    );
+    value = JSON.parse(body || "");
   } catch {
     throw new ProductPlusError(400, "Request body must be valid JSON.");
   }
 
+  // Reject ownership or judging fields supplied through the form body.
   const fields = ["team_name", "member_names", "video_url", "prd_path"];
 
   if (
@@ -704,6 +712,7 @@ function parseSubmissionBody(
   };
 }
 
+/** Check S3 metadata and the PDF header, returning the ETag used to protect the later copy. */
 async function validatePdf(path: string, settings: StorageSettings) {
   const limit = Number(process.env.PRODUCTPLUS_MAX_PRD_BYTES);
 
@@ -712,6 +721,7 @@ async function validatePdf(path: string, settings: StorageSettings) {
   }
 
   try {
+    // HEAD checks existence, declared content type, and size without downloading the PDF.
     const metadata = await s3.send(
       new HeadObjectCommand({ Bucket: settings.bucket, Key: path })
     );
@@ -732,6 +742,7 @@ async function validatePdf(path: string, settings: StorageSettings) {
       throw new Error("S3 returned no PDF ETag.");
     }
 
+    // Read only the eight-byte header. IfMatch ties it to the object checked by HEAD.
     const object = await s3.send(
       new GetObjectCommand({
         Bucket: settings.bucket,
@@ -768,6 +779,7 @@ async function validatePdf(path: string, settings: StorageSettings) {
   }
 }
 
+// Saving: copy the PDF first, then atomically update its submission and tracking.
 const lambda = new LambdaClient({ maxAttempts: 2 });
 
 /** Match bots' InvokeCommand pattern; the request awaits acceptance, not execution. */
@@ -799,16 +811,19 @@ async function enqueueCleanup(task: CleanupTask) {
   }
 }
 
+/** Keep our error summaries small; response bodies never include raw storage errors. */
 function errorName(error: unknown) {
   return error instanceof Error ? error.name : "UnknownError";
 }
 
+/** Check server time immediately before writes, including retried saves. */
 function requireOpen(deadline: string) {
   if (Date.now() >= Date.parse(deadline)) {
     throw new ProductPlusError(403, "Submissions are closed.");
   }
 }
 
+/** Update form fields only; initialize timestamps, rubrics, and counters on first save. */
 function submissionWrite(
   form: PutSubmissionBody,
   path: string,
@@ -821,6 +836,7 @@ function submissionWrite(
     Update: {
       TableName: settings.submissionsTable,
       Key: { event_key: settings.eventKey, team_code: team.teamCode },
+      // The previous PDF must still match, or another save won and we need a fresh read.
       ConditionExpression: prior
         ? "team_id = :team AND prd_path = :priorPath"
         : "attribute_not_exists(team_code)",
@@ -853,6 +869,7 @@ async function promoteUpload(
   deadline: string,
   settings: StorageSettings
 ): Promise<UploadRecord> {
+  // Validate before reserving; the token identifies the request allowed to finish this save.
   const etag = await validatePdf(upload.prd_path, settings);
   const token = randomUUID();
   const destination = permanentPath(upload, settings);
@@ -899,6 +916,7 @@ async function promoteUpload(
     throw error;
   }
 
+  // Copy only the object we validated. The original temporary file expires via Lifecycle.
   try {
     await s3.send(
       new CopyObjectCommand({
@@ -951,16 +969,17 @@ async function promoteUpload(
   };
 }
 
+/** Coordinate form edits or a new PDF, with fresh membership/deadline checks on each retry. */
 export async function saveSubmission(
   email: string,
-  body: string | null,
-  base64 = false
+  body: string | null
 ): Promise<Submission> {
-  const form = parseSubmissionBody(body, base64);
+  const form = parseSubmissionBody(body);
   const settings = storageSettings();
   let promotion: UploadRecord | undefined;
 
   try {
+    // Keep a successful copy across retries, but reload the team and submission each time.
     for (let attempt = 0; attempt < 3; attempt++) {
       let context = await submissionContext(email, settings);
 
@@ -970,6 +989,7 @@ export async function saveSubmission(
       const formOnly = form.prd_path === context.submission?.prd_path;
 
       if (formOnly) {
+        // A form-only edit retains the current permanent PDF and performs no S3 copy.
         upload = await submissionUpload(form.prd_path, settings);
 
         if (
@@ -988,6 +1008,7 @@ export async function saveSubmission(
 
         await validatePdf(form.prd_path, settings);
       } else if (!promotion) {
+        // New PDFs must start from a pending upload owned by this team.
         upload = await readUpload(form.prd_path, settings);
 
         if (
@@ -1039,6 +1060,7 @@ export async function saveSubmission(
         context = await submissionContext(email, settings);
       }
 
+      // After copying, confirm this request still owns the reservation and the team.
       requireOpen(context.config.submission_deadline);
       upload = formOnly
         ? upload
@@ -1062,6 +1084,7 @@ export async function saveSubmission(
         );
       }
 
+      // Find the PDF being replaced so its tracking changes in the same transaction.
       const path = formOnly ? form.prd_path : upload.permanent_path!;
       const prior = context.submission;
       const previous =
@@ -1081,6 +1104,7 @@ export async function saveSubmission(
           ) ||
           previous.status !== "referenced")
       ) {
+        // Another save may have replaced it between our submission and tracking reads.
         const latest = await readSubmission(context.team.teamCode, settings);
 
         if (latest?.prd_path !== prior.prd_path) {
@@ -1090,6 +1114,7 @@ export async function saveSubmission(
         throw new Error("Current submission tracking is inconsistent.");
       }
 
+      // Prepare the response before committing, so URL-signing failure cannot hide a save.
       const now = new Date().toISOString();
       const result = await submissionResponse(
         {
@@ -1101,6 +1126,7 @@ export async function saveSubmission(
         },
         settings.bucket
       );
+      // Commit the form, reference the chosen PDF, and recheck membership/deadline together.
       const condition = uploadCondition(upload);
       const items: TransactionItems = [
         submissionWrite(form, path, context.team, prior, now, settings),
@@ -1127,6 +1153,7 @@ export async function saveSubmission(
       ];
 
       if (previous) {
+        // Mark the old PDF replaced only if this transaction also saves the new reference.
         const oldCondition = uploadCondition(previous);
 
         items.push({
@@ -1160,6 +1187,7 @@ export async function saveSubmission(
         throw error;
       }
 
+      // Cleanup starts only after commit; delivery failure must not undo a successful save.
       if (previous) {
         await enqueueCleanup({
           internalTask: "retire_upload",
@@ -1175,6 +1203,7 @@ export async function saveSubmission(
       "Submission or team configuration changed. Try saving again."
     );
   } catch (error) {
+    // A copied PDF may remain after a failed save. Keep its tracking for manual recovery.
     if (promotion) {
       console.error("Product Plus promotion needs recovery", {
         prd_path: promotion.prd_path,
@@ -1186,6 +1215,8 @@ export async function saveSubmission(
   }
 }
 
+// Cleanup: claim an unreferenced file before deletion, and leave active PDFs untouched.
+/** Prevent cleanup or promotion from changing a file currently referenced by a submission. */
 function noReference(
   upload: UploadRecord,
   settings: StorageSettings
@@ -1201,6 +1232,7 @@ function noReference(
   };
 }
 
+/** Check team absence inside the delete transaction, not just in an earlier read. */
 function absentTeam(
   teamId: string,
   settings: StorageSettings
@@ -1214,6 +1246,7 @@ function absentTeam(
   };
 }
 
+/** S3 missing-file responses can have a named error or only HTTP status metadata. */
 function missingObject(error: unknown) {
   return (
     error instanceof Error &&
@@ -1223,6 +1256,7 @@ function missingObject(error: unknown) {
   );
 }
 
+/** Delete one eligible tracked file; return false when no cleanup is needed or it is in use. */
 async function cleanUpload(
   key: string,
   mode: "retire" | "team",
@@ -1242,6 +1276,7 @@ async function cleanUpload(
     throw new Error("Cleanup upload ownership is invalid.");
   }
 
+  // Completed tasks are safe to repeat. Active or still-copying files cannot be retired.
   if (upload.status === "deleted") {
     return false;
   }
@@ -1314,6 +1349,7 @@ async function cleanUpload(
     );
   }
 
+  // Mark completion only after all deletes succeed; otherwise a retry can finish the work.
   try {
     await docClient.send(
       new UpdateCommand({
@@ -1345,6 +1381,7 @@ async function cleanUpload(
   return true;
 }
 
+/** Collect every page of this team's tracking records, including pages filtered to zero items. */
 async function teamUploads(
   teamId: string,
   settings: StorageSettings
@@ -1375,6 +1412,7 @@ async function teamUploads(
   return uploads;
 }
 
+/** Process private replacement/team-deletion tasks and report failures for Lambda retries. */
 export async function cleanupProductPlus(task: CleanupTask) {
   const settings = storageSettings();
 
@@ -1405,15 +1443,14 @@ export async function cleanupProductPlus(task: CleanupTask) {
         throw new Error("Invalid cleanup team.");
       }
 
-      const team = await docClient.send(
-        new GetCommand({
-          TableName: settings.teamsTable,
-          Key: { "id": teamId, "eventID;year": settings.eventKey },
-          ConsistentRead: true
-        })
-      );
+      // The caller's task is not proof of deletion: verify absence before removing data.
+      const team = await db.getOneCustom({
+        TableName: settings.teamsTable,
+        Key: { "id": teamId, "eventID;year": settings.eventKey },
+        ConsistentRead: true
+      });
 
-      if (team.Item) {
+      if (team) {
         throw new Error("Team still exists; cleanup is not allowed.");
       }
 

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, beforeEach, test } from "node:test";
-import { ScanCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import { GetCommand, ScanCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { CopyObjectCommand, DeleteObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { runtime } from "./support/runtime.mjs";
 
@@ -118,6 +118,19 @@ test("existing or recreated teams prevent deletion", async () => {
   await assert.rejects(teamCleanup());
   assert.ok(app.submission());
   assert.equal(app.objects.has(app.permanent(upload)), true);
+});
+
+test("a failed team read cannot authorize submission or file deletion", async () => {
+  const upload = app.upload();
+  await app.invoke(app.putSubmission, app.form(upload.prd_path));
+  app.database.on(GetCommand, { TableName: app.table("TEAMS") })
+    .rejects(new Error("Team lookup failed"));
+
+  await assert.rejects(teamCleanup());
+  assert.ok(app.submission());
+  assert.equal(row(upload).status, "referenced");
+  assert.equal(app.objects.has(app.permanent(upload)), true);
+  assert.equal(app.s3.commandCalls(DeleteObjectCommand).length, 0);
 });
 
 test("reused team codes protect the new team's submission and files", async () => {

@@ -289,15 +289,14 @@ test("persistent conflicts stop after three attempts with 409", async () => {
   assert.equal(app.database.commandCalls(TransactWriteCommand).length, 3);
 });
 
-test("PROD selection and base64 bodies preserve the response contract", async () => {
+test("PROD selection preserves the response contract", async () => {
   for (const kind of ["SUBMISSIONS", "UPLOADS", "TEAMS", "REGISTRATIONS"]) process.env[`PRODUCTPLUS_${kind}_TABLE`] += "PROD";
   process.env.PRODUCTPLUS_PRD_BUCKET = "biztech-pp-prd-prod";
   app.put(app.table("TEAMS"), { id: app.teamId, "eventID;year": "productplus;2026", team_code: app.teamCode, memberIDs: [app.email] });
   app.put(app.table("REGISTRATIONS"), { id: app.email, "eventID;year": "productplus;2026", teamID: app.teamId });
   app.put(app.table("SUBMISSIONS"), { event_key: "productplus;2026", team_code: "config", submission_deadline: "2026-10-05T13:00:00Z", voting_deadline: "2026-10-06T13:00:00Z" });
   const upload = app.upload();
-  const event = app.event(Buffer.from(JSON.stringify(app.form(upload.prd_path))).toString("base64"));
-  event.isBase64Encoded = true;
+  const event = app.event(app.form(upload.prd_path));
   const result = await app.putSubmission(event, {}, () => {});
   assert.equal(result.statusCode, 200);
   assert.equal(new URL(JSON.parse(result.body).prd_view_url).hostname, "biztech-pp-prd-prod.s3.us-west-2.amazonaws.com");
@@ -315,9 +314,20 @@ test("another team's submission at a reused code is protected", async () => {
 });
 
 test("SDK failures return generic errors without exposing database details", async () => {
-  const upload = app.upload();
-  app.beforeTransaction = () => { throw new Error("Sensitive details"); };
-  const result = await save(app.form(upload.prd_path));
-  assert.equal(result.status, 500);
-  assert.doesNotMatch(JSON.stringify(result.body), /Sensitive/);
+  for (const operation of ["read", "write"]) {
+    app.reset();
+    const upload = app.upload();
+    if (operation === "read") {
+      app.database.on(GetCommand).rejects(new Error("Sensitive details"));
+      const result = await load();
+      assert.equal(result.status, 500);
+      assert.doesNotMatch(JSON.stringify(result.body), /Sensitive/);
+    } else {
+      app.beforeTransaction = () => { throw new Error("Sensitive details"); };
+    }
+    const result = await save(app.form(upload.prd_path));
+    assert.equal(result.status, 500);
+    assert.doesNotMatch(JSON.stringify(result.body), /Sensitive/);
+    assert.equal(app.submission(), undefined);
+  }
 });
