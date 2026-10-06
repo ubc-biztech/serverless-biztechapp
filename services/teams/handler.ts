@@ -1,7 +1,8 @@
 import teamHelpers, {
   scoreObjectAverage,
   normalizeScores,
-  scoreObjectAverageWeighted
+  scoreObjectAverageWeighted,
+  ProductPlusTeamError
 } from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import {
@@ -139,6 +140,7 @@ export const leaveTeam = protect(Access.USER, async (event) => {
     });
   } catch (error) {
     console.error("Error leaving team:", error);
+    if (error instanceof ProductPlusTeamError) return helpers.createResponse(error.statusCode, { message: error.message });
 
     return helpers.createResponse(500, {
       message: "Failed to leave team",
@@ -183,6 +185,7 @@ export const joinTeam = protect(Access.USER, async (event) => {
     });
   } catch (error) {
     console.error("Error joining team:", error);
+    if (error instanceof ProductPlusTeamError) return helpers.createResponse(error.statusCode, { message: error.message });
 
     return helpers.createResponse(500, {
       message: "Failed to join team",

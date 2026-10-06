@@ -24,25 +24,24 @@ export type SubmissionKey = {
 /** Stored rubric shape shared with the judging workflow. */
 export type Rubric = {
   judge_user_id: string;
-  scores: [number, number, number, number, number];
+  scores: number[]; // The judging workflow validates five scores and their ranges.
   comments: string;
 };
 
 /** Stored submission. Updates must preserve judging and voting attributes. */
 export type SubmissionRecord = Omit<Submission, "prd_view_url"> &
   SubmissionKey & {
+    team_id: string; // Transitional ID for the current registration/team adapter.
     graded_submissions: Rubric[];
     upvotes: number;
     downvotes: number;
     voter_ids?: Set<string>; // Omit until the first vote; never store an empty set.
-    version: number; // Concurrency guard, not submission version history.
   };
 
 /** Stored in the submissions table under (event_key, "config"). */
 export type ConfigRecord = Config & {
   event_key: string;
   team_code: "config";
-  version: number;
   updated_at: string;
 };
 
@@ -54,23 +53,37 @@ export type UploadKey = {
 
 export type UploadStatus =
   | "pending"
+  | "promoting"
   | "referenced"
   | "replaced"
   | "deleting"
   | "deleted";
 
-/** All timestamps are canonical UTC ISO 8601 strings, including cleanup_after. */
+/** Tracking stays after file removal so interrupted operations can be reconciled. */
 export type UploadRecord = UploadKey & {
   event_key: string;
   team_code: string;
+  team_id: string; // Remove with the old adapter; final identity is event_key + team_code.
   upload_id: string;
   content_type: "application/pdf";
   status: UploadStatus;
   created_at: string;
   updated_at: string;
   upload_expires_at: string;
-  cleanup_after?: string; // Absent for referenced and fully deleted uploads.
+  permanent_path?: string;
+  promotion_token?: string;
 };
+
+/** Private Lambda invocation; no task is exposed through an HTTP route. */
+export type CleanupTask =
+  | {
+      internalTask: "retire_upload";
+      payload: { event_key: string; prd_path: string };
+    }
+  | {
+      internalTask: "team_deleted";
+      payload: { event_key: string; team_id: string; team_code: string };
+    };
 
 export type GetSubmissionResponse = {
   submission: Submission | null;

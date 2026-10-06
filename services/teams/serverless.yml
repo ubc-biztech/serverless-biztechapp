@@ -22,11 +22,16 @@ provider:
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
+    PRODUCTPLUS_EVENT_KEY: "productplus;2026"
+    PRODUCTPLUS_CLEANUP_FUNCTION: biztechApi-productplus-${self:provider.stage}-productplusCleanup
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
     restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
 
   iamRoleStatements:
+    - Effect: Allow
+      Action: lambda:InvokeFunction
+      Resource: "arn:aws:lambda:us-west-2:432714361962:function:${self:provider.environment.PRODUCTPLUS_CLEANUP_FUNCTION}"
     - Effect: Allow
       Action:
         - dynamodb:Scan
