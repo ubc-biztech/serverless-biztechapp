@@ -16,7 +16,7 @@ const environment = {
   AWS_SECRET_ACCESS_KEY: "submission-test-secret", AWS_SESSION_TOKEN: "submission-test-token",
   AWS_EC2_METADATA_DISABLED: "true", PRODUCTPLUS_EVENT_KEY: "productplus;2026",
   PRODUCTPLUS_SUBMISSIONS_TABLE: "biztechPPSubmissions", PRODUCTPLUS_UPLOADS_TABLE: "biztechPPUploads",
-  PRODUCTPLUS_TEAMS_TABLE: "biztechTeams", PRODUCTPLUS_REGISTRATIONS_TABLE: "biztechRegistrations",
+  PRODUCTPLUS_TEAMS_TABLE: "testTeams", PRODUCTPLUS_MEMBERSHIPS_TABLE: "testUserMemberships",
   PRODUCTPLUS_PRD_BUCKET: "biztech-pp-prd",
   PRODUCTPLUS_MAX_PRD_BYTES: "5000000"
 };
@@ -39,7 +39,10 @@ function condition(expression, item, names = {}, values = {}) {
     const exists = /^attribute_exists\(([^)]+)\)$/.exec(atom);
     if (exists) return item?.[property(exists[1], names)] !== undefined;
     const contains = /^contains\(([^,]+), ([^)]+)\)$/.exec(atom);
-    if (contains) return !!item?.[property(contains[1], names)]?.includes(values[contains[2]]);
+    if (contains) {
+      const members = item?.[property(contains[1], names)];
+      return members instanceof Set ? members.has(values[contains[2]]) : !!members?.includes(values[contains[2]]);
+    }
     const comparison = /^(\S+) (=|<>) (\S+)$/.exec(atom);
     assert.ok(comparison, `Unsupported condition: ${atom}`);
     const lhs = value(comparison[1], item, names, values);
@@ -103,31 +106,36 @@ export async function runtime({ includeTeams = false } = {}) {
   const rows = new Map(), objects = new Map();
   const state = {
     ...module.exports, database, s3, lambda, rows, objects, clock, logs, pageSize: Infinity,
-    email: "member@example.com", teamId: "existing-team-uuid", teamCode: "012345",
+    email: "member@example.com", teamCode: "012345",
     beforeTransaction: undefined, afterTransaction: undefined, beforeGetObject: undefined, beforeDelete: undefined, beforeCopy: undefined,
     table(kind) { return process.env[`PRODUCTPLUS_${kind}_TABLE`]; },
     key(table, key) { return `${table}:${JSON.stringify(Object.entries(key).sort())}`; },
     get(table, key) { return rows.get(this.key(table, key)); },
+    itemKey(table, item) {
+      if (table === this.table("UPLOADS")) return { prd_path: item.prd_path };
+      if (table === this.table("MEMBERSHIPS")) return { event_key: item.event_key, user_id: item.user_id };
+      if ([this.table("SUBMISSIONS"), this.table("TEAMS")].includes(table)) return { event_key: item.event_key, team_code: item.team_code };
+      // The unrelated old-team regression seeds its own legacy records.
+      return { id: item.id, "eventID;year": item["eventID;year"] };
+    },
     put(table, item) {
-      const key = table === this.table("UPLOADS") ? { prd_path: item.prd_path }
-        : table === this.table("SUBMISSIONS") ? { event_key: item.event_key, team_code: item.team_code }
-          : { id: item.id, "eventID;year": item["eventID;year"] };
-      rows.set(this.key(table, key), structuredClone(item));
+      rows.set(this.key(table, this.itemKey(table, item)), structuredClone(item));
     },
     delete(table, key) { rows.delete(this.key(table, key)); },
     submission() { return this.get(this.table("SUBMISSIONS"), { event_key: environment.PRODUCTPLUS_EVENT_KEY, team_code: this.teamCode }); },
     config() { return this.get(this.table("SUBMISSIONS"), { event_key: environment.PRODUCTPLUS_EVENT_KEY, team_code: "config" }); },
-    team() { return this.get(this.table("TEAMS"), { id: this.teamId, "eventID;year": environment.PRODUCTPLUS_EVENT_KEY }); },
+    team() { return this.get(this.table("TEAMS"), { event_key: environment.PRODUCTPLUS_EVENT_KEY, team_code: this.teamCode }); },
+    membership() { return this.get(this.table("MEMBERSHIPS"), { event_key: environment.PRODUCTPLUS_EVENT_KEY, user_id: this.email }); },
     upload(number = 1, overrides = {}) {
       const id = `00000000-0000-4000-8000-${String(number).padStart(12, "0")}`;
       const upload = {
-        prd_path: `productplus/temp/${environment.PRODUCTPLUS_EVENT_KEY}/${this.teamCode}/${id}/prd.pdf`,
-        event_key: environment.PRODUCTPLUS_EVENT_KEY, team_id: this.teamId, team_code: this.teamCode,
+        event_key: environment.PRODUCTPLUS_EVENT_KEY, team_code: this.teamCode,
         upload_id: id, content_type: "application/pdf", status: "pending",
         created_at: new Date(clock.now).toISOString(), updated_at: new Date(clock.now).toISOString(),
         upload_expires_at: new Date(clock.now + 300000).toISOString(),
         ...overrides
       };
+      upload.prd_path = overrides.prd_path ?? `productplus/temp/${upload.event_key}/${upload.team_code}/${upload.upload_id}/prd.pdf`;
       this.put(this.table("UPLOADS"), upload);
       objects.set(upload.prd_path, { ContentType: "application/pdf", bytes: Buffer.from("%PDF-1.7\nPDF content"), ETag: '"pdf-etag"' });
       return upload;
@@ -147,13 +155,14 @@ export async function runtime({ includeTeams = false } = {}) {
     },
     reset() {
       Object.assign(process.env, environment);
-      this.teamId = "existing-team-uuid"; this.teamCode = "012345"; this.email = "member@example.com";
+      this.teamCode = "012345"; this.email = "member@example.com";
       clock.now = Date.parse("2026-10-05T12:00:00.250Z");
       rows.clear(); objects.clear(); logs.length = 0; database.reset(); s3.reset(); lambda.reset();
       this.beforeTransaction = this.afterTransaction = this.beforeGetObject = this.beforeDelete = this.beforeCopy = undefined;
       this.pageSize = Infinity;
-      this.put(this.table("REGISTRATIONS"), { id: this.email, "eventID;year": environment.PRODUCTPLUS_EVENT_KEY, teamID: this.teamId, registrationStatus: "checkedin" });
-      this.put(this.table("TEAMS"), { id: this.teamId, "eventID;year": environment.PRODUCTPLUS_EVENT_KEY, team_code: this.teamCode, memberIDs: [this.email], teamName: "Example Team" });
+      this.put(this.table("MEMBERSHIPS"), { event_key: environment.PRODUCTPLUS_EVENT_KEY, user_id: this.email, team_code: this.teamCode });
+      this.put(this.table("TEAMS"), { event_key: environment.PRODUCTPLUS_EVENT_KEY, team_code: this.teamCode,
+        member_ids: new Set([this.email]), team_name: "Example Team", leader_user_id: this.email });
       this.put(this.table("SUBMISSIONS"), { event_key: environment.PRODUCTPLUS_EVENT_KEY, team_code: "config",
         submission_deadline: "2026-10-05T13:00:00Z", voting_deadline: "2026-10-06T13:00:00Z" });
       database.onAnyCommand().rejects(new Error("Unexpected database call"));
@@ -163,7 +172,7 @@ export async function runtime({ includeTeams = false } = {}) {
         const offset = input.ExclusiveStartKey?.testOffset || 0;
         const scanned = all.slice(offset, offset + this.pageSize);
         const page = scanned.filter(row => row.event_key === input.ExpressionAttributeValues[":event"] &&
-          (!input.ExpressionAttributeValues[":team"] || row.team_id === input.ExpressionAttributeValues[":team"]));
+          row.team_code === input.ExpressionAttributeValues[":code"]);
         return { Items: page, ...(offset + scanned.length < all.length ? { LastEvaluatedKey: { testOffset: offset + scanned.length } } : {}) };
       });
       database.on(BatchGetCommand).callsFake(input => ({ Responses: Object.fromEntries(
@@ -174,7 +183,7 @@ export async function runtime({ includeTeams = false } = {}) {
         const keys = new Set();
         for (const entry of input.TransactItems) {
           const operation = entry.Update || entry.Delete || entry.ConditionCheck || entry.Put;
-          const key = this.key(operation.TableName, operation.Key || { prd_path: operation.Item.prd_path });
+          const key = this.key(operation.TableName, operation.Key || this.itemKey(operation.TableName, operation.Item));
           assert.ok(!keys.has(key), "A transaction cannot act on the same item twice"); keys.add(key);
           validateExpressions(operation);
           if (!condition(operation.ConditionExpression, rows.get(key), operation.ExpressionAttributeNames, operation.ExpressionAttributeValues)) throw conditionalFailure();
@@ -188,7 +197,7 @@ export async function runtime({ includeTeams = false } = {}) {
         return {};
       });
       database.on(PutCommand).callsFake(input => {
-        const key = { id: input.Item.id, "eventID;year": input.Item["eventID;year"] };
+        const key = this.itemKey(input.TableName, input.Item);
         if (!condition(input.ConditionExpression, this.get(input.TableName, key))) throw conditionalFailure();
         this.put(input.TableName, input.Item);
         return {};

@@ -24,6 +24,8 @@ import type {
   Submission,
   SubmissionRecord,
   UploadRecord,
+  TeamRecord,
+  UserMembershipRecord,
   GetSubmissionResponse,
   PutSubmissionBody,
   UploadSubmissionResponse,
@@ -164,7 +166,7 @@ function storageSettings() {
   const eventKey = process.env.PRODUCTPLUS_EVENT_KEY;
   const submissionsTable = process.env.PRODUCTPLUS_SUBMISSIONS_TABLE;
   const teamsTable = process.env.PRODUCTPLUS_TEAMS_TABLE;
-  const registrationsTable = process.env.PRODUCTPLUS_REGISTRATIONS_TABLE;
+  const membershipsTable = process.env.PRODUCTPLUS_MEMBERSHIPS_TABLE;
   const uploadsTable = process.env.PRODUCTPLUS_UPLOADS_TABLE;
   const bucket = process.env.PRODUCTPLUS_PRD_BUCKET;
 
@@ -172,18 +174,25 @@ function storageSettings() {
     !eventKey ||
     !submissionsTable ||
     !teamsTable ||
-    !registrationsTable ||
+    !membershipsTable ||
     !uploadsTable ||
     !bucket
   ) {
     throw new Error("Product Plus storage settings are required.");
   }
 
+  // Table names are the remaining deployment TODO; do not call AWS with placeholders.
+  if (
+    [teamsTable, membershipsTable].some((name) => name.startsWith("TODO_NEW_"))
+  ) {
+    throw new Error("Product Plus team table names must be configured.");
+  }
+
   return {
     eventKey,
     submissionsTable,
     teamsTable,
-    registrationsTable,
+    membershipsTable,
     uploadsTable,
     bucket
   };
@@ -192,36 +201,22 @@ function storageSettings() {
 type StorageSettings = ReturnType<typeof storageSettings>;
 type TransactionItems = NonNullable<TransactWriteCommandInput["TransactItems"]>;
 
-// TODO: use the new event membership tables once their keys and user_id contract
-// are finalized. Keep membershipChecks and absentTeam aligned with this adapter.
+/** Resolve the caller's team for this event and verify the team's member set. */
+// TODO(team workflow): reuse its membership helper when a compatible version merges.
 async function currentTeam(email: string, settings: StorageSettings) {
-  // The registration links this verified caller to a team within the configured event.
-  const registrationKey = { "id": email, "eventID;year": settings.eventKey };
-  const registration = await db.getOneCustom({
-    TableName: settings.registrationsTable,
-    Key: registrationKey,
+  // Membership gives the user's team without accepting a team code from the browser.
+  const membershipKey = { event_key: settings.eventKey, user_id: email };
+  const membership = (await db.getOneCustom({
+    TableName: settings.membershipsTable,
+    Key: membershipKey,
     ConsistentRead: true
-  });
-  const teamId = registration?.teamID;
+  })) as UserMembershipRecord | null;
 
-  if (typeof teamId !== "string" || !teamId) {
+  if (!membership) {
     throw new ProductPlusError(403, "Current team membership is required.");
   }
 
-  // Check the team's member list too: a stale registration alone cannot grant access.
-  const teamKey = { "id": teamId, "eventID;year": settings.eventKey };
-  const team = await db.getOneCustom({
-    TableName: settings.teamsTable,
-    Key: teamKey,
-    ConsistentRead: true
-  });
-
-  if (!Array.isArray(team?.memberIDs) || !team.memberIDs.includes(email)) {
-    throw new ProductPlusError(403, "Current team membership is required.");
-  }
-
-  // The public six-digit code is separate from the old schema's internal team ID.
-  const teamCode = team.team_code;
+  const teamCode = membership.team_code;
 
   if (typeof teamCode !== "string" || !/^\d{6}$/.test(teamCode)) {
     throw new ProductPlusError(
@@ -230,7 +225,19 @@ async function currentTeam(email: string, settings: StorageSettings) {
     );
   }
 
-  return { teamId, teamCode, registrationKey, teamKey };
+  // A stale membership row cannot authorize someone removed from the team's set.
+  const teamKey = { event_key: settings.eventKey, team_code: teamCode };
+  const team = (await db.getOneCustom({
+    TableName: settings.teamsTable,
+    Key: teamKey,
+    ConsistentRead: true
+  })) as TeamRecord | null;
+
+  if (!(team?.member_ids instanceof Set) || !team.member_ids.has(email)) {
+    throw new ProductPlusError(403, "Current team membership is required.");
+  }
+
+  return { teamCode, membershipKey, teamKey };
 }
 
 type CurrentTeam = Awaited<ReturnType<typeof currentTeam>>;
@@ -244,23 +251,20 @@ function membershipChecks(
   return [
     {
       ConditionCheck: {
-        TableName: settings.registrationsTable,
-        Key: team.registrationKey,
-        ConditionExpression: "#team = :team",
-        ExpressionAttributeNames: { "#team": "teamID" },
-        ExpressionAttributeValues: { ":team": team.teamId }
+        TableName: settings.membershipsTable,
+        Key: team.membershipKey,
+        ConditionExpression: "#code = :code",
+        ExpressionAttributeNames: { "#code": "team_code" },
+        ExpressionAttributeValues: { ":code": team.teamCode }
       }
     },
     {
       ConditionCheck: {
         TableName: settings.teamsTable,
         Key: team.teamKey,
-        ConditionExpression: "contains(#members, :email) AND #code = :code",
-        ExpressionAttributeNames: {
-          "#members": "memberIDs",
-          "#code": "team_code"
-        },
-        ExpressionAttributeValues: { ":email": email, ":code": team.teamCode }
+        ConditionExpression: "contains(#members, :email)",
+        ExpressionAttributeNames: { "#members": "member_ids" },
+        ExpressionAttributeValues: { ":email": email }
       }
     }
   ];
@@ -319,17 +323,14 @@ function storedPath(upload: UploadRecord) {
 function ownedUpload(
   upload: UploadRecord,
   settings: StorageSettings,
-  teamId: string,
   teamCode: string
 ) {
   const suffix = `${settings.eventKey}/${teamCode}/${upload.upload_id}/prd.pdf`;
 
   return (
     upload.event_key === settings.eventKey &&
-    upload.team_id === teamId &&
-    typeof teamId === "string" &&
-    !!teamId &&
     upload.team_code === teamCode &&
+    typeof teamCode === "string" &&
     /^\d{6}$/.test(teamCode) &&
     typeof upload.upload_id === "string" &&
     /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(
@@ -375,13 +376,12 @@ function uploadCondition(upload: UploadRecord) {
   return {
     ConditionExpression:
       "#status = :priorStatus AND #updated = :priorUpdated AND " +
-      "event_key = :event AND team_id = :team AND team_code = :code",
+      "event_key = :event AND team_code = :code",
     ExpressionAttributeNames: { "#status": "status", "#updated": "updated_at" },
     ExpressionAttributeValues: {
       ":priorStatus": upload.status,
       ":priorUpdated": upload.updated_at,
       ":event": upload.event_key,
-      ":team": upload.team_id,
       ":code": upload.team_code
     }
   };
@@ -485,7 +485,6 @@ export async function createPrdUpload(
     prd_path: prdPath,
     event_key: settings.eventKey,
     team_code: team.teamCode,
-    team_id: team.teamId,
     upload_id: uploadId,
     content_type: "application/pdf",
     status: "pending",
@@ -555,14 +554,6 @@ async function submissionContext(email: string, settings: StorageSettings) {
 
   const config = configResponse(record);
   const submission = await readSubmission(team.teamCode, settings);
-
-  // Until the new team schema is integrated, internal IDs also protect ownership.
-  if (submission && submission.team_id !== team.teamId) {
-    throw new ProductPlusError(
-      409,
-      "This team code is associated with another team's submission."
-    );
-  }
 
   return { team, config, submission };
 }
@@ -838,16 +829,15 @@ function submissionWrite(
       Key: { event_key: settings.eventKey, team_code: team.teamCode },
       // The previous PDF must still match, or another save won and we need a fresh read.
       ConditionExpression: prior
-        ? "team_id = :team AND prd_path = :priorPath"
+        ? "prd_path = :priorPath"
         : "attribute_not_exists(team_code)",
       UpdateExpression:
-        "SET team_id = :team, team_name = :name, member_names = :members, " +
+        "SET team_name = :name, member_names = :members, " +
         "video_url = :video, prd_path = :path, updated_at = :now, " +
         "submitted_at = if_not_exists(submitted_at, :now), " +
         "graded_submissions = if_not_exists(graded_submissions, :rubrics), " +
         "upvotes = if_not_exists(upvotes, :zero), downvotes = if_not_exists(downvotes, :zero)",
       ExpressionAttributeValues: {
-        ":team": team.teamId,
         ":name": form.team_name,
         ":members": form.member_names,
         ":video": form.video_url,
@@ -994,12 +984,7 @@ export async function saveSubmission(
 
         if (
           !upload ||
-          !ownedUpload(
-            upload,
-            settings,
-            context.team.teamId,
-            context.team.teamCode
-          ) ||
+          !ownedUpload(upload, settings, context.team.teamCode) ||
           upload.status !== "referenced" ||
           storedPath(upload) !== form.prd_path
         ) {
@@ -1013,12 +998,7 @@ export async function saveSubmission(
 
         if (
           !upload ||
-          !ownedUpload(
-            upload,
-            settings,
-            context.team.teamId,
-            context.team.teamCode
-          ) ||
+          !ownedUpload(upload, settings, context.team.teamCode) ||
           upload.content_type !== "application/pdf"
         ) {
           throw new ProductPlusError(
@@ -1068,12 +1048,7 @@ export async function saveSubmission(
 
       if (
         !upload ||
-        !ownedUpload(
-          upload,
-          settings,
-          context.team.teamId,
-          context.team.teamCode
-        ) ||
+        !ownedUpload(upload, settings, context.team.teamCode) ||
         (!formOnly &&
           (upload.status !== "promoting" ||
             upload.promotion_token !== promotion?.promotion_token))
@@ -1096,12 +1071,7 @@ export async function saveSubmission(
         prior &&
         prior.prd_path !== path &&
         (!previous ||
-          !ownedUpload(
-            previous,
-            settings,
-            context.team.teamId,
-            context.team.teamCode
-          ) ||
+          !ownedUpload(previous, settings, context.team.teamCode) ||
           previous.status !== "referenced")
       ) {
         // Another save may have replaced it between our submission and tracking reads.
@@ -1234,14 +1204,14 @@ function noReference(
 
 /** Check team absence inside the delete transaction, not just in an earlier read. */
 function absentTeam(
-  teamId: string,
+  teamCode: string,
   settings: StorageSettings
 ): TransactionItems[number] {
   return {
     ConditionCheck: {
       TableName: settings.teamsTable,
-      Key: { "id": teamId, "eventID;year": settings.eventKey },
-      ConditionExpression: "attribute_not_exists(id)"
+      Key: { event_key: settings.eventKey, team_code: teamCode },
+      ConditionExpression: "attribute_not_exists(team_code)"
     }
   };
 }
@@ -1261,7 +1231,7 @@ async function cleanUpload(
   key: string,
   mode: "retire" | "team",
   settings: StorageSettings,
-  teamId?: string
+  teamCode?: string
 ) {
   const upload = await readUpload(key, settings);
 
@@ -1270,8 +1240,8 @@ async function cleanUpload(
   }
 
   if (
-    !ownedUpload(upload, settings, upload.team_id, upload.team_code) ||
-    (teamId && upload.team_id !== teamId)
+    !ownedUpload(upload, settings, upload.team_code) ||
+    (teamCode && upload.team_code !== teamCode)
   ) {
     throw new Error("Cleanup upload ownership is invalid.");
   }
@@ -1313,7 +1283,7 @@ async function cleanUpload(
             }
           },
           noReference(upload, settings),
-          ...(mode === "team" ? [absentTeam(upload.team_id, settings)] : [])
+          ...(mode === "team" ? [absentTeam(upload.team_code, settings)] : [])
         ]
       })
     );
@@ -1383,7 +1353,7 @@ async function cleanUpload(
 
 /** Collect every page of this team's tracking records, including pages filtered to zero items. */
 async function teamUploads(
-  teamId: string,
+  teamCode: string,
   settings: StorageSettings
 ): Promise<UploadRecord[]> {
   const uploads: UploadRecord[] = [];
@@ -1396,10 +1366,10 @@ async function teamUploads(
       new ScanCommand({
         TableName: settings.uploadsTable,
         ConsistentRead: true,
-        FilterExpression: "event_key = :event AND team_id = :team",
+        FilterExpression: "event_key = :event AND team_code = :code",
         ExpressionAttributeValues: {
           ":event": settings.eventKey,
-          ":team": teamId
+          ":code": teamCode
         },
         ExclusiveStartKey: cursor
       })
@@ -1432,21 +1402,16 @@ export async function cleanupProductPlus(task: CleanupTask) {
         await cleanUpload(task.payload.prd_path, "retire", settings)
       );
     } else if (task.internalTask === "team_deleted") {
-      const { team_id: teamId, team_code: teamCode } = task.payload;
+      const { team_code: teamCode } = task.payload;
 
-      if (
-        typeof teamId !== "string" ||
-        !teamId ||
-        typeof teamCode !== "string" ||
-        !/^\d{6}$/.test(teamCode)
-      ) {
+      if (typeof teamCode !== "string" || !/^\d{6}$/.test(teamCode)) {
         throw new Error("Invalid cleanup team.");
       }
 
       // The caller's task is not proof of deletion: verify absence before removing data.
       const team = await db.getOneCustom({
         TableName: settings.teamsTable,
-        Key: { "id": teamId, "eventID;year": settings.eventKey },
+        Key: { event_key: settings.eventKey, team_code: teamCode },
         ConsistentRead: true
       });
 
@@ -1456,7 +1421,7 @@ export async function cleanupProductPlus(task: CleanupTask) {
 
       const submission = await readSubmission(teamCode, settings);
 
-      if (submission?.team_id === teamId) {
+      if (submission) {
         // Remove the public submission before file cleanup, even if S3 or scanning fails.
         await docClient.send(
           new TransactWriteCommand({
@@ -1465,20 +1430,19 @@ export async function cleanupProductPlus(task: CleanupTask) {
                 Delete: {
                   TableName: settings.submissionsTable,
                   Key: { event_key: settings.eventKey, team_code: teamCode },
-                  ConditionExpression: "team_id = :team AND prd_path = :path",
+                  ConditionExpression: "prd_path = :path",
                   ExpressionAttributeValues: {
-                    ":team": teamId,
                     ":path": submission.prd_path
                   }
                 }
               },
-              absentTeam(teamId, settings)
+              absentTeam(teamCode, settings)
             ]
           })
         );
       }
 
-      const uploads = await teamUploads(teamId, settings);
+      const uploads = await teamUploads(teamCode, settings);
 
       // Continue other files when one fails; fail the invocation for automatic retry.
       let failures = 0;
@@ -1486,7 +1450,7 @@ export async function cleanupProductPlus(task: CleanupTask) {
       for (const upload of uploads) {
         try {
           cleaned += Number(
-            await cleanUpload(upload.prd_path, "team", settings, teamId)
+            await cleanUpload(upload.prd_path, "team", settings, teamCode)
           );
         } catch (error) {
           failures++;
