@@ -25,9 +25,11 @@ provider:
     PRODUCTPLUS_PRD_BUCKET: ${file(../../config.${self:provider.stage}.json):PRODUCTPLUS_PRD_BUCKET}
     PRODUCTPLUS_SUBMISSIONS_TABLE: biztechPPSubmissions${self:provider.environment.ENVIRONMENT}
     PRODUCTPLUS_UPLOADS_TABLE: biztechPPUploads${self:provider.environment.ENVIRONMENT}
-    # TODO: switch these and their IAM resources to the new event membership tables.
-    PRODUCTPLUS_TEAMS_TABLE: biztechTeams${self:provider.environment.ENVIRONMENT}
-    PRODUCTPLUS_REGISTRATIONS_TABLE: biztechRegistrations${self:provider.environment.ENVIRONMENT}
+    # TODO(team workflow): replace these base names once the dev/PROD names are decided.
+    # Teams keys: (event_key, team_code). UserMemberships keys: (event_key, user_id).
+    # user_id is verified email. The backend rejects TODO_NEW_* names before AWS reads.
+    PRODUCTPLUS_TEAMS_TABLE: TODO_NEW_TEAMS_TABLE${self:provider.environment.ENVIRONMENT}
+    PRODUCTPLUS_MEMBERSHIPS_TABLE: TODO_NEW_USER_MEMBERSHIPS_TABLE${self:provider.environment.ENVIRONMENT}
     PRODUCTPLUS_EVENT_KEY: "productplus;2026"
     PRODUCTPLUS_MAX_PRD_BYTES: "5000000"
     PRODUCTPLUS_CLEANUP_FUNCTION: ${self:service}-${self:provider.stage}-productplusCleanup
@@ -65,7 +67,7 @@ provider:
         - dynamodb:ConditionCheckItem
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/${self:provider.environment.PRODUCTPLUS_TEAMS_TABLE}"
-        - "arn:aws:dynamodb:us-west-2:432714361962:table/${self:provider.environment.PRODUCTPLUS_REGISTRATIONS_TABLE}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/${self:provider.environment.PRODUCTPLUS_MEMBERSHIPS_TABLE}"
     # Strong, paginated reads for deleted-team cleanup.
     - Effect: Allow
       Action:

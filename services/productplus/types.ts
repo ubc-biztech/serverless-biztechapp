@@ -15,6 +15,21 @@ export type Config = {
   voting_deadline: string;
 };
 
+/** Shared team formation records. All user identifiers are verified emails. */
+export type TeamRecord = {
+  event_key: string;
+  team_code: string;
+  team_name: string;
+  leader_user_id: string;
+  member_ids: Set<string>;
+};
+
+export type UserMembershipRecord = {
+  event_key: string;
+  user_id: string;
+  team_code: string;
+};
+
 /** Keys shared by submission records and the reserved config row. */
 export type SubmissionKey = {
   event_key: string; // eventid;year
@@ -31,7 +46,6 @@ export type Rubric = {
 /** Stored submission. Updates must preserve judging and voting attributes. */
 export type SubmissionRecord = Omit<Submission, "prd_view_url"> &
   SubmissionKey & {
-    team_id: string; // Transitional ID for the current registration/team adapter.
     graded_submissions: Rubric[];
     upvotes: number;
     downvotes: number;
@@ -63,7 +77,6 @@ export type UploadStatus =
 export type UploadRecord = UploadKey & {
   event_key: string;
   team_code: string;
-  team_id: string; // Remove with the old adapter; final identity is event_key + team_code.
   upload_id: string;
   content_type: "application/pdf";
   status: UploadStatus;
@@ -82,7 +95,7 @@ export type CleanupTask =
     }
   | {
       internalTask: "team_deleted";
-      payload: { event_key: string; team_id: string; team_code: string };
+      payload: { event_key: string; team_code: string };
     };
 
 export type GetSubmissionResponse = {

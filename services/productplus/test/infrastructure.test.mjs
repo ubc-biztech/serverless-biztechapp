@@ -13,7 +13,6 @@ function parse(text) {
   return document.toJSON(); // Preserve CF intrinsic mappings; !ImportValue values are opaque here.
 }
 const yaml = parse(await readFile(new URL("../serverless.yml", import.meta.url), "utf8"));
-const teamsYaml = parse(await readFile(new URL("../../teams/serverless.yml", import.meta.url), "utf8"));
 const resources = yaml.resources.Resources;
 const s3 = mockClient(S3Client);
 let responses;
@@ -69,18 +68,24 @@ test("bucket resources expire only temporary files and retain externally owned b
   assert.deepEqual(cors.AllowedOrigins["Fn::If"][1], ["https://app.ubcbiztech.com"]);
 });
 
-test("stage-selected table names and cleanup invocation permissions match across services", () => {
+test("stage-selected tables and IAM use the new team schema with explicit deployment TODOs", () => {
   const listBucket = yaml.provider.iamRoleStatements.find(statement => statement.Action === "s3:ListBucket");
   assert.equal(listBucket.Resource, "arn:aws:s3:::${self:provider.environment.PRODUCTPLUS_PRD_BUCKET}");
-  for (const kind of ["SUBMISSIONS", "UPLOADS", "TEAMS", "REGISTRATIONS"]) {
+  for (const kind of ["SUBMISSIONS", "UPLOADS", "TEAMS", "MEMBERSHIPS"]) {
     assert.match(yaml.provider.environment[`PRODUCTPLUS_${kind}_TABLE`], /\$\{self:provider.environment.ENVIRONMENT\}$/);
   }
-  assert.equal(teamsYaml.provider.environment.PRODUCTPLUS_EVENT_KEY, yaml.provider.environment.PRODUCTPLUS_EVENT_KEY);
-  assert.equal(teamsYaml.provider.environment.PRODUCTPLUS_CLEANUP_FUNCTION, "biztechApi-productplus-${self:provider.stage}-productplusCleanup");
-  for (const service of [yaml, teamsYaml]) {
-    const statement = service.provider.iamRoleStatements.find(statement => statement.Action === "lambda:InvokeFunction");
-    assert.equal(statement.Resource, "arn:aws:lambda:us-west-2:432714361962:function:${self:provider.environment.PRODUCTPLUS_CLEANUP_FUNCTION}");
-  }
+  assert.equal(yaml.provider.environment.PRODUCTPLUS_TEAMS_TABLE,
+    "TODO_NEW_TEAMS_TABLE${self:provider.environment.ENVIRONMENT}");
+  assert.equal(yaml.provider.environment.PRODUCTPLUS_MEMBERSHIPS_TABLE,
+    "TODO_NEW_USER_MEMBERSHIPS_TABLE${self:provider.environment.ENVIRONMENT}");
+  assert.equal(yaml.provider.environment.PRODUCTPLUS_REGISTRATIONS_TABLE, undefined);
+  const membership = yaml.provider.iamRoleStatements.find(statement =>
+    Array.isArray(statement.Resource) && statement.Resource.some(resource => resource.includes("PRODUCTPLUS_MEMBERSHIPS_TABLE")));
+  assert.deepEqual(membership.Action, ["dynamodb:GetItem", "dynamodb:ConditionCheckItem"]);
+  assert.ok(membership.Resource.some(resource => resource.includes("PRODUCTPLUS_TEAMS_TABLE")));
+  assert.ok(yaml.provider.iamRoleStatements.every(statement => !JSON.stringify(statement.Resource).includes("REGISTRATIONS")));
+  const invocation = yaml.provider.iamRoleStatements.find(statement => statement.Action === "lambda:InvokeFunction");
+  assert.equal(invocation.Resource, "arn:aws:lambda:us-west-2:432714361962:function:${self:provider.environment.PRODUCTPLUS_CLEANUP_FUNCTION}");
 });
 
 test("bucket setup merges its rule while preserving unrelated Lifecycle rules", async () => {

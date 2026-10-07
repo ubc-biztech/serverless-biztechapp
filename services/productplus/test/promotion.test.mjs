@@ -56,7 +56,7 @@ test("same-upload concurrent submits are excluded by the promotion reservation",
 });
 
 test("deadline and membership are checked again after copying", async () => {
-  for (const change of [() => { app.clock.now = Date.parse(app.config().submission_deadline); }, () => { app.team().memberIDs = []; }]) {
+  for (const change of [() => { app.clock.now = Date.parse(app.config().submission_deadline); }, () => { app.team().member_ids = new Set(["remaining@example.com"]); }]) {
     app.reset();
     const upload = app.upload();
     app.beforeCopy = change;
@@ -141,7 +141,7 @@ test("reservation cannot overwrite an active permanent PDF even with inconsisten
 
 test("membership removal at the final transaction is enforced after a completed promotion", async () => {
   const upload = app.upload();
-  app.beforeTransaction = input => { if (isSave(input)) app.team().memberIDs = []; };
+  app.beforeTransaction = input => { if (isSave(input)) app.team().member_ids = new Set(["remaining@example.com"]); };
   assert.equal((await save(upload.prd_path)).status, 403);
   assert.equal(app.submission(), undefined);
   assert.equal(app.lambda.calls().length, 0);
