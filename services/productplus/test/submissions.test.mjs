@@ -18,7 +18,7 @@ test("GET and PUT require verified authentication and current membership", async
   }
   assert.equal(app.database.calls().length, 0);
   const upload = app.upload();
-  app.team().member_ids = new Set(["remaining@example.com"]);
+  app.team().memberIDs = ["remaining@example.com"];
   assert.equal((await load()).status, 403);
   assert.equal((await save(app.form(upload.prd_path))).status, 403);
   assert.equal(app.database.commandCalls(TransactWriteCommand).length, 0);
@@ -54,7 +54,7 @@ test("first save initializes shared fields, trims names and returns only the pub
   const items = app.database.commandCalls(TransactWriteCommand).at(-1).args[0].input.TransactItems;
   assert.equal(items.length, 5);
   assert.match(items[0].Update.ConditionExpression, /attribute_not_exists/);
-  assert.equal(items[2].ConditionCheck.TableName, app.table("MEMBERSHIPS"));
+  assert.equal(items[2].ConditionCheck.TableName, app.table("REGISTRATIONS"));
   assert.match(items[3].ConditionCheck.ConditionExpression, /contains/);
   assert.equal(items[4].ConditionCheck.ExpressionAttributeValues[":deadline"], app.config().submission_deadline);
 });
@@ -211,16 +211,16 @@ test("time is rechecked after S3 validation and before writing", async () => {
 
 test("removal during a save cancels the whole transaction and fresh lookup denies the retry", async () => {
   const upload = app.upload();
-  app.beforeTransaction = () => { app.team().member_ids = new Set(["remaining@example.com"]); };
+  app.beforeTransaction = () => { app.team().memberIDs = ["remaining@example.com"]; };
   assert.equal((await save(app.form(upload.prd_path))).status, 403);
   assert.equal(app.submission(), undefined);
   assert.equal(uploadRow(upload.prd_path).status, "pending");
 });
 
-test("membership removal during a save is enforced even if the team member set is stale", async () => {
+test("membership removal during a save is enforced even if the team member list is stale", async () => {
   const upload = app.upload();
   app.beforeTransaction = () => {
-    app.delete(app.table("MEMBERSHIPS"), { event_key: "productplus;2026", user_id: app.email });
+    delete app.registration().team_code;
   };
   assert.equal((await save(app.form(upload.prd_path))).status, 403);
   assert.equal(app.submission(), undefined);
@@ -290,11 +290,11 @@ test("persistent conflicts stop after three attempts with 409", async () => {
 });
 
 test("PROD selection preserves the response contract", async () => {
-  for (const kind of ["SUBMISSIONS", "UPLOADS", "TEAMS", "MEMBERSHIPS"]) process.env[`PRODUCTPLUS_${kind}_TABLE`] += "PROD";
+  for (const kind of ["SUBMISSIONS", "UPLOADS", "TEAMS", "REGISTRATIONS"]) process.env[`PRODUCTPLUS_${kind}_TABLE`] += "PROD";
   process.env.PRODUCTPLUS_PRD_BUCKET = "biztech-pp-prd-prod";
-  app.put(app.table("TEAMS"), { event_key: "productplus;2026", team_code: app.teamCode,
-    team_name: "Example", leader_user_id: app.email, member_ids: new Set([app.email]) });
-  app.put(app.table("MEMBERSHIPS"), { event_key: "productplus;2026", user_id: app.email, team_code: app.teamCode });
+  app.put(app.table("TEAMS"), { "eventID;year": "productplus;2026", id: app.teamCode,
+    teamName: "Example", memberIDs: [app.email] });
+  app.put(app.table("REGISTRATIONS"), { "eventID;year": "productplus;2026", id: app.email, team_code: app.teamCode });
   app.put(app.table("SUBMISSIONS"), { event_key: "productplus;2026", team_code: "config", submission_deadline: "2026-10-05T13:00:00Z", voting_deadline: "2026-10-06T13:00:00Z" });
   const upload = app.upload();
   const event = app.event(app.form(upload.prd_path));
@@ -309,11 +309,11 @@ test("PROD selection preserves the response contract", async () => {
 test("changing teams cannot expose or attach the previous team's PDF", async () => {
   const upload = app.upload();
   await save(app.form(upload.prd_path));
-  app.team().member_ids = new Set(["remaining@example.com"]);
-  app.membership().team_code = "654321";
+  app.team().memberIDs = ["remaining@example.com"];
+  app.registration().team_code = "654321";
   app.teamCode = "654321";
-  app.put(app.table("TEAMS"), { event_key: "productplus;2026", team_code: app.teamCode,
-    team_name: "New Team", leader_user_id: app.email, member_ids: new Set([app.email]) });
+  app.put(app.table("TEAMS"), { "eventID;year": "productplus;2026", id: app.teamCode,
+    teamName: "New Team", memberIDs: [app.email] });
   assert.equal((await load()).body.submission, null);
   assert.equal((await save(app.form(upload.prd_path))).status, 400);
   assert.equal((await save(app.form(app.permanent(upload)))).status, 400);
@@ -322,18 +322,36 @@ test("changing teams cannot expose or attach the previous team's PDF", async () 
 
 test("membership changing during a save cannot attach the old team's upload", async () => {
   const upload = app.upload();
-  app.put(app.table("TEAMS"), { event_key: "productplus;2026", team_code: "654321",
-    team_name: "Other Team", leader_user_id: app.email, member_ids: new Set([app.email]) });
-  app.beforeTransaction = () => { app.membership().team_code = "654321"; };
+  app.put(app.table("TEAMS"), { "eventID;year": "productplus;2026", id: "654321",
+    teamName: "Other Team", memberIDs: [app.email] });
+  app.beforeTransaction = () => { app.registration().team_code = "654321"; };
   assert.equal((await save(app.form(upload.prd_path))).status, 400);
   assert.equal(app.submission(), undefined);
   assert.equal(uploadRow(upload.prd_path).status, "pending");
 });
 
 test("membership from another event or user cannot authorize submission access", async () => {
-  app.delete(app.table("MEMBERSHIPS"), { event_key: "productplus;2026", user_id: app.email });
-  app.put(app.table("MEMBERSHIPS"), { event_key: "other;2026", user_id: app.email, team_code: app.teamCode });
-  app.put(app.table("MEMBERSHIPS"), { event_key: "productplus;2026", user_id: "other@example.com", team_code: app.teamCode });
+  delete app.registration().team_code;
+  app.put(app.table("REGISTRATIONS"), { "eventID;year": "other;2026", id: app.email, team_code: app.teamCode });
+  app.put(app.table("REGISTRATIONS"), { "eventID;year": "productplus;2026", id: "other@example.com", team_code: app.teamCode });
+  const upload = app.upload();
+  assert.equal((await load()).status, 403);
+  assert.equal((await save(app.form(upload.prd_path))).status, 403);
+  assert.equal(app.database.commandCalls(TransactWriteCommand).length, 0);
+});
+
+test("registration team_code is authoritative even when legacy teamID disagrees", async () => {
+  app.registration().teamID = "654321";
+  const upload = app.upload();
+  const result = await save(app.form(upload.prd_path));
+  assert.equal(result.status, 200);
+  assert.equal(result.body.team_code, "012345");
+  assert.equal(app.submission().prd_path, app.permanent(upload));
+});
+
+test("a team with the same id in another event cannot authorize access", async () => {
+  app.delete(app.table("TEAMS"), { id: app.teamCode, "eventID;year": "productplus;2026" });
+  app.put(app.table("TEAMS"), { id: app.teamCode, "eventID;year": "other;2026", memberIDs: [app.email] });
   const upload = app.upload();
   assert.equal((await load()).status, 403);
   assert.equal((await save(app.form(upload.prd_path))).status, 403);

@@ -7,8 +7,8 @@ const app = await runtime({ includeTeams: true });
 beforeEach(() => app.reset());
 after(() => app.restore());
 const eventKey = "productplus;2026";
-const teamKey = () => ({ event_key: eventKey, team_code: app.teamCode });
-const membershipKey = user_id => ({ event_key: eventKey, user_id });
+const teamKey = () => ({ id: app.teamCode, "eventID;year": eventKey });
+const registrationKey = id => ({ id, "eventID;year": eventKey });
 const cleanupTask = () => app.task("team_deleted", { team_code: app.teamCode });
 
 // These tests seed completed team-workflow writes and call the real Product Plus
@@ -17,8 +17,8 @@ test("final-member deletion uses the new cleanup payload and removes the submiss
   const referenced = app.upload(1), pending = app.upload(2);
   assert.equal((await app.invoke(app.putSubmission, app.form(referenced.prd_path))).status, 200);
 
-  // The team workflow commits these deletions before invoking Product Plus.
-  app.delete(app.table("MEMBERSHIPS"), membershipKey(app.email));
+  // The team workflow clears team_code and deletes the team before invoking cleanup.
+  delete app.registration().team_code;
   app.delete(app.table("TEAMS"), teamKey());
   assert.deepEqual(cleanupTask(), {
     internalTask: "team_deleted", payload: { event_key: eventKey, team_code: "012345" }
@@ -27,20 +27,20 @@ test("final-member deletion uses the new cleanup payload and removes the submiss
   assert.equal(app.submission(), undefined);
   assert.equal(app.objects.has(app.permanent(referenced)), false);
   assert.equal(app.objects.has(pending.prd_path), false);
+  assert.equal(app.registration().team_code, undefined);
   assert.ok(app.config());
   assert.equal((await app.cleanup(cleanupTask())).cleaned, 0);
 });
 
 test("removing one member denies that user while remaining members retain submission access", async () => {
   const remaining = "remaining@example.com";
-  app.team().member_ids.add(remaining);
-  app.team().leader_user_id = remaining;
-  app.put(app.table("MEMBERSHIPS"), { ...membershipKey(remaining), team_code: app.teamCode });
+  app.team().memberIDs.push(remaining);
+  app.put(app.table("REGISTRATIONS"), { ...registrationKey(remaining), team_code: app.teamCode });
   const upload = app.upload();
   assert.equal((await app.invoke(app.putSubmission, app.form(upload.prd_path))).status, 200);
 
-  app.delete(app.table("MEMBERSHIPS"), membershipKey(app.email));
-  app.team().member_ids.delete(app.email);
+  delete app.registration().team_code;
+  app.team().memberIDs = app.team().memberIDs.filter(id => id !== app.email);
   assert.equal((await app.invoke(app.getSubmission)).status, 403);
   assert.equal((await app.invoke(app.putSubmission, app.form(app.permanent(upload)))).status, 403);
   const result = await app.invoke(app.getSubmission, null, { email: remaining });
@@ -53,14 +53,14 @@ test("removing one member denies that user while remaining members retain submis
   assert.equal(app.lambda.calls().length, 0);
 });
 
-test("annual BizTech membership and old registrations do not grant team access", async () => {
-  app.delete(app.table("MEMBERSHIPS"), membershipKey(app.email));
+test("annual BizTech membership and legacy teamID alone do not grant team access", async () => {
+  app.delete(app.table("REGISTRATIONS"), registrationKey(app.email));
   app.rows.set(app.key("biztechMembers2027", { id: app.email }), { id: app.email, isMember: true });
   app.put("biztechRegistrations", { id: app.email, "eventID;year": eventKey, teamID: "legacy-team" });
   assert.equal((await app.invoke(app.getSubmission)).status, 403);
   assert.equal((await app.invoke(app.createUpload, { content_type: "application/pdf" })).status, 403);
   for (const call of app.database.commandCalls(GetCommand)) {
-    assert.ok([app.table("MEMBERSHIPS"), app.table("SUBMISSIONS")].includes(call.args[0].input.TableName));
+    assert.ok([app.table("REGISTRATIONS"), app.table("SUBMISSIONS")].includes(call.args[0].input.TableName));
   }
   assert.equal(app.database.commandCalls(TransactWriteCommand).length, 0);
 });
@@ -76,16 +76,16 @@ test("a cleanup task for another event cannot affect Product Plus data", async (
 
 test("PROD team deletion reads only PROD resources and preserves the dev team", async () => {
   const devTable = app.table("TEAMS");
-  const team = structuredClone(app.team()), membership = structuredClone(app.membership()), config = structuredClone(app.config());
-  for (const kind of ["TEAMS", "MEMBERSHIPS", "SUBMISSIONS", "UPLOADS"]) process.env[`PRODUCTPLUS_${kind}_TABLE`] += "PROD";
+  const team = structuredClone(app.team()), registration = structuredClone(app.registration()), config = structuredClone(app.config());
+  for (const kind of ["TEAMS", "REGISTRATIONS", "SUBMISSIONS", "UPLOADS"]) process.env[`PRODUCTPLUS_${kind}_TABLE`] += "PROD";
   process.env.PRODUCTPLUS_PRD_BUCKET = "biztech-pp-prd-prod";
   app.put(app.table("TEAMS"), team);
-  app.put(app.table("MEMBERSHIPS"), membership);
+  app.put(app.table("REGISTRATIONS"), registration);
   app.put(app.table("SUBMISSIONS"), config);
   const upload = app.upload();
   assert.equal((await app.invoke(app.putSubmission, app.form(upload.prd_path))).status, 200);
 
-  app.delete(app.table("MEMBERSHIPS"), membershipKey(app.email));
+  delete app.registration().team_code;
   app.delete(app.table("TEAMS"), teamKey());
   assert.equal((await app.cleanup(cleanupTask())).cleaned, 1);
   assert.deepEqual(app.get(devTable, teamKey()), team);

@@ -16,7 +16,7 @@ const environment = {
   AWS_SECRET_ACCESS_KEY: "submission-test-secret", AWS_SESSION_TOKEN: "submission-test-token",
   AWS_EC2_METADATA_DISABLED: "true", PRODUCTPLUS_EVENT_KEY: "productplus;2026",
   PRODUCTPLUS_SUBMISSIONS_TABLE: "biztechPPSubmissions", PRODUCTPLUS_UPLOADS_TABLE: "biztechPPUploads",
-  PRODUCTPLUS_TEAMS_TABLE: "testTeams", PRODUCTPLUS_MEMBERSHIPS_TABLE: "testUserMemberships",
+  PRODUCTPLUS_TEAMS_TABLE: "biztechTeams", PRODUCTPLUS_REGISTRATIONS_TABLE: "biztechRegistrations",
   PRODUCTPLUS_PRD_BUCKET: "biztech-pp-prd",
   PRODUCTPLUS_MAX_PRD_BYTES: "5000000"
 };
@@ -113,9 +113,8 @@ export async function runtime({ includeTeams = false } = {}) {
     get(table, key) { return rows.get(this.key(table, key)); },
     itemKey(table, item) {
       if (table === this.table("UPLOADS")) return { prd_path: item.prd_path };
-      if (table === this.table("MEMBERSHIPS")) return { event_key: item.event_key, user_id: item.user_id };
-      if ([this.table("SUBMISSIONS"), this.table("TEAMS")].includes(table)) return { event_key: item.event_key, team_code: item.team_code };
-      // The unrelated old-team regression seeds its own legacy records.
+      if (table === this.table("SUBMISSIONS")) return { event_key: item.event_key, team_code: item.team_code };
+      // Teams and registrations share the existing id/eventID;year key layout.
       return { id: item.id, "eventID;year": item["eventID;year"] };
     },
     put(table, item) {
@@ -124,8 +123,8 @@ export async function runtime({ includeTeams = false } = {}) {
     delete(table, key) { rows.delete(this.key(table, key)); },
     submission() { return this.get(this.table("SUBMISSIONS"), { event_key: environment.PRODUCTPLUS_EVENT_KEY, team_code: this.teamCode }); },
     config() { return this.get(this.table("SUBMISSIONS"), { event_key: environment.PRODUCTPLUS_EVENT_KEY, team_code: "config" }); },
-    team() { return this.get(this.table("TEAMS"), { event_key: environment.PRODUCTPLUS_EVENT_KEY, team_code: this.teamCode }); },
-    membership() { return this.get(this.table("MEMBERSHIPS"), { event_key: environment.PRODUCTPLUS_EVENT_KEY, user_id: this.email }); },
+    team() { return this.get(this.table("TEAMS"), { id: this.teamCode, "eventID;year": environment.PRODUCTPLUS_EVENT_KEY }); },
+    registration() { return this.get(this.table("REGISTRATIONS"), { id: this.email, "eventID;year": environment.PRODUCTPLUS_EVENT_KEY }); },
     upload(number = 1, overrides = {}) {
       const id = `00000000-0000-4000-8000-${String(number).padStart(12, "0")}`;
       const upload = {
@@ -160,9 +159,9 @@ export async function runtime({ includeTeams = false } = {}) {
       rows.clear(); objects.clear(); logs.length = 0; database.reset(); s3.reset(); lambda.reset();
       this.beforeTransaction = this.afterTransaction = this.beforeGetObject = this.beforeDelete = this.beforeCopy = undefined;
       this.pageSize = Infinity;
-      this.put(this.table("MEMBERSHIPS"), { event_key: environment.PRODUCTPLUS_EVENT_KEY, user_id: this.email, team_code: this.teamCode });
-      this.put(this.table("TEAMS"), { event_key: environment.PRODUCTPLUS_EVENT_KEY, team_code: this.teamCode,
-        member_ids: new Set([this.email]), team_name: "Example Team", leader_user_id: this.email });
+      this.put(this.table("REGISTRATIONS"), { id: this.email, "eventID;year": environment.PRODUCTPLUS_EVENT_KEY, team_code: this.teamCode });
+      this.put(this.table("TEAMS"), { id: this.teamCode, "eventID;year": environment.PRODUCTPLUS_EVENT_KEY,
+        memberIDs: [this.email], teamName: "Example Team" });
       this.put(this.table("SUBMISSIONS"), { event_key: environment.PRODUCTPLUS_EVENT_KEY, team_code: "config",
         submission_deadline: "2026-10-05T13:00:00Z", voting_deadline: "2026-10-06T13:00:00Z" });
       database.onAnyCommand().rejects(new Error("Unexpected database call"));

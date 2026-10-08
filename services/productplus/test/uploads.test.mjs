@@ -17,8 +17,8 @@ const environment = {
   PRODUCTPLUS_EVENT_KEY: "productplus;2026",
   PRODUCTPLUS_SUBMISSIONS_TABLE: "biztechPPSubmissions",
   PRODUCTPLUS_UPLOADS_TABLE: "biztechPPUploads",
-  PRODUCTPLUS_TEAMS_TABLE: "testTeams",
-  PRODUCTPLUS_MEMBERSHIPS_TABLE: "testUserMemberships",
+  PRODUCTPLUS_TEAMS_TABLE: "biztechTeams",
+  PRODUCTPLUS_REGISTRATIONS_TABLE: "biztechRegistrations",
   PRODUCTPLUS_PRD_BUCKET: "biztech-pp-prd",
   PRODUCTPLUS_CLEANUP_FUNCTION: "biztechApi-productplus-dev-productplusCleanup"
 };
@@ -48,7 +48,7 @@ compileFunction(bundle.outputFiles[0].text, [
 const { createUpload } = module.exports;
 const database = mockClient(DynamoDBDocumentClient);
 const email = "member@example.com";
-let config, membership, team;
+let config, registration, team;
 
 function event(body = { content_type: "application/pdf" }, claims = {}) {
   return {
@@ -81,15 +81,20 @@ beforeEach(() => {
     submission_deadline: "2026-10-05T13:00:00Z",
     voting_deadline: "2026-10-06T13:00:00Z"
   };
-  membership = { event_key: config.event_key, user_id: email, team_code: "012345" };
-  team = { event_key: config.event_key, team_code: "012345", member_ids: new Set([email]),
-    team_name: "Example Team", leader_user_id: email };
+  registration = { id: email, "eventID;year": config.event_key, team_code: "012345" };
+  team = { id: "012345", "eventID;year": config.event_key, memberIDs: [email] };
   database.reset();
   database.onAnyCommand().rejects(new Error("Unexpected database operation"));
   database.on(GetCommand).callsFake(input => {
     if (input.TableName === process.env.PRODUCTPLUS_SUBMISSIONS_TABLE) return { Item: config };
-    if (input.TableName === process.env.PRODUCTPLUS_MEMBERSHIPS_TABLE) return { Item: membership };
-    if (input.TableName === process.env.PRODUCTPLUS_TEAMS_TABLE) return { Item: team };
+    if (input.TableName === process.env.PRODUCTPLUS_REGISTRATIONS_TABLE) {
+      assert.deepEqual(input.Key, { id: email, "eventID;year": environment.PRODUCTPLUS_EVENT_KEY });
+      return { Item: registration };
+    }
+    if (input.TableName === process.env.PRODUCTPLUS_TEAMS_TABLE) {
+      assert.deepEqual(input.Key, { id: registration.team_code, "eventID;year": environment.PRODUCTPLUS_EVENT_KEY });
+      return { Item: team };
+    }
     throw new Error("Unexpected table");
   });
   database.on(TransactWriteCommand).resolves({});
@@ -143,7 +148,7 @@ test("signed PUT uses the private bucket, unique team path and mandatory signed 
 test("tracking and membership/deadline conditions are written in one transaction", async () => {
   const result = await invoke(event(undefined, { email: " MEMBER@EXAMPLE.COM " }));
   assert.equal(result.status, 200);
-  const [upload, membershipCheck, teamCheck, configCheck] = transaction();
+  const [upload, registrationCheck, teamCheck, configCheck] = transaction();
   assert.equal(upload.Put.TableName, "biztechPPUploads");
   assert.equal(upload.Put.ConditionExpression, "attribute_not_exists(prd_path)");
   const item = upload.Put.Item;
@@ -157,11 +162,11 @@ test("tracking and membership/deadline conditions are written in one transaction
   assert.equal(item.created_at, new Date(start).toISOString());
   assert.equal(item.updated_at, item.created_at);
   assert.equal(Date.parse(item.upload_expires_at), signedExpiry(result.body.upload_url));
-  assert.deepEqual(membershipCheck.ConditionCheck.Key, { event_key: "productplus;2026", user_id: email });
-  assert.deepEqual(membershipCheck.ConditionCheck.ExpressionAttributeValues, { ":code": team.team_code });
-  assert.deepEqual(teamCheck.ConditionCheck.Key, { event_key: "productplus;2026", team_code: "012345" });
+  assert.deepEqual(registrationCheck.ConditionCheck.Key, { id: email, "eventID;year": "productplus;2026" });
+  assert.deepEqual(registrationCheck.ConditionCheck.ExpressionAttributeValues, { ":code": team.id });
+  assert.deepEqual(teamCheck.ConditionCheck.Key, { id: "012345", "eventID;year": "productplus;2026" });
   assert.match(teamCheck.ConditionCheck.ConditionExpression, /contains\(#members, :email\)/);
-  assert.deepEqual(teamCheck.ConditionCheck.ExpressionAttributeNames, { "#members": "member_ids" });
+  assert.deepEqual(teamCheck.ConditionCheck.ExpressionAttributeNames, { "#members": "memberIDs" });
   assert.deepEqual(teamCheck.ConditionCheck.ExpressionAttributeValues, { ":email": email });
   assert.deepEqual(configCheck.ConditionCheck.Key, { event_key: "productplus;2026", team_code: "config" });
   assert.equal(configCheck.ConditionCheck.ExpressionAttributeValues[":deadline"], config.submission_deadline);
@@ -184,27 +189,32 @@ test("closed and sub-second windows reject without writing tracking", async () =
   assert.equal(database.commandCalls(TransactWriteCommand).length, 0);
 });
 
-test("both event membership and the team's String Set must authorize the caller", async () => {
-  membership = undefined;
+test("both the event registration and team's memberIDs list must authorize the caller", async () => {
+  registration = undefined;
   assert.equal((await invoke()).status, 403);
-  membership = { event_key: "productplus;2026", user_id: email, team_code: team.team_code };
+  registration = { id: email, "eventID;year": "productplus;2026", team_code: team.id };
   const originalTeam = team;
   team = undefined;
   assert.equal((await invoke()).status, 403);
-  team = { ...originalTeam, member_ids: new Set(["someone-else@example.com"]) };
+  team = { ...originalTeam, memberIDs: ["someone-else@example.com"] };
   assert.equal((await invoke()).status, 403);
-  team = { ...originalTeam, member_ids: [email] };
+  team = { ...originalTeam, memberIDs: new Set([email]) };
   assert.equal((await invoke()).status, 403);
   assert.equal(database.commandCalls(TransactWriteCommand).length, 0);
 });
 
-test("membership must provide a six-digit string, retaining leading zeros", async () => {
-  for (const code of [undefined, 123456, "12345", "1234567", "abcdef"]) {
-    membership.team_code = code;
+test("registration must provide a six-digit string, retaining leading zeros", async () => {
+  for (const code of [123456, "12345", "1234567", "abcdef", null]) {
+    registration.team_code = code;
     assert.equal((await invoke()).status, 409);
   }
-  delete membership.team_code;
-  assert.equal((await invoke()).status, 409);
+  for (const code of [undefined, ""]) {
+    registration.team_code = code;
+    assert.equal((await invoke()).status, 403);
+  }
+  delete registration.team_code;
+  registration.teamID = "012345";
+  assert.equal((await invoke()).status, 403);
   assert.equal(database.commandCalls(TransactWriteCommand).length, 0);
 });
 
@@ -246,14 +256,14 @@ test("database failure returns a generic error and expiry during tracking return
 
 test("PROD table/bucket names use the injected environment", async () => {
   for (const key of ["PRODUCTPLUS_SUBMISSIONS_TABLE", "PRODUCTPLUS_UPLOADS_TABLE",
-    "PRODUCTPLUS_TEAMS_TABLE", "PRODUCTPLUS_MEMBERSHIPS_TABLE"]) process.env[key] += "PROD";
+    "PRODUCTPLUS_TEAMS_TABLE", "PRODUCTPLUS_REGISTRATIONS_TABLE"]) process.env[key] += "PROD";
   process.env.PRODUCTPLUS_PRD_BUCKET = "biztech-pp-prd-prod";
   const request = event({ content_type: "application/pdf" });
   const result = await invoke(request);
   assert.equal(result.status, 200);
   assert.equal(new URL(result.body.upload_url).hostname, "biztech-pp-prd-prod.s3.us-west-2.amazonaws.com");
   assert.deepEqual(transaction().map(item => (item.Put || item.ConditionCheck).TableName), [
-    "biztechPPUploadsPROD", "testUserMembershipsPROD", "testTeamsPROD", "biztechPPSubmissionsPROD"
+    "biztechPPUploadsPROD", "biztechRegistrationsPROD", "biztechTeamsPROD", "biztechPPSubmissionsPROD"
   ]);
 });
 
@@ -263,12 +273,12 @@ test("missing upload environment fails before storage access", async () => {
   assert.equal(database.calls().length, 0);
 });
 
-test("unresolved team table names fail before AWS access in both environments", async () => {
+test("missing shared table settings fail before AWS access in both environments", async () => {
   for (const suffix of ["", "PROD"]) {
-    for (const [key, name] of [["PRODUCTPLUS_TEAMS_TABLE", "TODO_NEW_TEAMS_TABLE"],
-      ["PRODUCTPLUS_MEMBERSHIPS_TABLE", "TODO_NEW_USER_MEMBERSHIPS_TABLE"]]) {
+    for (const key of ["PRODUCTPLUS_TEAMS_TABLE", "PRODUCTPLUS_REGISTRATIONS_TABLE"]) {
       Object.assign(process.env, environment);
-      process.env[key] = name + suffix;
+      process.env.ENVIRONMENT = suffix;
+      delete process.env[key];
       assert.equal((await invoke()).status, 500);
     }
   }

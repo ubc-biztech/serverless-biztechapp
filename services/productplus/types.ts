@@ -15,19 +15,18 @@ export type Config = {
   voting_deadline: string;
 };
 
-/** Shared team formation records. All user identifiers are verified emails. */
+/** Fields Product Plus reads from biztechTeams. Member identifiers are verified emails. */
 export type TeamRecord = {
-  event_key: string;
-  team_code: string;
-  team_name: string;
-  leader_user_id: string;
-  member_ids: Set<string>;
+  id: string; // Six-digit team code, retaining leading zeros.
+  "eventID;year": string;
+  memberIDs: string[];
 };
 
-export type UserMembershipRecord = {
-  event_key: string;
-  user_id: string;
-  team_code: string;
+/** The event registration stores the user's current team code; teamID is not used. */
+export type RegistrationRecord = {
+  id: string; // Verified email.
+  "eventID;year": string;
+  team_code?: string;
 };
 
 /** Keys shared by submission records and the reserved config row. */

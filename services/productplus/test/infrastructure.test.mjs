@@ -68,22 +68,22 @@ test("bucket resources expire only temporary files and retain externally owned b
   assert.deepEqual(cors.AllowedOrigins["Fn::If"][1], ["https://app.ubcbiztech.com"]);
 });
 
-test("stage-selected tables and IAM use the new team schema with explicit deployment TODOs", () => {
+test("stage-selected tables and IAM use existing registrations and teams", () => {
   const listBucket = yaml.provider.iamRoleStatements.find(statement => statement.Action === "s3:ListBucket");
   assert.equal(listBucket.Resource, "arn:aws:s3:::${self:provider.environment.PRODUCTPLUS_PRD_BUCKET}");
-  for (const kind of ["SUBMISSIONS", "UPLOADS", "TEAMS", "MEMBERSHIPS"]) {
+  for (const kind of ["SUBMISSIONS", "UPLOADS", "TEAMS", "REGISTRATIONS"]) {
     assert.match(yaml.provider.environment[`PRODUCTPLUS_${kind}_TABLE`], /\$\{self:provider.environment.ENVIRONMENT\}$/);
   }
   assert.equal(yaml.provider.environment.PRODUCTPLUS_TEAMS_TABLE,
-    "TODO_NEW_TEAMS_TABLE${self:provider.environment.ENVIRONMENT}");
-  assert.equal(yaml.provider.environment.PRODUCTPLUS_MEMBERSHIPS_TABLE,
-    "TODO_NEW_USER_MEMBERSHIPS_TABLE${self:provider.environment.ENVIRONMENT}");
-  assert.equal(yaml.provider.environment.PRODUCTPLUS_REGISTRATIONS_TABLE, undefined);
+    "biztechTeams${self:provider.environment.ENVIRONMENT}");
+  assert.equal(yaml.provider.environment.PRODUCTPLUS_REGISTRATIONS_TABLE,
+    "biztechRegistrations${self:provider.environment.ENVIRONMENT}");
+  assert.equal(yaml.provider.environment.PRODUCTPLUS_MEMBERSHIPS_TABLE, undefined);
   const membership = yaml.provider.iamRoleStatements.find(statement =>
-    Array.isArray(statement.Resource) && statement.Resource.some(resource => resource.includes("PRODUCTPLUS_MEMBERSHIPS_TABLE")));
+    Array.isArray(statement.Resource) && statement.Resource.some(resource => resource.includes("PRODUCTPLUS_REGISTRATIONS_TABLE")));
   assert.deepEqual(membership.Action, ["dynamodb:GetItem", "dynamodb:ConditionCheckItem"]);
   assert.ok(membership.Resource.some(resource => resource.includes("PRODUCTPLUS_TEAMS_TABLE")));
-  assert.ok(yaml.provider.iamRoleStatements.every(statement => !JSON.stringify(statement.Resource).includes("REGISTRATIONS")));
+  assert.ok(yaml.provider.iamRoleStatements.every(statement => !JSON.stringify(statement.Resource).includes("MEMBERSHIPS")));
   const invocation = yaml.provider.iamRoleStatements.find(statement => statement.Action === "lambda:InvokeFunction");
   assert.equal(invocation.Resource, "arn:aws:lambda:us-west-2:432714361962:function:${self:provider.environment.PRODUCTPLUS_CLEANUP_FUNCTION}");
 });
