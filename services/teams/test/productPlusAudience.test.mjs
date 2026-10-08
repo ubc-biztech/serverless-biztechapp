@@ -12,7 +12,12 @@ const bundle = await build({
   bundle: true, write: false, platform: "node", format: "cjs",
   plugins: [{ name: "infrastructure", setup(build) {
     build.onResolve({ filter: /^\.\.\/\.\.\/lib\/db.js$/ }, () => ({ path: "db", namespace: "mock" }));
-    build.onLoad({ filter: /.*/, namespace: "mock" }, () => ({ contents: "export default globalThis.db;" }));
+    build.onResolve({ filter: /^@aws-sdk\/(client-s3|s3-request-presigner)$/ }, args => ({ path: args.path, namespace: "mock" }));
+    build.onLoad({ filter: /.*/, namespace: "mock" }, ({ path }) => ({ contents:
+      path === "db" ? "export default globalThis.db;" :
+      path === "@aws-sdk/client-s3" ? "export class S3Client {} export class GetObjectCommand {}" :
+      "export const getSignedUrl = () => {};"
+    }));
   } }]
 });
 const now = Date.parse("2026-10-05T12:00:00Z");
@@ -197,6 +202,7 @@ test("gateway keeps GET public and POST Cognito protected", () => {
   assert.equal(selfRoute.authorizer.authorizerId, functions.productPlusAudienceVote.events[0].http.authorizer.authorizerId);
   assert.equal(functions.productPlusAudienceVote.events[0].http.authorizer.type, "COGNITO_USER_POOLS");
 });
+
 
 
 

@@ -20,6 +20,19 @@ export type Submission = {
   updated_at: string;
 };
 
+export type SubmissionKey = {
+  event_key: string; // eventid;year
+  team_code: string; // Six-digit string for teams; "config" for configuration.
+};
+
+export type SubmissionRecord = Omit<Submission, "prd_view_url"> &
+  SubmissionKey & {
+    graded_submissions: Rubric[];
+    upvotes: number;
+    downvotes: number;
+    voter_ids?: Set<string>; // Omit until the first vote; never store an empty set.
+  };
+
 export type Config = {
   submission_deadline: string;
   voting_deadline: string;
