@@ -2,6 +2,7 @@
   "name": "biztechapi-teams",
   "version": "1.0.0",
   "scripts": {
+    "test": "node --test test/*.test.mjs",
     "prestart": "node ../../scripts/fix-sls-offline.js"
   }
 }

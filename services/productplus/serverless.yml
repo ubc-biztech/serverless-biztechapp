@@ -1,0 +1,283 @@
+service: biztechApi-productplus
+org: ianmh
+app: biztechapp
+
+frameworkVersion: "^4.0.0"
+
+build:
+  esbuild: false
+
+plugins:
+  - serverless-dynamodb
+  - serverless-offline
+  - serverless-domain-manager
+  - serverless-esbuild
+  - serverless-mocha-plugin
+
+provider:
+  name: aws
+  stage: ${file(../../serverless.common.yml):provider.stage}
+  runtime: ${file(../../serverless.common.yml):provider.runtime}
+  region: ${file(../../serverless.common.yml):provider.region}
+  environment:
+    ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
+    NODE_ENV: ${env:NODE_ENV}
+    PRODUCTPLUS_PRD_BUCKET: ${file(../../config.${self:provider.stage}.json):PRODUCTPLUS_PRD_BUCKET}
+    PRODUCTPLUS_SUBMISSIONS_TABLE: biztechPPSubmissions${self:provider.environment.ENVIRONMENT}
+    PRODUCTPLUS_UPLOADS_TABLE: biztechPPUploads${self:provider.environment.ENVIRONMENT}
+    # Existing tables: id is the team code in Teams and verified email in Registrations.
+    # Both use eventID;year as the sort key. The team workflow must maintain team_code.
+    PRODUCTPLUS_TEAMS_TABLE: biztechTeams${self:provider.environment.ENVIRONMENT}
+    PRODUCTPLUS_REGISTRATIONS_TABLE: biztechRegistrations${self:provider.environment.ENVIRONMENT}
+    PRODUCTPLUS_EVENT_KEY: "productplus;2026"
+    PRODUCTPLUS_MAX_PRD_BYTES: "5000000"
+    PRODUCTPLUS_CLEANUP_FUNCTION: ${self:service}-${self:provider.stage}-productplusCleanup
+  apiGateway:
+    restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
+    restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
+  iamRoleStatements:
+    # HEAD needs ListBucket to report a missing PDF as 404 rather than 403.
+    - Effect: Allow
+      Action: s3:ListBucket
+      Resource: "arn:aws:s3:::${self:provider.environment.PRODUCTPLUS_PRD_BUCKET}"
+    # Upload, validate, view, and clean up PRDs in this stage's existing bucket.
+    - Effect: Allow
+      Action:
+        - s3:PutObject
+        - s3:GetObject
+        - s3:DeleteObject
+      Resource:
+        - "arn:aws:s3:::${self:provider.environment.PRODUCTPLUS_PRD_BUCKET}/productplus/*"
+    # Submission/config writes and upload state changes, including transactions.
+    - Effect: Allow
+      Action:
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+        - dynamodb:ConditionCheckItem
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/${self:provider.environment.PRODUCTPLUS_SUBMISSIONS_TABLE}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/${self:provider.environment.PRODUCTPLUS_UPLOADS_TABLE}"
+    # Resolve membership and check it again within the submission transaction.
+    - Effect: Allow
+      Action:
+        - dynamodb:GetItem
+        - dynamodb:ConditionCheckItem
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/${self:provider.environment.PRODUCTPLUS_TEAMS_TABLE}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/${self:provider.environment.PRODUCTPLUS_REGISTRATIONS_TABLE}"
+    # Strong, paginated reads for deleted-team cleanup.
+    - Effect: Allow
+      Action:
+        - dynamodb:Scan
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/${self:provider.environment.PRODUCTPLUS_UPLOADS_TABLE}"
+    - Effect: Allow
+      Action: lambda:InvokeFunction
+      Resource: "arn:aws:lambda:us-west-2:432714361962:function:${self:provider.environment.PRODUCTPLUS_CLEANUP_FUNCTION}"
+
+custom: ${file(../../serverless.common.yml):custom}
+
+functions:
+  productplusCleanup:
+    handler: handler.cleanup
+    timeout: 60
+    maximumRetryAttempts: 2
+    maximumEventAge: 21600
+  productplusGetSubmission:
+    handler: handler.getSubmission
+    events:
+      - http:
+          path: productplus/submissions
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  productplusCreateUpload:
+    handler: handler.createUpload
+    events:
+      - http:
+          path: productplus/submissions/upload
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  productplusPutSubmission:
+    handler: handler.putSubmission
+    timeout: 30
+    events:
+      - http:
+          path: productplus/submissions
+          method: put
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  productplusGetConfig:
+    handler: handler.getConfig
+    events:
+      - http:
+          path: productplus/admin/config
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  productplusPutConfig:
+    handler: handler.putConfig
+    events:
+      - http:
+          path: productplus/admin/config
+          method: put
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+# Apply CORS and temporary-file Lifecycle to the existing manually owned bucket.
+resources:
+  Conditions:
+    ProductPlusIsProduction:
+      Fn::Equals: ["${self:provider.stage}", "prod"]
+  Resources:
+    ProductPlusCorsLogGroup:
+      Type: AWS::Logs::LogGroup
+      Properties:
+        LogGroupName: /aws/lambda/${self:service}-${self:provider.stage}-prd-cors
+        RetentionInDays: 14
+    ProductPlusCorsRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: lambda.amazonaws.com
+              Action: sts:AssumeRole
+        Policies:
+          - PolicyName: configure-existing-prd-bucket-cors
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - s3:PutBucketCORS
+                    - s3:GetLifecycleConfiguration
+                    - s3:PutLifecycleConfiguration
+                  Resource: "arn:aws:s3:::${self:provider.environment.PRODUCTPLUS_PRD_BUCKET}"
+                - Effect: Allow
+                  Action:
+                    - logs:CreateLogStream
+                    - logs:PutLogEvents
+                  Resource:
+                    Fn::GetAtt: [ProductPlusCorsLogGroup, Arn]
+    ProductPlusCorsFunction:
+      Type: AWS::Lambda::Function
+      DependsOn: ProductPlusCorsLogGroup
+      Properties:
+        FunctionName: ${self:service}-${self:provider.stage}-prd-cors
+        Description: Apply CORS and temporary PDF expiration to the existing bucket.
+        Runtime: ${self:provider.runtime}
+        Handler: index.handler
+        Timeout: 60
+        Role:
+          Fn::GetAtt: [ProductPlusCorsRole, Arn]
+        Code:
+          ZipFile: |
+            const { S3Client, PutBucketCorsCommand, GetBucketLifecycleConfigurationCommand,
+              PutBucketLifecycleConfigurationCommand } = require("@aws-sdk/client-s3");
+            const s3 = new S3Client({ maxAttempts: 2 });
+
+            exports.handler = async (event) => {
+              let status = "SUCCESS";
+              let reason = "Bucket configuration applied.";
+              try {
+                if (event.RequestType === "Create" || event.RequestType === "Update") {
+                  await s3.send(new PutBucketCorsCommand({
+                    Bucket: event.ResourceProperties.BucketName,
+                    CORSConfiguration: { CORSRules: event.ResourceProperties.CorsRules }
+                  }), { abortSignal: AbortSignal.timeout(20000) });
+                  let existing = [];
+                  let transitionMinimum;
+                  try {
+                    const result = await s3.send(new GetBucketLifecycleConfigurationCommand({
+                      Bucket: event.ResourceProperties.BucketName
+                    }), { abortSignal: AbortSignal.timeout(10000) });
+                    existing = result.Rules || [];
+                    transitionMinimum = result.TransitionDefaultMinimumObjectSize;
+                  } catch (error) {
+                    if (error.name !== "NoSuchLifecycleConfiguration") throw error;
+                  }
+                  const ownedRules = event.ResourceProperties.LifecycleRules;
+                  const ownedIds = new Set(ownedRules.map(rule => rule.ID));
+                  await s3.send(new PutBucketLifecycleConfigurationCommand({
+                    Bucket: event.ResourceProperties.BucketName,
+                    TransitionDefaultMinimumObjectSize: transitionMinimum,
+                    LifecycleConfiguration: {
+                      Rules: [...existing.filter(rule => !ownedIds.has(rule.ID)), ...ownedRules]
+                    }
+                  }), { abortSignal: AbortSignal.timeout(10000) });
+                } else if (event.RequestType === "Delete") {
+                  // Retain the external bucket, files, CORS, and Lifecycle rules.
+                  reason = "Existing bucket configuration retained.";
+                } else {
+                  throw new Error("Unsupported request type.");
+                }
+              } catch (error) {
+                status = "FAILED";
+                reason = String(error.message || error).slice(0, 1000);
+                console.error("Bucket configuration setup failed:", reason);
+              }
+              const body = JSON.stringify({
+                Status: status,
+                Reason: reason,
+                PhysicalResourceId: event.PhysicalResourceId ||
+                  "bucket-cors:" + event.ResourceProperties.BucketName,
+                StackId: event.StackId,
+                RequestId: event.RequestId,
+                LogicalResourceId: event.LogicalResourceId
+              });
+              // CloudFormation needs a response even when the S3 operation fails.
+              for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                  const response = await fetch(event.ResponseURL, {
+                    method: "PUT",
+                    headers: { "Content-Type": "" },
+                    body,
+                    signal: AbortSignal.timeout(5000)
+                  });
+                  if (!response.ok) throw new Error("CloudFormation response rejected.");
+                  return;
+                } catch (error) {
+                  if (attempt === 2) throw error;
+                }
+              }
+            };
+    ProductPlusBucketCors:
+      Type: Custom::ProductPlusBucketCors
+      Properties:
+        ServiceToken:
+          Fn::GetAtt: [ProductPlusCorsFunction, Arn]
+        ServiceTimeout: 120
+        BucketName: ${self:provider.environment.PRODUCTPLUS_PRD_BUCKET}
+        LifecycleRules:
+          - ID: productplus-temp-expiration
+            Status: Enabled
+            Filter:
+              Prefix: productplus/temp/
+            Expiration:
+              Days: 1
+        CorsRules:
+          - AllowedOrigins:
+              Fn::If:
+                - ProductPlusIsProduction
+                - ["https://app.ubcbiztech.com"]
+                - ["http://localhost:3000", "https://dev.app.ubcbiztech.com"]
+            AllowedMethods: [PUT, GET, HEAD]
+            AllowedHeaders: [Content-Type, If-None-Match, Range, "x-amz-*"]
+            ExposeHeaders: [ETag]
+            MaxAgeSeconds: 300

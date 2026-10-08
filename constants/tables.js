@@ -28,6 +28,9 @@ export const QR_SCANS_RECORD = "biztechQRScans";
 export const INVESTMENTS_TABLE = "biztechInvestments";
 export const PROFILES_TABLE = "biztechProfiles";
 export const QUIZZES_TABLE = "biztechQuizzes";
+export const SUBMISSIONS_TABLE = "biztechPPSubmissions";
+export const UPLOADS_TABLE = "biztechPPUploads";
+
 
 export const IMMUTABLE_USER_PROPS = ["admin", "isMember", "onboardingYear", "profileID", "paid", "id", "email"]; // make sure you check all calls to /user's patch in the frontend if you add to this list
 
