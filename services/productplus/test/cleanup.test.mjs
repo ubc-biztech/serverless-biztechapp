@@ -9,7 +9,7 @@ beforeEach(() => app.reset());
 after(() => app.restore());
 const row = upload => app.get(app.table("UPLOADS"), { prd_path: upload.prd_path });
 const retire = upload => app.cleanup(app.task("retire_upload", { prd_path: upload.prd_path }));
-const removeTeam = () => app.delete(app.table("TEAMS"), { event_key: "productplus;2026", team_code: app.teamCode });
+const removeTeam = () => app.delete(app.table("TEAMS"), { id: app.teamCode, "eventID;year": "productplus;2026" });
 const teamCleanup = () => app.cleanup(app.task("team_deleted", { team_code: app.teamCode }));
 async function replaced() {
   const old = app.upload(1), next = app.upload(2);
@@ -113,8 +113,8 @@ test("existing or recreated teams prevent deletion", async () => {
   await assert.rejects(teamCleanup());
   removeTeam();
   app.beforeTransaction = () => app.put(app.table("TEAMS"), {
-    event_key: "productplus;2026", team_code: app.teamCode, member_ids: new Set([app.email]),
-    team_name: "Example Team", leader_user_id: app.email
+    "eventID;year": "productplus;2026", id: app.teamCode, memberIDs: [app.email],
+    teamName: "Example Team"
   });
   await assert.rejects(teamCleanup());
   assert.ok(app.submission());
@@ -140,11 +140,14 @@ test("the same team code in another event keeps its submission and files", async
   const other = app.upload(2, { event_key: "other;2026" });
   const otherSubmission = { ...app.submission(), event_key: "other;2026", prd_path: other.prd_path };
   app.put(app.table("SUBMISSIONS"), otherSubmission);
+  const otherTeam = { id: app.teamCode, "eventID;year": "other;2026", memberIDs: [app.email] };
+  app.put(app.table("TEAMS"), otherTeam);
   removeTeam();
   assert.equal((await teamCleanup()).cleaned, 1);
   assert.deepEqual(app.get(app.table("SUBMISSIONS"), { event_key: "other;2026", team_code: app.teamCode }), otherSubmission);
   assert.equal(app.objects.has(other.prd_path), true);
   assert.equal(row(other).status, "pending");
+  assert.deepEqual(app.get(app.table("TEAMS"), { id: app.teamCode, "eventID;year": "other;2026" }), otherTeam);
 });
 
 test("strong scan paginates through filtered empty pages and ignores other teams", async () => {
@@ -199,7 +202,7 @@ test("team cleanup retains ambiguous promotions and succeeds after explicit reco
 });
 
 test("PROD cleanup uses only the injected PROD tables and bucket", async () => {
-  for (const kind of ["SUBMISSIONS", "UPLOADS", "TEAMS", "MEMBERSHIPS"]) process.env[`PRODUCTPLUS_${kind}_TABLE`] += "PROD";
+  for (const kind of ["SUBMISSIONS", "UPLOADS", "TEAMS", "REGISTRATIONS"]) process.env[`PRODUCTPLUS_${kind}_TABLE`] += "PROD";
   process.env.PRODUCTPLUS_PRD_BUCKET = "biztech-pp-prd-prod";
   const upload = app.upload();
   assert.equal((await teamCleanup()).cleaned, 1);
@@ -219,9 +222,9 @@ test("team cleanup removes the submission before a file-listing failure", async 
   assert.equal(row(upload).status, "referenced");
 });
 
-test("cleanup rejects unresolved table-name placeholders before AWS access", async () => {
-  process.env.PRODUCTPLUS_TEAMS_TABLE = "TODO_NEW_TEAMS_TABLEPROD";
-  await assert.rejects(teamCleanup(), /table names must be configured/);
+test("cleanup rejects missing shared table settings before AWS access", async () => {
+  delete process.env.PRODUCTPLUS_TEAMS_TABLE;
+  await assert.rejects(teamCleanup(), /storage settings are required/);
   assert.equal(app.database.calls().length, 0);
   assert.equal(app.s3.calls().length, 0);
 });

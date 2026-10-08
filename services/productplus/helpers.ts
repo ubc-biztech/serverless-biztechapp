@@ -25,7 +25,7 @@ import type {
   SubmissionRecord,
   UploadRecord,
   TeamRecord,
-  UserMembershipRecord,
+  RegistrationRecord,
   GetSubmissionResponse,
   PutSubmissionBody,
   UploadSubmissionResponse,
@@ -166,7 +166,7 @@ function storageSettings() {
   const eventKey = process.env.PRODUCTPLUS_EVENT_KEY;
   const submissionsTable = process.env.PRODUCTPLUS_SUBMISSIONS_TABLE;
   const teamsTable = process.env.PRODUCTPLUS_TEAMS_TABLE;
-  const membershipsTable = process.env.PRODUCTPLUS_MEMBERSHIPS_TABLE;
+  const registrationsTable = process.env.PRODUCTPLUS_REGISTRATIONS_TABLE;
   const uploadsTable = process.env.PRODUCTPLUS_UPLOADS_TABLE;
   const bucket = process.env.PRODUCTPLUS_PRD_BUCKET;
 
@@ -174,25 +174,18 @@ function storageSettings() {
     !eventKey ||
     !submissionsTable ||
     !teamsTable ||
-    !membershipsTable ||
+    !registrationsTable ||
     !uploadsTable ||
     !bucket
   ) {
     throw new Error("Product Plus storage settings are required.");
   }
 
-  // Table names are the remaining deployment TODO; do not call AWS with placeholders.
-  if (
-    [teamsTable, membershipsTable].some((name) => name.startsWith("TODO_NEW_"))
-  ) {
-    throw new Error("Product Plus team table names must be configured.");
-  }
-
   return {
     eventKey,
     submissionsTable,
     teamsTable,
-    membershipsTable,
+    registrationsTable,
     uploadsTable,
     bucket
   };
@@ -201,22 +194,26 @@ function storageSettings() {
 type StorageSettings = ReturnType<typeof storageSettings>;
 type TransactionItems = NonNullable<TransactWriteCommandInput["TransactItems"]>;
 
-/** Resolve the caller's team for this event and verify the team's member set. */
+/** Resolve the caller's team for this event and verify the team's member list. */
 // TODO(team workflow): reuse its membership helper when a compatible version merges.
 async function currentTeam(email: string, settings: StorageSettings) {
-  // Membership gives the user's team without accepting a team code from the browser.
-  const membershipKey = { event_key: settings.eventKey, user_id: email };
-  const membership = (await db.getOneCustom({
-    TableName: settings.membershipsTable,
-    Key: membershipKey,
+  // The registration gives the team code without trusting a code from the browser.
+  const registrationKey = { id: email, "eventID;year": settings.eventKey };
+  const registration = (await db.getOneCustom({
+    TableName: settings.registrationsTable,
+    Key: registrationKey,
     ConsistentRead: true
-  })) as UserMembershipRecord | null;
+  })) as RegistrationRecord | null;
 
-  if (!membership) {
+  if (!registration) {
     throw new ProductPlusError(403, "Current team membership is required.");
   }
 
-  const teamCode = membership.team_code;
+  const teamCode = registration.team_code;
+
+  if (teamCode === undefined || teamCode === "") {
+    throw new ProductPlusError(403, "Current team membership is required.");
+  }
 
   if (typeof teamCode !== "string" || !/^\d{6}$/.test(teamCode)) {
     throw new ProductPlusError(
@@ -225,24 +222,24 @@ async function currentTeam(email: string, settings: StorageSettings) {
     );
   }
 
-  // A stale membership row cannot authorize someone removed from the team's set.
-  const teamKey = { event_key: settings.eventKey, team_code: teamCode };
+  // A stale registration cannot authorize someone removed from the team's list.
+  const teamKey = { id: teamCode, "eventID;year": settings.eventKey };
   const team = (await db.getOneCustom({
     TableName: settings.teamsTable,
     Key: teamKey,
     ConsistentRead: true
   })) as TeamRecord | null;
 
-  if (!(team?.member_ids instanceof Set) || !team.member_ids.has(email)) {
+  if (!Array.isArray(team?.memberIDs) || !team.memberIDs.includes(email)) {
     throw new ProductPlusError(403, "Current team membership is required.");
   }
 
-  return { teamCode, membershipKey, teamKey };
+  return { teamCode, registrationKey, teamKey };
 }
 
 type CurrentTeam = Awaited<ReturnType<typeof currentTeam>>;
 
-/** Recheck both membership records inside a write, so a concurrent removal blocks it. */
+/** Recheck the registration and team inside a write, so a concurrent removal blocks it. */
 function membershipChecks(
   email: string,
   team: CurrentTeam,
@@ -251,8 +248,8 @@ function membershipChecks(
   return [
     {
       ConditionCheck: {
-        TableName: settings.membershipsTable,
-        Key: team.membershipKey,
+        TableName: settings.registrationsTable,
+        Key: team.registrationKey,
         ConditionExpression: "#code = :code",
         ExpressionAttributeNames: { "#code": "team_code" },
         ExpressionAttributeValues: { ":code": team.teamCode }
@@ -263,7 +260,7 @@ function membershipChecks(
         TableName: settings.teamsTable,
         Key: team.teamKey,
         ConditionExpression: "contains(#members, :email)",
-        ExpressionAttributeNames: { "#members": "member_ids" },
+        ExpressionAttributeNames: { "#members": "memberIDs" },
         ExpressionAttributeValues: { ":email": email }
       }
     }
@@ -1210,8 +1207,8 @@ function absentTeam(
   return {
     ConditionCheck: {
       TableName: settings.teamsTable,
-      Key: { event_key: settings.eventKey, team_code: teamCode },
-      ConditionExpression: "attribute_not_exists(team_code)"
+      Key: { id: teamCode, "eventID;year": settings.eventKey },
+      ConditionExpression: "attribute_not_exists(id)"
     }
   };
 }
@@ -1411,7 +1408,7 @@ export async function cleanupProductPlus(task: CleanupTask) {
       // The caller's task is not proof of deletion: verify absence before removing data.
       const team = await db.getOneCustom({
         TableName: settings.teamsTable,
-        Key: { event_key: settings.eventKey, team_code: teamCode },
+        Key: { id: teamCode, "eventID;year": settings.eventKey },
         ConsistentRead: true
       });
 
