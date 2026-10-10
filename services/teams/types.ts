@@ -47,6 +47,11 @@ export interface CreateEventTeamBody {
   team_name?: unknown;
 }
 
+/** Body for joinEventTeam. */
+export interface JoinEventTeamBody {
+  team_code?: unknown;
+}
+
 export interface ScoreMetrics {
   metric1: number;
   metric2: number;

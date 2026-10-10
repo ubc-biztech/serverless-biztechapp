@@ -747,6 +747,28 @@ export const createTeamWithLeader = (team: EventTeamRecord): Promise<void> =>
     },
   ]);
 
+/** Adds `userID` to `team` and claims their membership together. */
+export const addTeamMember = (
+  team: EventTeamRecord,
+  userID: string,
+): Promise<void> =>
+  db.atomic([
+    {
+      table: USER_REGISTRATIONS_TABLE,
+      key: { id: userID, "eventID;year": team["eventID;year"] },
+      update: "SET teamID = :teamCode",
+      condition: "attribute_exists(id) AND attribute_not_exists(teamID)",
+      values: { ":teamCode": team.id },
+    },
+    {
+      table: TEAMS_TABLE,
+      key: { id: team.id, "eventID;year": team["eventID;year"] },
+      update: "ADD member_ids :joined",
+      condition: "attribute_exists(id)",
+      values: { ":joined": new Set([userID]) },
+    },
+  ]);
+
 export const normalizeScores = (
   scores: JudgeScore[],
   scoreAvg: ScoreAverage,
