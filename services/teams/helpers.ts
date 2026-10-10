@@ -724,6 +724,27 @@ export const createTeamWithLeader = async (team: EventTeamRecord): Promise<void>
   );
 };
 
+/** Adds `userID` to `team` and claims their membership together. */
+export const addTeamMember = async (
+  team: EventTeamRecord,
+  userID: string,
+): Promise<void> => {
+  await db.txn(
+    db.build
+      .update(
+        USER_REGISTRATIONS_TABLE,
+        { id: userID, "eventID;year": team["eventID;year"] },
+        { teamID: team.id },
+      )
+      .if("id").exists()
+      .if("teamID").notExists(),
+    db.build
+      .update(TEAMS_TABLE, { id: team.id, "eventID;year": team["eventID;year"] })
+      .addToSet("member_ids", [userID])
+      .if("id").exists(),
+  );
+};
+
 export const normalizeScores = (
   scores: JudgeScore[],
   scoreAvg: ScoreAverage,

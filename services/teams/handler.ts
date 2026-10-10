@@ -9,7 +9,8 @@ import teamHelpers, {
   getEventTeam,
   retryOnTeamConflict,
   removeMemberAsLeader,
-  createTeamWithLeader
+  createTeamWithLeader,
+  addTeamMember
 } from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import {
@@ -32,6 +33,7 @@ import {
   CreateJudgeSubmissionsBody,
   EventTeamRecord,
   FeedbackRecord,
+  JoinEventTeamBody,
   JoinTeamBody,
   JudgeRegistrationRecord,
   JudgeScore,
@@ -422,6 +424,71 @@ export const createEventTeam = protect(Access.USER, async (event) => {
 
     return helpers.createResponse(500, {
       message: "Failed to create team",
+      error: errorMessage(error)
+    });
+  }
+});
+
+export const joinEventTeam = protect(Access.USER, async (event) => {
+  /*
+    Joins the team holding this 6-digit code within the event.
+
+    Path: eventID, year
+    Body: team_code
+   */
+  try {
+    const { eventID, year: yearParam } = event.pathParameters || {};
+    if (!eventID || !yearParam) {
+      return helpers.missingPathParamResponse("team", "eventID or year");
+    }
+
+    const year = Number(yearParam);
+    if (!Number.isInteger(year)) {
+      return helpers.inputError("Year path parameter must be a number", yearParam);
+    }
+
+    const data = parseBody<JoinEventTeamBody>(event.body);
+    const teamCode = typeof data?.team_code === "string" ? data.team_code.trim() : "";
+    if (!/^\d{6}$/.test(teamCode)) {
+      return helpers.inputError("team_code must be 6 digits", event.body);
+    }
+
+    if (!(await db.getOne(eventID, EVENTS_TABLE, { year }))) {
+      return helpers.createResponse(404, { message: "Event not found" });
+    }
+
+    const eventKey = `${eventID};${year}`;
+    const userID = event.auth!.email;
+
+    return await retryOnTeamConflict(async () => {
+      const [ineligible, team] = await Promise.all([
+        requireTeamEligibility(userID, eventKey),
+        getEventTeam(teamCode, eventKey)
+      ]);
+
+      if (ineligible) return ineligible;
+
+      if (!team) {
+        return helpers.createResponse(404, { message: "Team not found" });
+      }
+
+      await addTeamMember(team, userID);
+
+      // Built locally, not re-read: getOne is eventually consistent, so a read this
+      // soon after the write can come back without the caller in it
+      return helpers.createResponse(
+        200,
+        await toTeamResponse({
+          ...team,
+          member_ids: new Set([...team.member_ids, userID])
+        })
+      );
+    });
+  } catch (error) {
+    console.error("Error joining team:", error);
+
+    return helpers.createResponse(500, {
+      message: "Failed to join team",
       error: errorMessage(error)
     });
   }
