@@ -142,6 +142,18 @@ export interface DynamoErrorResponse {
   body: string;
 }
 
+/** One write in `db.atomic`: an update, delete, or put, optionally guarded by a condition. */
+export type AtomicWrite = {
+  table: string;
+  condition?: string;
+  values?: Record<string, unknown>;
+  names?: Record<string, string>;
+} & (
+  | { key: Record<string, unknown>; update: string }
+  | { key: Record<string, unknown>; delete: true }
+  | { item: Record<string, unknown> }
+);
+
 export interface DB {
   build: typeof import("./db/build.js").build;
   txn: typeof import("./db/txn.js").txn;
@@ -183,6 +195,8 @@ export interface DB {
     createNew?: boolean,
   ): Promise<unknown>;
   writeMultiple(transactItems: Record<string, unknown>[]): Promise<unknown>;
+  atomic(writes: AtomicWrite[]): Promise<void>;
+  isConflict(err: unknown): boolean;
   query(
     table: string,
     indexName: string | null,
