@@ -1,11 +1,13 @@
 import teamHelpers, {
   scoreObjectAverage,
   normalizeScores,
-  scoreObjectAverageWeighted
+  scoreObjectAverageWeighted,
+  toTeamResponse
 } from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import {
   TEAMS_TABLE,
+  EVENTS_TABLE,
   JUDGING_TABLE,
   FEEDBACK_TABLE,
   USER_REGISTRATIONS_TABLE
@@ -20,8 +22,8 @@ import {
   ChangeTeamNameBody,
   CheckQRScannedBody,
   CreateJudgeSubmissionsBody,
+  EventTeamRecord,
   FeedbackRecord,
-  GetTeamFromUserIDBody,
   JoinTeamBody,
   JudgeRegistrationRecord,
   JudgeScore,
@@ -231,49 +233,65 @@ export const makeTeam = protect(Access.USER, async (event) => {
   }
 });
 
-export const getTeamFromUserID: LambdaHandler = async (event) => {
+export const getTeamFromUserID = protect(Access.USER, async (event) => {
   /*
-    Returns the team object of the team that the user is on from the user's ID.
+    Returns the user's team teamcode for the event, or null if they are not on one.
 
-    Requires: user_id, eventID, year
+    Requires: eventID, year, user_id
    */
   try {
-    const data = JSON.parse(event.body as string) as GetTeamFromUserIDBody;
-
-    helpers.checkPayloadProps(data, {
-      user_id: {
-        required: true,
-        type: "string"
-      },
-      eventID: {
-        required: true,
-        type: "string"
-      },
-      year: {
-        required: true,
-        type: "number"
-      }
-    });
-
-    const res = await teamHelpers._getTeamFromUserRegistration(data.user_id, data.eventID, data.year);
-
-    if (res) {
-      return helpers.createResponse(200, {
-        message: "Successfully retrieved team.",
-        response: res
-      });
+    const { eventID, year: yearParam, user_id: userIDParam } = event.pathParameters || {};
+    if (!eventID || !yearParam || !userIDParam) {
+      return helpers.missingPathParamResponse("team", "eventID, year, or user_id");
     }
 
-    return helpers.createResponse(404, { message: "Team not found" });
+    const year = Number(yearParam);
+    if (!Number.isInteger(year)) {
+      return helpers.inputError("Year path parameter must be a number", yearParam);
+    }
+
+    if (!event.auth?.isAdmin && userIDParam !== event.auth!.email) {
+      return helpers.createResponse(403, { message: "You can only look up your own team" });
+    }
+
+    if (!(await db.getOne(eventID, EVENTS_TABLE, { year }))) {
+      return helpers.createResponse(404, { message: "Event not found" });
+    }
+
+    const eventKey = `${eventID};${year}`;
+
+    const registration = (
+      await db.getOne(
+        userIDParam,
+        USER_REGISTRATIONS_TABLE,
+        { "eventID;year": eventKey }
+      )
+    ) as { teamID?: string } | null;
+
+    const team = registration?.teamID
+      ? (
+        await db.getOne(
+          registration.teamID,
+          TEAMS_TABLE,
+          { "eventID;year": eventKey }
+        )
+      ) as EventTeamRecord | null
+      : null;
+
+    if (!team?.member_ids?.has(userIDParam)) {
+      return helpers.createResponse(200, null);
+    }
+
+    return helpers.createResponse(200, await toTeamResponse(team));
   } catch (error) {
     console.error("Error retrieving team:", error);
 
-    return helpers.createResponse(403, {
+    return helpers.createResponse(500, {
       message: "Could not retrieve team.",
       error: errorMessage(error)
     });
   }
-};
+});
 
 export const get = protect(Access.USER, async (event) => {
   // Admins see raw memberIDs; everyone else gets them stripped.
