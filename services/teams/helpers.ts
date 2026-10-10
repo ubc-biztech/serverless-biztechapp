@@ -8,7 +8,8 @@ import {
 } from "../../constants/tables";
 import helpers from "../../lib/handlerHelpers.js";
 import db from "../../lib/db.js";
-import type { APIGatewayResponse, AtomicWrite } from "../../lib/types";
+import type { APIGatewayResponse } from "../../lib/types";
+import type { WriteBuilder } from "../../lib/db/build/WriteBuilder.js";
 import type {
   EventTeamRecord,
   JudgeScore,
@@ -698,137 +699,111 @@ export const retryOnTeamConflict = async (
 };
 
 /** Removes `memberID`'s membership and their entry in `member_ids` together. */
-export const removeMemberAsLeader = (
+export const removeMemberAsLeader = async (
   team: EventTeamRecord,
   leaderID: string,
   memberID: string,
 ): Promise<void> => {
   const eventKey = team["eventID;year"];
 
-  return db.atomic([
-    {
-      table: USER_REGISTRATIONS_TABLE,
-      key: { id: memberID, "eventID;year": eventKey },
-      update: "REMOVE teamID",
-      condition: "teamID = :teamCode",
-      values: { ":teamCode": team.id },
-    },
-    {
-      table: TEAMS_TABLE,
-      key: { id: team.id, "eventID;year": eventKey },
-      // The leader stays on the team, so member_ids is never emptied here
-      update: "DELETE member_ids :removed",
-      condition:
-        "leader_user_id = :leaderID AND contains(member_ids, :leaderID) AND contains(member_ids, :memberID)",
-      values: {
-        ":removed": new Set([memberID]),
-        ":leaderID": leaderID,
-        ":memberID": memberID,
-      },
-    },
-  ]);
+  await db.txn(
+    db.build
+      .update(USER_REGISTRATIONS_TABLE, { id: memberID, "eventID;year": eventKey })
+      .remove("teamID")
+      .if("teamID").equals(team.id),
+    // The leader stays on the team, so member_ids is never emptied here
+    db.build
+      .update(TEAMS_TABLE, { id: team.id, "eventID;year": eventKey })
+      .removeFromSet("member_ids", [memberID])
+      .if("leader_user_id").equals(leaderID)
+      .if("member_ids").contains(leaderID)
+      .if("member_ids").contains(memberID),
+  );
 };
 
 /** Writes the team and its leader's membership together. */
-export const createTeamWithLeader = (team: EventTeamRecord): Promise<void> =>
-  db.atomic([
-    {
-      table: TEAMS_TABLE,
-      item: team,
-      // Rejects a code already taken within this event
-      condition: "attribute_not_exists(id)",
-    },
-    {
-      table: USER_REGISTRATIONS_TABLE,
-      key: { id: team.leader_user_id, "eventID;year": team["eventID;year"] },
-      update: "SET teamID = :teamCode",
-      // attribute_exists stops this from upserting a bare registration
-      condition: "attribute_exists(id) AND attribute_not_exists(teamID)",
-      values: { ":teamCode": team.id },
-    },
-  ]);
+export const createTeamWithLeader = async (team: EventTeamRecord): Promise<void> => {
+  await db.txn(
+    // Rejects a code already taken within this event
+    db.build.put(TEAMS_TABLE, { ...team }).if("id").notExists(),
+    // attribute_exists stops this from upserting a bare registration
+    db.build
+      .update(
+        USER_REGISTRATIONS_TABLE,
+        { id: team.leader_user_id, "eventID;year": team["eventID;year"] },
+        { teamID: team.id },
+      )
+      .if("id").exists()
+      .if("teamID").notExists(),
+  );
+};
 
 /** Adds `userID` to `team` and claims their membership together. */
-export const addTeamMember = (
+export const addTeamMember = async (
   team: EventTeamRecord,
   userID: string,
-): Promise<void> =>
-  db.atomic([
-    {
-      table: USER_REGISTRATIONS_TABLE,
-      key: { id: userID, "eventID;year": team["eventID;year"] },
-      update: "SET teamID = :teamCode",
-      condition: "attribute_exists(id) AND attribute_not_exists(teamID)",
-      values: { ":teamCode": team.id },
-    },
-    {
-      table: TEAMS_TABLE,
-      key: { id: team.id, "eventID;year": team["eventID;year"] },
-      update: "ADD member_ids :joined",
-      condition: "attribute_exists(id)",
-      values: { ":joined": new Set([userID]) },
-    },
-  ]);
+): Promise<void> => {
+  await db.txn(
+    db.build
+      .update(
+        USER_REGISTRATIONS_TABLE,
+        { id: userID, "eventID;year": team["eventID;year"] },
+        { teamID: team.id },
+      )
+      .if("id").exists()
+      .if("teamID").notExists(),
+    db.build
+      .update(TEAMS_TABLE, { id: team.id, "eventID;year": team["eventID;year"] })
+      .addToSet("member_ids", [userID])
+      .if("id").exists(),
+  );
+};
 
 /**
  * Drops `userID`'s own membership. The last member out deletes the team, since an
  * empty String Set cannot be stored; a departing leader hands off to `remaining`.
  */
-export const removeSelfFromTeam = (
+export const removeSelfFromTeam = async (
   team: EventTeamRecord,
   userID: string,
   remaining: string[],
 ): Promise<void> => {
   const eventKey = team["eventID;year"];
-  const teamTarget = { table: TEAMS_TABLE, key: { id: team.id, "eventID;year": eventKey } };
+  const teamKey = { id: team.id, "eventID;year": eventKey };
 
-  let teamWrite: AtomicWrite;
+  let teamWrite: WriteBuilder;
   if (remaining.length === 0) {
-    teamWrite = {
-      ...teamTarget,
-      delete: true,
-      // A concurrent join fails this, and the retry re-routes to a handoff
-      condition: "size(member_ids) = :one AND contains(member_ids, :userID)",
-      values: { ":one": 1, ":userID": userID },
-    };
+    // A concurrent join fails this, and the retry re-routes to a handoff
+    teamWrite = db.build
+      .delete(TEAMS_TABLE, teamKey)
+      .if("member_ids").hasSize(1)
+      .if("member_ids").contains(userID);
   } else if (team.leader_user_id === userID) {
-    teamWrite = {
-      ...teamTarget,
-      update: "SET leader_user_id = :newLeader DELETE member_ids :leaving",
-      // contains(:newLeader) stops the handoff naming someone who just left
-      condition:
-        "leader_user_id = :userID AND contains(member_ids, :userID) AND contains(member_ids, :newLeader)",
-      values: {
-        ":leaving": new Set([userID]),
-        ":newLeader": remaining[randomInt(0, remaining.length)],
-        ":userID": userID,
-      },
-    };
+    const newLeader = remaining[randomInt(0, remaining.length)];
+    // contains(newLeader) stops the handoff naming someone who just left
+    teamWrite = db.build
+      .update(TEAMS_TABLE, teamKey, { leader_user_id: newLeader })
+      .removeFromSet("member_ids", [userID])
+      .if("leader_user_id").equals(userID)
+      .if("member_ids").contains(userID)
+      .if("member_ids").contains(newLeader);
   } else {
-    teamWrite = {
-      ...teamTarget,
-      update: "DELETE member_ids :leaving",
-      // The leader stays on the team, so member_ids is never emptied here
-      condition:
-        "contains(member_ids, :userID) AND contains(member_ids, :leaderID) AND leader_user_id <> :userID",
-      values: {
-        ":leaving": new Set([userID]),
-        ":userID": userID,
-        ":leaderID": team.leader_user_id,
-      },
-    };
+    // The leader stays on the team, so member_ids is never emptied here
+    teamWrite = db.build
+      .update(TEAMS_TABLE, teamKey)
+      .removeFromSet("member_ids", [userID])
+      .if("member_ids").contains(userID)
+      .if("member_ids").contains(team.leader_user_id)
+      .if("leader_user_id").notEquals(userID);
   }
 
-  return db.atomic([
-    {
-      table: USER_REGISTRATIONS_TABLE,
-      key: { id: userID, "eventID;year": eventKey },
-      update: "REMOVE teamID",
-      condition: "teamID = :teamCode",
-      values: { ":teamCode": team.id },
-    },
+  await db.txn(
+    db.build
+      .update(USER_REGISTRATIONS_TABLE, { id: userID, "eventID;year": eventKey })
+      .remove("teamID")
+      .if("teamID").equals(team.id),
     teamWrite,
-  ]);
+  );
 };
 
 export const normalizeScores = (

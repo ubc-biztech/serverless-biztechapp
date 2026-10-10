@@ -12,7 +12,7 @@ export const build = {
   update(
     table: string,
     key: Record<string, unknown>,
-    changes: Record<string, unknown>
+    changes: Record<string, unknown> = {}
   ) {
     return new UpdateBuilder(table, key, changes);
   },

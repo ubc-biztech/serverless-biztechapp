@@ -84,15 +84,24 @@ export abstract class WriteBuilder {
         return `attribute_exists(${name})`;
       case "notExists":
         return `attribute_not_exists(${name})`;
-      case "equals": {
-        if (condition.value === undefined) {
-          throw new Error("Equality conditions must not use undefined");
-        }
-
-        const value = `:c${valueIndex++}`;
-        values[value] = condition.value;
-        return `${name} = ${value}`;
       }
+
+      if (condition.value === undefined) {
+        throw new Error("Condition values must not be undefined");
+      }
+
+      const value = `:c${valueIndex++}`;
+      values[value] = condition.value;
+
+      switch (condition.type) {
+      case "equals":
+        return `${name} = ${value}`;
+      case "notEquals":
+        return `${name} <> ${value}`;
+      case "contains":
+        return `contains(${name}, ${value})`;
+      case "hasSize":
+        return `size(${name}) = ${value}`;
       }
     };
 

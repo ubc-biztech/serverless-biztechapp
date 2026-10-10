@@ -7,7 +7,7 @@
 
 export type Condition =
   | { type: "exists" | "notExists"; attribute: string }
-  | { type: "equals"; attribute: string; value: unknown }
+  | { type: "equals" | "notEquals" | "contains" | "hasSize"; attribute: string; value: unknown }
   | { type: "and" | "or"; conditions: Condition[] };
 
 export class ConditionBuilder<T> {
@@ -38,6 +38,32 @@ export class ConditionBuilder<T> {
       type: "equals",
       attribute: this.field,
       value,
+    });
+  }
+
+  notEquals(value: unknown): T {
+    return this.accept({
+      type: "notEquals",
+      attribute: this.field,
+      value,
+    });
+  }
+
+  /** set membership for a set attribute, substring match for a string attribute */
+  contains(value: unknown): T {
+    return this.accept({
+      type: "contains",
+      attribute: this.field,
+      value,
+    });
+  }
+
+  /** element count for a set/list/map attribute, length for a string attribute */
+  hasSize(size: number): T {
+    return this.accept({
+      type: "hasSize",
+      attribute: this.field,
+      value: size,
     });
   }
 }
