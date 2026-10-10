@@ -39,7 +39,7 @@ import type { CleanupTask, TeamRecord as ProductPlusTeamRecord } from "../produc
     "metadata": object
  */
 
-type RegistrationRecord = {
+export type RegistrationRecord = {
   id: string;
   teamID?: string;
   fname?: string;
@@ -742,6 +742,50 @@ export const toTeamResponse = async (team: EventTeamRecord): Promise<Team> => {
       name: [users.get(user_id)?.fname, users.get(user_id)?.lname].filter(Boolean).join(" ") || "Participant",
     })),
   };
+};
+
+export const getEventRegistration = async (
+  userID: string,
+  eventKey: string,
+): Promise<RegistrationRecord | null> =>
+  (await db.getOne(userID, USER_REGISTRATIONS_TABLE, {
+    "eventID;year": eventKey,
+  })) as RegistrationRecord | null;
+
+export const resolveTeamMembership = async (
+  userID: string,
+  eventKey: string,
+): Promise<string | null> =>
+  (await getEventRegistration(userID, eventKey))?.teamID || null;
+
+export const getEventTeam = async (
+  teamCode: string,
+  eventKey: string,
+): Promise<EventTeamRecord | null> =>
+  (await db.getOne(teamCode, TEAMS_TABLE, {
+    "eventID;year": eventKey,
+  })) as EventTeamRecord | null;
+
+export const removeMemberAsLeader = async (
+  team: EventTeamRecord,
+  leaderID: string,
+  memberID: string,
+): Promise<void> => {
+  const eventKey = team["eventID;year"];
+
+  await db.txn(
+    db.build
+      .update(USER_REGISTRATIONS_TABLE, { id: memberID, "eventID;year": eventKey })
+      .remove("teamID")
+      .if("teamID").equals(team.id),
+    // The leader stays on the team, so member_ids is never emptied here
+    db.build
+      .update(TEAMS_TABLE, { id: team.id, "eventID;year": eventKey })
+      .removeFromSet("member_ids", [memberID])
+      .if("leader_user_id").equals(leaderID)
+      .if("member_ids").contains(leaderID)
+      .if("member_ids").contains(memberID),
+  );
 };
 
 export const normalizeScores = (
