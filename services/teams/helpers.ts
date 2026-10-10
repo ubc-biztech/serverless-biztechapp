@@ -1,3 +1,4 @@
+import { randomInt } from "node:crypto";
 import { v4 as uuidv4 } from "uuid";
 import {
   USER_REGISTRATIONS_TABLE,
@@ -7,7 +8,7 @@ import {
 } from "../../constants/tables";
 import helpers from "../../lib/handlerHelpers.js";
 import db from "../../lib/db.js";
-import type { APIGatewayResponse } from "../../lib/types";
+import type { APIGatewayResponse, AtomicWrite } from "../../lib/types";
 import type {
   EventTeamRecord,
   JudgeScore,
@@ -768,6 +769,67 @@ export const addTeamMember = (
       values: { ":joined": new Set([userID]) },
     },
   ]);
+
+/**
+ * Drops `userID`'s own membership. The last member out deletes the team, since an
+ * empty String Set cannot be stored; a departing leader hands off to `remaining`.
+ */
+export const removeSelfFromTeam = (
+  team: EventTeamRecord,
+  userID: string,
+  remaining: string[],
+): Promise<void> => {
+  const eventKey = team["eventID;year"];
+  const teamTarget = { table: TEAMS_TABLE, key: { id: team.id, "eventID;year": eventKey } };
+
+  let teamWrite: AtomicWrite;
+  if (remaining.length === 0) {
+    teamWrite = {
+      ...teamTarget,
+      delete: true,
+      // A concurrent join fails this, and the retry re-routes to a handoff
+      condition: "size(member_ids) = :one AND contains(member_ids, :userID)",
+      values: { ":one": 1, ":userID": userID },
+    };
+  } else if (team.leader_user_id === userID) {
+    teamWrite = {
+      ...teamTarget,
+      update: "SET leader_user_id = :newLeader DELETE member_ids :leaving",
+      // contains(:newLeader) stops the handoff naming someone who just left
+      condition:
+        "leader_user_id = :userID AND contains(member_ids, :userID) AND contains(member_ids, :newLeader)",
+      values: {
+        ":leaving": new Set([userID]),
+        ":newLeader": remaining[randomInt(0, remaining.length)],
+        ":userID": userID,
+      },
+    };
+  } else {
+    teamWrite = {
+      ...teamTarget,
+      update: "DELETE member_ids :leaving",
+      // The leader stays on the team, so member_ids is never emptied here
+      condition:
+        "contains(member_ids, :userID) AND contains(member_ids, :leaderID) AND leader_user_id <> :userID",
+      values: {
+        ":leaving": new Set([userID]),
+        ":userID": userID,
+        ":leaderID": team.leader_user_id,
+      },
+    };
+  }
+
+  return db.atomic([
+    {
+      table: USER_REGISTRATIONS_TABLE,
+      key: { id: userID, "eventID;year": eventKey },
+      update: "REMOVE teamID",
+      condition: "teamID = :teamCode",
+      values: { ":teamCode": team.id },
+    },
+    teamWrite,
+  ]);
+};
 
 export const normalizeScores = (
   scores: JudgeScore[],

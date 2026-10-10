@@ -10,7 +10,8 @@ import teamHelpers, {
   retryOnTeamConflict,
   removeMemberAsLeader,
   createTeamWithLeader,
-  addTeamMember
+  addTeamMember,
+  removeSelfFromTeam
 } from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import {
@@ -479,6 +480,60 @@ export const joinEventTeam = protect(Access.USER, async (event) => {
 
     return helpers.createResponse(500, {
       message: "Failed to join team",
+      error: errorMessage(error)
+    });
+  }
+});
+
+export const leaveEventTeam = protect(Access.USER, async (event) => {
+  /*
+    Removes the caller from their team. A departing leader hands off to a random
+    remaining member; the last member out takes the team with them.
+
+    Path: eventID, year
+   */
+  try {
+    const { eventID, year: yearParam } = event.pathParameters || {};
+    if (!eventID || !yearParam) {
+      return helpers.missingPathParamResponse("team", "eventID or year");
+    }
+
+    const year = Number(yearParam);
+    if (!Number.isInteger(year)) {
+      return helpers.inputError("Year path parameter must be a number", yearParam);
+    }
+
+    if (!(await db.getOne(eventID, EVENTS_TABLE, { year }))) {
+      return helpers.createResponse(404, { message: "Event not found" });
+    }
+
+    const eventKey = `${eventID};${year}`;
+    const userID = event.auth!.email;
+
+    return await retryOnTeamConflict(async () => {
+      const teamCode = await resolveTeamMembership(userID, eventKey);
+      const team = teamCode ? await getEventTeam(teamCode, eventKey) : null;
+
+      if (!team?.member_ids?.has(userID)) {
+        return helpers.createResponse(404, {
+          message: "You are not on a team for this event"
+        });
+      }
+
+      const remaining = [...team.member_ids].filter((id) => id !== userID);
+
+      await removeSelfFromTeam(team, userID, remaining);
+
+      // TODO(workflow-2): an emptied team leaves its Product Plus submission and PRD
+      // behind. Durable cleanup belongs on a DynamoDB stream or in the submissions
+      // service -- this point is post-commit with no retry behind it.
+      return helpers.createResponse(204);
+    });
+  } catch (error) {
+    console.error("Error leaving team:", error);
+
+    return helpers.createResponse(500, {
+      message: "Failed to leave team",
       error: errorMessage(error)
     });
   }
