@@ -4,8 +4,11 @@ import teamHelpers, {
   scoreObjectAverageWeighted,
   toTeamResponse,
   resolveTeamMembership,
+  requireTeamEligibility,
   getEventTeam,
-  removeMemberAsLeader
+  removeMemberAsLeader,
+  createTeamWithLeader,
+  generateTeamCode
 } from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import {
@@ -24,6 +27,7 @@ import {
   AddQRScanBody,
   ChangeTeamNameBody,
   CheckQRScannedBody,
+  CreateEventTeamBody,
   CreateJudgeSubmissionsBody,
   EventTeamRecord,
   FeedbackRecord,
@@ -344,6 +348,61 @@ export const removeTeamMember = protect(Access.USER, async (event) => {
 
     return helpers.createResponse(500, {
       message: "Failed to remove team member",
+      error: errorMessage(error)
+    });
+  }
+});
+
+export const createEventTeam = protect(Access.USER, async (event) => {
+  /*
+    Creates a team for this event with the caller as its leader.
+
+    Path: eventID, year
+    Body: team_name
+   */
+  try {
+    const { eventID, year: yearParam } = event.pathParameters || {};
+    if (!eventID || !yearParam) {
+      return helpers.missingPathParamResponse("team", "eventID or year");
+    }
+
+    const year = Number(yearParam);
+    if (!Number.isInteger(year)) {
+      return helpers.inputError("Year path parameter must be a number", yearParam);
+    }
+
+    const data = JSON.parse(event.body || "{}") as CreateEventTeamBody;
+    const teamName = typeof data.team_name === "string" ? data.team_name.trim() : "";
+    if (!teamName) {
+      return helpers.inputError("team_name is required", event.body);
+    }
+
+    if (!(await db.getOne(eventID, EVENTS_TABLE, { year }))) {
+      return helpers.createResponse(404, { message: "Event not found" });
+    }
+
+    const eventKey = `${eventID};${year}`;
+    const userID = event.auth!.email;
+
+    const ineligible = await requireTeamEligibility(userID, eventKey);
+    if (ineligible) return ineligible;
+
+    const team: EventTeamRecord = {
+      id: generateTeamCode(),
+      "eventID;year": eventKey,
+      team_name: teamName,
+      leader_user_id: userID,
+      member_ids: new Set([userID])
+    };
+
+    await createTeamWithLeader(team);
+
+    return helpers.createResponse(201, await toTeamResponse(team));
+  } catch (error) {
+    console.error("Error creating team:", error);
+
+    return helpers.createResponse(500, {
+      message: "Failed to create team",
       error: errorMessage(error)
     });
   }
