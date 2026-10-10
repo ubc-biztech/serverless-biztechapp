@@ -1,3 +1,4 @@
+import { randomInt } from "node:crypto";
 import { v4 as uuidv4 } from "uuid";
 import {
   USER_REGISTRATIONS_TABLE,
@@ -8,6 +9,7 @@ import {
 import helpers from "../../lib/handlerHelpers.js";
 import db from "../../lib/db.js";
 import type { APIGatewayResponse } from "../../lib/types";
+import type { WriteBuilder } from "../../lib/db/build/WriteBuilder.js";
 import type {
   EventTeamRecord,
   JudgeScore,
@@ -742,6 +744,53 @@ export const addTeamMember = async (
       .update(TEAMS_TABLE, { id: team.id, "eventID;year": team["eventID;year"] })
       .addToSet("member_ids", [userID])
       .if("id").exists(),
+  );
+};
+
+/**
+ * Drops `userID`'s own membership. The last member out deletes the team, since an
+ * empty String Set cannot be stored; a departing leader hands off to `remaining`.
+ */
+export const removeSelfFromTeam = async (
+  team: EventTeamRecord,
+  userID: string,
+  remaining: string[],
+): Promise<void> => {
+  const eventKey = team["eventID;year"];
+  const teamKey = { id: team.id, "eventID;year": eventKey };
+
+  let teamWrite: WriteBuilder;
+  if (remaining.length === 0) {
+    // A concurrent join fails this, and the retry re-routes to a handoff
+    teamWrite = db.build
+      .delete(TEAMS_TABLE, teamKey)
+      .if("member_ids").hasSize(1)
+      .if("member_ids").contains(userID);
+  } else if (team.leader_user_id === userID) {
+    const newLeader = remaining[randomInt(0, remaining.length)];
+    // contains(newLeader) stops the handoff naming someone who just left
+    teamWrite = db.build
+      .update(TEAMS_TABLE, teamKey, { leader_user_id: newLeader })
+      .removeFromSet("member_ids", [userID])
+      .if("leader_user_id").equals(userID)
+      .if("member_ids").contains(userID)
+      .if("member_ids").contains(newLeader);
+  } else {
+    // The leader stays on the team, so member_ids is never emptied here
+    teamWrite = db.build
+      .update(TEAMS_TABLE, teamKey)
+      .removeFromSet("member_ids", [userID])
+      .if("member_ids").contains(userID)
+      .if("member_ids").contains(team.leader_user_id)
+      .if("leader_user_id").notEquals(userID);
+  }
+
+  await db.txn(
+    db.build
+      .update(USER_REGISTRATIONS_TABLE, { id: userID, "eventID;year": eventKey })
+      .remove("teamID")
+      .if("teamID").equals(team.id),
+    teamWrite,
   );
 };
 
