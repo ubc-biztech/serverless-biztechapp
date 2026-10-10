@@ -1,12 +1,15 @@
+import { randomInt } from "node:crypto";
 import teamHelpers, {
   scoreObjectAverage,
   normalizeScores,
   scoreObjectAverageWeighted,
   toTeamResponse,
   resolveTeamMembership,
+  requireTeamEligibility,
   getEventTeam,
   retryOnTeamConflict,
-  removeMemberAsLeader
+  removeMemberAsLeader,
+  createTeamWithLeader
 } from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import {
@@ -25,6 +28,7 @@ import {
   AddQRScanBody,
   ChangeTeamNameBody,
   CheckQRScannedBody,
+  CreateEventTeamBody,
   CreateJudgeSubmissionsBody,
   EventTeamRecord,
   FeedbackRecord,
@@ -337,6 +341,77 @@ export const removeTeamMember = protect(Access.USER, async (event) => {
 
     return helpers.createResponse(500, {
       message: "Failed to remove team member",
+      error: errorMessage(error)
+    });
+  }
+});
+
+/** A 6-digit team code, kept a string so leading zeros survive. */
+const generateTeamCode = (): string =>
+  String(randomInt(0, 1_000_000)).padStart(6, "0");
+
+/** Parses a JSON request body, or null when it is absent or malformed. */
+const parseBody = <T>(body: string | null | undefined): T | null => {
+  try {
+    return JSON.parse(body || "{}") as T;
+  } catch {
+    return null;
+  }
+};
+
+export const createEventTeam = protect(Access.USER, async (event) => {
+  /*
+    Creates a team for this event with the caller as its leader.
+
+    Path: eventID, year
+    Body: team_name
+   */
+  try {
+    const { eventID, year: yearParam } = event.pathParameters || {};
+    if (!eventID || !yearParam) {
+      return helpers.missingPathParamResponse("team", "eventID or year");
+    }
+
+    const year = Number(yearParam);
+    if (!Number.isInteger(year)) {
+      return helpers.inputError("Year path parameter must be a number", yearParam);
+    }
+
+    const data = parseBody<CreateEventTeamBody>(event.body);
+    const teamName = typeof data?.team_name === "string" ? data.team_name.trim() : "";
+    if (!teamName) {
+      return helpers.inputError("team_name is required", event.body);
+    }
+
+    if (!(await db.getOne(eventID, EVENTS_TABLE, { year }))) {
+      return helpers.createResponse(404, { message: "Event not found" });
+    }
+
+    const eventKey = `${eventID};${year}`;
+    const userID = event.auth!.email;
+
+    return await retryOnTeamConflict(async () => {
+      const ineligible = await requireTeamEligibility(userID, eventKey);
+      if (ineligible) return ineligible;
+
+      // Regenerated per attempt, so a code collision clears itself on retry
+      const team: EventTeamRecord = {
+        id: generateTeamCode(),
+        "eventID;year": eventKey,
+        team_name: teamName,
+        leader_user_id: userID,
+        member_ids: new Set([userID])
+      };
+
+      await createTeamWithLeader(team);
+
+      return helpers.createResponse(201, await toTeamResponse(team));
+    });
+  } catch (error) {
+    console.error("Error creating team:", error);
+
+    return helpers.createResponse(500, {
+      message: "Failed to create team",
       error: errorMessage(error)
     });
   }

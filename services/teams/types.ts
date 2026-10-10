@@ -41,6 +41,12 @@ export interface Team {
   }[];
 }
 
+/** Body for createEventTeam. Event context comes from the path. */
+export interface CreateEventTeamBody {
+  // Unparsed JSON — the handler's typeof guard is what narrows these to strings.
+  team_name?: unknown;
+}
+
 export interface ScoreMetrics {
   metric1: number;
   metric2: number;

@@ -645,6 +645,29 @@ export const resolveTeamMembership = async (
 ): Promise<string | null> =>
   (await getEventRegistration(userID, eventKey))?.teamID || null;
 
+/**
+ * Null when the caller may take a team slot for this event, otherwise the response
+ * saying why not: they never registered, or they already have a team.
+ */
+export const requireTeamEligibility = async (
+  userID: string,
+  eventKey: string,
+): Promise<APIGatewayResponse | null> => {
+  const registration = await getEventRegistration(userID, eventKey);
+
+  if (!registration) {
+    return helpers.createResponse(403, {
+      message: "You must be registered for this event",
+    });
+  }
+  if (registration.teamID) {
+    return helpers.createResponse(409, {
+      message: "You are already on a team for this event",
+    });
+  }
+  return null;
+};
+
 export const getEventTeam = async (
   teamCode: string,
   eventKey: string,
@@ -704,6 +727,25 @@ export const removeMemberAsLeader = (
     },
   ]);
 };
+
+/** Writes the team and its leader's membership together. */
+export const createTeamWithLeader = (team: EventTeamRecord): Promise<void> =>
+  db.atomic([
+    {
+      table: TEAMS_TABLE,
+      item: team,
+      // Rejects a code already taken within this event
+      condition: "attribute_not_exists(id)",
+    },
+    {
+      table: USER_REGISTRATIONS_TABLE,
+      key: { id: team.leader_user_id, "eventID;year": team["eventID;year"] },
+      update: "SET teamID = :teamCode",
+      // attribute_exists stops this from upserting a bare registration
+      condition: "attribute_exists(id) AND attribute_not_exists(teamID)",
+      values: { ":teamCode": team.id },
+    },
+  ]);
 
 export const normalizeScores = (
   scores: JudgeScore[],
