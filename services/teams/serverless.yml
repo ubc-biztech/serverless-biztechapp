@@ -48,6 +48,7 @@ provider:
     - Effect: Allow
       Action:
         - dynamodb:GetItem
+        - dynamodb:BatchGetItem
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechUsers${self:provider.environment.ENVIRONMENT}"
     - Effect: Allow
@@ -127,9 +128,18 @@ functions:
     handler: handler.getTeamFromUserID
     events:
       - http:
-          path: team/getTeamFromUserID
-          method: post
+          path: team/{eventID}/{year}/{user_id}
+          request:
+            parameters:
+              paths:
+                eventID: true
+                year: true
+                user_id: true
+          method: get
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   teamsGetAll:
     handler: handler.get
     events:

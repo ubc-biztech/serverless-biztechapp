@@ -1,17 +1,20 @@
 import { v4 as uuidv4 } from "uuid";
 import {
   USER_REGISTRATIONS_TABLE,
+  USERS_TABLE,
   TEAMS_TABLE,
   JUDGING_TABLE,
 } from "../../constants/tables";
 import helpers from "../../lib/handlerHelpers.js";
 import db from "../../lib/db.js";
 import type {
+  EventTeamRecord,
   JudgeScore,
   JudgeUpdateResult,
   NewTeamRecord,
   NormalizedScore,
   ScoreAverage,
+  Team,
   TeamRecord,
   TeamsHelpers,
 } from "./types";
@@ -600,6 +603,26 @@ const teamHelpers: TeamsHelpers = {
 };
 
 export default teamHelpers;
+
+export const toTeamResponse = async (team: EventTeamRecord): Promise<Team> => {
+  const memberIDs = [...team.member_ids];
+  const usersTable = USERS_TABLE + (process.env.ENVIRONMENT || "");
+  const { Responses } = (await db.batchGet(
+    memberIDs.map((id) => ({ id })),
+    usersTable,
+  )) as unknown as { Responses: Record<string, { id: string; fname?: string; lname?: string }[]> };
+  const users = new Map(Responses[usersTable].map((user) => [user.id, user]));
+
+  return {
+    team_code: team.id,
+    team_name: team.team_name,
+    leader_user_id: team.leader_user_id,
+    members: memberIDs.map((user_id) => ({
+      user_id,
+      name: [users.get(user_id)?.fname, users.get(user_id)?.lname].filter(Boolean).join(" ") || "Participant",
+    })),
+  };
+};
 
 export const normalizeScores = (
   scores: JudgeScore[],
