@@ -242,6 +242,14 @@ export interface TeamsHelpers {
 }
 // ─── Hackathon judging (handlerJudging.ts) ────────────────────────────────
 
+export type JudgingRound = "prelim" | "finals";
+export interface JudgingRubric {
+  name: string;
+  scaleMax: number;
+  scoreMode: "points" | "weighted";
+  criteria: Array<{ id: string; label: string; description?: string; weight: number; maxScore?: number }>;
+}
+
 export interface JudgingDocument {
   settings: {
     eventName: string;
@@ -255,12 +263,8 @@ export interface JudgingDocument {
     lockSubmissions: boolean;
     maxImages: number;
   };
-  rubric: {
-    name: string;
-    scaleMax: number;
-    scoreMode: "points" | "weighted";
-    criteria: Array<{ id: string; label: string; description?: string; weight: number; maxScore?: number }>;
-  } | null;
+  rubric: JudgingRubric | null;
+  roundRubrics?: Partial<Record<JudgingRound, JudgingRubric>>;
   links: Array<{ id: string; label: string; url: string }>;
   judges: Array<{ id: string; name: string; assignedTeamIds?: string[]; code?: string }>;
   teams: Array<{ id: string; name: string; members: string[]; description?: string; github?: string; devpost?: string; imageUrls?: string[]; code?: string }>;

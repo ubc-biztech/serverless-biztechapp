@@ -7,6 +7,7 @@ import { FEEDBACK_TABLE, JUDGING_TABLE } from "../../constants/tables.js";
 import { JudgingDocument } from "./types";
 import {
   JUDGING_PHASES,
+  JUDGING_ROUNDS,
   authorize,
   eventKeyOf,
   getDocument,
@@ -15,6 +16,9 @@ import {
   newCode,
   putDocument,
   redact,
+  rubricError,
+  rubricForRound,
+  rubricScoring,
   toReview
 } from "./helpersJudging";
 
@@ -201,7 +205,7 @@ export const judgingGetAdmin = protect(Access.ADMIN, handle(async (event) => {
 export const judgingPut = protect(Access.ADMIN, handle(async (event) => {
   const eventKey = eventKeyOf(event);
   const existing = await getDocument(eventKey);
-  const data = JSON.parse(event.body || "{}");
+  const data = readBody(event.body);
   helpers.checkPayloadProps(data, {
     settings: { required: true, type: "object" },
     links: { required: true, type: "object" },
@@ -215,9 +219,19 @@ export const judgingPut = protect(Access.ADMIN, handle(async (event) => {
       (data.settings.imageUrl && !/^https:\/\//i.test(data.settings.imageUrl)))) {
     return helpers.inputError("Event image must be an HTTPS URL.");
   }
-  const criteria: Array<{ id: string }> = data.rubric?.criteria || [];
-  if (new Set(criteria.map((c) => c.id)).size !== criteria.length) {
-    return helpers.inputError("rubric criteria ids must be unique");
+  // Older clients omit roundRubrics; their settings/team writes must preserve it.
+  const roundRubrics = data.roundRubrics ?? existing?.roundRubrics ?? {};
+  if (data.roundRubrics === null || typeof roundRubrics !== "object" || Array.isArray(roundRubrics) ||
+      Object.keys(roundRubrics).some((key) => !JUDGING_ROUNDS.includes(key as "prelim" | "finals"))) {
+    return helpers.inputError("roundRubrics supports prelim and finals only.");
+  }
+  for (const rubric of [data.rubric, ...Object.values(roundRubrics)]) {
+    if (rubric === undefined || rubric === null) continue;
+    const error = rubricError(rubric);
+    if (error) return helpers.inputError(error);
+  }
+  if (Object.values(roundRubrics).some((r) => r === null)) {
+    return helpers.inputError("Remove a round override by omitting it, not setting it to null.");
   }
   const withCodes = <T extends { id?: string; code?: string }>(rows: T[]) => rows.map((row) => ({
     ...row,
@@ -227,11 +241,27 @@ export const judgingPut = protect(Access.ADMIN, handle(async (event) => {
   const doc: JudgingDocument = {
     settings: data.settings,
     rubric: data.rubric || null,
+    roundRubrics,
     links: data.links,
     judges: withCodes(data.judges),
     teams: withCodes(data.teams),
     updatedAt: ""
   };
+  if (existing) {
+    const changed = JUDGING_ROUNDS.filter((round) =>
+      rubricScoring(rubricForRound(existing, round)) !== rubricScoring(rubricForRound(doc, round))
+    );
+    if (changed.length) {
+      const reviews = await listReviews({ ...event, queryStringParameters: null }, () => true);
+      const locked = changed.find((round) =>
+        (round === "prelim" ? existing.settings.phase !== "submission" : ["finals", "closed"].includes(existing.settings.phase)) ||
+        reviews.some((review) => review.round === round)
+      );
+      if (locked) return helpers.createResponse(409, {
+        message: `The ${locked} rubric is locked. Only its name and scoring guidance can change.`
+      });
+    }
+  }
   await putDocument(eventKey, doc, !existing);
   return helpers.createResponse(200, redact(doc, "admin"));
 }));
@@ -311,13 +341,19 @@ export const judgingPutReview = handle(async (event) => {
   const eventKey = eventKeyOf(event);
   const doc = await getDocument(eventKey);
   const auth = authorize(event, doc, "judge");
-  const data = JSON.parse(event.body || "{}");
+  const data = readBody(event.body);
   helpers.checkPayloadProps(data, { scores: { required: true, type: "object" } });
+  if (!data.scores || Array.isArray(data.scores)) return helpers.inputError("Scores must be an object.");
   const teamId = event.pathParameters?.teamId as string;
   const phase = doc?.settings.phase;
-  if (!doc || !doc.rubric || (phase !== "prelim" && phase !== "finals")) {
+  if (!doc || (phase !== "prelim" && phase !== "finals")) {
     return helpers.createResponse(409, { message: `Judging is not open (phase is "${phase || "unset"}")` });
   }
+  if (data.round !== undefined && data.round !== phase) {
+    return helpers.createResponse(409, { message: "The round changed. Reload your scorecard before submitting." });
+  }
+  const rubric = rubricForRound(doc, phase);
+  if (!rubric?.criteria.length) return helpers.createResponse(409, { message: "This round has no rubric." });
   const team = doc.teams.find((t) => t.id === teamId);
   if (!team) {
     return helpers.notFoundResponse("team", teamId);
@@ -325,11 +361,11 @@ export const judgingPutReview = handle(async (event) => {
   if (phase === "finals" && (!doc.settings.finalsTeamIds.includes(team.id) || !doc.settings.finalsJudgeIds.includes(auth.id))) {
     return helpers.createResponse(409, { message: "Not a finals team, or you are not a finals judge" });
   }
-  const { criteria, scaleMax } = doc.rubric;
+  const { criteria, scaleMax } = rubric;
   const scores = data.scores as Record<string, number>;
   for (const c of criteria) {
     const max = c.maxScore || scaleMax;
-    if (typeof scores[c.id] !== "number" || scores[c.id] < 0 || scores[c.id] > max) {
+    if (!Number.isFinite(scores[c.id]) || scores[c.id] < 0 || scores[c.id] > max) {
       return helpers.inputError(`"${c.label}" needs a score between 0 and ${max}`);
     }
   }
