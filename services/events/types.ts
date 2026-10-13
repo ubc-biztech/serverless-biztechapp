@@ -128,7 +128,8 @@ export type FeedbackQuestionType =
   | "LONG_TEXT"
   | "MULTIPLE_CHOICE"
   | "CHECKBOXES"
-  | "LINEAR_SCALE";
+  | "LINEAR_SCALE"
+  | "MULTIPLE_CHOICE_GRID";
 
 /** Incoming feedback question before normalization. */
 export interface RawFeedbackQuestion {
@@ -147,6 +148,16 @@ export interface RawFeedbackQuestion {
   [key: string]: unknown;
 }
 
+/**
+ * Stored once per grid question, alongside questionId, label and required:
+ * grid: { rows: [{ id: "organization", label: "Organization" }], columns: ["Poor", "Great"] }
+ * Answers stay flat: responses["organization"] = "Great". Row IDs survive edits/reordering.
+ */
+export interface FeedbackGrid {
+  rows: { id: string; label: string }[];
+  columns: string[];
+}
+
 /** Normalized feedback question stored on an event. */
 export interface FeedbackQuestion {
   questionId: string;
@@ -154,6 +165,7 @@ export interface FeedbackQuestion {
   label: string;
   required: boolean;
   choices?: string;
+  grid?: FeedbackGrid;
   scaleMin?: number;
   scaleMax?: number;
   scaleMinLabel?: string;
