@@ -1,4 +1,5 @@
 import type { APIGatewayResponse } from "../../lib/types";
+import type { JUDGING_ROUNDS } from "./constants";
 
 /** Team item stored in biztechTeams. */
 export interface TeamRecord {
@@ -242,7 +243,7 @@ export interface TeamsHelpers {
 }
 // ─── Hackathon judging (handlerJudging.ts) ────────────────────────────────
 
-export type JudgingRound = "prelim" | "finals";
+export type JudgingRound = (typeof JUDGING_ROUNDS)[number];
 export interface JudgingRubric {
   name: string;
   scaleMax: number;

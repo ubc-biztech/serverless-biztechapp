@@ -4,10 +4,10 @@ import helpers from "../../lib/handlerHelpers";
 import { Access, protect } from "../../lib/auth";
 import { APIGatewayEvent } from "../../lib/types";
 import { FEEDBACK_TABLE, JUDGING_TABLE } from "../../constants/tables.js";
-import { JudgingDocument } from "./types";
+import { JUDGING_ROUNDS } from "./constants";
+import { JudgingDocument, JudgingRound } from "./types";
 import {
   JUDGING_PHASES,
-  JUDGING_ROUNDS,
   authorize,
   eventKeyOf,
   getDocument,
@@ -222,7 +222,7 @@ export const judgingPut = protect(Access.ADMIN, handle(async (event) => {
   // Older clients omit roundRubrics; their settings/team writes must preserve it.
   const roundRubrics = data.roundRubrics ?? existing?.roundRubrics ?? {};
   if (data.roundRubrics === null || typeof roundRubrics !== "object" || Array.isArray(roundRubrics) ||
-      Object.keys(roundRubrics).some((key) => !JUDGING_ROUNDS.includes(key as "prelim" | "finals"))) {
+      Object.keys(roundRubrics).some((key) => !JUDGING_ROUNDS.includes(key as JudgingRound))) {
     return helpers.inputError("roundRubrics supports prelim and finals only.");
   }
   for (const rubric of [data.rubric, ...Object.values(roundRubrics)]) {

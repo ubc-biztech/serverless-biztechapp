@@ -18,7 +18,6 @@ const ROLE_RANK = {
 export const JUDGING_CODE_HEADER = "x-judging-code";
 
 export const JUDGING_PHASES = ["submission", "prelim", "finals", "closed"];
-export const JUDGING_ROUNDS: JudgingRound[] = ["prelim", "finals"];
 
 export const rubricForRound = (doc: Pick<JudgingDocument, "rubric" | "roundRubrics">, round: JudgingRound) =>
   doc.roundRubrics?.[round] ?? doc.rubric;

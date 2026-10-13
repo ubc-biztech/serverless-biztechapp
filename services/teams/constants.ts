@@ -7,3 +7,5 @@ export const WEIGHTS = {
 } as const;
 
 export const ROUND = "CURRENT_ROUND";
+
+export const JUDGING_ROUNDS = ["prelim", "finals"] as const;
