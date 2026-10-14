@@ -22,9 +22,9 @@ provider:
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
-    # TEMPORARY WF2/event settings.
-    PRODUCT_PLUS_EVENT_KEY: ${env:PRODUCT_PLUS_EVENT_KEY, ''}
-    PRODUCT_PLUS_SUBMISSIONS_TABLE: ${env:PRODUCT_PLUS_SUBMISSIONS_TABLE, 'biztechPPSubmissions'}
+    PRODUCTPLUS_EVENT_KEY: ${file(../../config.${self:provider.stage}.json):PRODUCTPLUS_EVENT_KEY}
+    PRODUCTPLUS_SUBMISSIONS_TABLE: biztechPPSubmissions${self:provider.environment.ENVIRONMENT}
+    PRODUCTPLUS_PRD_BUCKET: ${file(../../config.${self:provider.stage}.json):PRODUCTPLUS_PRD_BUCKET}
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
     restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
@@ -33,18 +33,14 @@ provider:
     - Effect: Allow
       Action:
         - s3:GetObject
-      Resource:
-        - Fn::If:
-            - ProductPlusProduction
-            - "arn:aws:s3:::biztech-pp-prd-prod/*"
-            - "arn:aws:s3:::biztech-pp-prd/*"
+      Resource: "arn:aws:s3:::${self:provider.environment.PRODUCTPLUS_PRD_BUCKET}/*"
     - Effect: Allow
       Action:
-        - dynamodb:Scan
+        - dynamodb:Query
         - dynamodb:GetItem
         - dynamodb:UpdateItem
       Resource:
-        - "arn:aws:dynamodb:us-west-2:432714361962:table/${self:provider.environment.PRODUCT_PLUS_SUBMISSIONS_TABLE}${self:provider.environment.ENVIRONMENT}"
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/${self:provider.environment.PRODUCTPLUS_SUBMISSIONS_TABLE}"
     - Effect: Allow
       Action:
         - dynamodb:Scan
@@ -95,13 +91,6 @@ provider:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/bizFeedback${self:provider.environment.ENVIRONMENT}/index/*"
 
 custom: ${file(../../serverless.common.yml):custom}
-
-resources:
-  Conditions:
-    ProductPlusProduction:
-      Fn::Equals:
-        - "${self:provider.environment.ENVIRONMENT}"
-        - "PROD"
 
 functions:
   productPlusAdminSubmission:

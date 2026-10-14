@@ -2,11 +2,10 @@ import db from "../../lib/db.js";
 import res from "../../lib/responseHelpers";
 import helpers from "../../lib/handlerHelpers";
 import { Access, protect } from "../../lib/auth";
-import { APIGatewayResponse, LambdaHandler } from "../../lib/types";
 import {
   getEventKey,
   getVotingConfig,
-  submissionsTable,
+  querySubmissions,
   tableName,
   isVotingOpen,
   submissionResponse
@@ -14,23 +13,12 @@ import {
 import {
   Submission,
   Rubric,
-  RankedSubmission
-} from "./typesProductPlus.temporary";
-import { PRODUCT_PLUS_RUBRIC_SCORE_RANGE } from "./constants";
+  RankedSubmission,
+  SubmissionRecord
+} from "./typesProductPlus";
+import { PRODUCT_PLUS_RUBRIC_SCORE_COUNT } from "./constants";
+import { handle } from "./helpersJudging";
 import { AuthEvent } from "../../lib/auth";
-
-const handle =
-  (handler: LambdaHandler): LambdaHandler =>
-  async (event, context, callback) => {
-    try {
-      return await handler(event, context, callback);
-    } catch (error) {
-      if (error && typeof error === "object" && "statusCode" in error)
-        return error as APIGatewayResponse;
-      console.error(error);
-      return res.send(500, { message: "Internal server error" });
-    }
-  };
 
 export const audienceSubmissions = protect(
   Access.PUBLIC,
@@ -38,13 +26,14 @@ export const audienceSubmissions = protect(
     const user_id = (event as AuthEvent).auth?.email;
     const event_key = getEventKey();
     const config = await getVotingConfig(event_key);
-    const filters = {
-      FilterExpression: "#event = :event AND #team <> :config",
-      ProjectionExpression: "#team, team_name, video_url, voter_ids",
-      ExpressionAttributeNames: { "#event": "event_key", "#team": "team_code" },
-      ExpressionAttributeValues: { ":event": event_key, ":config": "config" }
-    };
-    const rows = (await db.scan(submissionsTable(), filters)) as (Pick<
+    // Submissions remain private while teams can still edit their entries.
+    const rows = (Date.now() < Date.parse(config.submission_deadline)
+      ? []
+      : await querySubmissions(
+          event_key,
+          "team_code, team_name, video_url, voter_ids",
+          true
+        )) as (Pick<
       Submission,
       "team_code" | "team_name" | "video_url"
     > & { voter_ids?: Set<string> })[];
@@ -79,6 +68,8 @@ export const audienceVote = protect(
     } catch {
       return helpers.inputError("Send a JSON object");
     }
+    if (!data || typeof data !== "object" || Array.isArray(data))
+      return helpers.inputError("Send a JSON object");
     helpers.checkPayloadProps(data, {
       team_code: { required: true, type: "string" },
       choice: { required: true, type: "string" }
@@ -98,14 +89,15 @@ export const audienceVote = protect(
         Key: { event_key, team_code: data.team_code },
         UpdateExpression: "ADD voter_ids :voters, #counter :one",
         ConditionExpression:
-          "attribute_exists(event_key) AND attribute_exists(team_code) AND (attribute_not_exists(voter_ids) OR NOT contains(voter_ids, :uid))",
+          "attribute_exists(event_key) AND attribute_exists(team_code) AND attribute_exists(submitted_at) AND attribute_exists(video_url) AND video_url <> :empty AND (attribute_not_exists(voter_ids) OR NOT contains(voter_ids, :uid))",
         ExpressionAttributeNames: {
           "#counter": data.choice === "accept" ? "upvotes" : "downvotes"
         },
         ExpressionAttributeValues: {
           ":voters": new Set([user_id]),
           ":uid": user_id,
-          ":one": 1
+          ":one": 1,
+          ":empty": ""
         }
       });
     } catch (error) {
@@ -137,21 +129,30 @@ export const saveRubric = protect(
       return helpers.inputError("Send a JSON object");
     }
 
-    if (!data || !Array.isArray(data.scores) || data.scores.length !== 5)
-      return helpers.inputError("Send exactly five scores");
+    if (
+      !data ||
+      !Array.isArray(data.scores) ||
+      data.scores.length !== PRODUCT_PLUS_RUBRIC_SCORE_COUNT
+    )
+      return helpers.inputError(
+        `Send exactly ${PRODUCT_PLUS_RUBRIC_SCORE_COUNT} scores`
+      );
 
-    if (typeof data.comments !== "string")
-      return helpers.inputError("Comments must be a string");
+    if (
+      !Array.isArray(data.comments) ||
+      data.comments.length !== PRODUCT_PLUS_RUBRIC_SCORE_COUNT ||
+      !data.comments.every((comment: unknown) => typeof comment === "string")
+    )
+      return helpers.inputError(
+        `Send exactly ${PRODUCT_PLUS_RUBRIC_SCORE_COUNT} comments, one string per score`
+      );
 
-    const { min, max } = PRODUCT_PLUS_RUBRIC_SCORE_RANGE;
     const validScores = data.scores.every(
       (score: unknown) =>
-        typeof score === "number" && score >= min && score <= max
+        typeof score === "number" && Number.isFinite(score)
     );
     if (!validScores)
-      return helpers.inputError(
-        `Scores must be numbers between ${min} and ${max}`
-      );
+      return helpers.inputError("Scores must be finite numbers");
 
     const rubric: Rubric = {
       judge_user_id: (event as AuthEvent).auth!.email,
@@ -159,15 +160,13 @@ export const saveRubric = protect(
       comments: data.comments
     };
     const Key = { event_key: getEventKey(), team_code };
-    //  Read it with its updated_at, replace this judge's entry, and write with a condition that updated_at hasn't changed. Retry on failure.
+    // Compare the prior rubric list, keeping WF2's array shape and submission timestamp untouched.
     for (let attempt = 0; attempt < 5; attempt++) {
       const submission = (await db.getOneCustom({
         TableName: tableName(),
         Key,
         ConsistentRead: true
-      })) as
-        | (Pick<Submission, "updated_at"> & { graded_submissions?: Rubric[] })
-        | null;
+      })) as { graded_submissions?: Rubric[] } | null;
       if (!submission) return res.notFound("submission", team_code);
       const rubrics = [...(submission.graded_submissions || [])];
       const index = rubrics.findIndex(
@@ -178,25 +177,20 @@ export const saveRubric = protect(
       } else {
         rubrics[index] = rubric;
       }
-      const updated_at = new Date(
-        Math.max(Date.now(), (Date.parse(submission.updated_at) || 0) + 1)
-      ).toISOString();
-      const hasVersion = submission.updated_at !== undefined;
+      const hasRubrics = submission.graded_submissions !== undefined;
       try {
         await db.updateDBCustom({
           TableName: tableName(),
           Key,
-          UpdateExpression:
-            "SET graded_submissions = :rubrics, updated_at = :updated",
+          UpdateExpression: "SET graded_submissions = :rubrics",
           ConditionExpression:
             "attribute_exists(event_key) AND attribute_exists(team_code) AND " +
-            (hasVersion
-              ? "updated_at = :previous"
-              : "attribute_not_exists(updated_at)"),
+            (hasRubrics
+              ? "graded_submissions = :previous"
+              : "attribute_not_exists(graded_submissions)"),
           ExpressionAttributeValues: {
             ":rubrics": rubrics,
-            ":updated": updated_at,
-            ...(hasVersion ? { ":previous": submission.updated_at } : {})
+            ...(hasRubrics ? { ":previous": submission.graded_submissions } : {})
           }
         });
         return res.ok(rubric);
@@ -220,17 +214,10 @@ export const adminSubmissions = protect(
   Access.ADMIN,
   handle(async () => {
     const event_key = getEventKey();
-    const filters = {
-      FilterExpression: "#event = :event AND #team <> :config",
-      ProjectionExpression:
-        "#team, team_name, graded_submissions, upvotes, downvotes",
-      ExpressionAttributeNames: { "#event": "event_key", "#team": "team_code" },
-      ExpressionAttributeValues: { ":event": event_key, ":config": "config" }
-    };
-    const rows = (await db.scan(submissionsTable(), filters)) as (Pick<
-      Submission,
-      "team_code" | "team_name"
-    > & {
+    const rows = (await querySubmissions(
+      event_key,
+      "team_code, team_name, graded_submissions, upvotes, downvotes"
+    )) as (Pick<Submission, "team_code" | "team_name"> & {
       graded_submissions?: Rubric[];
       upvotes?: number;
       downvotes?: number;
@@ -270,22 +257,10 @@ export const adminSubmission = protect(
       TableName: tableName(),
       Key: { event_key: getEventKey(), team_code },
       ConsistentRead: true
-    })) as
-      | (Omit<Submission, "prd_view_url"> & {
-          graded_submissions?: Rubric[];
-          upvotes?: number;
-          downvotes?: number;
-        })
-      | null;
+    })) as SubmissionRecord | null;
     if (!submission) return res.notFound("submission", team_code);
 
-    const response = await submissionResponse(
-      submission,
-      process.env.PRODUCTPLUS_PRD_BUCKET ||
-        (process.env.ENVIRONMENT === "PROD"
-          ? "biztech-pp-prd-prod"
-          : "biztech-pp-prd")
-    );
+    const response = await submissionResponse(submission);
     return res.ok({
       ...response,
       graded_submissions: submission.graded_submissions ?? [],
