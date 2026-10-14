@@ -15,6 +15,10 @@ import type {
   TeamRecord,
   TeamsHelpers,
 } from "./types";
+import docClient from "../../lib/docClient.js";
+import { GetCommand, TransactWriteCommand, type TransactWriteCommandInput } from "@aws-sdk/lib-dynamodb";
+import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
+import type { CleanupTask, TeamRecord as ProductPlusTeamRecord } from "../productplus/types";
 
 /*
   Team Table Schema from DynamoDB:
@@ -44,6 +48,116 @@ type JudgeRecord = {
   currentTeam?: string;
   [key: string]: unknown;
 };
+
+export class ProductPlusTeamError extends Error {
+  constructor(public statusCode: number, message: string) { super(message); }
+}
+
+const cleanupLambda = new LambdaClient({ maxAttempts: 2 });
+
+/** Product Plus alone requires atomic membership writes and empty-team deletion. */
+async function updateProductPlusMembership(memberID: string, eventKey: string, action: "join" | "leave", requestedTeamID?: string) {
+  const suffix = process.env.ENVIRONMENT || "";
+  const teamsTable = TEAMS_TABLE + suffix;
+  const registrationsTable = USER_REGISTRATIONS_TABLE + suffix;
+  try {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const registrationKey = { id: memberID, "eventID;year": eventKey };
+      const registration = (await docClient.send(new GetCommand({
+        TableName: registrationsTable, Key: registrationKey, ConsistentRead: true
+      }))).Item as RegistrationRecord | undefined;
+      if (!registration) throw new ProductPlusTeamError(404, "Event registration is required.");
+      if (action === "join" && registration.registrationStatus?.toLowerCase() !== "checkedin") {
+        throw new ProductPlusTeamError(403, "Check in before joining a team.");
+      }
+      if (action === "join" && registration.teamID) throw new ProductPlusTeamError(400, "You are already on a team.");
+      const teamID = action === "leave" ? registration.teamID : requestedTeamID;
+      if (!teamID) throw new ProductPlusTeamError(400, "Current team membership is required.");
+      const teamKey = { id: teamID, "eventID;year": eventKey };
+      const team = (await docClient.send(new GetCommand({
+        TableName: teamsTable, Key: teamKey, ConsistentRead: true
+      }))).Item as ProductPlusTeamRecord | undefined;
+      if (!team || !(team.member_ids instanceof Set)) throw new ProductPlusTeamError(404, "Team does not exist.");
+      if (action === "leave" && !team.member_ids.has(memberID)) throw new ProductPlusTeamError(403, "Current team membership is required.");
+      if (action === "join" && team.member_ids.has(memberID)) throw new ProductPlusTeamError(400, "You are already on this team.");
+      const members = action === "join" ? new Set([...team.member_ids, memberID]) : new Set([...team.member_ids].filter(id => id !== memberID));
+      const removeTeam = action === "leave" && members.size === 0;
+      if (removeTeam && (typeof team.id !== "string" || !/^\d{6}$/.test(team.id))) {
+        throw new ProductPlusTeamError(409, "The Product Plus team needs its six-digit code before deletion.");
+      }
+      const teamCondition = {
+        TableName: teamsTable, Key: teamKey,
+        ConditionExpression: "attribute_exists(id) AND #members = :before" + (removeTeam ? " AND id = :code" : ""),
+        ExpressionAttributeNames: { "#members": "member_ids" },
+        ExpressionAttributeValues: { ":before": team.member_ids, ...(removeTeam ? { ":code": team.id } : {}) }
+      };
+      const transaction: NonNullable<TransactWriteCommandInput["TransactItems"]> = [
+        removeTeam ? { Delete: teamCondition } : { Update: {
+          ...teamCondition, UpdateExpression: "SET #members = :after",
+          ExpressionAttributeValues: { ...teamCondition.ExpressionAttributeValues, ":after": members }
+        } },
+        { Update: {
+          TableName: registrationsTable, Key: registrationKey,
+          ConditionExpression: "attribute_exists(id) AND " +
+            (registration.teamID === undefined ? "attribute_not_exists(#team)" : "#team = :before") +
+            (action === "join" ? " AND registrationStatus = :status" : ""),
+          UpdateExpression: action === "join" ? "SET #team = :after" : "REMOVE #team",
+          ExpressionAttributeNames: { "#team": "teamID" },
+          ExpressionAttributeValues: {
+            ...(action === "join" ? { ":after": teamID } : {}),
+            ...(registration.teamID === undefined ? {} : { ":before": registration.teamID }),
+            ...(action === "join" ? { ":status": registration.registrationStatus } : {})
+          }
+        } }
+      ];
+      try {
+        // Conditional Update prevents a stale join from putting a deleted team back.
+        await docClient.send(new TransactWriteCommand({ TransactItems: transaction }));
+      } catch (error) {
+        if (error instanceof Error && (error.name === "TransactionConflictException" ||
+          (error.name === "TransactionCanceledException" && "CancellationReasons" in error &&
+            Array.isArray(error.CancellationReasons) && error.CancellationReasons.some(reason =>
+              ["ConditionalCheckFailed", "TransactionConflict"].includes(reason?.Code))))) continue;
+        // A transport timeout can happen after the atomic write committed.
+        const [savedTeam, savedRegistration] = await Promise.all([
+          docClient.send(new GetCommand({ TableName: teamsTable, Key: teamKey, ConsistentRead: true })),
+          docClient.send(new GetCommand({ TableName: registrationsTable, Key: registrationKey, ConsistentRead: true }))
+        ]);
+        const committed = action === "join"
+          ? savedRegistration.Item?.teamID === teamID && savedTeam.Item?.member_ids instanceof Set && savedTeam.Item.member_ids.has(memberID)
+          : savedRegistration.Item?.id === memberID && savedRegistration.Item.teamID === undefined && (removeTeam ? !savedTeam.Item :
+            savedTeam.Item?.member_ids instanceof Set && !savedTeam.Item.member_ids.has(memberID));
+        if (!committed) {
+          console.error("Product Plus membership write needs recovery", {
+            event_key: eventKey, team_id: teamID, team_code: team.id,
+            error: error instanceof Error ? error.name : "UnknownError"
+          });
+          throw error;
+        }
+      }
+      if (removeTeam) {
+        const task: CleanupTask = { internalTask: "team_deleted", payload: { event_key: eventKey, team_code: team.id } };
+        try {
+          const functionName = process.env.PRODUCTPLUS_CLEANUP_FUNCTION;
+          if (!functionName) throw new Error("Cleanup function is not configured.");
+          const result = await cleanupLambda.send(new InvokeCommand({
+            FunctionName: functionName, InvocationType: "Event", Payload: Buffer.from(JSON.stringify(task))
+          }));
+          if (result.StatusCode !== 202) throw new Error("Cleanup invocation was not accepted.");
+        } catch (error) {
+          // Membership already committed. Log a replayable task without failing leave.
+          console.error("Product Plus team cleanup delivery failed", { task, error: error instanceof Error ? error.name : "UnknownError" });
+        }
+      }
+      return { success: true, message: action === "join" ? "Joined team." : "Left team.", memberIDs: [...members], teamName: team.team_name };
+    }
+    throw new ProductPlusTeamError(409, "Team membership changed. Try again.");
+  } catch (error) {
+    if (error instanceof ProductPlusTeamError) throw error;
+    console.error("Product Plus membership failed", { error: error instanceof Error ? error.name : "UnknownError" });
+    throw new ProductPlusTeamError(500, "Unable to update team membership.");
+  }
+}
 
 const teamHelpers: TeamsHelpers = {
   async _getTeamFromUserRegistration(userID, eventID, year) {
@@ -171,6 +285,9 @@ const teamHelpers: TeamsHelpers = {
 
   async leaveTeam(memberID, eventID, year) {
     const eventID_year = eventID + ";" + year;
+    if (eventID_year === process.env.PRODUCTPLUS_EVENT_KEY) {
+      return updateProductPlusMembership(memberID, eventID_year, "leave");
+    }
 
     const registration = (await db.getOne(memberID, USER_REGISTRATIONS_TABLE, {
       "eventID;year": eventID_year,
@@ -239,6 +356,9 @@ const teamHelpers: TeamsHelpers = {
 
   async joinTeam(memberID, eventID, year, teamID) {
     const eventID_year = eventID + ";" + year;
+    if (eventID_year === process.env.PRODUCTPLUS_EVENT_KEY) {
+      return updateProductPlusMembership(memberID, eventID_year, "join", teamID);
+    }
 
     const registration = (await db.getOne(memberID, USER_REGISTRATIONS_TABLE, {
       "eventID;year": eventID_year,
