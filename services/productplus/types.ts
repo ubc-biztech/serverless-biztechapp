@@ -2,9 +2,11 @@
 export type Submission = {
   teamID: string;
   team_name: string;
+  project_title: string | null;
   member_names: string[];
   video_url: string;
   prd_path: string;
+  prd_filename: string | null;
   prd_view_url: string;
   submitted_at: string;
   updated_at: string;
@@ -22,7 +24,7 @@ export type TeamRecord = {
   "memberIDs": string[];
 };
 
-/** The event registration stores the user's current team code; teamID is not used. */
+/** The event registration stores the user's current six-digit code in teamID. */
 export type RegistrationRecord = {
   "id": string; // Verified email.
   "eventID;year": string;
@@ -43,8 +45,13 @@ export type Rubric = {
 };
 
 /** Stored submission. Updates must preserve judging and voting attributes. */
-export type SubmissionRecord = Omit<Submission, "prd_view_url"> &
+export type SubmissionRecord = Omit<
+  Submission,
+  "prd_view_url" | "project_title" | "prd_filename"
+> &
   SubmissionKey & {
+    project_title?: string | null; // Older submissions may not have these fields.
+    prd_filename?: string | null;
     graded_submissions: Rubric[];
     upvotes: number;
     downvotes: number;
@@ -73,6 +80,7 @@ export type UploadRecord = UploadKey & {
   teamID: string;
   upload_id: string;
   content_type: "application/pdf";
+  prd_filename?: string; // Original browser filename; never used as an S3 key.
   status: UploadStatus;
   created_at: string;
   updated_at: string;
@@ -100,6 +108,7 @@ export type GetSubmissionResponse = {
 
 export type UploadSubmissionBody = {
   content_type: "application/pdf";
+  prd_filename?: string;
 };
 
 export type UploadSubmissionResponse = {
@@ -112,4 +121,6 @@ export type UploadSubmissionResponse = {
 export type PutSubmissionBody = Pick<
   Submission,
   "team_name" | "member_names" | "video_url" | "prd_path"
->;
+> & {
+  project_title?: string;
+};

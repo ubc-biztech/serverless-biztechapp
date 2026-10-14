@@ -111,7 +111,7 @@ test("GET returns 404 when the configured event has no config", async () => {
   assert.equal(input.TableName, "biztechPPSubmissions");
   assert.deepEqual(input.Key, {
     event_key: "productplus;2026",
-    team_code: "config"
+    teamID: "config"
   });
   assert.equal(input.ConsistentRead, true);
 });
@@ -121,7 +121,7 @@ test("GET returns only public fields and recognizes the existing admin email rul
     Item: {
       ...publicConfig,
       event_key: "productplus;2026",
-      team_code: "config",
+      teamID: "config",
       version: 7,
       updated_at: "2026-10-05T10:00:00.000Z",
       unrelated_attribute: "keep internal"
@@ -180,7 +180,7 @@ test("PUT preserves supplied UTC timestamps and atomically creates/updates only 
       ...supplied,
       version: 1,
       event_key: "productplus;2026",
-      team_code: "config"
+      teamID: "config"
     }
   });
   const result = await invoke(putConfig, event(supplied));
@@ -190,7 +190,7 @@ test("PUT preserves supplied UTC timestamps and atomically creates/updates only 
   assert.equal(input.TableName, "biztechPPSubmissions");
   assert.deepEqual(input.Key, {
     event_key: "productplus;2026",
-    team_code: "config"
+    teamID: "config"
   });
   assert.equal(input.ReturnValues, "ALL_NEW");
   assert.equal(

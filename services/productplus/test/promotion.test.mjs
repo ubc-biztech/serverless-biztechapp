@@ -185,13 +185,11 @@ test("membership removal at the final transaction is enforced after a completed 
 
 test("generic S3 HEAD 404 errors are reported as invalid files", async () => {
   const upload = app.upload();
-  app.s3
-    .on(HeadObjectCommand)
-    .rejects(
-      Object.assign(new Error("Generic HEAD response"), {
-        $metadata: { httpStatusCode: 404 }
-      })
-    );
+  app.s3.on(HeadObjectCommand).rejects(
+    Object.assign(new Error("Generic HEAD response"), {
+      $metadata: { httpStatusCode: 404 }
+    })
+  );
   assert.equal((await save(upload.prd_path)).status, 400);
   assert.equal(row(upload).status, "pending");
 });

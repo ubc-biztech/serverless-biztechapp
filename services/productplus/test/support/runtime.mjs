@@ -221,7 +221,7 @@ export async function runtime({ includeTeams = false } = {}) {
     itemKey(table, item) {
       if (table === this.table("UPLOADS")) return { prd_path: item.prd_path };
       if (table === this.table("SUBMISSIONS"))
-        return { event_key: item.event_key, team_code: item.team_code };
+        return { event_key: item.event_key, teamID: item.teamID };
       // Teams and registrations share the existing id/eventID;year key layout.
       return { "id": item.id, "eventID;year": item["eventID;year"] };
     },
@@ -237,13 +237,13 @@ export async function runtime({ includeTeams = false } = {}) {
     submission() {
       return this.get(this.table("SUBMISSIONS"), {
         event_key: environment.PRODUCTPLUS_EVENT_KEY,
-        team_code: this.teamCode
+        teamID: this.teamCode
       });
     },
     config() {
       return this.get(this.table("SUBMISSIONS"), {
         event_key: environment.PRODUCTPLUS_EVENT_KEY,
-        team_code: "config"
+        teamID: "config"
       });
     },
     team() {
@@ -262,7 +262,7 @@ export async function runtime({ includeTeams = false } = {}) {
       const id = `00000000-0000-4000-8000-${String(number).padStart(12, "0")}`;
       const upload = {
         event_key: environment.PRODUCTPLUS_EVENT_KEY,
-        team_code: this.teamCode,
+        teamID: this.teamCode,
         upload_id: id,
         content_type: "application/pdf",
         status: "pending",
@@ -273,7 +273,7 @@ export async function runtime({ includeTeams = false } = {}) {
       };
       upload.prd_path =
         overrides.prd_path ??
-        `productplus/temp/${upload.event_key}/${upload.team_code}/${upload.upload_id}/prd.pdf`;
+        `productplus/temp/${upload.event_key}/${upload.teamID}/${upload.upload_id}/prd.pdf`;
       this.put(this.table("UPLOADS"), upload);
       objects.set(upload.prd_path, {
         ContentType: "application/pdf",
@@ -283,7 +283,7 @@ export async function runtime({ includeTeams = false } = {}) {
       return upload;
     },
     permanent(upload) {
-      return `productplus/submitted/${upload.event_key}/${upload.team_code}/${upload.upload_id}/prd.pdf`;
+      return `productplus/submitted/${upload.event_key}/${upload.teamID}/${upload.upload_id}/prd.pdf`;
     },
     task(kind, payload) {
       return {
@@ -338,7 +338,7 @@ export async function runtime({ includeTeams = false } = {}) {
       this.put(this.table("REGISTRATIONS"), {
         "id": this.email,
         "eventID;year": environment.PRODUCTPLUS_EVENT_KEY,
-        "team_code": this.teamCode
+        "teamID": this.teamCode
       });
       this.put(this.table("TEAMS"), {
         "id": this.teamCode,
@@ -348,16 +348,14 @@ export async function runtime({ includeTeams = false } = {}) {
       });
       this.put(this.table("SUBMISSIONS"), {
         event_key: environment.PRODUCTPLUS_EVENT_KEY,
-        team_code: "config",
+        teamID: "config",
         submission_deadline: "2026-10-05T13:00:00Z",
         voting_deadline: "2026-10-06T13:00:00Z"
       });
       database.onAnyCommand().rejects(new Error("Unexpected database call"));
-      database
-        .on(GetCommand)
-        .callsFake((input) => ({
-          Item: structuredClone(this.get(input.TableName, input.Key))
-        }));
+      database.on(GetCommand).callsFake((input) => ({
+        Item: structuredClone(this.get(input.TableName, input.Key))
+      }));
       database.on(ScanCommand).callsFake((input) => {
         const all = [...rows]
           .filter(([key]) => key.startsWith(`${input.TableName}:`))
@@ -367,7 +365,7 @@ export async function runtime({ includeTeams = false } = {}) {
         const page = scanned.filter(
           (row) =>
             row.event_key === input.ExpressionAttributeValues[":event"] &&
-            row.team_code === input.ExpressionAttributeValues[":code"]
+            row.teamID === input.ExpressionAttributeValues[":code"]
         );
         return {
           Items: page,
@@ -376,18 +374,16 @@ export async function runtime({ includeTeams = false } = {}) {
             : {})
         };
       });
-      database
-        .on(BatchGetCommand)
-        .callsFake((input) => ({
-          Responses: Object.fromEntries(
-            Object.entries(input.RequestItems).map(([table, request]) => [
-              table,
-              request.Keys.map((key) =>
-                structuredClone(this.get(table, key))
-              ).filter(Boolean)
-            ])
-          )
-        }));
+      database.on(BatchGetCommand).callsFake((input) => ({
+        Responses: Object.fromEntries(
+          Object.entries(input.RequestItems).map(([table, request]) => [
+            table,
+            request.Keys.map((key) =>
+              structuredClone(this.get(table, key))
+            ).filter(Boolean)
+          ])
+        )
+      }));
       database.on(TransactWriteCommand).callsFake(async (input) => {
         await this.beforeTransaction?.(input);
         const keys = new Set();

@@ -28,6 +28,7 @@ import type {
   RegistrationRecord,
   GetSubmissionResponse,
   PutSubmissionBody,
+  UploadSubmissionBody,
   UploadSubmissionResponse,
   CleanupTask
 } from "./types";
@@ -390,8 +391,8 @@ function uploadCondition(upload: UploadRecord) {
 // Upload URLs: authorize a direct browser PUT to S3 and record who owns its key.
 const MAX_URL_SECONDS = 300;
 
-/** Accept PDF content type only; callers cannot choose their team, key, or upload ID. */
-function validateUploadBody(body: string | null) {
+/** Accept PDF content type and an optional display filename, never caller-selected keys. */
+function validateUploadBody(body: string | null): UploadSubmissionBody {
   let value;
 
   try {
@@ -405,13 +406,30 @@ function validateUploadBody(body: string | null) {
     typeof value !== "object" ||
     Array.isArray(value) ||
     value.content_type !== "application/pdf" ||
-    Object.keys(value).some((key) => key !== "content_type")
+    Object.keys(value).some(
+      (key) => !["content_type", "prd_filename"].includes(key)
+    )
   ) {
     throw new ProductPlusError(
       400,
-      "Provide only content_type: application/pdf."
+      "Provide content_type: application/pdf and an optional prd_filename."
     );
   }
+
+  if (
+    value.prd_filename !== undefined &&
+    (typeof value.prd_filename !== "string" || !value.prd_filename.trim())
+  ) {
+    throw new ProductPlusError(400, "PRD filename must be a nonempty string.");
+  }
+
+  // Preserve the original name exactly; ownership and PDF validation use the generated key.
+  return {
+    content_type: "application/pdf",
+    ...(value.prd_filename !== undefined
+      ? { prd_filename: value.prd_filename }
+      : {})
+  };
 }
 
 /** Issue a temporary upload URL only while the caller is a member and submissions are open. */
@@ -419,7 +437,7 @@ export async function createPrdUpload(
   email: string,
   body: string | null
 ): Promise<UploadSubmissionResponse> {
-  validateUploadBody(body);
+  const form = validateUploadBody(body);
 
   // Membership and deadlines are independent reads, so load them together.
   const settings = storageSettings();
@@ -487,6 +505,7 @@ export async function createPrdUpload(
     teamID: team.teamCode,
     upload_id: uploadId,
     content_type: "application/pdf",
+    ...("prd_filename" in form ? { prd_filename: form.prd_filename } : {}),
     status: "pending",
     created_at: timestamp,
     updated_at: timestamp,
@@ -583,9 +602,11 @@ export async function submissionResponse(
   return {
     teamID: record.teamID,
     team_name: record.team_name,
+    project_title: record.project_title ?? null,
     member_names: record.member_names,
     video_url: record.video_url,
     prd_path: record.prd_path,
+    prd_filename: record.prd_filename ?? null,
     prd_view_url: prdViewUrl,
     submitted_at: record.submitted_at,
     updated_at: record.updated_at
@@ -644,7 +665,7 @@ function supportedVideo(value: string) {
   return typeof videoId === "string" && /^[A-Za-z0-9_-]{11}$/.test(videoId);
 }
 
-/** Accept exactly the four editable fields and trim their text before storing it. */
+/** Accept the editable fields and optional project title; filename comes from upload tracking. */
 function parseSubmissionBody(body: string | null): PutSubmissionBody {
   let value;
 
@@ -655,7 +676,13 @@ function parseSubmissionBody(body: string | null): PutSubmissionBody {
   }
 
   // Reject ownership or judging fields supplied through the form body.
-  const fields = ["team_name", "member_names", "video_url", "prd_path"];
+  const fields = [
+    "team_name",
+    "project_title",
+    "member_names",
+    "video_url",
+    "prd_path"
+  ];
 
   if (
     !value ||
@@ -682,6 +709,13 @@ function parseSubmissionBody(body: string | null): PutSubmissionBody {
   }
 
   if (
+    value.project_title !== undefined &&
+    (typeof value.project_title !== "string" || !value.project_title.trim())
+  ) {
+    throw new ProductPlusError(400, "Project title must be a nonempty string.");
+  }
+
+  if (
     typeof value.video_url !== "string" ||
     !supportedVideo(value.video_url.trim())
   ) {
@@ -697,6 +731,9 @@ function parseSubmissionBody(body: string | null): PutSubmissionBody {
 
   return {
     team_name: value.team_name.trim(),
+    ...(value.project_title !== undefined
+      ? { project_title: value.project_title.trim() }
+      : {}),
     member_names: value.member_names.map((name: string) => name.trim()),
     video_url: value.video_url.trim(),
     prd_path: value.prd_path.trim()
@@ -818,34 +855,55 @@ function requireOpen(deadline: string) {
 function submissionWrite(
   form: PutSubmissionBody,
   path: string,
+  prdFilename: string | null,
   team: CurrentTeam,
   prior: SubmissionRecord | undefined,
   now: string,
   settings: StorageSettings
 ): TransactionItems[number] {
+  // Older clients omit the title. Retry if it changed, so the returned title matches the save.
+  const preserveTitle = prior !== undefined && form.project_title === undefined;
+  let titleCondition = "";
+
+  if (preserveTitle) {
+    titleCondition =
+      prior.project_title === undefined
+        ? " AND attribute_not_exists(project_title)"
+        : " AND project_title = :priorTitle";
+  }
+
   return {
     Update: {
       TableName: settings.submissionsTable,
       Key: { event_key: settings.eventKey, teamID: team.teamCode },
       // The previous PDF must still match, or another save won and we need a fresh read.
-      ConditionExpression: prior
-        ? "prd_path = :priorPath"
-        : "attribute_not_exists(teamID)",
+      ConditionExpression:
+        (prior ? "prd_path = :priorPath" : "attribute_not_exists(teamID)") +
+        titleCondition,
       UpdateExpression:
         "SET team_name = :name, member_names = :members, " +
+        (form.project_title !== undefined ? "project_title = :title, " : "") +
+        "prd_filename = :filename, " +
         "video_url = :video, prd_path = :path, updated_at = :now, " +
         "submitted_at = if_not_exists(submitted_at, :now), " +
         "graded_submissions = if_not_exists(graded_submissions, :rubrics), " +
         "upvotes = if_not_exists(upvotes, :zero), downvotes = if_not_exists(downvotes, :zero)",
       ExpressionAttributeValues: {
         ":name": form.team_name,
+        ...(form.project_title !== undefined
+          ? { ":title": form.project_title }
+          : {}),
+        ":filename": prdFilename,
         ":members": form.member_names,
         ":video": form.video_url,
         ":path": path,
         ":now": now,
         ":rubrics": [],
         ":zero": 0,
-        ...(prior ? { ":priorPath": prior.prd_path } : {})
+        ...(prior ? { ":priorPath": prior.prd_path } : {}),
+        ...(preserveTitle && prior.project_title !== undefined
+          ? { ":priorTitle": prior.project_title }
+          : {})
       }
     }
   };
@@ -1086,9 +1144,15 @@ export async function saveSubmission(
 
       // Prepare the response before committing, so URL-signing failure cannot hide a save.
       const now = new Date().toISOString();
+      // A retained PDF keeps its label; a replacement uses only its own tracked filename.
+      const prdFilename = formOnly
+        ? (prior?.prd_filename ?? upload.prd_filename ?? null)
+        : (upload.prd_filename ?? null);
       const result = await submissionResponse(
         {
           ...form,
+          project_title: form.project_title ?? prior?.project_title ?? null,
+          prd_filename: prdFilename,
           prd_path: path,
           teamID: context.team.teamCode,
           submitted_at: prior?.submitted_at || now,
@@ -1099,7 +1163,15 @@ export async function saveSubmission(
       // Commit the form, reference the chosen PDF, and recheck membership/deadline together.
       const condition = uploadCondition(upload);
       const items: TransactionItems = [
-        submissionWrite(form, path, context.team, prior, now, settings),
+        submissionWrite(
+          form,
+          path,
+          prdFilename,
+          context.team,
+          prior,
+          now,
+          settings
+        ),
         {
           Update: {
             TableName: settings.uploadsTable,

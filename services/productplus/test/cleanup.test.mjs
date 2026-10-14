@@ -21,7 +21,7 @@ const removeTeam = () =>
     "eventID;year": "productplus;2026"
   });
 const teamCleanup = () =>
-  app.cleanup(app.task("team_deleted", { team_code: app.teamCode }));
+  app.cleanup(app.task("team_deleted", { teamID: app.teamCode }));
 async function replaced() {
   const old = app.upload(1),
     next = app.upload(2);
@@ -190,7 +190,7 @@ test("the same team code in another event keeps its submission and files", async
   assert.deepEqual(
     app.get(app.table("SUBMISSIONS"), {
       event_key: "other;2026",
-      team_code: app.teamCode
+      teamID: app.teamCode
     }),
     otherSubmission
   );
@@ -207,7 +207,7 @@ test("the same team code in another event keeps its submission and files", async
 
 test("strong scan paginates through filtered empty pages and ignores other teams", async () => {
   for (let index = 1; index <= 5; index++) app.upload(index);
-  const other = app.upload(6, { team_code: "999999" });
+  const other = app.upload(6, { teamID: "999999" });
   const otherEvent = app.upload(7, { event_key: "other;2026" });
   app.pageSize = 1;
   removeTeam();
@@ -243,7 +243,7 @@ test("invalid event, task, ownership, or generated key cannot delete objects", a
   for (const task of [
     null,
     { internalTask: "unknown", payload: { event_key: "productplus;2026" } },
-    app.task("team_deleted", { team_code: "config" }),
+    app.task("team_deleted", { teamID: "config" }),
     {
       internalTask: "retire_upload",
       payload: { event_key: "other;2026", prd_path: upload.prd_path }
@@ -315,7 +315,7 @@ test("cleanup rejects missing shared table settings before AWS access", async ()
 });
 
 test("cleanup rejects numeric team codes even when their generated path matches", async () => {
-  const upload = app.upload(1, { team_code: 123456, status: "replaced" });
+  const upload = app.upload(1, { teamID: 123456, status: "replaced" });
   await assert.rejects(retire(upload), /cleanup failed/);
   assert.equal(row(upload).status, "replaced");
   assert.equal(app.objects.has(upload.prd_path), true);

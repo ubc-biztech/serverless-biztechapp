@@ -116,14 +116,14 @@ beforeEach(() => {
   Object.assign(process.env, environment);
   config = {
     event_key: environment.PRODUCTPLUS_EVENT_KEY,
-    team_code: "config",
+    teamID: "config",
     submission_deadline: "2026-10-05T13:00:00Z",
     voting_deadline: "2026-10-06T13:00:00Z"
   };
   registration = {
     "id": email,
     "eventID;year": config.event_key,
-    "team_code": "012345"
+    "teamID": "012345"
   };
   team = {
     "id": "012345",
@@ -144,7 +144,7 @@ beforeEach(() => {
     }
     if (input.TableName === process.env.PRODUCTPLUS_TEAMS_TABLE) {
       assert.deepEqual(input.Key, {
-        "id": registration.team_code,
+        "id": registration.teamID,
         "eventID;year": environment.PRODUCTPLUS_EVENT_KEY
       });
       return { Item: team };
@@ -176,7 +176,7 @@ test("upload accepts only the PDF content-type body and rejects caller-supplied 
     "[]",
     {},
     { content_type: "image/png" },
-    { content_type: "application/pdf", team_code: "999999" }
+    { content_type: "application/pdf", teamID: "999999" }
   ]) {
     assert.equal((await invoke(event(body))).status, 400);
   }
@@ -231,7 +231,7 @@ test("tracking and membership/deadline conditions are written in one transaction
   const item = upload.Put.Item;
   assert.equal(item.prd_path, result.body.prd_path);
   assert.equal(item.event_key, "productplus;2026");
-  assert.equal(item.team_code, "012345");
+  assert.equal(item.teamID, "012345");
   assert.equal(item.team_id, undefined);
   assert.ok(item.prd_path.includes(item.upload_id));
   assert.equal(item.content_type, "application/pdf");
@@ -265,7 +265,7 @@ test("tracking and membership/deadline conditions are written in one transaction
   });
   assert.deepEqual(configCheck.ConditionCheck.Key, {
     event_key: "productplus;2026",
-    team_code: "config"
+    teamID: "config"
   });
   assert.equal(
     configCheck.ConditionCheck.ExpressionAttributeValues[":deadline"],
@@ -303,7 +303,7 @@ test("both the event registration and team's memberIDs list must authorize the c
   registration = {
     "id": email,
     "eventID;year": "productplus;2026",
-    "team_code": team.id
+    "teamID": team.id
   };
   const originalTeam = team;
   team = undefined;
@@ -317,15 +317,15 @@ test("both the event registration and team's memberIDs list must authorize the c
 
 test("registration must provide a six-digit string, retaining leading zeros", async () => {
   for (const code of [123456, "12345", "1234567", "abcdef", null]) {
-    registration.team_code = code;
+    registration.teamID = code;
     assert.equal((await invoke()).status, 409);
   }
   for (const code of [undefined, ""]) {
-    registration.team_code = code;
+    registration.teamID = code;
     assert.equal((await invoke()).status, 403);
   }
-  delete registration.team_code;
-  registration.teamID = "012345";
+  delete registration.teamID;
+  registration.team_code = "012345";
   assert.equal((await invoke()).status, 403);
   assert.equal(database.commandCalls(TransactWriteCommand).length, 0);
 });

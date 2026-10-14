@@ -13,7 +13,7 @@ after(() => app.restore());
 const eventKey = "productplus;2026";
 const teamKey = () => ({ "id": app.teamCode, "eventID;year": eventKey });
 const registrationKey = (id) => ({ id, "eventID;year": eventKey });
-const cleanupTask = () => app.task("team_deleted", { team_code: app.teamCode });
+const cleanupTask = () => app.task("team_deleted", { teamID: app.teamCode });
 
 // These tests seed completed team-workflow writes and call the real Product Plus
 // handlers. They verify the shared storage/task contract, not unfinished team APIs.
@@ -25,18 +25,18 @@ test("final-member deletion uses the new cleanup payload and removes the submiss
     200
   );
 
-  // The team workflow clears team_code and deletes the team before invoking cleanup.
-  delete app.registration().team_code;
+  // The team workflow clears teamID and deletes the team before invoking cleanup.
+  delete app.registration().teamID;
   app.delete(app.table("TEAMS"), teamKey());
   assert.deepEqual(cleanupTask(), {
     internalTask: "team_deleted",
-    payload: { event_key: eventKey, team_code: "012345" }
+    payload: { event_key: eventKey, teamID: "012345" }
   });
   assert.equal((await app.cleanup(cleanupTask())).cleaned, 2);
   assert.equal(app.submission(), undefined);
   assert.equal(app.objects.has(app.permanent(referenced)), false);
   assert.equal(app.objects.has(pending.prd_path), false);
-  assert.equal(app.registration().team_code, undefined);
+  assert.equal(app.registration().teamID, undefined);
   assert.ok(app.config());
   assert.equal((await app.cleanup(cleanupTask())).cleaned, 0);
 });
@@ -46,7 +46,7 @@ test("removing one member denies that user while remaining members retain submis
   app.team().memberIDs.push(remaining);
   app.put(app.table("REGISTRATIONS"), {
     ...registrationKey(remaining),
-    team_code: app.teamCode
+    teamID: app.teamCode
   });
   const upload = app.upload();
   assert.equal(
@@ -54,7 +54,7 @@ test("removing one member denies that user while remaining members retain submis
     200
   );
 
-  delete app.registration().team_code;
+  delete app.registration().teamID;
   app.team().memberIDs = app.team().memberIDs.filter((id) => id !== app.email);
   assert.equal((await app.invoke(app.getSubmission)).status, 403);
   assert.equal(
@@ -66,7 +66,7 @@ test("removing one member denies that user while remaining members retain submis
     email: remaining
   });
   assert.equal(result.status, 200);
-  assert.equal(result.body.submission.team_code, app.teamCode);
+  assert.equal(result.body.submission.teamID, app.teamCode);
   assert.equal(
     (
       await app.invoke(
@@ -84,7 +84,7 @@ test("removing one member denies that user while remaining members retain submis
   assert.equal(app.lambda.calls().length, 0);
 });
 
-test("annual BizTech membership and legacy teamID alone do not grant team access", async () => {
+test("annual BizTech membership and team_code alone do not grant team access", async () => {
   app.delete(app.table("REGISTRATIONS"), registrationKey(app.email));
   app.rows.set(app.key("biztechMembers2027", { id: app.email }), {
     id: app.email,
@@ -93,7 +93,7 @@ test("annual BizTech membership and legacy teamID alone do not grant team access
   app.put("biztechRegistrations", {
     "id": app.email,
     "eventID;year": eventKey,
-    "teamID": "legacy-team"
+    "team_code": "legacy-team"
   });
   assert.equal((await app.invoke(app.getSubmission)).status, 403);
   assert.equal(
@@ -119,7 +119,7 @@ test("a cleanup task for another event cannot affect Product Plus data", async (
   );
   const task = {
     internalTask: "team_deleted",
-    payload: { event_key: "kickstart;2026", team_code: app.teamCode }
+    payload: { event_key: "kickstart;2026", teamID: app.teamCode }
   };
   await assert.rejects(app.cleanup(task), /Invalid cleanup event/);
   assert.ok(app.submission());
@@ -143,7 +143,7 @@ test("PROD team deletion reads only PROD resources and preserves the dev team", 
     200
   );
 
-  delete app.registration().team_code;
+  delete app.registration().teamID;
   app.delete(app.table("TEAMS"), teamKey());
   assert.equal((await app.cleanup(cleanupTask())).cleaned, 1);
   assert.deepEqual(app.get(devTable, teamKey()), team);

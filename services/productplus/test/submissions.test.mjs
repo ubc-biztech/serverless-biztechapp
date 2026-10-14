@@ -54,7 +54,7 @@ test("first save initializes shared fields, trims names and returns only the pub
   assert.equal(stored.team_name, "Example Team");
   assert.deepEqual(stored.member_names, ["Member One"]);
   assert.equal(stored.team_id, undefined);
-  assert.equal(stored.team_code, "012345");
+  assert.equal(stored.teamID, "012345");
   assert.equal(stored.event_key, "productplus;2026");
   assert.deepEqual(stored.graded_submissions, []);
   assert.equal(stored.upvotes, 0);
@@ -64,10 +64,12 @@ test("first save initializes shared fields, trims names and returns only the pub
   assert.equal(stored.prd_view_url, undefined);
   assert.deepEqual(Object.keys(result.body).sort(), [
     "member_names",
+    "prd_filename",
     "prd_path",
     "prd_view_url",
+    "project_title",
     "submitted_at",
-    "team_code",
+    "teamID",
     "team_name",
     "updated_at",
     "video_url"
@@ -168,7 +170,7 @@ test("PUT rejects malformed bodies, unknown fields and empty names before access
     { ...form, member_names: [1] },
     { ...form, member_names: "one" },
     { ...form, prd_path: "" },
-    { ...form, team_code: "123456" }
+    { ...form, teamID: "123456" }
   ]) {
     assert.equal((await save(body)).status, 400);
   }
@@ -220,7 +222,7 @@ test("PDF must have team-owned tracking and an available lifecycle status", asyn
   const upload = app.upload();
   const original = structuredClone(uploadRow(upload.prd_path));
   for (const overrides of [
-    { team_code: "999999" },
+    { teamID: "999999" },
     { event_key: "another;2026" },
     { upload_id: "invalid" },
     { content_type: "text/plain" },
@@ -310,7 +312,7 @@ test("closed submissions and missing config fail without writing", async () => {
   assert.equal((await save(app.form(upload.prd_path))).status, 403);
   app.delete(app.table("SUBMISSIONS"), {
     event_key: "productplus;2026",
-    team_code: "config"
+    teamID: "config"
   });
   assert.equal((await load()).status, 503);
   assert.equal((await save(app.form(upload.prd_path))).status, 503);
@@ -339,7 +341,7 @@ test("removal during a save cancels the whole transaction and fresh lookup denie
 test("membership removal during a save is enforced even if the team member list is stale", async () => {
   const upload = app.upload();
   app.beforeTransaction = () => {
-    delete app.registration().team_code;
+    delete app.registration().teamID;
   };
   assert.equal((await save(app.form(upload.prd_path))).status, 403);
   assert.equal(app.submission(), undefined);
@@ -357,8 +359,8 @@ test("changed deadline is reread on retry instead of using stale configuration",
 
 test("two simultaneous PDF replacements keep the last successful save and correct tracking", async () => {
   const original = app.upload(1),
-    a = app.upload(2),
-    b = app.upload(3);
+    a = app.upload(2, { prd_filename: "A.pdf" }),
+    b = app.upload(3, { prd_filename: "B.pdf" });
   await save(app.form(original.prd_path));
   let release, reached;
   const blocked = new Promise((resolve) => {
@@ -377,16 +379,28 @@ test("two simultaneous PDF replacements keep the last successful save and correc
       });
     }
   };
-  const first = save({ ...app.form(a.prd_path), team_name: "A" });
+  const first = save({
+    ...app.form(a.prd_path),
+    team_name: "A",
+    project_title: "Project A"
+  });
   await blocked;
   assert.equal(
-    (await save({ ...app.form(b.prd_path), team_name: "B" })).status,
+    (
+      await save({
+        ...app.form(b.prd_path),
+        team_name: "B",
+        project_title: "Project B"
+      })
+    ).status,
     200
   );
   release();
   assert.equal((await first).status, 200);
   assert.equal(app.submission().team_name, "A");
   assert.equal(app.submission().prd_path, app.permanent(a));
+  assert.equal(app.submission().prd_filename, "A.pdf");
+  assert.equal(app.submission().project_title, "Project A");
   assert.equal(uploadRow(a.prd_path).status, "referenced");
   assert.equal(uploadRow(b.prd_path).status, "replaced");
   assert.equal(uploadRow(original.prd_path).status, "replaced");
@@ -448,11 +462,11 @@ test("PROD selection preserves the response contract", async () => {
   app.put(app.table("REGISTRATIONS"), {
     "eventID;year": "productplus;2026",
     "id": app.email,
-    "team_code": app.teamCode
+    "teamID": app.teamCode
   });
   app.put(app.table("SUBMISSIONS"), {
     event_key: "productplus;2026",
-    team_code: "config",
+    teamID: "config",
     submission_deadline: "2026-10-05T13:00:00Z",
     voting_deadline: "2026-10-06T13:00:00Z"
   });
@@ -474,7 +488,7 @@ test("changing teams cannot expose or attach the previous team's PDF", async () 
   const upload = app.upload();
   await save(app.form(upload.prd_path));
   app.team().memberIDs = ["remaining@example.com"];
-  app.registration().team_code = "654321";
+  app.registration().teamID = "654321";
   app.teamCode = "654321";
   app.put(app.table("TEAMS"), {
     "eventID;year": "productplus;2026",
@@ -497,7 +511,7 @@ test("membership changing during a save cannot attach the old team's upload", as
     "memberIDs": [app.email]
   });
   app.beforeTransaction = () => {
-    app.registration().team_code = "654321";
+    app.registration().teamID = "654321";
   };
   assert.equal((await save(app.form(upload.prd_path))).status, 400);
   assert.equal(app.submission(), undefined);
@@ -505,16 +519,16 @@ test("membership changing during a save cannot attach the old team's upload", as
 });
 
 test("membership from another event or user cannot authorize submission access", async () => {
-  delete app.registration().team_code;
+  delete app.registration().teamID;
   app.put(app.table("REGISTRATIONS"), {
     "eventID;year": "other;2026",
     "id": app.email,
-    "team_code": app.teamCode
+    "teamID": app.teamCode
   });
   app.put(app.table("REGISTRATIONS"), {
     "eventID;year": "productplus;2026",
     "id": "other@example.com",
-    "team_code": app.teamCode
+    "teamID": app.teamCode
   });
   const upload = app.upload();
   assert.equal((await load()).status, 403);
@@ -522,12 +536,12 @@ test("membership from another event or user cannot authorize submission access",
   assert.equal(app.database.commandCalls(TransactWriteCommand).length, 0);
 });
 
-test("registration team_code is authoritative even when legacy teamID disagrees", async () => {
-  app.registration().teamID = "654321";
+test("registration teamID is authoritative even when team_code disagrees", async () => {
+  app.registration().team_code = "654321";
   const upload = app.upload();
   const result = await save(app.form(upload.prd_path));
   assert.equal(result.status, 200);
-  assert.equal(result.body.team_code, "012345");
+  assert.equal(result.body.teamID, "012345");
   assert.equal(app.submission().prd_path, app.permanent(upload));
 });
 
