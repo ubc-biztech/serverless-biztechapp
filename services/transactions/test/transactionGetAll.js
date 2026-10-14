@@ -6,27 +6,18 @@ import AWSMock from "aws-sdk-mock";
 
 import mochaPlugin from "serverless-mocha-plugin";
 const expect = mochaPlugin.chai.expect;
-let wrapped = mochaPlugin.getWrapper(
-  "transactionGetAll",
-  "/handler.js",
-  "getAll"
-);
+let wrapped = mochaPlugin.getWrapper("transactionGetAll", "/handler.js", "getAll");
 
 import getTransactionsResponse from "./transactions.json";
 
 describe("transactionGetAll", () => {
   before(() => {
     AWSMock.mock("DynamoDB.DocumentClient", "scan", (params, callback) => {
-      const response =
-        params && params.ExpressionAttributeValues
-          ? {
-            Items: getTransactionsResponse.Items.filter(
-              (transaction) =>
-                params.ExpressionAttributeValues[":query"] ===
-                  transaction.userId
-            )
-          }
-          : getTransactionsResponse;
+      const response = (params && params.ExpressionAttributeValues)
+        ? {
+          Items: getTransactionsResponse.Items.filter((transaction) => params.ExpressionAttributeValues[":query"] === transaction.userId)
+        }
+        : getTransactionsResponse;
       callback(null, response);
     });
   });

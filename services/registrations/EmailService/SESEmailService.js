@@ -1,6 +1,11 @@
-import { SESClient, CreateTemplateCommand } from "@aws-sdk/client-ses";
+import {
+  SESClient,
+  CreateTemplateCommand
+} from "@aws-sdk/client-ses";
 import nodemailer from "nodemailer";
-import { logoBase64 } from "./constants";
+import {
+  logoBase64
+} from "./constants";
 import {
   getDefaultCalendarInviteTemplate,
   getPartnerCalendarInviteTemplate,
@@ -15,20 +20,23 @@ import { REGISTRATION_STATUS } from "../constants";
 const ics = require("ics");
 
 export default class SESEmailService {
-  constructor({ accessKeyId, secretAccessKey, region = "us-west-2" }) {
+  constructor({
+    accessKeyId,
+    secretAccessKey,
+    region = "us-west-2"
+  }) {
     const credentials = {
       accessKeyId: accessKeyId,
       secretAccessKey: secretAccessKey
     };
-    this.ses =
-      process.env.ENVIRONMENT === "development"
-        ? new SESClient({
-          region: region,
-          credentials: credentials
-        })
-        : new SESClient({
-          region: region
-        });
+    this.ses = process.env.ENVIRONMENT === "development" ?
+      new SESClient({
+        region: region,
+        credentials: credentials
+      }) :
+      new SESClient({
+        region: region
+      });
 
     this.transporter = nodemailer.createTransport({
       SES: {
@@ -55,8 +63,18 @@ export default class SESEmailService {
   }
 
   async sendCalendarInvite(event, user, registrationStatus) {
-    let { ename, description, elocation, startDate, endDate, imageUrl } = event;
-    let { fname, id } = user;
+    let {
+      ename,
+      description,
+      elocation,
+      startDate,
+      endDate,
+      imageUrl
+    } = event;
+    let {
+      fname,
+      id
+    } = user;
 
     const emailParams = {
       fname,
@@ -113,7 +131,10 @@ export default class SESEmailService {
       method: "REQUEST"
     };
 
-    const { error, value } = ics.createEvent(eventDetails);
+    const {
+      error,
+      value
+    } = ics.createEvent(eventDetails);
 
     if (error) {
       console.log(error);
@@ -142,8 +163,12 @@ export default class SESEmailService {
   }
 
   async sendDynamicQR(event, user, registrationStatus, emailType) {
-    const { id: email, fname } = user;
-    const { ename, isApplicationBased } = event;
+    const {
+      id: email, fname
+    } = user;
+    const {
+      ename, isApplicationBased
+    } = event;
 
     const currentYear = new Date().getFullYear();
     const emailParams = {
@@ -154,12 +179,11 @@ export default class SESEmailService {
       currentYear
     };
 
-    const rawHtml =
-      registrationStatus === REGISTRATION_STATUS.REGISTERED
-        ? getRegisteredQRTemplate(emailParams)
-        : isApplicationBased
-          ? getDefaultApplicationTemplate(emailParams)
-          : getDefaultQRTemplate(emailParams);
+    const rawHtml = registrationStatus === REGISTRATION_STATUS.REGISTERED
+      ? getRegisteredQRTemplate(emailParams)
+      : isApplicationBased
+        ? getDefaultApplicationTemplate(emailParams)
+        : getDefaultQRTemplate(emailParams);
 
     const subject = `BizTech ${ename} Event ${emailType === "application" ? "Application" : "Registration"} Status`;
 

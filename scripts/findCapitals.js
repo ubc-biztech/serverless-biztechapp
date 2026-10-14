@@ -1,6 +1,9 @@
 import * as dotenv from "dotenv";
-import { DynamoDB } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDB
+} from "@aws-sdk/client-dynamodb";
 import * as fs from "fs";
+
 
 dotenv.config({
   path: "../.env"
@@ -9,18 +12,19 @@ dotenv.config({
 const awsConfig = {
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  region: "us-west-2"
+  region: "us-west-2",
   //   accessKeyId: "AKID",
   //   secretAccessKey: "SECRET",
   //   endpoint: "http://localhost:8000", // use the local dynamodb url here
   //   region: "us-west-2",
 };
 
+
 const dynamodb = new DynamoDB(awsConfig);
 
 // Define the parameters for the scan operation
 const params = {
-  TableName: "biztechUsersPROD"
+  TableName: "biztechUsersPROD",
   // ProjectionExpression: 'id' // Specify the attributes you want to retrieve
 };
 
@@ -31,7 +35,7 @@ dynamodb.scan(params, (err, data) => {
   } else {
     // Process the scanned items
     const result = [];
-    data.Items.forEach((item) => {
+    data.Items.forEach(item => {
       const email = item.id.S;
 
       // Check if the email contains any capital letter
@@ -106,10 +110,7 @@ dynamodb.scan(params, (err, data) => {
     const jsonString = JSON.stringify(result, null, 2);
 
     const filePath = "../constants/emails.js";
-    fs.writeFileSync(
-      filePath,
-      `const CAPITALIZED_EMAILS = ${jsonString};\n\nexport default CAPITALIZED_EMAILS;\n`
-    );
+    fs.writeFileSync(filePath, `const CAPITALIZED_EMAILS = ${jsonString};\n\nexport default CAPITALIZED_EMAILS;\n`);
 
     console.log(`Results written to ${filePath}`);
   }

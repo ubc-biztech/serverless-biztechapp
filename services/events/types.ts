@@ -17,7 +17,11 @@ export type RegistrationQuestionWithId = RegistrationQuestion & {
 export type EventPageModuleId = "registration" | "qa" | "connections";
 
 export type EventPageModuleVisibility =
-  "public" | "signedIn" | "registered" | "checkedIn" | "admin";
+  | "public"
+  | "signedIn"
+  | "registered"
+  | "checkedIn"
+  | "admin";
 
 export interface EventPageModule {
   id: EventPageModuleId;
@@ -168,9 +172,9 @@ export interface FeedbackQuestion {
   scaleMaxLabel?: string;
 }
 
-export type ValidationFail = {
-  isValid: false;
-  error: string;
+export type ValidationFail = { 
+  isValid: false; 
+  error: string 
 };
 
 export type QuestionsValidationSuccess = {
@@ -178,8 +182,10 @@ export type QuestionsValidationSuccess = {
   questions: FeedbackQuestion[];
 };
 
+
 export type QuestionsValidationResult =
-  ValidationFail | QuestionsValidationSuccess;
+  | ValidationFail
+  | QuestionsValidationSuccess;
 
 export type ResponsesValidationSuccess = {
   isValid: true;
@@ -187,7 +193,8 @@ export type ResponsesValidationSuccess = {
 };
 
 export type ResponsesValidationResult =
-  ValidationFail | ResponsesValidationSuccess;
+  | ValidationFail
+  | ResponsesValidationSuccess;
 
 /** POST /events/{id}/{year}/feedback/{formType} request body. */
 export interface SubmitFeedbackBody {
@@ -199,23 +206,23 @@ export interface SubmitFeedbackBody {
 export interface FeedbackHelpers {
   parseFormType: (raw: string | undefined) => FeedbackFormType | null;
   ensureDefaultOverallRatingQuestion: (
-    questions: RawFeedbackQuestion[] | FeedbackQuestion[] | unknown
+    questions: RawFeedbackQuestion[] | FeedbackQuestion[] | unknown,
   ) => FeedbackQuestion[];
   getFeedbackQuestionsForType: (
     eventItem: EventRecord | Record<string, unknown> | null,
-    formType: FeedbackFormType
+    formType: FeedbackFormType,
   ) => FeedbackQuestion[];
   isFeedbackEnabledForType: (
     eventItem: EventRecord | Record<string, unknown> | null,
-    formType: FeedbackFormType
+    formType: FeedbackFormType,
   ) => boolean;
   normalizeFeedbackQuestions: (
     rawQuestions: unknown,
-    formType: FeedbackFormType
+    formType: FeedbackFormType,
   ) => QuestionsValidationResult;
   validateFeedbackPayload: (
     questions: FeedbackQuestion[],
-    rawResponses: unknown
+    rawResponses: unknown,
   ) => ResponsesValidationResult;
   normalizeText: (value: unknown) => string;
 }

@@ -10,7 +10,10 @@ import {
   createProfile,
   updateProfileFromMembershipData
 } from "../profiles/helpers";
-import { PROFILE_TYPES, TYPES } from "../profiles/constants";
+import {
+  PROFILE_TYPES,
+  TYPES
+} from "../profiles/constants";
 import humanId from "human-id";
 import { protect, Access } from "../../lib/auth";
 
@@ -144,13 +147,11 @@ const buildExistingPartnerProfileUpdate = (profile) => {
     "#compositeID": "compositeID"
   };
   const expressionAttributeValues = {};
-  const updateExpressions = Object.entries(updatedFields).map(
-    ([field, value]) => {
-      expressionAttributeNames[`#${field}`] = field;
-      expressionAttributeValues[`:${field}`] = value;
-      return `#${field} = :${field}`;
-    }
-  );
+  const updateExpressions = Object.entries(updatedFields).map(([field, value]) => {
+    expressionAttributeNames[`#${field}`] = field;
+    expressionAttributeValues[`:${field}`] = value;
+    return `#${field} = :${field}`;
+  });
 
   return {
     Update: {
@@ -186,7 +187,7 @@ const buildPartnerMembershipTransaction = (records, existingUser) => {
           id: records.user.id
         },
         UpdateExpression:
-            "SET #fname = :fname, #lname = :lname, #isMember = :isMember, #admin = :admin, #profileID = :profileID, #updatedAt = :updatedAt",
+          "SET #fname = :fname, #lname = :lname, #isMember = :isMember, #admin = :admin, #profileID = :profileID, #updatedAt = :updatedAt",
         ExpressionAttributeNames: {
           "#fname": "fname",
           "#lname": "lname",
@@ -286,38 +287,35 @@ export const create = protect(Access.ADMIN, async (event, ctx, callback) => {
   }
 });
 
-export const getEmailFromProfile = protect(
-  Access.ADMIN,
-  async (event, ctx, callback) => {
-    try {
-      if (!event.pathParameters || !event.pathParameters.profileID)
-        throw helpers.missingIdQueryResponse("profileID");
+export const getEmailFromProfile = protect(Access.ADMIN, async (event, ctx, callback) => {
+  try {
+    if (!event.pathParameters || !event.pathParameters.profileID)
+      throw helpers.missingIdQueryResponse("profileID");
 
-      const profileID = event.pathParameters.profileID;
+    const profileID = event.pathParameters.profileID;
 
-      const user = await db.query(USERS_TABLE, "profileID-index", {
-        expression: "#profileID = :profileID",
-        expressionNames: {
-          "#profileID": "profileID"
-        },
-        expressionValues: {
-          ":profileID": `${profileID}`
-        }
-      });
+    const user = await db.query(USERS_TABLE, "profileID-index", {
+      expression: "#profileID = :profileID",
+      expressionNames: {
+        "#profileID": "profileID"
+      },
+      expressionValues: {
+        ":profileID": `${profileID}`
+      }
+    });
 
-      if (isEmpty(user[0])) throw helpers.notFoundResponse("user", profileID);
-      console.log(user);
+    if (isEmpty(user[0])) throw helpers.notFoundResponse("user", profileID);
+    console.log(user);
 
-      const { id } = user[0];
+    const { id } = user[0];
 
-      const response = helpers.createResponse(200, { email: id });
-      return response;
-    } catch (err) {
-      console.log(err);
-      return err;
-    }
+    const response = helpers.createResponse(200, { email: id });
+    return response;
+  } catch (err) {
+    console.log(err);
+    return err;
   }
-);
+});
 
 export const get = protect(Access.ADMIN, async (event, ctx, callback) => {
   try {
@@ -402,86 +400,81 @@ export const del = protect(Access.ADMIN, async (event, ctx, callback) => {
   }
 });
 
-export const createPartnerMemberships = protect(
-  Access.ADMIN,
-  async (event, ctx, callback) => {
-    try {
-      const data = JSON.parse(event.body || "{}");
-      if (!Array.isArray(data.partners)) {
-        return helpers.inputError("partners must be an array", data);
+export const createPartnerMemberships = protect(Access.ADMIN, async (event, ctx, callback) => {
+  try {
+    const data = JSON.parse(event.body || "{}");
+    if (!Array.isArray(data.partners)) {
+      return helpers.inputError("partners must be an array", data);
+    }
+
+    const results = await Promise.all(data.partners.map(async (partnerData) => {
+      const partner = normalizePartner(partnerData);
+      const validationError = validatePartner(partner);
+      if (validationError) {
+        return {
+          email: partner.email,
+          status: "failed",
+          reason: validationError
+        };
       }
 
-      const results = await Promise.all(
-        data.partners.map(async (partnerData) => {
-          const partner = normalizePartner(partnerData);
-          const validationError = validatePartner(partner);
-          if (validationError) {
-            return {
-              email: partner.email,
-              status: "failed",
-              reason: validationError
-            };
-          }
+      const existingMember = await db.getOne(partner.email, MEMBERS_TABLE);
+      if (!isEmpty(existingMember)) {
+        return {
+          email: partner.email,
+          status: "skipped",
+          reason: "membership already exists"
+        };
+      }
 
-          const existingMember = await db.getOne(partner.email, MEMBERS_TABLE);
-          if (!isEmpty(existingMember)) {
-            return {
-              email: partner.email,
-              status: "skipped",
-              reason: "membership already exists"
-            };
-          }
-
-          const existingUser = await db.getOne(partner.email, USERS_TABLE);
-          const profileID =
-            !isEmpty(existingUser) && existingUser.profileID
-              ? existingUser.profileID
-              : humanId();
-          const timestamp = new Date().getTime();
-          const records = buildPartnerMembershipRecords(
-            partner,
-            profileID,
-            timestamp
-          );
-          const transactionItems = buildPartnerMembershipTransaction(
-            records,
-            existingUser
-          );
-
-          try {
-            await db.writeMultiple(transactionItems);
-
-            return {
-              email: partner.email,
-              status: "created",
-              profileID
-            };
-          } catch (err) {
-            const body = err && err.body ? JSON.parse(err.body) : {};
-            return {
-              email: partner.email,
-              status: "failed",
-              reason:
-                body.code ||
-                (err && err.message) ||
-                "Failed to create partner membership"
-            };
-          }
-        })
+      const existingUser = await db.getOne(partner.email, USERS_TABLE);
+      const profileID =
+        !isEmpty(existingUser) && existingUser.profileID
+          ? existingUser.profileID
+          : humanId();
+      const timestamp = new Date().getTime();
+      const records = buildPartnerMembershipRecords(
+        partner,
+        profileID,
+        timestamp
+      );
+      const transactionItems = buildPartnerMembershipTransaction(
+        records,
+        existingUser
       );
 
-      return helpers.createResponse(200, {
-        ...summarizePartnerResults(results),
-        results
-      });
-    } catch (err) {
-      console.error(err);
-      return helpers.createResponse(500, {
-        message: err.message || "Internal server error"
-      });
-    }
+      try {
+        await db.writeMultiple(transactionItems);
+
+        return {
+          email: partner.email,
+          status: "created",
+          profileID
+        };
+      } catch (err) {
+        const body = err && err.body ? JSON.parse(err.body) : {};
+        return {
+          email: partner.email,
+          status: "failed",
+          reason:
+            body.code ||
+            (err && err.message) ||
+            "Failed to create partner membership"
+        };
+      }
+    }));
+
+    return helpers.createResponse(200, {
+      ...summarizePartnerResults(results),
+      results
+    });
+  } catch (err) {
+    console.error(err);
+    return helpers.createResponse(500, {
+      message: err.message || "Internal server error"
+    });
   }
-);
+});
 
 // type CreateMemberRequest = {
 //   email: string,
@@ -501,98 +494,95 @@ export const createPartnerMemberships = protect(
 //   adminCreated: true,
 // };
 
-export const grantMembership = protect(
-  Access.ADMIN,
-  async (event, ctx, callback) => {
-    try {
-      const data = JSON.parse(event.body);
+export const grantMembership = protect(Access.ADMIN, async (event, ctx, callback) => {
+  try {
+    const data = JSON.parse(event.body);
 
-      const email = data && data.email ? data.email.toLowerCase() : undefined;
-      if (!isValidEmail(email)) {
-        callback(null, helpers.inputError("Invalid email", email));
-        return null;
-      }
+    const email = data && data.email ? data.email.toLowerCase() : undefined;
+    if (!isValidEmail(email)) {
+      callback(null, helpers.inputError("Invalid email", email));
+      return null;
+    }
 
-      const timestamp = new Date().getTime();
-      const userYear = data.levelOfStudy || data.year || "";
-      const isBiztechAdmin = email.endsWith("@ubcbiztech.com");
+    const timestamp = new Date().getTime();
+    const userYear = data.levelOfStudy || data.year || "";
+    const isBiztechAdmin = email.endsWith("@ubcbiztech.com");
 
-      const user = await db.getOne(email, USERS_TABLE);
-      const userParams = {
+    const user = await db.getOne(email, USERS_TABLE);
+    const userParams = {
+      id: email,
+      education: data.education,
+      studentId: data.studentNumber || "",
+      fname: data.firstName,
+      lname: data.lastName,
+      faculty: data.faculty,
+      major: data.major,
+      year: userYear,
+      gender: data.pronouns,
+      diet: data.dietaryRestrictions,
+      admin: isBiztechAdmin,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+
+    if (isEmpty(user)) {
+      await db.put(userParams,USERS_TABLE,true);
+    } else {
+      await db.updateDB(email, userParams, USERS_TABLE);
+    }
+
+    const member = await db.getOne(email, MEMBERS_TABLE);
+    let memberDataForProfile = member;
+
+    if (isEmpty(member)) {
+      const memberParams = {
         id: email,
+        cardCount: 0,
         education: data.education,
-        studentId: data.studentNumber || "",
-        fname: data.firstName,
-        lname: data.lastName,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        pronouns: data.pronouns,
+        studentNumber: data.studentNumber || "",
         faculty: data.faculty,
-        major: data.major,
         year: userYear,
-        gender: data.pronouns,
+        major: data.major,
+        prevMember: Boolean(data.previousMember),
+        international: Boolean(data.internationalStudent),
+        topics: normalizeTopics(data.topics),
         diet: data.dietaryRestrictions,
+        heardFrom: data.referral,
+        university: data.education,
         admin: isBiztechAdmin,
+        profileType: isBiztechAdmin
+          ? PROFILE_TYPES.EXEC
+          : PROFILE_TYPES.ATTENDEE,
         createdAt: timestamp,
         updatedAt: timestamp
       };
-
-      if (isEmpty(user)) {
-        await db.put(userParams, USERS_TABLE, true);
-      } else {
-        await db.updateDB(email, userParams, USERS_TABLE);
-      }
-
-      const member = await db.getOne(email, MEMBERS_TABLE);
-      let memberDataForProfile = member;
-
-      if (isEmpty(member)) {
-        const memberParams = {
-          id: email,
-          cardCount: 0,
-          education: data.education,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          pronouns: data.pronouns,
-          studentNumber: data.studentNumber || "",
-          faculty: data.faculty,
-          year: userYear,
-          major: data.major,
-          prevMember: Boolean(data.previousMember),
-          international: Boolean(data.internationalStudent),
-          topics: normalizeTopics(data.topics),
-          diet: data.dietaryRestrictions,
-          heardFrom: data.referral,
-          university: data.education,
-          admin: isBiztechAdmin,
-          profileType: isBiztechAdmin
-            ? PROFILE_TYPES.EXEC
-            : PROFILE_TYPES.ATTENDEE,
-          createdAt: timestamp,
-          updatedAt: timestamp
-        };
-        await db.put(memberParams, MEMBERS_TABLE, true);
-        memberDataForProfile = memberParams;
-      }
-
-      const userWithProfile = await db.getOne(email, USERS_TABLE);
-      if (userWithProfile && userWithProfile.profileID) {
-        await updateProfileFromMembershipData(
-          userWithProfile.profileID,
-          memberDataForProfile,
-          isBiztechAdmin ? PROFILE_TYPES.EXEC : PROFILE_TYPES.ATTENDEE
-        );
-      } else {
-        await createProfile(
-          email,
-          isBiztechAdmin ? PROFILE_TYPES.EXEC : PROFILE_TYPES.ATTENDEE
-        );
-      }
-
-      const response = helpers.createResponse(200, {
-        message: "Membership granted"
-      });
-      return response;
-    } catch (err) {
-      console.error(err);
-      return err;
+      await db.put(memberParams, MEMBERS_TABLE, true);
+      memberDataForProfile = memberParams;
     }
+
+    const userWithProfile = await db.getOne(email, USERS_TABLE);
+    if (userWithProfile && userWithProfile.profileID) {
+      await updateProfileFromMembershipData(
+        userWithProfile.profileID,
+        memberDataForProfile,
+        isBiztechAdmin ? PROFILE_TYPES.EXEC : PROFILE_TYPES.ATTENDEE
+      );
+    } else {
+      await createProfile(
+        email,
+        isBiztechAdmin ? PROFILE_TYPES.EXEC : PROFILE_TYPES.ATTENDEE
+      );
+    }
+
+    const response = helpers.createResponse(200, {
+      message: "Membership granted",
+    });
+    return response;
+  } catch (err) {
+    console.error(err);
+    return err;
   }
-);
+});

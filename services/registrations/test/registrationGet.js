@@ -7,12 +7,14 @@ import mochaPlugin from "serverless-mocha-plugin";
 const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper("registrationGet", "/handler.js", "get");
 
-import { USERS_TABLE } from "../../../constants/tables";
-import { mockClient } from "aws-sdk-client-mock";
 import {
-  DynamoDBDocumentClient,
-  QueryCommand,
-  GetCommand
+  USERS_TABLE
+} from "../../../constants/tables";
+import {
+  mockClient
+} from "aws-sdk-client-mock";
+import {
+  DynamoDBDocumentClient, QueryCommand, GetCommand
 } from "@aws-sdk/lib-dynamodb";
 
 const email = "test@gmail.com";
@@ -20,11 +22,11 @@ const email2 = "test2@gmail.com";
 
 const registrationPayload = [
   {
-    "id": email,
+    id: email,
     "eventID;year": "event;2020",
-    "registrationStatus": "registered",
-    "updatedAt": 1600669844493,
-    "basicInformation": {
+    registrationStatus: "registered",
+    updatedAt: 1600669844493,
+    basicInformation: {
       diet: "None",
       faculty: "Commerce",
       fname: "Test",
@@ -36,11 +38,11 @@ const registrationPayload = [
     }
   },
   {
-    "id": email2,
+    id: email2,
     "eventID;year": "event;2020",
-    "registrationStatus": "registered",
-    "updatedAt": 1600669844493,
-    "basicInformation": {
+    registrationStatus: "registered",
+    updatedAt: 1600669844493,
+    basicInformation: {
       diet: "None",
       faculty: "Commerce",
       fname: "Test2",
@@ -73,12 +75,12 @@ describe("registrationGet", () => {
     ddbMock.reset();
 
     // Mock Query Command
-    ddbMock.on(QueryCommand).callsFake((params) => {
+    ddbMock.on(QueryCommand).callsFake(params => {
       if (params.IndexName === "event-query") {
         // For event-query GSI, we need eventID;year as the partition key
         const eventIDYear = params.ExpressionAttributeValues[":eventIDYear"];
-        const items = registrationPayload.filter(
-          (item) => item["eventID;year"] === eventIDYear
+        const items = registrationPayload.filter(item =>
+          item["eventID;year"] === eventIDYear
         );
         return {
           Items: items
@@ -86,7 +88,9 @@ describe("registrationGet", () => {
       } else {
         // Primary index query by email
         const emailId = params.ExpressionAttributeValues[":id"];
-        const items = registrationPayload.filter((item) => item.id === emailId);
+        const items = registrationPayload.filter(item =>
+          item.id === emailId
+        );
         return {
           Items: items
         };
@@ -94,7 +98,7 @@ describe("registrationGet", () => {
     });
 
     // Mock Get Command
-    ddbMock.on(GetCommand).callsFake((params) => {
+    ddbMock.on(GetCommand).callsFake(params => {
       if (params.TableName.includes("events")) {
         if (params.Key.id === "event" && params.Key.year === 2020) {
           return {
@@ -110,7 +114,8 @@ describe("registrationGet", () => {
             Item: registrationPayload[0]
           };
         }
-        return {};
+        return {
+        };
       }
     });
   });
@@ -120,7 +125,8 @@ describe("registrationGet", () => {
   });
 
   it("return 400 when queryString is not given ", async () => {
-    const response = await wrapped.run({});
+    const response = await wrapped.run({
+    });
     expect(response.statusCode).to.be.equal(400);
   });
 
@@ -136,8 +142,8 @@ describe("registrationGet", () => {
   it("return 200 for successful get with id (event) and year but no email", async () => {
     const response = await wrapped.run({
       queryStringParameters: {
-        eventID: "event",
-        year: "2020"
+        "eventID": "event",
+        "year": "2020"
       }
     });
     expect(response.statusCode).to.equal(200);
@@ -184,6 +190,7 @@ describe("registrationGet", () => {
     expect(body.size).to.equal(0);
     expect(body.data).to.have.length(0);
   });
+
 
   it("return 200 for successful get with email, eventID;year, and timestamp", async () => {
     const response = await wrapped.run({

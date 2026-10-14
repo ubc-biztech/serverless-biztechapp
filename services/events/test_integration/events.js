@@ -9,7 +9,7 @@ import {
   INTEGRATION_TEST_PERSISTENT_EVENT_ID,
   INTEGRATION_TEST_PERSISTENT_YEAR,
   INTEGRATION_TEST_NON_EXISTANT_EVENT_ID,
-  INTEGRATION_TEST_NON_EXISTANT_YEAR
+  INTEGRATION_TEST_NON_EXISTANT_YEAR,
 } from "../../../constants/test";
 
 const SERVICE = "events";
@@ -26,8 +26,7 @@ describe("events integration", function () {
             year: INTEGRATION_TEST_PERSISTENT_YEAR
           }
         };
-        return helpers
-          .invokeLambda(SERVICE, "eventGet", JSON.stringify(payload))
+        return helpers.invokeLambda(SERVICE, "eventGet", JSON.stringify(payload))
           .then(([statusCode, body]) => {
             expect(statusCode).to.equal(200);
             expect(body.id).to.equal(INTEGRATION_TEST_PERSISTENT_EVENT_ID);
@@ -42,8 +41,7 @@ describe("events integration", function () {
             year: INTEGRATION_TEST_PERSISTENT_YEAR
           }
         };
-        return helpers
-          .invokeLambda(SERVICE, "eventGet", JSON.stringify(payload))
+        return helpers.invokeLambda(SERVICE, "eventGet", JSON.stringify(payload))
           .then(([statusCode]) => {
             expect(statusCode).to.equal(404);
           });
@@ -56,8 +54,7 @@ describe("events integration", function () {
             year: INTEGRATION_TEST_NON_EXISTANT_YEAR
           }
         };
-        return helpers
-          .invokeLambda(SERVICE, "eventGet", JSON.stringify(payload))
+        return helpers.invokeLambda(SERVICE, "eventGet", JSON.stringify(payload))
           .then(([statusCode]) => {
             expect(statusCode).to.equal(404);
           });
@@ -74,8 +71,7 @@ describe("events integration", function () {
             users: "false"
           }
         };
-        return helpers
-          .invokeLambda(SERVICE, "eventGet", JSON.stringify(payload))
+        return helpers.invokeLambda(SERVICE, "eventGet", JSON.stringify(payload))
           .then(([statusCode, body]) => {
             expect(statusCode).to.equal(200);
             expect(body).to.have.property("registeredCount");
@@ -95,8 +91,7 @@ describe("events integration", function () {
             users: "true"
           }
         };
-        return helpers
-          .invokeLambda(SERVICE, "eventGet", JSON.stringify(payload))
+        return helpers.invokeLambda(SERVICE, "eventGet", JSON.stringify(payload))
           .then(([statusCode]) => {
             expect(statusCode).to.equal(200);
           });
@@ -111,17 +106,17 @@ describe("events integration", function () {
         facebookUrl: "https://www.facebook.com/BizTechUBC/",
         imageUrl: "https://www.facebook.com/BizTechUBC/",
         elocation: "UBC Sauder",
-        longitude: -120.1,
+        longitude: -120.10,
         latitude: 78.03,
         registrationQuestions: [
           {
             questionId: "b6b6d6d6-c54f-45f7-8cd0-6f3a354e2796",
             type: "textField",
             label: "This is a test question?",
-            required: true
+            required: true,
           }
         ],
-        feedback: "updated-test-feedback-form-link"
+        feedback: "updated-test-feedback-form-link",
       };
 
       // fields that are different in the updatePayload: ename, description, capac, elocation, longitude, latitude, registrationQuestions, feedback
@@ -132,17 +127,17 @@ describe("events integration", function () {
         facebookUrl: "https://www.facebook.com/BizTechUBC/",
         imageUrl: "https://www.facebook.com/BizTechUBC/",
         elocation: "UBC Nest",
-        longitude: 120.0,
-        latitude: -78.0,
+        longitude: 120.00,
+        latitude: -78.00,
         registrationQuestions: [
           {
             questionId: "c2bc026e-9659-42ef-9f01-5522b4deb5d0",
             type: "checkbox",
             label: "This is a checkbox?",
-            required: false
+            required: false,
           }
         ],
-        feedback: "test-feedback-form-link"
+        feedback: "test-feedback-form-link",
       };
 
       it("event PATCH returns 200 on update success", async () => {
@@ -154,8 +149,7 @@ describe("events integration", function () {
           },
           body: JSON.stringify(defaultPayload)
         };
-        await helpers
-          .invokeLambda(SERVICE, "eventUpdate", JSON.stringify(payload))
+        await helpers.invokeLambda(SERVICE, "eventUpdate", JSON.stringify(payload))
           .then(([statusCode]) => {
             expect(statusCode).to.equal(200);
           });
@@ -167,8 +161,7 @@ describe("events integration", function () {
           }
         };
         // check that integrationTestEvent was updated
-        await helpers
-          .invokeLambda(SERVICE, "eventGet", JSON.stringify(payload))
+        await helpers.invokeLambda(SERVICE, "eventGet", JSON.stringify(payload))
           .then(([statusCode, body]) => {
             expect(statusCode).to.equal(200);
             expect(body.elocation).to.equal(defaultPayload.elocation);
@@ -177,9 +170,7 @@ describe("events integration", function () {
             expect(body.description).to.equal(defaultPayload.description);
             expect(body.capac).to.equal(defaultPayload.capac);
             expect(body.longitude).to.equal(defaultPayload.longitude);
-            expect(body.registrationQuestions).to.have.deep.members(
-              defaultPayload.registrationQuestions
-            );
+            expect(body.registrationQuestions).to.have.deep.members(defaultPayload.registrationQuestions);
             expect(body.feedback).to.equal(defaultPayload.feedback);
           });
 
@@ -191,15 +182,13 @@ describe("events integration", function () {
           },
           body: JSON.stringify(updatePayload)
         };
-        await helpers
-          .invokeLambda(SERVICE, "eventUpdate", JSON.stringify(payload))
+        await helpers.invokeLambda(SERVICE, "eventUpdate", JSON.stringify(payload))
           .then(([statusCode]) => {
             expect(statusCode).to.equal(200);
           });
 
         // check that integrationTestEvent was updated
-        return helpers
-          .invokeLambda(SERVICE, "eventGet", JSON.stringify(payload))
+        return helpers.invokeLambda(SERVICE, "eventGet", JSON.stringify(payload))
           .then(([statusCode, body]) => {
             expect(statusCode).to.equal(200);
             expect(body.elocation).to.equal(updatePayload.elocation);
@@ -208,9 +197,7 @@ describe("events integration", function () {
             expect(body.description).to.equal(updatePayload.description);
             expect(body.capac).to.equal(updatePayload.capac);
             expect(body.longitude).to.equal(updatePayload.longitude);
-            expect(body.registrationQuestions).to.have.deep.members(
-              updatePayload.registrationQuestions
-            );
+            expect(body.registrationQuestions).to.have.deep.members(updatePayload.registrationQuestions);
             expect(body.feedback).to.equal(updatePayload.feedback);
           });
       });
@@ -224,8 +211,7 @@ describe("events integration", function () {
           body: JSON.stringify(defaultPayload)
         };
 
-        return helpers
-          .invokeLambda(SERVICE, "eventUpdate", JSON.stringify(payload))
+        return helpers.invokeLambda(SERVICE, "eventUpdate", JSON.stringify(payload))
           .then(([statusCode]) => {
             expect(statusCode).to.equal(404);
           });
@@ -236,8 +222,7 @@ describe("events integration", function () {
   describe("events/ integration", function () {
     describe("events/ GET tests", function () {
       it("events GET returns 200 on success", async () => {
-        return helpers
-          .invokeLambda(SERVICE, "eventGetAll", "")
+        return helpers.invokeLambda(SERVICE, "eventGetAll", "")
           .then(([statusCode]) => {
             expect(statusCode).to.equal(200);
           });
@@ -255,13 +240,10 @@ describe("events integration", function () {
             img: "someImageUrl"
           })
         };
-        await helpers
-          .invokeLambda(SERVICE, "eventCreate", JSON.stringify(payload))
+        await helpers.invokeLambda(SERVICE, "eventCreate", JSON.stringify(payload))
           .then(([statusCode, body]) => {
             expect(statusCode).to.equal(201);
-            expect(body.message).to.equal(
-              `Created event with id ${INTEGRATION_TEST_EVENT_ID} for the year ${INTEGRATION_TEST_YEAR}!`
-            );
+            expect(body.message).to.equal(`Created event with id ${INTEGRATION_TEST_EVENT_ID} for the year ${INTEGRATION_TEST_YEAR}!`);
           });
 
         payload = {
@@ -271,8 +253,7 @@ describe("events integration", function () {
           }
         };
 
-        return helpers
-          .invokeLambda(SERVICE, "eventDelete", JSON.stringify(payload))
+        return helpers.invokeLambda(SERVICE, "eventDelete", JSON.stringify(payload))
           .then(([statusCode]) => {
             expect(statusCode).to.equal(200);
           });
@@ -288,13 +269,10 @@ describe("events integration", function () {
             img: "someImgUrl"
           })
         };
-        return helpers
-          .invokeLambda(SERVICE, "eventCreate", JSON.stringify(payload))
+        return helpers.invokeLambda(SERVICE, "eventCreate", JSON.stringify(payload))
           .then(([statusCode, body]) => {
             expect(statusCode).to.equal(409);
-            expect(body.message).to.equal(
-              "A database entry with the same 'event id and year' already exists!"
-            );
+            expect(body.message).to.equal("A database entry with the same 'event id and year' already exists!");
           });
       });
     });

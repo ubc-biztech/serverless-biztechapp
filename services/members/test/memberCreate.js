@@ -17,7 +17,7 @@ const testEntry = {
   international: "yes",
   topics: "Cyber Security, Careers in the Tech Industry",
   heardFrom: "Instagram",
-  verificationCode: "bizbot"
+  verificationCode: "bizbot",
 };
 
 describe("memberCreate", () => {
@@ -25,7 +25,7 @@ describe("memberCreate", () => {
     AWSMock.mock("DynamoDB.DocumentClient", "put", function (params, callback) {
       Promise.resolve(
         callback(null, {
-          Item: "not null member"
+          Item: "not null member",
         })
       );
     });
@@ -42,7 +42,7 @@ describe("memberCreate", () => {
 
   it("returns 406 when not given email", async () => {
     const body = {
-      ...testEntry
+      ...testEntry,
     };
     delete body.email;
 
@@ -56,7 +56,7 @@ describe("memberCreate", () => {
 
   it("returns 401 when not given verification code", async () => {
     const body = {
-      ...testEntry
+      ...testEntry,
     };
     delete body.verificationCode;
 
@@ -70,7 +70,7 @@ describe("memberCreate", () => {
 
   it("returns 401 when given incorrect verification code", async () => {
     const body = {
-      ...testEntry
+      ...testEntry,
     };
     body.verificationCode = "invalidCode";
 

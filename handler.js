@@ -1,8 +1,12 @@
-import { readFileSync } from "fs";
+import {
+  readFileSync
+} from "fs";
 import path from "path";
 import YAML from "yaml";
 import express from "express";
-import { createProxyMiddleware } from "http-proxy-middleware";
+import {
+  createProxyMiddleware
+} from "http-proxy-middleware";
 
 // reads and parses config file
 export const readConfigFile = () => {
@@ -16,12 +20,7 @@ export const readConfigFile = () => {
 // builds concurrently commands for each service
 export const runServices = (serviceConfigs, basePort, stage, prefixColors) => {
   const commands = [];
-  const localServerlessBin = path.join(
-    process.cwd(),
-    "node_modules",
-    ".bin",
-    "serverless"
-  );
+  const localServerlessBin = path.join(process.cwd(), "node_modules", ".bin", "serverless");
 
   for (let i = 0; i < serviceConfigs.length; i++) {
     const command = `cd "${process.cwd()}/${serviceConfigs[i].srvSource}" && "${localServerlessBin}" offline --stage ${stage} --httpPort ${basePort + i} --lambdaPort ${basePort + i + 1000}`;
@@ -29,7 +28,7 @@ export const runServices = (serviceConfigs, basePort, stage, prefixColors) => {
     commands.push({
       command,
       name: serviceConfigs[i].srvName,
-      prefixColor: i < prefixColors.length ? prefixColors[i] : "gray"
+      prefixColor: i < prefixColors.length ? prefixColors[i] : "gray",
     });
   }
 
@@ -64,7 +63,7 @@ export const runProxy = (serviceConfigs, basePort, stage) => {
           return `${proxyPath}${path}`;
         },
         target: `http://localhost:${basePort + i}/${stage}/`,
-        changeOrigin: true
+        changeOrigin: true,
       })
     );
   }

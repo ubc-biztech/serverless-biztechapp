@@ -65,75 +65,70 @@ export const webhook = (event, ctx, callback) => {
   //stub
 };
 
-export const mapDiscordAccountToMembership = protect(
-  Access.USER,
-  async (event, ctx, callback) => {
-    const data = JSON.parse(event.body);
+export const mapDiscordAccountToMembership = protect(Access.USER, async (event, ctx, callback) => {
+  const data = JSON.parse(event.body);
 
-    handlerHelpers.checkPayloadProps(data, {
-      email: {
-        required: true,
-        type: "string"
-      },
-      discordId: {
-        required: true,
-        type: "string"
-      }
+  handlerHelpers.checkPayloadProps(data, {
+    email: {
+      required: true,
+      type: "string"
+    },
+    discordId: {
+      required: true,
+      type: "string"
+    }
+  });
+
+  const email = event.auth.email;
+  const { discordId } = data;
+
+  if (!email || !discordId) {
+    return handlerHelpers.createResponse(400, {
+      message: "Missing email or discordId"
     });
-
-    const email = event.auth.email;
-    const { discordId } = data;
-
-    if (!email || !discordId) {
-      return handlerHelpers.createResponse(400, {
-        message: "Missing email or discordId"
-      });
-    }
-
-    try {
-      console.log(
-        `Attempting to map Discord ID ${discordId} to email ${email}`
-      );
-      const exists = await db.getOne(email, MEMBERS_TABLE);
-
-      if (!exists) {
-        return handlerHelpers.createResponse(404, {
-          message: "Membership not found"
-        });
-      }
-
-      // guard to prevent overwriting existing ids, should require manual unlinking if necessary
-      if (exists.discordId) {
-        return handlerHelpers.createResponse(409, {
-          message: "Discord account has already been linked to this membership"
-        });
-      }
-
-      // update with new field
-      await db.updateDB(email, { discordId }, MEMBERS_TABLE);
-
-      // assign verfied role based on membership tier
-      try {
-        await assignUserRoles(
-          email,
-          "verified" + ("" || process.env.ENVIRONMENT)
-        );
-        console.log(`Successfully verified ${email}`);
-      } catch (roleError) {
-        console.warn(`Failed to assign roles to ${email}:`, roleError.message);
-      }
-
-      return handlerHelpers.createResponse(200, {
-        message: "Successfully mapped Discord account to membership"
-      });
-    } catch (err) {
-      console.error(db.dynamoErrorResponse(err));
-      return handlerHelpers.createResponse(500, {
-        message: err.message || err
-      });
-    }
   }
-);
+
+  try {
+    console.log(`Attempting to map Discord ID ${discordId} to email ${email}`);
+    const exists = await db.getOne(email, MEMBERS_TABLE);
+
+    if (!exists) {
+      return handlerHelpers.createResponse(404, {
+        message: "Membership not found"
+      });
+    }
+
+    // guard to prevent overwriting existing ids, should require manual unlinking if necessary
+    if (exists.discordId) {
+      return handlerHelpers.createResponse(409, {
+        message: "Discord account has already been linked to this membership"
+      });
+    }
+
+    // update with new field
+    await db.updateDB(email, { discordId }, MEMBERS_TABLE);
+
+    // assign verfied role based on membership tier
+    try {
+      await assignUserRoles(
+        email,
+        "verified" + ("" || process.env.ENVIRONMENT)
+      );
+      console.log(`Successfully verified ${email}`);
+    } catch (roleError) {
+      console.warn(`Failed to assign roles to ${email}:`, roleError.message);
+    }
+
+    return handlerHelpers.createResponse(200, {
+      message: "Successfully mapped Discord account to membership"
+    });
+  } catch (err) {
+    console.error(db.dynamoErrorResponse(err));
+    return handlerHelpers.createResponse(500, {
+      message: err.message || err
+    });
+  }
+});
 
 export const assignRoles = async (event, ctx, callback) => {
   try {

@@ -1,7 +1,14 @@
 export const groups = {
-  leads: ["chris", "jay", "jerryn", "jimmy", "karens", "elijah"],
-  internal: ["rohan", "kailey", "hannah", "marcus"],
-  experiences: [
+  "leads": [
+    "chris",
+    "jay",
+    "jerryn",
+    "jimmy",
+    "karens",
+    "elijah"
+  ],
+  "internal": ["rohan", "kailey", "hannah", "marcus"],
+  "experiences": [
     "jay",
     "john",
     "jade",
@@ -13,7 +20,7 @@ export const groups = {
     "julianna",
     "pauline"
   ],
-  partnerships: [
+  "partnerships": [
     "jimmy",
     "karens",
     "amara",
@@ -24,7 +31,7 @@ export const groups = {
     "maddisen",
     "stella"
   ],
-  mmd: [
+  "mmd": [
     "jerryn",
     "stephanie",
     "emma",
@@ -38,7 +45,7 @@ export const groups = {
     "charley",
     "emmy"
   ],
-  devs: [
+  "devs": [
     "elijah",
     "kevin",
     "eliana",
@@ -49,7 +56,7 @@ export const groups = {
     "daniel",
     "vi",
     "isaac"
-  ]
+  ],
 };
 
 export const projects = [

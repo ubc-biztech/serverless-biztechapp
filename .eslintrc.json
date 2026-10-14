@@ -1,47 +1,45 @@
 {
-  "env": {
-    "commonjs": true,
-    "es6": true,
-    "node": true,
-    "mocha": true
-  },
-  "extends": "eslint:recommended",
-  "globals": {
-    "Atomics": "readonly",
-    "SharedArrayBuffer": "readonly"
-  },
-  "parserOptions": {
-    "ecmaVersion": 2021,
-    "sourceType": "module"
-  },
-  "rules": {
-    // rules that cause errors
-    "no-var": "error",
-    // rules that cause warnings
-    "array-bracket-spacing": ["warn", "never"],
-    "array-bracket-newline": ["warn", "consistent"],
-    "eol-last": ["warn", "always"],
-    "indent": ["warn", 2],
-    "no-fallthrough": "warn",
-    "no-prototype-builtins": "off",
-    "no-trailing-spaces": ["warn", { "ignoreComments": true }],
-    "no-unused-vars": ["warn"],
-    "object-curly-spacing": ["warn", "always"],
-    "padded-blocks": ["warn", "never"],
-    "quotes": ["warn", "double"],
-    "semi": ["warn", "always"],
-    "space-in-parens": ["warn", "never"],
-    "object-property-newline": ["warn", {}],
-    "object-curly-newline": ["warn", { "multiline": true, "consistent": true }],
-    "eqeqeq": ["warn", "always"]
-  },
-  "overrides": [
-    {
-      "files": ["scripts/initlocal.js"],
-      "parserOptions": {
-        "ecmaVersion": 2020,
+    "env": {
+        "commonjs": true,
+        "es6": true,
+        "node": true,
+        "mocha": true
+    },
+    "extends": "eslint:recommended",
+    "globals": {
+        "Atomics": "readonly",
+        "SharedArrayBuffer": "readonly"
+    },
+    "parserOptions": {
+        "ecmaVersion": 2021,
         "sourceType": "module"
-      }
-    }
-  ]
+    },
+    "rules": {
+        // rules that cause errors
+        "no-var": "error",
+        // rules that cause warnings
+        "array-bracket-spacing": ["warn", "never"],
+        "array-bracket-newline": ["warn", "consistent"],
+        "eol-last": ["warn", "always"],
+        "indent": ["warn", 2],
+        "no-fallthrough": "warn",
+        "no-prototype-builtins": "off",
+        "no-trailing-spaces": ["warn", { "ignoreComments": true }],
+        "no-unused-vars": ["warn"],
+        "object-curly-spacing": ["warn", "always"],
+        "padded-blocks": ["warn", "never"],
+        "quotes": ["warn", "double"],
+        "semi": ["warn", "always"],
+        "space-in-parens": ["warn", "never"],
+        "object-property-newline": ["warn", {}],
+        "object-curly-newline": ["warn", { "multiline": true, "consistent": true }],
+        "eqeqeq": ["warn", "always"]
+    },
+    "overrides": [{
+        "files": ["scripts/initlocal.js"],
+        "parserOptions": {
+            "ecmaVersion": 2020,
+            "sourceType": "module"
+        }
+    }]
 }

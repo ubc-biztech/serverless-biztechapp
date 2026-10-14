@@ -76,6 +76,7 @@ provider:
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechEventQA${self:provider.environment.ENVIRONMENT}"
 
+
 custom: ${file(../../serverless.common.yml):custom}
 
 functions:

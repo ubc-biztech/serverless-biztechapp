@@ -2,26 +2,34 @@
 
 const mochaPlugin = require("serverless-mocha-plugin");
 const expect = mochaPlugin.chai.expect;
-const { mockClient } = require("aws-sdk-client-mock");
+const {
+  mockClient
+} = require("aws-sdk-client-mock");
 const {
   DynamoDBDocumentClient,
   GetCommand,
   UpdateCommand,
-  ScanCommand
+  ScanCommand,
 } = require("@aws-sdk/lib-dynamodb");
-const { SNSClient, PublishCommand } = require("@aws-sdk/client-sns");
-const { SESClient } = require("@aws-sdk/client-ses");
+const {
+  SNSClient, PublishCommand
+} = require("@aws-sdk/client-sns");
+const {
+  SESClient
+} = require("@aws-sdk/client-ses");
 const {
   EVENTS_TABLE,
   USERS_TABLE,
-  USER_REGISTRATIONS_TABLE
+  USER_REGISTRATIONS_TABLE,
 } = require("../../../constants/tables");
 const sinon = require("sinon");
 const nodemailer = require("nodemailer");
 
 const SESEmailService = require("../EmailService/SESEmailService").default;
 
-const { sendSNSNotification } = require("../../../lib/snsHelper");
+const {
+  sendSNSNotification
+} = require("../../../lib/snsHelper");
 
 const registrationHelpers = require("../helpers").default;
 
@@ -42,7 +50,7 @@ const userResponse = {
   fname: "user",
   lname: "man",
   faculty: "Science",
-  email: email
+  email: email,
 };
 
 const eventResponse = {
@@ -56,7 +64,7 @@ const eventResponse = {
   startDate: "2020-02-09T05:55:11.131Z",
   endDate: "2020-02-09T05:55:11.131Z",
   imageUrl: "https://i.picsum.photos/id/236/700/400.jpg",
-  updatedAt: 1581227718674
+  updatedAt: 1581227718674,
 };
 
 const registrationsResponse = [
@@ -65,15 +73,15 @@ const registrationsResponse = [
     eventID: "event",
     year: 2020,
     updatedAt: 1600669844493,
-    registrationStatus: "registered"
+    registrationStatus: "registered",
   },
   {
     email: email2,
     eventID: "event",
     year: 2020,
     updatedAt: 1600669844493,
-    registrationStatus: "registered"
-  }
+    registrationStatus: "registered",
+  },
 ];
 
 describe("registrationPost", () => {
@@ -97,8 +105,8 @@ describe("registrationPost", () => {
       // Stub nodemailer to avoid real SES calls
       sinon.stub(nodemailer, "createTransport").returns({
         sendMail: sinon.stub().resolves({
-          messageId: "mock-email-id"
-        })
+          messageId: "mock-email-id",
+        }),
       });
 
       // Stub SESEmailService methods
@@ -179,16 +187,16 @@ describe("registrationPost", () => {
         }
         return {
           Attributes: {
-            message: "Created!"
-          }
+            message: "Created!",
+          },
         };
       });
 
       snsMock.on(PublishCommand).resolves({
         MessageId: "mock-sns-id",
         $metadata: {
-          httpStatusCode: 200
-        }
+          httpStatusCode: 200,
+        },
       });
 
       sinon.stub(registrationHelpers, "getEventCounts").callsFake(async () => {
@@ -221,8 +229,8 @@ describe("registrationPost", () => {
       body: JSON.stringify({
         eventID: "event",
         year: 2020,
-        registrationStatus: "registered"
-      })
+        registrationStatus: "registered",
+      }),
     });
     const body = JSON.parse(response.body);
     expect(response.statusCode).to.equal(406);
@@ -234,8 +242,8 @@ describe("registrationPost", () => {
       body: JSON.stringify({
         email: email,
         year: 2020,
-        registrationStatus: "registered"
-      })
+        registrationStatus: "registered",
+      }),
     });
     const body = JSON.parse(response.body);
     expect(response.statusCode).to.equal(406);
@@ -247,8 +255,8 @@ describe("registrationPost", () => {
       body: JSON.stringify({
         email: email,
         registrationStatus: "registered",
-        eventID: "event"
-      })
+        eventID: "event",
+      }),
     });
     const body = JSON.parse(response.body);
     expect(response.statusCode).to.equal(406);
@@ -260,8 +268,8 @@ describe("registrationPost", () => {
       body: JSON.stringify({
         email: email,
         eventID: "event",
-        year: 2020
-      })
+        year: 2020,
+      }),
     });
     const body = JSON.parse(response.body);
     expect(response.statusCode).to.equal(406);
@@ -274,8 +282,8 @@ describe("registrationPost", () => {
         email: email,
         eventID: "unknownEvent",
         year: 2020,
-        registrationStatus: "registered"
-      })
+        registrationStatus: "registered",
+      }),
     });
     const body = JSON.parse(response.body);
     expect(response.statusCode).to.equal(404);
@@ -291,8 +299,8 @@ describe("registrationPost", () => {
         email: "asdf@gmail.com",
         eventID: "event",
         year: 2020,
-        registrationStatus: "registered"
-      })
+        registrationStatus: "registered",
+      }),
     });
     const body = JSON.parse(response.body);
     expect(response.statusCode).to.equal(404);
@@ -305,8 +313,8 @@ describe("registrationPost", () => {
         email: email,
         eventID: "event",
         year: 2020,
-        registrationStatus: "waitlist"
-      })
+        registrationStatus: "waitlist",
+      }),
     });
 
     const body = JSON.parse(response.body);
@@ -324,8 +332,8 @@ describe("registrationPost", () => {
         email: `${email}`,
         eventID: "event",
         year: 2020,
-        registrationStatus: "registered"
-      })
+        registrationStatus: "registered",
+      }),
     });
 
     let body = JSON.parse(response.body);
@@ -339,8 +347,8 @@ describe("registrationPost", () => {
         email: `${email3}`,
         eventID: "event",
         year: 2020,
-        registrationStatus: "registered"
-      })
+        registrationStatus: "registered",
+      }),
     });
 
     body = JSON.parse(response.body);
@@ -355,8 +363,8 @@ describe("registrationPost", () => {
         email: `${email4}`,
         eventID: "event",
         year: 2020,
-        registrationStatus: "registered"
-      })
+        registrationStatus: "registered",
+      }),
     });
 
     body = JSON.parse(response.body);
@@ -374,8 +382,8 @@ describe("registrationPost", () => {
         email: email2,
         eventID: "event",
         year: 2020,
-        registrationStatus: "registered"
-      })
+        registrationStatus: "registered",
+      }),
     });
 
     const body = JSON.parse(response.body);
@@ -390,8 +398,8 @@ describe("registrationPost", () => {
         email: email,
         eventID: "event",
         year: 2020,
-        registrationStatus: "registered"
-      })
+        registrationStatus: "registered",
+      }),
     });
 
     const body = JSON.parse(response.body);
@@ -425,8 +433,8 @@ describe("registrationPost", () => {
         email: email,
         eventID: "event",
         year: 2020,
-        registrationStatus: "registered" // This should automatically become waitlist
-      })
+        registrationStatus: "registered", // This should automatically become waitlist
+      }),
     });
 
     const body = JSON.parse(response.body);

@@ -1,6 +1,12 @@
-import { PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
-import { QUESTS_TABLE, USER_REGISTRATIONS_TABLE } from "../constants/tables.js";
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import {
+  PutCommand, QueryCommand
+} from "@aws-sdk/lib-dynamodb";
+import {
+  QUESTS_TABLE, USER_REGISTRATIONS_TABLE
+} from "../constants/tables.js";
+import {
+  DynamoDBClient
+} from "@aws-sdk/client-dynamodb";
 
 const awsConfig = {
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -66,13 +72,13 @@ const create = async (item, table) => {
 
 const userQuestsArray = (id, eventString) => {
   return QUESTS.map((q) => ({
-    "userID": id,
+    userID: id,
     "eventID;year": eventString,
-    "progress": 0,
-    "threshold": q[1],
-    "questID": q[0],
-    "badgeName": q[2],
-    "description": q[3]
+    progress: 0,
+    threshold: q[1],
+    questID: q[0],
+    badgeName: q[2],
+    description: q[3]
   }));
 };
 

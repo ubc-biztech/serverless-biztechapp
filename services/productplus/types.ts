@@ -1,6 +1,6 @@
 /** API response. prd_view_url is generated when responding, never stored. */
 export type Submission = {
-  teamID: string;
+  team_code: string;
   team_name: string;
   project_title: string | null;
   member_names: string[];
@@ -17,24 +17,26 @@ export type Config = {
   voting_deadline: string;
 };
 
-/** Fields Product Plus reads from biztechTeams. Member identifiers are verified emails. */
+/** Workflow 1 EventTeamRecord shape stored in biztechTeams. */
 export type TeamRecord = {
   "id": string; // Six-digit team code, retaining leading zeros.
   "eventID;year": string;
-  "memberIDs": string[];
+  team_name: string;
+  leader_user_id: string;
+  member_ids: Set<string>;
 };
 
-/** The event registration stores the user's current six-digit code in teamID. */
+/** Workflow 1 stores the user's current six-digit team code in registration.teamID. */
 export type RegistrationRecord = {
   "id": string; // Verified email.
   "eventID;year": string;
-  "teamID"?: string;
+  teamID?: string;
 };
 
 /** Keys shared by submission records and the reserved config row. */
 export type SubmissionKey = {
   event_key: string; // eventid;year
-  teamID: string; // Six-digit string for teams; "config" for configuration.
+  team_code: string; // Six-digit string for teams; "config" for configuration.
 };
 
 /** Stored rubric shape shared with the judging workflow. */
@@ -61,7 +63,7 @@ export type SubmissionRecord = Omit<
 /** Stored in the submissions table under (event_key, "config"). */
 export type ConfigRecord = Config & {
   event_key: string;
-  teamID: "config";
+  team_code: "config";
   updated_at: string;
 };
 
@@ -77,7 +79,7 @@ export type UploadStatus =
 /** Tracking stays after file removal so interrupted operations can be reconciled. */
 export type UploadRecord = UploadKey & {
   event_key: string;
-  teamID: string;
+  team_code: string;
   upload_id: string;
   content_type: "application/pdf";
   prd_filename?: string; // Original browser filename; never used as an S3 key.
@@ -97,7 +99,7 @@ export type CleanupTask =
     }
   | {
       internalTask: "team_deleted";
-      payload: { event_key: string; teamID: string };
+      payload: { event_key: string; team_code: string };
     };
 
 export type GetSubmissionResponse = {

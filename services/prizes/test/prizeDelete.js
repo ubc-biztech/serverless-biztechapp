@@ -24,20 +24,21 @@ describe("prizeDelete", () => {
   before(() => {
     AWSMock.mock("DynamoDB.DocumentClient", "get", (params, callback) => {
       let returnValue = null;
-      if (existingPrizes.includes(params.Key.id))
-        returnValue = {
-          ...prizePayload,
-          id: params.Key.id
-        };
+      if(existingPrizes.includes(params.Key.id)) returnValue = {
+        ...prizePayload,
+        id: params.Key.id
+      };
       callback(null, {
         Item: returnValue
       });
     });
 
+
     AWSMock.mock("DynamoDB.DocumentClient", "delete", (params, callback) => {
-      if (params.Key.id && existingPrizes.includes(params.Key.id)) {
+      if(params.Key.id && existingPrizes.includes(params.Key.id)) {
         callback(null, "successfully deleted item in database");
-      } else callback("item not found in database");
+      }
+      else callback("item not found in database");
     });
   });
 
@@ -47,7 +48,8 @@ describe("prizeDelete", () => {
 
   it("return 400 for trying to delete a prize with no id", async () => {
     const response = await wrapped.run({
-      pathParameters: {}
+      pathParameters: {
+      }
     });
     expect(response.statusCode).to.be.equal(400);
   });

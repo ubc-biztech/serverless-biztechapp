@@ -1,5 +1,9 @@
-import { PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import {
+  PutCommand, QueryCommand
+} from "@aws-sdk/lib-dynamodb";
+import {
+  DynamoDBClient
+} from "@aws-sdk/client-dynamodb";
 
 const awsConfig = {
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -52,7 +56,7 @@ const migrateParterRegistrationsToJudges = async (eventID, year) => {
         new PutCommand({
           TableName: "bizJudge" + (process.env.ENVIRONMENT || ""),
           Item: {
-            "id": user.id,
+            id: user.id,
             "eventID;year": user["eventID;year"]
           }
         })

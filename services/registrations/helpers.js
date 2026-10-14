@@ -1,5 +1,8 @@
 import docClient from "../../lib/docClient";
-import { EVENTS_TABLE, USER_REGISTRATIONS_TABLE } from "../../constants/tables";
+import {
+  EVENTS_TABLE,
+  USER_REGISTRATIONS_TABLE
+} from "../../constants/tables";
 import sgMail from "@sendgrid/mail";
 import db from "../../lib/db";
 import { REGISTRATION_STATUS } from "./constants";
@@ -9,12 +12,12 @@ sgMail.setApiKey(process.env.SENDGRID_KEY);
 
 export default {
   /**
-   * Takes a semicolon separated event ID and year and returns an object containing
-   * registeredCount, checkedInCount and waitlistCount for that event
-   * @param {String} eventIDAndYear
-   * @return {registeredCount checkedInCount waitlistCount}
-   */
-  getEventCounts: async function (eventID, year) {
+	       * Takes a semicolon separated event ID and year and returns an object containing
+	       * registeredCount, checkedInCount and waitlistCount for that event
+	       * @param {String} eventIDAndYear
+	       * @return {registeredCount checkedInCount waitlistCount}
+	       */
+  getEventCounts: async function(eventID, year) {
     try {
       const event = await db.getOne(eventID, EVENTS_TABLE, {
         year: year
@@ -33,11 +36,8 @@ export default {
       const cappedQuestions = [];
       console.log("Event:", event);
 
-      if (
-        event.registrationQuestions &&
-        Array.isArray(event.registrationQuestions)
-      ) {
-        event.registrationQuestions.forEach((question) => {
+      if (event.registrationQuestions && Array.isArray(event.registrationQuestions)) {
+        event.registrationQuestions.forEach(question => {
           console.log("Question:", question);
           if (question.participantCap) {
             const choices = question.choices.split(",");
@@ -67,20 +67,16 @@ export default {
         }
       };
 
-      const result = await db.query(
-        USER_REGISTRATIONS_TABLE,
-        "event-query",
-        keyCondition
-      );
+      const result = await db.query(USER_REGISTRATIONS_TABLE, "event-query", keyCondition);
 
       let counts = {
         registeredCount: 0,
         checkedInCount: 0,
         waitlistCount: 0,
-        dynamicCounts: cappedQuestions.map((question) => {
+        dynamicCounts: cappedQuestions.map(question => {
           return {
             questionId: question.questionId,
-            counts: question.caps.map((cap) => {
+            counts: question.caps.map(cap => {
               return {
                 label: cap.label,
                 count: 0,
@@ -108,16 +104,12 @@ export default {
           }
 
           if (cappedQuestions.length > 0 && item.dynamicResponses) {
-            cappedQuestions.forEach((question) => {
+            cappedQuestions.forEach(question => {
               const response = item.dynamicResponses[`${question.questionId}`];
               if (response) {
-                const dynamicCount = counts.dynamicCounts.find(
-                  (count) => count.questionId === question.questionId
-                );
+                const dynamicCount = counts.dynamicCounts.find(count => count.questionId === question.questionId);
                 if (dynamicCount) {
-                  const workshopCount = dynamicCount.counts.find(
-                    (q) => q.label === response
-                  );
+                  const workshopCount = dynamicCount.counts.find(q => q.label === response);
                   if (workshopCount) {
                     workshopCount.count += 1;
                   }
@@ -149,7 +141,9 @@ export default {
     return sgMail.send(msg);
   },
   sendCalendarInvite: async (event, user, dynamicCalendarMsg) => {
-    let { ename, description, elocation, startDate, endDate } = event;
+    let {
+      ename, description, elocation, startDate, endDate
+    } = event;
 
     // parse start and end dates into event duration object (hours, minutes, seconds)
     startDate = new Date(startDate);
@@ -209,7 +203,9 @@ export default {
       method: "REQUEST"
     };
 
-    const { error, value } = ics.createEvent(eventDetails);
+    const {
+      error, value
+    } = ics.createEvent(eventDetails);
 
     if (error) {
       console.log(error);
@@ -224,18 +220,15 @@ export default {
     const base64 = Buffer.from(value).toString("base64");
     const base64Cal = base64.toString("base64");
 
-    const attachments =
-      user.isPartner !== undefined || user.isPartner
-        ? []
-        : [
-          {
-            name: "invite.ics",
-            filename: "invite.ics",
-            type: "text/calendar;method=REQUEST",
-            content: base64Cal,
-            disposition: "attachment"
-          }
-        ];
+    const attachments = user.isPartner !== undefined || user.isPartner ? [] : [
+      {
+        name: "invite.ics",
+        filename: "invite.ics",
+        type: "text/calendar;method=REQUEST",
+        content: base64Cal,
+        disposition: "attachment"
+      }
+    ];
 
     // send the email for the calendar invite
     // for the qr code email, go to handlers.js

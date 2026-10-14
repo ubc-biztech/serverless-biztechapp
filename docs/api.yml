@@ -852,7 +852,7 @@ components:
         questionId:
           type: string
         value:
-          description: "Can be anything"
+          description: 'Can be anything'
     RegistrationsPostResponse:
       type: object
       required:

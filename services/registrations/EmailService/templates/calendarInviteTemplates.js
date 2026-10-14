@@ -1,5 +1,7 @@
 export const getDefaultCalendarInviteTemplate = (emailParams) => {
-  const { fname, ename, imageUrl, logoBase64 } = emailParams;
+  const {
+    fname, ename, imageUrl, logoBase64
+  } = emailParams;
   return `
         <div style="margin: auto; font-size: 15px; text-align: left; width: 700px;">
         <div>
@@ -22,7 +24,9 @@ export const getDefaultCalendarInviteTemplate = (emailParams) => {
 };
 
 export const getDefaultPaymentProcessedTemplate = (emailParams) => {
-  const { fname, ename, imageUrl, logoBase64 } = emailParams;
+  const {
+    fname, ename, imageUrl, logoBase64
+  } = emailParams;
   return `
         <div style="margin: auto; font-size: 15px; text-align: left; width: 700px;">
         <div>
@@ -45,7 +49,9 @@ export const getDefaultPaymentProcessedTemplate = (emailParams) => {
 };
 
 export const getPartnerCalendarInviteTemplate = (emailParams) => {
-  const { fname, ename, imageUrl, logoBase64 } = emailParams;
+  const {
+    fname, ename, imageUrl, logoBase64
+  } = emailParams;
 
   return `
     <div style="margin: auto; font-size: 15px; text-align: left; width: 700px;">

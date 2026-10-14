@@ -23,11 +23,11 @@ custom:
 
   customDomain:
     domainName: ${self:custom.domains.${self:custom.stage}}
-    basePath: ""
+    basePath: ''
     stage: ${self:custom.stage}
     certificateName: ${self:custom.customDomain.domainName}
     createRoute53Record: true
-    endpointType: "edge"
+    endpointType: 'edge'
     apiType: rest
     autoDomain: false
 

@@ -1,7 +1,9 @@
 "use strict";
 import chai from "chai";
 const expect = chai.expect;
-import { INTEGRATION_TEST_MEMBER_EMAIL } from "../../../constants/test";
+import {
+  INTEGRATION_TEST_MEMBER_EMAIL
+} from "../../../constants/test";
 
 import helpers from "../../../lib/testHelpers";
 
@@ -12,8 +14,8 @@ describe("members integration", function () {
 
   const defaultPayload = {
     pathParameters: {
-      id: INTEGRATION_TEST_MEMBER_EMAIL
-    }
+      id: INTEGRATION_TEST_MEMBER_EMAIL,
+    },
   };
 
   describe("member/{id} GET setup", function () {
@@ -34,8 +36,8 @@ describe("members integration", function () {
       prevMember: "yes",
       international: "yes",
       topics: "Cyber Security, Careers in the Tech Industry",
-      heardFrom: "Instagram"
-    })
+      heardFrom: "Instagram",
+    }),
   };
 
   describe("member/ POST", function () {
@@ -91,24 +93,21 @@ describe("members integration", function () {
 
   describe("member/{id} DELETE and wrapup", function () {
     it("member DELETE returns 200", async () => {
-      return helpers
-        .invokeLambda(SERVICE, "memberDelete", JSON.stringify(defaultPayload))
+      return helpers.invokeLambda(SERVICE, "memberDelete", JSON.stringify(defaultPayload))
         .then(([statusCode]) => {
           expect(statusCode).to.equal(200);
         });
     });
 
     it("member GET returns 404 to check DELETE worked", async () => {
-      return helpers
-        .invokeLambda(SERVICE, "memberGet", JSON.stringify(defaultPayload))
+      return helpers.invokeLambda(SERVICE, "memberGet", JSON.stringify(defaultPayload))
         .then(([statusCode]) => {
           expect(statusCode).to.equal(404);
         });
     });
 
     it("member PATCH on member that does not exist returns 404", async () => {
-      return helpers
-        .invokeLambda(SERVICE, "memberUpdate", JSON.stringify(defaultPayload))
+      return helpers.invokeLambda(SERVICE, "memberUpdate", JSON.stringify(defaultPayload))
         .then(([statusCode]) => {
           expect(statusCode).to.equal(404);
         });

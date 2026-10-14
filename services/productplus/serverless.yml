@@ -26,7 +26,7 @@ provider:
     PRODUCTPLUS_SUBMISSIONS_TABLE: biztechPPSubmissions${self:provider.environment.ENVIRONMENT}
     PRODUCTPLUS_UPLOADS_TABLE: biztechPPUploads${self:provider.environment.ENVIRONMENT}
     # Existing tables: id is the team code in Teams and verified email in Registrations.
-    # Both use eventID;year as the sort key. The team workflow must maintain team_code.
+    # Both use eventID;year as the sort key; registration.teamID points to team.id.
     PRODUCTPLUS_TEAMS_TABLE: biztechTeams${self:provider.environment.ENVIRONMENT}
     PRODUCTPLUS_REGISTRATIONS_TABLE: biztechRegistrations${self:provider.environment.ENVIRONMENT}
     PRODUCTPLUS_EVENT_KEY: "productplus;2026"

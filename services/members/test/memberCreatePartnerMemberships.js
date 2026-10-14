@@ -4,7 +4,9 @@
 
 import mochaPlugin from "serverless-mocha-plugin";
 const expect = mochaPlugin.chai.expect;
-import { mockClient } from "aws-sdk-client-mock";
+import {
+  mockClient
+} from "aws-sdk-client-mock";
 import {
   DynamoDBDocumentClient,
   GetCommand,
@@ -189,14 +191,14 @@ describe("memberCreatePartnerMemberships", () => {
 
     expect(transactionItems).to.have.lengthOf(3);
 
-    const userWrite = transactionItems.find(
-      (item) => item.Put && item.Put.TableName.includes(USERS_TABLE)
+    const userWrite = transactionItems.find((item) =>
+      item.Put && item.Put.TableName.includes(USERS_TABLE)
     );
-    const memberWrite = transactionItems.find(
-      (item) => item.Put && item.Put.TableName.includes(MEMBERS_TABLE)
+    const memberWrite = transactionItems.find((item) =>
+      item.Put && item.Put.TableName.includes(MEMBERS_TABLE)
     );
-    const profileWrite = transactionItems.find(
-      (item) => item.Put && item.Put.TableName.includes(PROFILES_TABLE)
+    const profileWrite = transactionItems.find((item) =>
+      item.Put && item.Put.TableName.includes(PROFILES_TABLE)
     );
 
     expect(userWrite.Put.Item.id).to.equal(partnerEmail);
@@ -271,11 +273,11 @@ describe("memberCreatePartnerMemberships", () => {
     expect(responseBody.results[0].status).to.equal("created");
     expect(responseBody.results[0].profileID).to.equal(existingProfileID);
 
-    const userWrite = transactionItems.find(
-      (item) => item.Update && item.Update.TableName.includes(USERS_TABLE)
+    const userWrite = transactionItems.find((item) =>
+      item.Update && item.Update.TableName.includes(USERS_TABLE)
     );
-    const profileWrite = transactionItems.find(
-      (item) => item.Update && item.Update.TableName.includes(PROFILES_TABLE)
+    const profileWrite = transactionItems.find((item) =>
+      item.Update && item.Update.TableName.includes(PROFILES_TABLE)
     );
 
     expect(userWrite.Update.ExpressionAttributeValues[":profileID"]).to.equal(
@@ -287,9 +289,9 @@ describe("memberCreatePartnerMemberships", () => {
     expect(profileWrite.Update.Key.compositeID).to.equal(
       `PROFILE#${existingProfileID}`
     );
-    expect(
-      profileWrite.Update.ExpressionAttributeValues[":profileID"]
-    ).to.equal(existingProfileID);
+    expect(profileWrite.Update.ExpressionAttributeValues[":profileID"]).to.equal(
+      existingProfileID
+    );
     expect(profileWrite.Update.ExpressionAttributeValues[":company"]).to.equal(
       "NASA"
     );

@@ -7,7 +7,9 @@ import AWSMock from "aws-sdk-mock";
 import mochaPlugin from "serverless-mocha-plugin";
 const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper("eventCreate", "/handler.ts", "create");
-import { EVENTS_TABLE } from "../../../constants/tables";
+import {
+  EVENTS_TABLE
+} from "../../../constants/tables";
 
 const eventPayload = {
   id: "localTestEvent",
@@ -20,8 +22,8 @@ const eventPayload = {
   facebookUrl: "https://www.facebook.com/BizTechUBC/",
   imageUrl: "https://www.facebook.com/BizTechUBC/",
   elocation: "https://i.picsum.photos/id/320/200/300.jpg",
-  longitude: -120.0,
-  latitude: 78.0,
+  longitude: -120.00,
+  latitude: 78.00,
   createdAt: "20200607T000000-0400",
   updatedAt: "20200607T000000-0400",
   registrationFormKey: "mis",
@@ -29,22 +31,20 @@ const eventPayload = {
     {
       type: "textField",
       label: "This is a test question?",
-      required: true
+      required: true,
     }
   ],
-  feedback: "test-feedback-form-link"
+  feedback: "test-feedback-form-link",
 };
 
 const eventPayloadWithRegistrationQuestionIds = {
   ...eventPayload,
-  registrationQuestions: [
-    {
-      questionId: "61584a37-a497-4687-b774-18b49bd3a107",
-      type: "textField",
-      label: "This is a test question?",
-      required: true
-    }
-  ]
+  registrationQuestions: [{
+    questionId: "61584a37-a497-4687-b774-18b49bd3a107",
+    type: "textField",
+    label: "This is a test question?",
+    required: true,
+  }]
 };
 
 describe("eventCreate", () => {
@@ -57,36 +57,22 @@ describe("eventCreate", () => {
       // Check if the table exists first
       if (params.TableName.includes(EVENTS_TABLE)) {
         // Check if an entry with the same id and year already exists in our table
-        if (
-          params.Key.id &&
-          params.Key.year &&
-          createdEventsIdAndYear.some(
-            (key) => key.id === params.Key.id && key.year === params.Key.year
-          )
-        )
+        if (params.Key.id && params.Key.year && createdEventsIdAndYear.some(key => key.id === params.Key.id && key.year === params.Key.year))
           callback(null, {
             Item: eventPayloadWithRegistrationQuestionIds
           });
 
         // Id and year does not exist in our table
-        else
-          callback(null, {
-            Item: null
-          });
+        else callback(null, {
+          Item: null
+        });
       }
     });
 
     // Mocks the PUT request to DynamoDB
     AWSMock.mock("DynamoDB.DocumentClient", "put", (params, callback) => {
       // Check if an entry with the same id and year already exists in our table
-      if (
-        params.Item.id &&
-        params.Item.year &&
-        createdEventsIdAndYear.some(
-          (key) => key.id === params.Item.id && key.year === params.Item.year
-        )
-      )
-        callback(new Error("event already exists!"));
+      if (params.Item.id && params.Item.year && createdEventsIdAndYear.some(key => key.id === params.Item.id && key.year === params.Item.year)) callback(new Error("event already exists!"));
 
       // Created this new entry in our table
       else {
@@ -141,7 +127,7 @@ describe("eventCreate", () => {
 
   it("return 201 for successfully creating an event", async () => {
     const payload = {
-      ...eventPayload
+      ...eventPayload,
     };
 
     const response = await wrapped.run({
@@ -154,7 +140,7 @@ describe("eventCreate", () => {
 
   it("return 409 for trying to create an event with the same id and year", async () => {
     const payload = {
-      ...eventPayload
+      ...eventPayload,
     };
 
     const response = await wrapped.run({

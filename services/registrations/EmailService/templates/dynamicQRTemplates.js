@@ -1,8 +1,9 @@
 import { REGISTRATION_STATUS } from "../../constants";
 
 export const getDefaultQRTemplate = (emailParams) => {
-  const { fname, ename, registrationStatus, logoBase64, currentYear } =
-    emailParams;
+  const {
+    fname, ename, registrationStatus, logoBase64, currentYear
+  } = emailParams;
 
   return `<div style="font-size: 15px; text-align: left;">
     <div>
@@ -29,7 +30,9 @@ export const getDefaultQRTemplate = (emailParams) => {
 };
 
 export const getDefaultApplicationTemplate = (emailParams) => {
-  const { fname, registrationStatus, logoBase64, currentYear } = emailParams;
+  const {
+    fname, registrationStatus, logoBase64, currentYear
+  } = emailParams;
   let content;
   if (registrationStatus === REGISTRATION_STATUS.ACCEPTED_PENDING) {
     content = `<p>You've been accepted to HelloHacks 2026! Please use the link below to confirm your attendance.</p>
@@ -68,7 +71,9 @@ export const getDefaultApplicationTemplate = (emailParams) => {
 };
 
 export const getRegisteredQRTemplate = (emailParams) => {
-  const { fname, ename, logoBase64, currentYear } = emailParams;
+  const {
+    fname, ename, logoBase64, currentYear
+  } = emailParams;
 
   return `
     <div style="font-size: 15px; text-align: left;">

@@ -135,12 +135,7 @@ function buildUsersById(users) {
   };
 }
 
-async function updateUserProfileId(
-  docClient,
-  usersTableName,
-  email,
-  profileID
-) {
+async function updateUserProfileId(docClient, usersTableName, email, profileID) {
   const timestamp = Date.now();
 
   await docClient.send(
@@ -149,7 +144,8 @@ async function updateUserProfileId(
       Key: {
         id: email
       },
-      UpdateExpression: "SET #profileID = :profileID, #updatedAt = :updatedAt",
+      UpdateExpression:
+        "SET #profileID = :profileID, #updatedAt = :updatedAt",
       ConditionExpression:
         "attribute_exists(#id) AND (attribute_not_exists(#profileID) OR #profileID = :profileID)",
       ExpressionAttributeNames: {

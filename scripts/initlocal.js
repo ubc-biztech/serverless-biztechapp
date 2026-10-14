@@ -7,10 +7,16 @@ import {
   ScanCommand,
   BatchWriteItemCommand
 } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocument } from "@aws-sdk/lib-dynamodb";
+import {
+  DynamoDBDocument
+} from "@aws-sdk/lib-dynamodb";
 import * as dotenv from "dotenv";
-import { fileURLToPath } from "url";
-import { dirname } from "path";
+import {
+  fileURLToPath
+} from "url";
+import {
+  dirname
+} from "path";
 
 const __filename = fileURLToPath(import.meta.url);
 
@@ -28,19 +34,19 @@ if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
 const sourceConfig = {
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   },
-  region: process.env.AWS_REGION || "us-west-2"
+  region: process.env.AWS_REGION || "us-west-2",
 };
 
 // Configure destination DynamoDB client (local)
 const destConfig = {
   credentials: {
     accessKeyId: "AKID",
-    secretAccessKey: "SECRET"
+    secretAccessKey: "SECRET",
   },
   endpoint: process.env.DYNAMODB_LOCAL_ENDPOINT || "http://localhost:8000",
-  region: process.env.AWS_REGION || "us-west-2"
+  region: process.env.AWS_REGION || "us-west-2",
 };
 
 const sourceClient = new DynamoDB(sourceConfig);
@@ -48,7 +54,8 @@ const destClient = new DynamoDB(destConfig);
 
 async function validateLocalConnection() {
   try {
-    await destClient.send(new ListTablesCommand({}));
+    await destClient.send(new ListTablesCommand({
+    }));
     return true;
   } catch (err) {
     console.error("Failed to connect to local DynamoDB:", err.message);
@@ -59,7 +66,9 @@ async function validateLocalConnection() {
 async function copyTable(tableName) {
   try {
     // Get table description from source
-    const { Table: tableDesc } = await sourceClient.send(
+    const {
+      Table: tableDesc
+    } = await sourceClient.send(
       new DescribeTableCommand({
         TableName: tableName
       })
@@ -68,7 +77,7 @@ async function copyTable(tableName) {
     if (!tableDesc) throw new Error(`Table ${tableName} not found`);
 
     // Properly format GSIs for local DynamoDB
-    const gsis = tableDesc.GlobalSecondaryIndexes?.map((gsi) => ({
+    const gsis = tableDesc.GlobalSecondaryIndexes?.map(gsi => ({
       IndexName: gsi.IndexName,
       KeySchema: gsi.KeySchema,
       Projection: gsi.Projection,
@@ -93,11 +102,9 @@ async function copyTable(tableName) {
 
     // Delete existing table if it exists
     try {
-      await destClient.send(
-        new DeleteTableCommand({
-          TableName: tableName
-        })
-      );
+      await destClient.send(new DeleteTableCommand({
+        TableName: tableName
+      }));
       await waitForTableDeletion(destClient, tableName);
       console.log(`Deleted existing table ${tableName}`);
     } catch (err) {
@@ -123,10 +130,12 @@ async function copyTable(tableName) {
       const scanParams = {
         TableName: tableName,
         Select: "COUNT",
-        ExclusiveStartKey: lastEvaluatedKey
+        ExclusiveStartKey: lastEvaluatedKey,
       };
 
-      const { Count, LastEvaluatedKey } = await sourceClient.send(
+      const {
+        Count, LastEvaluatedKey
+      } = await sourceClient.send(
         new ScanCommand(scanParams)
       );
       totalItems += Count;
@@ -140,11 +149,14 @@ async function copyTable(tableName) {
       const scanParams = {
         TableName: tableName,
         ExclusiveStartKey: lastEvaluatedKey,
-        ReturnConsumedCapacity: "TOTAL"
+        ReturnConsumedCapacity: "TOTAL",
       };
 
-      const { Items, LastEvaluatedKey, ConsumedCapacity } =
-        await sourceClient.send(new ScanCommand(scanParams));
+      const {
+        Items, LastEvaluatedKey, ConsumedCapacity
+      } = await sourceClient.send(
+        new ScanCommand(scanParams)
+      );
       lastEvaluatedKey = LastEvaluatedKey;
 
       if (Items && Items.length > 0) {
@@ -153,20 +165,18 @@ async function copyTable(tableName) {
           const batch = Items.slice(i, i + 25);
           const writeParams = {
             RequestItems: {
-              [tableName]: batch.map((item) => ({
+              [tableName]: batch.map(item => ({
                 PutRequest: {
                   Item: item
-                }
-              }))
-            }
+                },
+              })),
+            },
           };
 
           await destClient.send(new BatchWriteItemCommand(writeParams));
           copiedItems += batch.length;
           const progress = ((copiedItems / totalItems) * 100).toFixed(2);
-          console.log(
-            `Progress for ${tableName}: ${progress}% (${copiedItems}/${totalItems} items)`
-          );
+          console.log(`Progress for ${tableName}: ${progress}% (${copiedItems}/${totalItems} items)`);
         }
       }
     } while (lastEvaluatedKey);
@@ -183,18 +193,17 @@ async function waitForTableStatus(client, tableName, desiredStatus) {
   // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
-      const { Table } = await client.send(
+      const {
+        Table
+      } = await client.send(
         new DescribeTableCommand({
           TableName: tableName
         })
       );
       if (Table.TableStatus === desiredStatus) break;
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 1000));
     } catch (err) {
-      if (
-        err.name === "ResourceNotFoundException" &&
-        desiredStatus === "DELETED"
-      ) {
+      if (err.name === "ResourceNotFoundException" && desiredStatus === "DELETED") {
         break;
       }
       throw err;
@@ -209,11 +218,8 @@ async function waitForTableDeletion(client, tableName) {
 async function copyAllTables() {
   try {
     // Validate local DynamoDB connection first
-    if (!(await validateLocalConnection())) {
-      console.error(
-        "Please make sure your local DynamoDB is running and accessible at",
-        destConfig.endpoint
-      );
+    if (!await validateLocalConnection()) {
+      console.error("Please make sure your local DynamoDB is running and accessible at", destConfig.endpoint);
       process.exit(1);
     }
 
@@ -222,9 +228,11 @@ async function copyAllTables() {
 
     console.log("Listing source tables...");
     do {
-      const { TableNames, LastEvaluatedTableName } = await sourceClient.send(
+      const {
+        TableNames, LastEvaluatedTableName
+      } = await sourceClient.send(
         new ListTablesCommand({
-          ExclusiveStartTableName: lastEvaluatedTableName
+          ExclusiveStartTableName: lastEvaluatedTableName,
         })
       );
       tables = tables.concat(TableNames);
@@ -247,4 +255,6 @@ async function copyAllTables() {
 // Main execution
 copyAllTables();
 
-export { copyTable, copyAllTables };
+export {
+  copyTable, copyAllTables
+};

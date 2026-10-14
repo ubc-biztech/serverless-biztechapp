@@ -1,4 +1,7 @@
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  PutObjectCommand,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { v4 as uuidv4 } from "uuid";
 import { MAX_BATCH_ITEM_COUNT } from "../../constants/dynamodb.js";
@@ -7,18 +10,21 @@ import {
   EVENT_FEEDBACK_TABLE,
   USERS_TABLE,
   USER_REGISTRATIONS_TABLE,
-  EVENT_QA_TABLE
+  EVENT_QA_TABLE,
 } from "../../constants/tables.js";
 import db from "../../lib/db.js";
 import { protect, Access, readCaller } from "../../lib/auth";
 import helpers from "../../lib/handlerHelpers";
 import { postSlackMessage } from "../../lib/slackHelper.js";
-import type { APIGatewayResponse, LambdaHandler } from "../../lib/types";
+import type {
+  APIGatewayResponse,
+  LambdaHandler,
+} from "../../lib/types";
 import {
   alphabeticalComparer,
   dateComparer,
   isEmpty,
-  isValidEmail
+  isValidEmail,
 } from "../../lib/utils.js";
 import feedbackHelpers, { isValidationFail } from "./feedbackHelpers.js";
 import {
@@ -30,14 +36,14 @@ import {
   validateAnswer,
   validateCategory,
   validateEventPath,
-  validateQuestionBody
+  validateQuestionBody,
 } from "./helpers";
 import type { QaPatchFields } from "./helpers";
 import type {
   CreateEventBody,
   CreateThumbnailPicUploadUrlBody,
   EventRecord,
-  UpdateEventBody
+  UpdateEventBody,
 } from "./types";
 
 const errorMessage = (error: unknown): string =>
@@ -68,35 +74,28 @@ const {
   normalizeText
 } = feedbackHelpers;
 
+
 export const create = protect(Access.ADMIN, async (event) => {
   try {
     const timestamp = new Date().getTime();
     const data = JSON.parse(event.body as string) as CreateEventBody;
-    if (
-      data.hasOwnProperty("attendeeFeedbackQuestions") &&
-      !Array.isArray(data.attendeeFeedbackQuestions)
-    ) {
+    if (data.hasOwnProperty("attendeeFeedbackQuestions") &&
+      !Array.isArray(data.attendeeFeedbackQuestions)) {
       return helpers.createResponse(406, {
         message: "attendeeFeedbackQuestions must be an array."
       });
     }
-    if (
-      data.hasOwnProperty("partnerFeedbackQuestions") &&
-      !Array.isArray(data.partnerFeedbackQuestions)
-    ) {
+    if (data.hasOwnProperty("partnerFeedbackQuestions") &&
+      !Array.isArray(data.partnerFeedbackQuestions)) {
       return helpers.createResponse(406, {
         message: "partnerFeedbackQuestions must be an array."
       });
     }
 
-    const attendeeFeedbackQuestions = Array.isArray(
-      data.attendeeFeedbackQuestions
-    )
+    const attendeeFeedbackQuestions = Array.isArray(data.attendeeFeedbackQuestions)
       ? data.attendeeFeedbackQuestions
       : [];
-    const partnerFeedbackQuestions = Array.isArray(
-      data.partnerFeedbackQuestions
-    )
+    const partnerFeedbackQuestions = Array.isArray(data.partnerFeedbackQuestions)
       ? data.partnerFeedbackQuestions
       : [];
 
@@ -131,14 +130,12 @@ export const create = protect(Access.ADMIN, async (event) => {
     const partnerFeedbackEnabled = Boolean(data.partnerFeedbackEnabled);
     if (attendeeFeedbackEnabled && normalizedAttendeeQuestions.length === 0) {
       return helpers.createResponse(406, {
-        message:
-          "Enable attendee feedback only after adding at least one attendee feedback question."
+        message: "Enable attendee feedback only after adding at least one attendee feedback question."
       });
     }
     if (partnerFeedbackEnabled && normalizedPartnerQuestions.length === 0) {
       return helpers.createResponse(406, {
-        message:
-          "Enable partner feedback only after adding at least one partner feedback question."
+        message: "Enable partner feedback only after adding at least one partner feedback question."
       });
     }
 
@@ -255,7 +252,8 @@ export const getAll: LambdaHandler = async (event, ctx) => {
     ctx.callbackWaitsForEmptyEventLoop = false;
 
     // scan using the GSI
-    let events = await db.scan(EVENTS_TABLE, {}, "event-overview");
+    let events = await db.scan(EVENTS_TABLE, {
+    }, "event-overview");
 
     // Filter by ID if provided
     if (
@@ -283,24 +281,20 @@ export const update = protect(Access.ADMIN, async (event) => {
   try {
     const { id, year } = validateEventPath(event.pathParameters ?? null);
 
-    const existingEvent = (await db.getOne(id, EVENTS_TABLE, {
+    const existingEvent = await db.getOne(id, EVENTS_TABLE, {
       year
-    })) as EventRecord | null;
+    }) as EventRecord | null;
     if (!existingEvent || isEmpty(existingEvent))
       throw helpers.notFoundResponse("event", id, year);
     const data = JSON.parse(event.body as string) as UpdateEventBody;
-    if (
-      data.hasOwnProperty("attendeeFeedbackQuestions") &&
-      !Array.isArray(data.attendeeFeedbackQuestions)
-    ) {
+    if (data.hasOwnProperty("attendeeFeedbackQuestions") &&
+      !Array.isArray(data.attendeeFeedbackQuestions)) {
       return helpers.createResponse(406, {
         message: "attendeeFeedbackQuestions must be an array."
       });
     }
-    if (
-      data.hasOwnProperty("partnerFeedbackQuestions") &&
-      !Array.isArray(data.partnerFeedbackQuestions)
-    ) {
+    if (data.hasOwnProperty("partnerFeedbackQuestions") &&
+      !Array.isArray(data.partnerFeedbackQuestions)) {
       return helpers.createResponse(406, {
         message: "partnerFeedbackQuestions must be an array."
       });
@@ -309,9 +303,10 @@ export const update = protect(Access.ADMIN, async (event) => {
     if (Array.isArray(data.registrationQuestions)) {
       for (let i = 0; i < data.registrationQuestions.length; i++) {
         if (!data.registrationQuestions[i].questionId) {
-          data.registrationQuestions[i] = addIdsToRegistrationQuestions([
-            data.registrationQuestions[i]
-          ])[0];
+          data.registrationQuestions[i] =
+            addIdsToRegistrationQuestions([
+              data.registrationQuestions[i]
+            ])[0];
         }
       }
     }
@@ -319,9 +314,10 @@ export const update = protect(Access.ADMIN, async (event) => {
     if (Array.isArray(data.partnerRegistrationQuestions)) {
       for (let i = 0; i < data.partnerRegistrationQuestions.length; i++) {
         if (!data.partnerRegistrationQuestions[i].questionId) {
-          data.partnerRegistrationQuestions[i] = addIdsToRegistrationQuestions([
-            data.partnerRegistrationQuestions[i]
-          ])[0];
+          data.partnerRegistrationQuestions[i] =
+            addIdsToRegistrationQuestions([
+              data.partnerRegistrationQuestions[i]
+            ])[0];
         }
       }
     }
@@ -356,14 +352,10 @@ export const update = protect(Access.ADMIN, async (event) => {
       );
     }
 
-    const resolvedAttendeeFeedbackEnabled = data.hasOwnProperty(
-      "attendeeFeedbackEnabled"
-    )
+    const resolvedAttendeeFeedbackEnabled = data.hasOwnProperty("attendeeFeedbackEnabled")
       ? Boolean(data.attendeeFeedbackEnabled)
       : Boolean(existingEvent.attendeeFeedbackEnabled);
-    const resolvedPartnerFeedbackEnabled = data.hasOwnProperty(
-      "partnerFeedbackEnabled"
-    )
+    const resolvedPartnerFeedbackEnabled = data.hasOwnProperty("partnerFeedbackEnabled")
       ? Boolean(data.partnerFeedbackEnabled)
       : Boolean(existingEvent.partnerFeedbackEnabled);
 
@@ -386,23 +378,15 @@ export const update = protect(Access.ADMIN, async (event) => {
     data.attendeeFeedbackQuestions = resolvedAttendeeQuestions;
     data.partnerFeedbackQuestions = resolvedPartnerQuestions;
 
-    if (
-      resolvedAttendeeFeedbackEnabled &&
-      resolvedAttendeeQuestions.length === 0
-    ) {
+    if (resolvedAttendeeFeedbackEnabled && resolvedAttendeeQuestions.length === 0) {
       return helpers.createResponse(406, {
-        message:
-          "Enable attendee feedback only after adding at least one attendee feedback question."
+        message: "Enable attendee feedback only after adding at least one attendee feedback question."
       });
     }
 
-    if (
-      resolvedPartnerFeedbackEnabled &&
-      resolvedPartnerQuestions.length === 0
-    ) {
+    if (resolvedPartnerFeedbackEnabled && resolvedPartnerQuestions.length === 0) {
       return helpers.createResponse(406, {
-        message:
-          "Enable partner feedback only after adding at least one partner feedback question."
+        message: "Enable partner feedback only after adding at least one partner feedback question."
       });
     }
     const {
@@ -444,87 +428,82 @@ export const update = protect(Access.ADMIN, async (event) => {
 }) as LambdaHandler;
 
 // POST events/event-thumbnail-upload-url/{id}/{year}
-export const createThumbnailPicUploadUrl = protect(
-  Access.ADMIN,
-  async (event) => {
-    try {
-      const data = JSON.parse(
-        event.body as string
-      ) as CreateThumbnailPicUploadUrlBody;
-      helpers.checkPayloadProps(data, {
-        fileType: {
-          required: true,
-          type: "string"
-        },
-        fileName: {
-          required: true,
-          type: "string"
-        },
-        prefix: {
-          required: true,
-          type: "string"
-        },
-        eventId: {
-          required: true,
-          type: "string"
-        }
-      });
+export const createThumbnailPicUploadUrl = protect(Access.ADMIN, async (event) => {
+  try {
+    const data = JSON.parse(event.body as string) as CreateThumbnailPicUploadUrlBody;
+    helpers.checkPayloadProps(data, {
+      fileType: {
+        required: true,
+        type: "string"
+      },
+      fileName: {
+        required: true,
+        type: "string"
+      },
+      prefix: {
+        required: true,
+        type: "string"
+      },
+      eventId: {
+        required: true,
+        type: "string"
+      },
+    });
 
-      const { fileType, fileName, prefix, eventId } = data;
+    const {fileType, fileName, prefix, eventId } = data;
 
-      if (!fileType || !fileName) {
-        const res = helpers.createResponse(400, {
-          message: "Missing fileType or fileName"
-        });
-        return res;
-      }
-
-      if (!fileType.startsWith("image/")) {
-        const res = helpers.createResponse(400, {
-          message: "Only image uploads are allowed"
-        });
-        return res;
-      }
-
-      const safeExt = (fileName.split(".").pop() || "jpg")
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, "");
-
-      const folder =
-        prefix === "original" || prefix === "optimized" ? prefix : "optimized";
-
-      const key = `event-thumbnails/${eventId}/${folder}/${Date.now()}.${
-        safeExt || "jpg"
-      }`;
-
-      // ?
-      const putCmd = new PutObjectCommand({
-        Bucket: THUMBNAIL_BUCKET,
-        Key: key,
-        ContentType: fileType,
-        CacheControl: "public, max-age=31536000, immutable"
-      });
-
-      const uploadUrl = await getSignedUrl(S3, putCmd, {
-        expiresIn: 60
-      });
-      const publicUrl = `https://${THUMBNAIL_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
-
-      const res = helpers.createResponse(200, {
-        uploadUrl,
-        key,
-        publicUrl
-      });
-      return res;
-    } catch (err) {
-      console.error("createThumbnail error", err);
-      const res = helpers.createResponse(500, {
-        message: "Failed to get upload URL"
+    if (!fileType || !fileName) {
+      const res = helpers.createResponse(400, {
+        message: "Missing fileType or fileName"
       });
       return res;
     }
+
+    if (!fileType.startsWith("image/")) {
+      const res = helpers.createResponse(400, {
+        message: "Only image uploads are allowed"
+      });
+      return res;
+    }
+
+    const safeExt = (fileName.split(".").pop() || "jpg")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+
+    const folder =
+      prefix === "original" || prefix === "optimized" ? prefix : "optimized";
+
+    const key = `event-thumbnails/${eventId}/${folder}/${Date.now()}.${
+      safeExt || "jpg"
+    }`;
+
+    // ?
+    const putCmd = new PutObjectCommand({
+      Bucket: THUMBNAIL_BUCKET,
+      Key: key,
+      ContentType: fileType,
+      CacheControl: "public, max-age=31536000, immutable"
+    });
+
+    const uploadUrl = await getSignedUrl(S3, putCmd, {
+      expiresIn: 60
+    });
+    const publicUrl = `https://${THUMBNAIL_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+
+    const res = helpers.createResponse(200, {
+      uploadUrl,
+      key,
+      publicUrl
+    });
+    return res;
+  } catch (err) {
+    console.error("createThumbnail error", err);
+    const res = helpers.createResponse(500, {
+      message: "Failed to get upload URL"
+    });
+    return res;
   }
-) as LambdaHandler;
+}) as LambdaHandler;
 
 // GET events/{id}/{year}
 export const get: LambdaHandler = async (event) => {
@@ -545,7 +524,7 @@ export const get: LambdaHandler = async (event) => {
       });
     } else if (queryString && queryString.count === "true") {
       // return counts
-      const counts = await getEventCounts(id, year);
+      const counts = await getEventCounts(id,year);
 
       const response = helpers.createResponse(200, counts);
       return response;
@@ -577,7 +556,7 @@ export const get: LambdaHandler = async (event) => {
         });
       }
       let keysForRequest = registrationList.map((registrationObj) => ({
-        id: registrationObj.id as string
+        id: registrationObj.id as string,
       }));
 
       console.log("Keys:", keysForRequest);
@@ -602,9 +581,8 @@ export const get: LambdaHandler = async (event) => {
         process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""
       }`;
       const flattenResults = result.flatMap((batchResult) => {
-        const responses = (
-          batchResult as { Responses?: Record<string, unknown[]> }
-        ).Responses;
+        const responses = (batchResult as { Responses?: Record<string, unknown[]> })
+          .Responses;
         return responses?.[usersTableName] ?? [];
       }) as Record<string, unknown>[];
 
@@ -666,16 +644,13 @@ export const getFeedbackForm: LambdaHandler = async (event) => {
     }
 
     const eventItem = (await db.getOne(id, EVENTS_TABLE, {
-      year
+      year,
     })) as EventRecord | null;
 
     if (isEmpty(eventItem)) throw helpers.notFoundResponse("event", id, year);
 
     const eventRecord = eventItem as EventRecord;
-    const feedbackQuestions = getFeedbackQuestionsForType(
-      eventRecord,
-      formType
-    );
+    const feedbackQuestions = getFeedbackQuestionsForType(eventRecord, formType);
     const enabled = isFeedbackEnabledForType(eventRecord, formType);
 
     return helpers.createResponse(200, {
@@ -687,7 +662,7 @@ export const getFeedbackForm: LambdaHandler = async (event) => {
         partnerDescription: eventRecord.partnerDescription,
         imageUrl: eventRecord.imageUrl,
         endDate: eventRecord.endDate,
-        isCompleted: eventRecord.isCompleted
+        isCompleted: eventRecord.isCompleted,
       },
       formType,
       enabled,
@@ -731,7 +706,7 @@ export const submitFeedback = protect(Access.PUBLIC, async (event) => {
 
     const validation = validateFeedbackPayload(
       feedbackQuestions,
-      data.responses ?? {}
+      data.responses ?? {},
     );
     if (isValidationFail(validation)) {
       return helpers.createResponse(406, {
@@ -817,7 +792,7 @@ export const getFeedbackSubmissions = protect(Access.ADMIN, async (event) => {
       .sort(
         (a, b) =>
           Number((b as { submittedAt?: number }).submittedAt ?? 0) -
-          Number((a as { submittedAt?: number }).submittedAt ?? 0)
+          Number((a as { submittedAt?: number }).submittedAt ?? 0),
       );
 
     return helpers.createResponse(200, {
@@ -848,7 +823,10 @@ export const getActiveEvent: LambdaHandler = async () => {
     events.sort(dateComparer("startDate"));
     const activeEvent = events.length > 0 ? events[0] : null;
 
-    const response = helpers.createResponse(200, activeEvent);
+    const response = helpers.createResponse(
+      200,
+      activeEvent
+    );
     return response;
   } catch (err) {
     console.error(err);
@@ -861,9 +839,7 @@ export const qaCreate = protect(Access.USER, async (event) => {
   try {
     const email = event.auth!.email;
 
-    const { id, year, eventIDYear } = validateEventPath(
-      event.pathParameters ?? null
-    );
+    const { id, year, eventIDYear } = validateEventPath(event.pathParameters ?? null);
     const data = JSON.parse(event.body || "{}");
     const body = validateQuestionBody(data.body);
 
@@ -918,11 +894,15 @@ export const qaCreate = protect(Access.USER, async (event) => {
 export const qaGetAll: LambdaHandler = async (event) => {
   try {
     const { eventIDYear } = validateEventPath(event.pathParameters);
-    const questions = await db.query(EVENT_QA_TABLE, null, {
-      expression: "#eventIDYear = :pk",
-      expressionNames: { "#eventIDYear": "eventID;year" },
-      expressionValues: { ":pk": eventIDYear }
-    });
+    const questions = await db.query(
+      EVENT_QA_TABLE,
+      null,
+      {
+        expression: "#eventIDYear = :pk",
+        expressionNames: { "#eventIDYear": "eventID;year" },
+        expressionValues: { ":pk": eventIDYear }
+      }
+    );
 
     // This route has no authorizer — strip author and admin emails before responding.
     const sorted = questions
@@ -995,9 +975,7 @@ export const qaPatch = protect(Access.ADMIN, async (event) => {
     const data = JSON.parse(event.body || "{}");
     const { answer, isHidden, isPinned, body } = data;
 
-    if (
-      [answer, isHidden, isPinned, body].every((value) => value === undefined)
-    ) {
+    if ([answer, isHidden, isPinned, body].every((value) => value === undefined)) {
       throw helpers.inputError("No patchable fields provided");
     }
 

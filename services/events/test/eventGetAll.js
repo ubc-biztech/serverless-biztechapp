@@ -8,8 +8,7 @@ import mochaPlugin from "serverless-mocha-plugin";
 const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper("eventGetAll", "/handler.ts", "getAll");
 import {
-  EVENTS_TABLE,
-  USER_REGISTRATIONS_TABLE
+  EVENTS_TABLE, USER_REGISTRATIONS_TABLE
 } from "../../../constants/tables";
 
 //Number of events in 2020, from './data/events.json'
@@ -25,24 +24,20 @@ describe("eventGetAll", () => {
   before(() => {
     AWSMock.mock("DynamoDB.DocumentClient", "scan", (params, callback) => {
       // event counts
-      if (params.TableName.includes(USER_REGISTRATIONS_TABLE)) {
+      if(params.TableName.includes(USER_REGISTRATIONS_TABLE)) {
         callback(null, getRegistrationResponse);
       }
       // events itself
-      else if (params.TableName.includes(EVENTS_TABLE)) {
-        if (
-          params.ExpressionAttributeNames &&
-          params.ExpressionAttributeNames["#vyear"] === "year"
-        ) {
+      else if(params.TableName.includes(EVENTS_TABLE)){
+        if(params.ExpressionAttributeNames && params.ExpressionAttributeNames["#vyear"] === "year") {
           //If filtering event query by year, scan only returns events for given year
           let getEventsResponseFiltered = {
-            Items: getEventsResponse["Items"].filter(
-              (item) => item.year === params.ExpressionAttributeValues[":query"]
-            )
+            "Items": getEventsResponse["Items"].filter(item =>
+              item.year === params.ExpressionAttributeValues[":query"])
           };
           callback(null, getEventsResponseFiltered);
         } else {
-          //Otherwise scan returns all events
+          //Otherwise scan returns all events 
           // (Even if we're filtering by eventID -> filtering by ID is done on our end, not dynamoDB)
           callback(null, getEventsResponse);
         }
@@ -78,7 +73,7 @@ describe("eventGetAll", () => {
 
     expect(body.length).to.be.equal(NUM_EVENTS_TEST_YEAR);
 
-    for (let event of body) {
+    for(let event of body) {
       expect(event).to.have.property("year", 2020);
     }
   });
@@ -95,7 +90,7 @@ describe("eventGetAll", () => {
 
     expect(body.length).to.be.equal(NUM_EVENTS_TEST_ID);
 
-    for (let event of body) {
+    for(let event of body) {
       expect(event).to.have.property("id", TEST_ID);
     }
   });

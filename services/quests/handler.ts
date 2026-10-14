@@ -2,27 +2,20 @@ import { QUESTS_TABLE, USERS_TABLE } from "../../constants/tables.js";
 import db from "../../lib/db.js";
 import { protect, Access } from "../../lib/auth";
 import handlerHelpers from "../../lib/handlerHelpers";
-import type {
-  APIGatewayEvent,
-  LambdaCallback,
-  LambdaContext,
-  LambdaHandler
-} from "../../lib/types";
+import type { APIGatewayEvent, LambdaCallback, LambdaContext, LambdaHandler } from "../../lib/types";
 import { QUEST_DEFS } from "./constants.js";
 import { applyQuestEvent, initStoredQuest, parseEvents } from "./helper.js";
 
-async function getEmailFromProfileId(
-  profileId: string
-): Promise<string | null> {
+async function getEmailFromProfileId(profileId: string): Promise<string | null> {
   try {
     const results = await db.query(USERS_TABLE, "profileID-index", {
       expression: "#profileID = :profileID",
       expressionNames: {
-        "#profileID": "profileID"
+        "#profileID": "profileID",
       },
       expressionValues: {
-        ":profileID": profileId
-      }
+        ":profileID": profileId,
+      },
     });
 
     if (results && results.length > 0) {
@@ -41,7 +34,7 @@ async function updateUserQuestProgress(
   year: string,
   questEvents: ReturnType<typeof parseEvents>,
   timestamp: number,
-  connectionProfileId: string | null = null
+  connectionProfileId: string | null = null,
 ): Promise<{
   success: boolean;
   quests?: Record<string, unknown>;
@@ -53,13 +46,13 @@ async function updateUserQuestProgress(
   let userItem: Record<string, unknown> | null;
   try {
     userItem = await db.getOne(userID, QUESTS_TABLE, {
-      "eventID#year": eventKey
+      "eventID#year": eventKey,
     });
   } catch (err: unknown) {
     console.error(`Could not read user data for ${userID}:`, err);
     return {
       success: false,
-      error: "DB read failed"
+      error: "DB read failed",
     };
   }
 
@@ -71,59 +64,61 @@ async function updateUserQuestProgress(
     connectedProfiles.includes(connectionProfileId.toLowerCase())
   ) {
     console.log(
-      `User ${userID} already connected with ${connectionProfileId}, skipping (idempotent)`
+      `User ${userID} already connected with ${connectionProfileId}, skipping (idempotent)`,
     );
     return {
       success: true,
       quests: ((userItem && userItem.quests) as Record<string, unknown>) || {},
-      alreadyConnected: true
+      alreadyConnected: true,
     };
   }
 
-  const questsMap =
-    ((userItem && userItem.quests) as Record<string, unknown>) || {};
+  const questsMap = ((userItem && userItem.quests) as Record<string, unknown>) || {};
 
-  const nextQuestsMap = Object.values(QUEST_DEFS).reduce((acc, def) => {
-    const event = questEvents?.find((e) => e.questId === def.id);
-    const current = acc[def.id] as Record<string, unknown> | undefined;
-    const now = timestamp;
+  const nextQuestsMap = Object.values(QUEST_DEFS).reduce(
+    (acc, def) => {
+      const event = questEvents?.find((e) => e.questId === def.id);
+      const current = acc[def.id] as Record<string, unknown> | undefined;
+      const now = timestamp;
 
-    if (!current) {
-      const initialized = initStoredQuest(def, now);
-      if (!event) {
-        return {
-          ...acc,
-          [def.id]: initialized
-        };
+      if (!current) {
+        const initialized = initStoredQuest(def, now);
+        if (!event) {
+          return {
+            ...acc,
+            [def.id]: initialized,
+          };
+        }
       }
-    }
 
-    if (!event) return acc;
+      if (!event) return acc;
 
-    const updated = applyQuestEvent(def, current, event, now);
+      const updated = applyQuestEvent(def, current, event, now);
 
-    return {
-      ...acc,
-      [def.id]: updated
-    };
-  }, questsMap);
+      return {
+        ...acc,
+        [def.id]: updated,
+      };
+    },
+    questsMap,
+  );
 
   const nextConnectedProfiles = connectionProfileId
     ? [...connectedProfiles, connectionProfileId.toLowerCase()]
     : connectedProfiles;
 
   const itemToWrite = {
-    "id": userID,
+    id: userID,
     "eventID#year": eventKey,
-    "quests": nextQuestsMap,
-    "connectedProfiles": nextConnectedProfiles
+    quests: nextQuestsMap,
+    connectedProfiles: nextConnectedProfiles,
   };
 
   try {
     await db.put(itemToWrite, QUESTS_TABLE, !userItem);
     return {
       success: true,
-      quests: nextQuestsMap
+      quests: nextQuestsMap,
     };
   } catch (err: unknown) {
     const errObj = err as {
@@ -142,13 +137,13 @@ async function updateUserQuestProgress(
         await db.put(itemToWrite, QUESTS_TABLE, !!userItem);
         return {
           success: true,
-          quests: nextQuestsMap
+          quests: nextQuestsMap,
         };
       } catch (retryErr: unknown) {
         console.error(`Retry failed for ${userID}:`, retryErr);
         return {
           success: false,
-          error: "DB write failed after retry"
+          error: "DB write failed after retry",
         };
       }
     }
@@ -156,7 +151,7 @@ async function updateUserQuestProgress(
     console.error(`Error updating quest progress for ${userID}:`, err);
     return {
       success: false,
-      error: "DB write failed"
+      error: "DB write failed",
     };
   }
 }
@@ -170,7 +165,7 @@ export const updateQuest = protect(Access.USER, async (event) => {
     ) {
       console.log(event.pathParameters);
       return handlerHelpers.createResponse(400, {
-        message: "missing path parameters"
+        message: "missing path parameters",
       });
     }
 
@@ -183,17 +178,17 @@ export const updateQuest = protect(Access.USER, async (event) => {
       handlerHelpers.checkPayloadProps(body, {
         type: {
           required: true,
-          type: "string"
+          type: "string",
         },
         argument: {
           required: true,
-          type: "object"
-        }
+          type: "object",
+        },
       });
 
       if (body.type !== "connection") {
         return handlerHelpers.createResponse(400, {
-          message: `Invalid type: '${body.type}'. Valid types: 'connection'`
+          message: `Invalid type: '${body.type}'. Valid types: 'connection'`,
         });
       }
     } catch (err) {
@@ -205,7 +200,7 @@ export const updateQuest = protect(Access.USER, async (event) => {
 
     if (!questEvents) {
       return handlerHelpers.createResponse(400, {
-        message: "Failed to parse quest event"
+        message: "Failed to parse quest event",
       });
     }
 
@@ -221,12 +216,12 @@ export const updateQuest = protect(Access.USER, async (event) => {
       year,
       questEvents,
       timestamp,
-      isConnectionEvent ? (targetProfileId as string) : null
+      isConnectionEvent ? (targetProfileId as string) : null,
     );
 
     if (!userAResult.success) {
       return handlerHelpers.createResponse(500, {
-        message: userAResult.error || "Internal server error"
+        message: userAResult.error || "Internal server error",
       });
     }
 
@@ -265,12 +260,12 @@ export const updateQuest = protect(Access.USER, async (event) => {
             year,
             questEvents,
             timestamp,
-            userAProfileId
+            userAProfileId,
           );
 
           if (!userBResult.success) {
             console.error(
-              `Failed to update bi-directional quest for ${targetProfileId} (${userBEmail}): ${userBResult.error}`
+              `Failed to update bi-directional quest for ${targetProfileId} (${userBEmail}): ${userBResult.error}`,
             );
           }
         }
@@ -281,12 +276,12 @@ export const updateQuest = protect(Access.USER, async (event) => {
 
     return handlerHelpers.createResponse(200, {
       quests: userAResult.quests,
-      alreadyConnected: userAResult.alreadyConnected || false
+      alreadyConnected: userAResult.alreadyConnected || false,
     });
   } catch (err: unknown) {
     console.error("Unhandled error in updateQuest:", err);
     return handlerHelpers.createResponse(500, {
-      message: "Internal server error"
+      message: "Internal server error",
     });
   }
 }) as LambdaHandler;
@@ -299,7 +294,7 @@ export const getQuest = protect(Access.USER, async (event) => {
       !event.pathParameters.year
     ) {
       return handlerHelpers.createResponse(400, {
-        message: "missing path parameters"
+        message: "missing path parameters",
       });
     }
 
@@ -307,12 +302,12 @@ export const getQuest = protect(Access.USER, async (event) => {
     const userID = event.auth!.email;
 
     let userItem = await db.getOne(userID, QUESTS_TABLE, {
-      "eventID#year": `${event_id}#${year}`
+      "eventID#year": `${event_id}#${year}`,
     });
 
     if (userItem) {
       return handlerHelpers.createResponse(200, {
-        quests: userItem.quests || {}
+        quests: userItem.quests || {},
       });
     }
 
@@ -321,18 +316,18 @@ export const getQuest = protect(Access.USER, async (event) => {
         acc[id] = initStoredQuest(def, Date.now());
         return acc;
       },
-      {} as Record<string, unknown>
+      {} as Record<string, unknown>,
     );
 
     try {
       await db.put(
         {
-          "id": userID,
+          id: userID,
           "eventID#year": `${event_id}#${year}`,
-          "quests": newQuests
+          quests: newQuests,
         },
         QUESTS_TABLE,
-        true
+        true,
       );
 
       return handlerHelpers.createResponse(200, { quests: newQuests });
@@ -341,21 +336,21 @@ export const getQuest = protect(Access.USER, async (event) => {
       if (errObj.code !== "ConditionalCheckFailedException") {
         console.error(err);
         return handlerHelpers.createResponse(500, {
-          message: "Internal server error"
+          message: "Internal server error",
         });
       }
     }
 
     userItem = await db.getOne(userID, QUESTS_TABLE, {
-      "eventID#year": `${event_id}#${year}`
+      "eventID#year": `${event_id}#${year}`,
     });
     return handlerHelpers.createResponse(200, {
-      quests: (userItem && userItem.quests) || {}
+      quests: (userItem && userItem.quests) || {},
     });
   } catch (err: unknown) {
     console.error(err);
     return handlerHelpers.createResponse(500, {
-      message: "Internal server error"
+      message: "Internal server error",
     });
   }
 }) as LambdaHandler;
@@ -368,7 +363,7 @@ export const getQuestsByEvent = protect(Access.ADMIN, async (event) => {
       !event.pathParameters.year
     ) {
       return handlerHelpers.createResponse(400, {
-        message: "missing path parameters"
+        message: "missing path parameters",
       });
     }
 
@@ -380,33 +375,33 @@ export const getQuestsByEvent = protect(Access.ADMIN, async (event) => {
       {
         FilterExpression: "#eventquery = :eventKey",
         ExpressionAttributeNames: {
-          "#eventquery": "eventID#year"
+          "#eventquery": "eventID#year",
         },
         ExpressionAttributeValues: {
-          ":eventKey": eventKey
-        }
+          ":eventKey": eventKey,
+        },
       },
-      "event-query"
+      "event-query",
     );
 
     const quests = items.map((item) => ({
       userId: item.id,
-      quests: item.quests || {}
+      quests: item.quests || {},
     }));
 
     return handlerHelpers.createResponse(200, {
-      quests
+      quests,
     });
   } catch (err: unknown) {
     console.error(err);
     return handlerHelpers.createResponse(500, {
-      message: "Internal server error"
+      message: "Internal server error",
     });
   }
 }) as LambdaHandler;
 
 async function resolveEmailFromProfileId(
-  profileId: string
+  profileId: string,
 ): Promise<string | null> {
   if (!profileId) return null;
 
@@ -414,11 +409,11 @@ async function resolveEmailFromProfileId(
     const results = await db.query(USERS_TABLE, "profileID-index", {
       expression: "#profileID = :profileID",
       expressionNames: {
-        "#profileID": "profileID"
+        "#profileID": "profileID",
       },
       expressionValues: {
-        ":profileID": profileId
-      }
+        ":profileID": profileId,
+      },
     });
 
     if (results && results.length > 0 && results[0]?.id) {
@@ -434,7 +429,7 @@ async function resolveEmailFromProfileId(
 export const getQuestKiosk = async (
   event: APIGatewayEvent,
   _ctx: LambdaContext,
-  _callback: LambdaCallback
+  _callback: LambdaCallback,
 ) => {
   try {
     const p = event.pathParameters || {};
@@ -444,7 +439,7 @@ export const getQuestKiosk = async (
 
     if (!event_id || !year || !profileId) {
       return handlerHelpers.createResponse(400, {
-        message: "missing path parameters"
+        message: "missing path parameters",
       });
     }
 
@@ -454,24 +449,24 @@ export const getQuestKiosk = async (
 
     if (email) {
       const byEmail = await db.getOne(email, QUESTS_TABLE, {
-        "eventID#year": eventKey
+        "eventID#year": eventKey,
       });
       if (byEmail?.quests) {
         return handlerHelpers.createResponse(200, {
           quests: byEmail.quests || {},
           resolvedUser: "email",
-          resolvedEmail: email
+          resolvedEmail: email,
         });
       }
     }
 
     const byProfileId = await db.getOne(profileId, QUESTS_TABLE, {
-      "eventID#year": eventKey
+      "eventID#year": eventKey,
     });
     if (byProfileId?.quests) {
       return handlerHelpers.createResponse(200, {
         quests: byProfileId.quests || {},
-        resolvedUser: "profileId"
+        resolvedUser: "profileId",
       });
     }
 
@@ -480,30 +475,30 @@ export const getQuestKiosk = async (
         acc[id] = initStoredQuest(def, Date.now());
         return acc;
       },
-      {} as Record<string, unknown>
+      {} as Record<string, unknown>,
     );
 
     const writeId = email || profileId;
 
     await db.put(
       {
-        "id": writeId,
+        id: writeId,
         "eventID#year": eventKey,
-        "quests": newQuests
+        quests: newQuests,
       },
       QUESTS_TABLE,
-      true
+      true,
     );
 
     return handlerHelpers.createResponse(200, {
       quests: newQuests,
       resolvedUser: email ? "initialized-email" : "initialized-profileId",
-      resolvedEmail: email || null
+      resolvedEmail: email || null,
     });
   } catch (err: unknown) {
     console.error("getQuestKiosk error:", err);
     return handlerHelpers.createResponse(500, {
-      message: "Internal server error"
+      message: "Internal server error",
     });
   }
 };

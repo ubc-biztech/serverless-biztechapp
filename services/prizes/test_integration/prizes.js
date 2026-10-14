@@ -15,8 +15,7 @@ describe("prizes integration", function () {
 
   describe("prizes/ GET tests", function () {
     it("prizes GET returns 200 on success", async () => {
-      return helpers
-        .invokeLambda(SERVICE, "prizeGetAll", "")
+      return helpers.invokeLambda(SERVICE, "prizeGetAll", "")
         .then(([statusCode]) => {
           expect(statusCode).to.equal(200);
         });
@@ -36,21 +35,17 @@ describe("prizes integration", function () {
     };
 
     it("prizes POST returns 201 on success", async () => {
-      await helpers
-        .invokeLambda(SERVICE, "prizeCreate", JSON.stringify(prizePayload))
+      await helpers.invokeLambda(SERVICE, "prizeCreate", JSON.stringify(prizePayload))
         .then(([statusCode]) => {
           expect(statusCode).to.equal(201);
         });
     });
 
     it("prizes POST returns 409 when prize id already exists", async () => {
-      return helpers
-        .invokeLambda(SERVICE, "prizeCreate", JSON.stringify(prizePayload))
+      return helpers.invokeLambda(SERVICE, "prizeCreate", JSON.stringify(prizePayload))
         .then(([statusCode, body]) => {
           expect(statusCode).to.equal(409);
-          expect(body.message).to.equal(
-            "A database entry with the same 'id' already exists!"
-          );
+          expect(body.message).to.equal("A database entry with the same 'id' already exists!");
         });
     });
   });
@@ -69,8 +64,7 @@ describe("prizes integration", function () {
         body: JSON.stringify(prizePayload)
       };
 
-      return helpers
-        .invokeLambda(SERVICE, "prizeUpdate", JSON.stringify(payload))
+      return helpers.invokeLambda(SERVICE, "prizeUpdate", JSON.stringify(payload))
         .then(([statusCode]) => {
           expect(statusCode).to.equal(404);
         });
@@ -83,8 +77,7 @@ describe("prizes integration", function () {
         },
         body: JSON.stringify(prizePayload)
       };
-      await helpers
-        .invokeLambda(SERVICE, "prizeUpdate", JSON.stringify(payload))
+      await helpers.invokeLambda(SERVICE, "prizeUpdate", JSON.stringify(payload))
         .then(([statusCode]) => {
           expect(statusCode).to.equal(200);
         });
@@ -99,8 +92,7 @@ describe("prizes integration", function () {
         }
       };
 
-      return helpers
-        .invokeLambda(SERVICE, "prizeDelete", JSON.stringify(payload))
+      return helpers.invokeLambda(SERVICE, "prizeDelete", JSON.stringify(payload))
         .then(([statusCode]) => {
           expect(statusCode).to.equal(404);
         });
@@ -112,8 +104,7 @@ describe("prizes integration", function () {
           id: INTEGRATION_TEST_PRIZE_ID
         }
       };
-      await helpers
-        .invokeLambda(SERVICE, "prizeDelete", JSON.stringify(payload))
+      await helpers.invokeLambda(SERVICE, "prizeDelete", JSON.stringify(payload))
         .then(([statusCode]) => {
           expect(statusCode).to.equal(200);
         });

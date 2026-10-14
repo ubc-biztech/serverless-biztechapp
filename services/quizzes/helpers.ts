@@ -13,7 +13,7 @@ export function validateQuestionScores(scores: unknown): scores is number[] {
     Array.isArray(scores) &&
     scores.length > 0 &&
     scores.every(
-      (score) => typeof score === "number" && score >= 0 && score <= 10
+      (score) => typeof score === "number" && score >= 0 && score <= 10,
     )
   );
 }
@@ -25,10 +25,9 @@ export function generateMBTI(
   domainAvg: number,
   modeAvg: number,
   environmentAvg: number,
-  focusAvg: number
+  focusAvg: number,
 ): string {
-  const pick = (avg: number, low: string, high: string) =>
-    avg <= 4 ? low : high;
+  const pick = (avg: number, low: string, high: string) => (avg <= 4 ? low : high);
 
   const domain = pick(domainAvg, "T", "B");
   const mode = pick(modeAvg, "M", "D");

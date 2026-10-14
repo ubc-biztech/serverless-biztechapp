@@ -60,19 +60,10 @@ const db = DynamoDBDocumentClient.from(client, {
 });
 
 /* "The Architect" -> "ARCHITECT"; matches ARCHETYPES in the web app */
-const ARCHETYPES = [
-  "ARCHITECT",
-  "DESIGNER",
-  "LOGICIAN",
-  "STRATEGIST",
-  "VISIONARY"
-];
+const ARCHETYPES = ["ARCHITECT", "DESIGNER", "LOGICIAN", "STRATEGIST", "VISIONARY"];
 const toArchetype = (careerInterest) => {
   if (!careerInterest) return undefined;
-  const key = String(careerInterest)
-    .replace(/^the\s+/i, "")
-    .trim()
-    .toUpperCase();
+  const key = String(careerInterest).replace(/^the\s+/i, "").trim().toUpperCase();
   return ARCHETYPES.includes(key) ? key : undefined;
 };
 
@@ -117,14 +108,10 @@ async function fetchRegistrations() {
 }
 
 const getOne = async (TableName, Key) =>
-  (
-    await db.send(
-      new GetCommand({
-        TableName,
-        Key
-      })
-    )
-  ).Item;
+  (await db.send(new GetCommand({
+    TableName,
+    Key
+  }))).Item;
 
 function buildProfile(profileID, reg, archetype, now) {
   const b = reg.basicInformation || {};
@@ -218,8 +205,7 @@ async function createProfileForUser(email, reg, archetype) {
             TableName: T.users,
             Key: { id: email },
             UpdateExpression: "set profileID = :p, updatedAt = :t",
-            ConditionExpression:
-              "attribute_exists(id) AND attribute_not_exists(profileID)",
+            ConditionExpression: "attribute_exists(id) AND attribute_not_exists(profileID)",
             ExpressionAttributeValues: {
               ":p": profileID,
               ":t": now
@@ -278,9 +264,7 @@ async function setArchetype(profileID, archetype) {
 }
 
 async function main() {
-  console.log(
-    `${APPLY ? "APPLY" : "DRY RUN"} · ${EVENT_ID};${YEAR} · tables: ${Object.values(T).join(", ")}`
-  );
+  console.log(`${APPLY ? "APPLY" : "DRY RUN"} · ${EVENT_ID};${YEAR} · tables: ${Object.values(T).join(", ")}`);
 
   const regs = await fetchRegistrations();
   console.log(`${regs.length} registrations`);
@@ -310,9 +294,7 @@ async function main() {
     const label = `${email.padEnd(36)} ${(archetype || "-").padEnd(10)}`;
 
     if (!user) {
-      console.log(
-        `  create   ${label} user+profile${GRANT_MEMBERSHIP ? "+membership" : ""}`
-      );
+      console.log(`  create   ${label} user+profile${GRANT_MEMBERSHIP ? "+membership" : ""}`);
       if (APPLY) await createEverything(email, reg, archetype);
       counts.created++;
       continue;
@@ -333,27 +315,21 @@ async function main() {
       type: "PROFILE"
     });
     if (!profile) {
-      console.log(
-        `  WARN     ${label} user points at missing profile ${user.profileID}`
-      );
+      console.log(`  WARN     ${label} user points at missing profile ${user.profileID}`);
       counts.skipped++;
       continue;
     }
     if (APPLY && (await ensureMembership(email, reg))) counts.membershipAdded++;
 
     if (!archetype) {
-      console.log(
-        `  keep     ${label} profile ${user.profileID}, no quiz answer`
-      );
+      console.log(`  keep     ${label} profile ${user.profileID}, no quiz answer`);
       continue;
     }
     if (profile.archetype === archetype) {
       console.log(`  ok       ${label} profile ${user.profileID}`);
       continue;
     }
-    console.log(
-      `  archetype ${label} profile ${user.profileID}: ${profile.archetype || "none"} -> ${archetype}`
-    );
+    console.log(`  archetype ${label} profile ${user.profileID}: ${profile.archetype || "none"} -> ${archetype}`);
     if (APPLY) await setArchetype(user.profileID, archetype);
     counts.archetypeSet++;
   }

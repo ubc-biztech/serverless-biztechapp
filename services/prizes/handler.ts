@@ -32,22 +32,22 @@ export const create = protect(Access.ADMIN, async (event) => {
     helpers.checkPayloadProps(data, {
       id: {
         required: true,
-        type: "string"
+        type: "string",
       },
       name: {
         required: true,
-        type: "string"
+        type: "string",
       },
       imageHash: {
-        type: "string"
+        type: "string",
       },
       price: {
         required: true,
-        type: "number"
+        type: "number",
       },
       links: {
-        type: "object"
-      }
+        type: "object",
+      },
     });
 
     const existingPrize = await db.getOne(data.id as string, PRIZES_TABLE);
@@ -56,7 +56,7 @@ export const create = protect(Access.ADMIN, async (event) => {
     const item = {
       ...data,
       createdAt: timestamp,
-      updatedAt: timestamp
+      updatedAt: timestamp,
     };
 
     const res = await db.create(item, PRIZES_TABLE);
@@ -64,7 +64,7 @@ export const create = protect(Access.ADMIN, async (event) => {
     const response = helpers.createResponse(201, {
       message: "Prize Created!",
       response: res,
-      item
+      item,
     });
 
     return response;
@@ -83,17 +83,17 @@ export const update = protect(Access.ADMIN, async (event) => {
 
     helpers.checkPayloadProps(data, {
       name: {
-        type: "string"
+        type: "string",
       },
       imageHash: {
-        type: "string"
+        type: "string",
       },
       price: {
-        type: "number"
+        type: "number",
       },
       links: {
-        type: "object"
-      }
+        type: "object",
+      },
     });
 
     const existingPrize = await db.getOne(id, PRIZES_TABLE);
@@ -103,7 +103,7 @@ export const update = protect(Access.ADMIN, async (event) => {
 
     const response = helpers.createResponse(200, {
       message: "Prize updated!",
-      response: res
+      response: res,
     });
 
     return response;
@@ -124,7 +124,7 @@ export const del = protect(Access.ADMIN, async (event) => {
     const res = await db.deleteOne(id, PRIZES_TABLE);
     const response = helpers.createResponse(200, {
       message: "Prize deleted!",
-      response: res
+      response: res,
     });
 
     return response;

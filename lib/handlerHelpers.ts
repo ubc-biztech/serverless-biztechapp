@@ -17,37 +17,32 @@ const handlerHelpers: HandlerHelpers = {
 
   missingIdQueryResponse(type: string): APIGatewayResponse {
     return res.send(400, {
-      message: `A(n) ${type} id was not provided. Check query params`
+      message: `A(n) ${type} id was not provided. Check query params`,
     });
   },
 
-  missingPathParamResponse(
-    type: string,
-    paramName: string
-  ): APIGatewayResponse {
+  missingPathParamResponse(type: string, paramName: string): APIGatewayResponse {
     return res.send(400, {
-      message: `A(n) ${paramName} path parameter was not provided for this ${type}. Check path params`
+      message: `A(n) ${paramName} path parameter was not provided for this ${type}. Check path params`,
     });
   },
 
   notFoundResponse(
     type?: string | null,
     id?: string | null,
-    secondaryKey?: string | number | null
+    secondaryKey?: string | number | null,
   ): APIGatewayResponse {
     return res.notFound(
       type ?? undefined,
       id ?? undefined,
-      secondaryKey !== null && secondaryKey !== undefined
-        ? String(secondaryKey)
-        : undefined
+      secondaryKey !== null && secondaryKey !== undefined ? String(secondaryKey) : undefined,
     );
   },
 
   duplicateResponse(prop: string, data: unknown): APIGatewayResponse {
     const response = res.send(409, {
       message: `A database entry with the same '${prop}' already exists!`,
-      data
+      data,
     });
     console.error("DUPLICATE ERROR", response);
     return response;
@@ -67,7 +62,7 @@ const handlerHelpers: HandlerHelpers = {
    */
   checkPayloadProps(
     payload: Record<string, unknown>,
-    check: PayloadCheck
+    check: PayloadCheck,
   ): void {
     try {
       const criteria = Object.entries(check);
@@ -83,7 +78,7 @@ const handlerHelpers: HandlerHelpers = {
     } catch (errMsg) {
       throw res.notAcceptable(errMsg as string, payload);
     }
-  }
+  },
 };
 
 export default handlerHelpers;

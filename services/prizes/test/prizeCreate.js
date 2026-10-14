@@ -24,19 +24,17 @@ describe("prizeCreate", () => {
   before(() => {
     AWSMock.mock("DynamoDB.DocumentClient", "get", (params, callback) => {
       let returnValue = null;
-      if (createdPrizeIds.includes(params.Key.id))
-        returnValue = {
-          ...prizePayload,
-          id: params.Key.id
-        };
+      if(createdPrizeIds.includes(params.Key.id)) returnValue = {
+        ...prizePayload,
+        id: params.Key.id
+      };
       callback(null, {
         Item: returnValue
       });
     });
 
     AWSMock.mock("DynamoDB.DocumentClient", "put", (params, callback) => {
-      if (params.Item.id && createdPrizeIds.includes(params.Item.id))
-        callback("Prize already exists!");
+      if(params.Item.id && createdPrizeIds.includes(params.Item.id)) callback("Prize already exists!");
       else {
         createdPrizeIds.push(params.Item.id);
         callback(null, "Successfully put item in database");

@@ -157,29 +157,26 @@ export const postSell = protect(Access.USER, async (event, ctx, callback) => {
   }
 });
 
-export const getPortfolio = protect(
-  Access.USER,
-  async (event, ctx, callback) => {
-    try {
-      const userId = event.auth.email;
+export const getPortfolio = protect(Access.USER, async (event, ctx, callback) => {
+  try {
+    const userId = event.auth.email;
 
-      const qs = event.queryStringParameters || {};
-      const eventId = qs.eventId || DEFAULT_EVENT_ID;
+    const qs = event.queryStringParameters || {};
+    const eventId = qs.eventId || DEFAULT_EVENT_ID;
 
-      const portfolio = await getPortfolioForUser(userId, eventId);
+    const portfolio = await getPortfolioForUser(userId, eventId);
 
-      return handlerHelpers.createResponse(200, {
-        message: "BTX portfolio",
-        data: portfolio
-      });
-    } catch (err) {
-      console.error("[BTX] getPortfolio error", err);
-      return handlerHelpers.createResponse(500, {
-        message: "Internal server error (BTX portfolio)"
-      });
-    }
+    return handlerHelpers.createResponse(200, {
+      message: "BTX portfolio",
+      data: portfolio
+    });
+  } catch (err) {
+    console.error("[BTX] getPortfolio error", err);
+    return handlerHelpers.createResponse(500, {
+      message: "Internal server error (BTX portfolio)"
+    });
   }
-);
+});
 
 export const getRecentTradesHandler = async (event, ctx, callback) => {
   try {

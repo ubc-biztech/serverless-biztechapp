@@ -70,7 +70,7 @@ const responseHelpers: ResponseHelpers = {
   error(message, error) {
     const res = this.send(500, { message, error });
     console.error("ERROR", error);
-    return res;
+    return res
   }
 };
 

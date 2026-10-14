@@ -1,17 +1,32 @@
-import { PutCommand, QueryCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
-import { ApiGatewayManagementApi } from "@aws-sdk/client-apigatewaymanagementapi";
+import {
+  PutCommand,
+  QueryCommand,
+  DeleteCommand
+} from "@aws-sdk/lib-dynamodb";
+import {
+  ApiGatewayManagementApi
+} from "@aws-sdk/client-apigatewaymanagementapi";
 import {
   PROFILES_TABLE,
   USER_REGISTRATIONS_TABLE,
   USERS_TABLE
 } from "../../constants/tables";
-import { MAX_BATCH_ITEM_COUNT } from "../../constants/dynamodb";
+import {
+  MAX_BATCH_ITEM_COUNT
+} from "../../constants/dynamodb";
 import db from "../../lib/db";
 import handlerHelpers from "../../lib/handlerHelpers";
 import docClient from "../../lib/docClient";
-import { CURRENT_EVENT, EXEC } from "./constants";
-import { PROFILE_TYPES, TYPES } from "../profiles/constants";
-import { randomUUID } from "crypto";
+import {
+  CURRENT_EVENT,
+  EXEC
+} from "./constants";
+import {
+  PROFILE_TYPES, TYPES
+} from "../profiles/constants";
+import {
+  randomUUID
+} from "crypto";
 
 const WS_TABLE = `bizWallSockets${process.env.ENVIRONMENT || ""}`;
 const LIVE_TABLE = `bizLiveConnections${process.env.ENVIRONMENT || ""}`;
@@ -91,22 +106,26 @@ export const handleConnection = async (userID, connProfileID, timestamp) => {
       ? {
         major: connProfile.major
       }
-      : {}),
+      : {
+      }),
     ...(connProfile.year
       ? {
         year: connProfile.year
       }
-      : {}),
+      : {
+      }),
     ...(connProfile.company
       ? {
         company: connProfile.company
       }
-      : {}),
+      : {
+      }),
     ...(connProfile.title
       ? {
         title: connProfile.title
       }
-      : {})
+      : {
+      })
   };
 
   const connPut = {
@@ -122,22 +141,26 @@ export const handleConnection = async (userID, connProfileID, timestamp) => {
       ? {
         major: userProfile.major
       }
-      : {}),
+      : {
+      }),
     ...(userProfile.year
       ? {
         year: userProfile.year
       }
-      : {}),
+      : {
+      }),
     ...(userProfile.company
       ? {
         company: userProfile.company
       }
-      : {}),
+      : {
+      }),
     ...(userProfile.title
       ? {
         title: userProfile.title
       }
-      : {})
+      : {
+      })
   };
 
   const promises = [];
@@ -249,13 +272,11 @@ export const handleConnection = async (userID, connProfileID, timestamp) => {
   }
 
   return handlerHelpers.createResponse(200, {
-    message: `Connection created with ${
-      swap ? userProfile.fname : connProfile.fname
+    message: `Connection created with ${swap ? userProfile.fname : connProfile.fname
     }`,
-    name: `${
-      swap
-        ? userProfile.fname + " " + userProfile.lname
-        : connProfile.fname + " " + connProfile.lname
+    name: `${swap
+      ? userProfile.fname + " " + userProfile.lname
+      : connProfile.fname + " " + connProfile.lname
     }`
   });
 };
@@ -272,7 +293,9 @@ export async function hydrateConnectionsFromProfiles(connections) {
 
   const uniqueIds = [
     ...new Set(
-      connections.map((connection) => connection.connectionID).filter(Boolean)
+      connections
+        .map((connection) => connection.connectionID)
+        .filter(Boolean)
     )
   ];
 
@@ -313,12 +336,14 @@ export async function hydrateConnectionsFromProfiles(connections) {
         ? {
           linkedin
         }
-        : {}),
+        : {
+        }),
       ...(profilePictureURL
         ? {
           profilePictureURL
         }
-        : {})
+        : {
+        })
     });
   }
 
@@ -429,7 +454,9 @@ const isDuplicateRequest = async (userID, connID) => {
   return Boolean(result);
 };
 
-export async function saveSocketConnection({ connectionId, eventId, userId }) {
+export async function saveSocketConnection({
+  connectionId, eventId, userId
+}) {
   console.log("[WS] saveSocketConnection", {
     connectionId,
     eventId,
@@ -447,7 +474,9 @@ export async function saveSocketConnection({ connectionId, eventId, userId }) {
   await docClient.send(cmd);
 }
 
-export async function removeSocketConnection({ connectionId }) {
+export async function removeSocketConnection({
+  connectionId
+}) {
   const cmd = new DeleteCommand({
     TableName: WS_TABLE,
     Key: {
@@ -506,7 +535,9 @@ export async function postToConnection(connectionId, payload) {
   }
 }
 
-export async function logLiveConnection({ eventId, from, to }) {
+export async function logLiveConnection({
+  eventId, from, to
+}) {
   const createdAt = Date.now();
   const sk = `ts#${createdAt}#${randomUUID()}`;
   const cmd = new PutCommand({

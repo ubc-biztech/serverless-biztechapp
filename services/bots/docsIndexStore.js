@@ -34,9 +34,7 @@ const docsIndexConfig = {
   bucket: String(process.env.DOCS_INDEX_S3_BUCKET || DEFAULT_S3_BUCKET).trim(),
   key: String(process.env.DOCS_INDEX_S3_KEY || DEFAULT_S3_KEY).trim(),
   region: String(
-    process.env.DOCS_INDEX_S3_REGION ||
-      process.env.AWS_REGION ||
-      DEFAULT_S3_REGION
+    process.env.DOCS_INDEX_S3_REGION || process.env.AWS_REGION || DEFAULT_S3_REGION
   ).trim(),
   refreshMs:
     positiveInt(
@@ -59,9 +57,7 @@ function buildDocsState(payload, source, etag = "") {
   const baseUrl = String(
     payload?.docsBaseUrl || payload?.baseUrl || bundledDocsBaseUrl
   ).trim();
-  const rawChunks = Array.isArray(payload?.docsChunks)
-    ? payload.docsChunks
-    : [];
+  const rawChunks = Array.isArray(payload?.docsChunks) ? payload.docsChunks : [];
   const docsChunks = rawChunks
     .map((chunk, index) => {
       if (!chunk || typeof chunk !== "object") return null;
@@ -208,8 +204,7 @@ export async function ensureDocsIndexLoaded(options = {}) {
       );
       return activeDocsState;
     } finally {
-      nextRefreshAt =
-        Date.now() +
+      nextRefreshAt = Date.now() +
         (hadError ? docsIndexConfig.errorRetryMs : docsIndexConfig.refreshMs);
       refreshPromise = null;
     }
