@@ -23,7 +23,7 @@ case "LOCAL":
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bot ${DISCORD_TOKEN}`
+        "Authorization": `Bot ${DISCORD_TOKEN}`
       },
       body: JSON.stringify(command)
     }
@@ -34,7 +34,7 @@ case "GLOBAL":
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bot ${DISCORD_TOKEN}`
+      "Authorization": `Bot ${DISCORD_TOKEN}`
     },
     body: JSON.stringify(command)
   });

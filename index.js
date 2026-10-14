@@ -2,9 +2,7 @@
 
 import "dotenv/config";
 import concurrently from "concurrently";
-import {
-  readConfigFile, runProxy, runServices
-} from "./handler.js";
+import { readConfigFile, runProxy, runServices } from "./handler.js";
 
 const prefixColors = [
   "blue",
@@ -30,15 +28,23 @@ const serviceArgs = process.argv.slice(2);
 
 if (serviceArgs.length) {
   // validate the services first
-  const allServiceNames = new Set(allServices.map(service => service.srvName));
-  const invalidServices = serviceArgs.filter(name => !allServiceNames.has(name));
+  const allServiceNames = new Set(
+    allServices.map((service) => service.srvName)
+  );
+  const invalidServices = serviceArgs.filter(
+    (name) => !allServiceNames.has(name)
+  );
   if (invalidServices.length) {
-    console.error(`Invalid service name(s): ${invalidServices.join(", ")}. Please see sls-multi-gateways.yml`);
+    console.error(
+      `Invalid service name(s): ${invalidServices.join(", ")}. Please see sls-multi-gateways.yml`
+    );
     process.exit(1);
   }
 
   const requestedServiceNames = new Set(serviceArgs);
-  selectedServices = allServices.filter(service => requestedServiceNames.has(service.srvName));
+  selectedServices = allServices.filter((service) =>
+    requestedServiceNames.has(service.srvName)
+  );
 
   if (!selectedServices.length) {
     console.error("No services specified to run");
@@ -52,23 +58,25 @@ const result = concurrently(commands, {
   killOthers: ["failure", "success"]
 });
 
-result.then(() => {
-}).catch((err) => {
-  const errors = Array.isArray(err) ? err : [err];
-  console.error("Service runner exited with errors:");
-  errors.forEach((entry) => {
-    if (entry && entry.command && entry.exitCode !== undefined) {
-      console.error(`- ${entry.command.name}: exit ${entry.exitCode}`);
-    } else {
-      console.error(`- ${String(entry)}`);
-    }
+result
+  .then(() => {})
+  .catch((err) => {
+    const errors = Array.isArray(err) ? err : [err];
+    console.error("Service runner exited with errors:");
+    errors.forEach((entry) => {
+      if (entry && entry.command && entry.exitCode !== undefined) {
+        console.error(`- ${entry.command.name}: exit ${entry.exitCode}`);
+      } else {
+        console.error(`- ${String(entry)}`);
+      }
+    });
   });
-});
 
 const proxyServer = runProxy(selectedServices, basePort, stage);
 
 process.on("SIGINT", () => {
   proxyServer.close(() => {
     console.log("\nReceived SIGINT: Goodbye!");
-    process.exit(1);});
+    process.exit(1);
+  });
 });

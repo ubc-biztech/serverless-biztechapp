@@ -1,9 +1,7 @@
 "use strict";
 
 import mochaPlugin from "serverless-mocha-plugin";
-import {
-  mockClient
-} from "aws-sdk-client-mock";
+import { mockClient } from "aws-sdk-client-mock";
 import {
   DynamoDBDocumentClient,
   GetCommand,
@@ -13,8 +11,16 @@ import sinon from "sinon";
 
 const expect = mochaPlugin.chai.expect;
 const ddbMock = mockClient(DynamoDBDocumentClient);
-const wrappedCreate = mochaPlugin.getWrapper("createProfile", "/handler", "createProfile");
-const wrappedGet = mochaPlugin.getWrapper("getProfile", "/handler", "getProfile");
+const wrappedCreate = mochaPlugin.getWrapper(
+  "createProfile",
+  "/handler",
+  "createProfile"
+);
+const wrappedGet = mochaPlugin.getWrapper(
+  "getProfile",
+  "/handler",
+  "getProfile"
+);
 
 // Test data
 const testEmail = "test@ubcbiztech.com";
@@ -22,16 +28,16 @@ const testEventId = "blueprint";
 const testYear = 2025;
 
 const mockRegistration = {
-  id: testEmail,
+  "id": testEmail,
   "eventID;year": `${testEventId};${testYear}`,
-  basicInformation: {
+  "basicInformation": {
     fname: "Test",
     lname: "User",
     gender: ["They/Them"],
     major: "Computer Science",
     year: "3rd Year"
   },
-  dynamicResponses: {
+  "dynamicResponses": {
     "130fac25-e5d7-4fd1-8fd8-d844bfdaef06": "Reading",
     "52a3e21c-e65f-4248-a38d-db93e410fe2c": "Gaming",
     "3d130254-8f1c-456e-a325-109717ad2bd4": "Elon Musk",
@@ -43,21 +49,21 @@ const mockRegistration = {
 };
 
 const mockProfile = {
-  id: testEmail,
+  "id": testEmail,
   "eventID;year": `${testEventId};${testYear}`,
-  fname: "Test",
-  lname: "User",
-  pronouns: "They/Them",
-  type: "Attendee",
-  major: "Computer Science",
-  year: "3rd Year",
-  hobby1: "Reading",
-  hobby2: "Gaming",
-  funQuestion1: "Elon Musk",
-  funQuestion2: "Smartphone",
-  linkedIn: "https://linkedin.com/test",
-  profilePictureURL: "https://photo.url/test",
-  additionalLink: "https://portfolio.test"
+  "fname": "Test",
+  "lname": "User",
+  "pronouns": "They/Them",
+  "type": "Attendee",
+  "major": "Computer Science",
+  "year": "3rd Year",
+  "hobby1": "Reading",
+  "hobby2": "Gaming",
+  "funQuestion1": "Elon Musk",
+  "funQuestion2": "Smartphone",
+  "linkedIn": "https://linkedin.com/test",
+  "profilePictureURL": "https://photo.url/test",
+  "additionalLink": "https://portfolio.test"
 };
 
 describe("Profiles Service", () => {
@@ -69,7 +75,10 @@ describe("Profiles Service", () => {
       // Mock DynamoDB GetCommand
       ddbMock.on(GetCommand).callsFake((params) => {
         if (params.TableName.includes("biztechRegistrations")) {
-          if (params.Key.id === testEmail && params.Key["eventID;year"] === `${testEventId};${testYear}`) {
+          if (
+            params.Key.id === testEmail &&
+            params.Key["eventID;year"] === `${testEventId};${testYear}`
+          ) {
             return {
               Item: mockRegistration
             };
@@ -78,7 +87,10 @@ describe("Profiles Service", () => {
             Item: undefined
           };
         } else if (params.TableName.includes("biztechProfiles")) {
-          if (params.Key.email === testEmail && params.Key["eventID;year"] === `${testEventId};${testYear}`) {
+          if (
+            params.Key.email === testEmail &&
+            params.Key["eventID;year"] === `${testEventId};${testYear}`
+          ) {
             return {
               Item: mockProfile
             };
@@ -99,34 +111,39 @@ describe("Profiles Service", () => {
             Item: params.Item
           };
         }
-        return {
-        };
+        return {};
       });
 
       // Stub db module functions
-      sinon.stub(require("../../../lib/db"), "getOne").callsFake(async (id, table, sortKey) => {
-        const params = {
-          TableName: table,
-          Key: {
-            ...(table.includes("biztechRegistrations") ? {
-              id
-            } : {
-              email: id
-            }),
-            ...sortKey
-          }
-        };
-        const result = await ddbMock.send(new GetCommand(params));
-        return result.Item;
-      });
+      sinon
+        .stub(require("../../../lib/db"), "getOne")
+        .callsFake(async (id, table, sortKey) => {
+          const params = {
+            TableName: table,
+            Key: {
+              ...(table.includes("biztechRegistrations")
+                ? {
+                  id
+                }
+                : {
+                  email: id
+                }),
+              ...sortKey
+            }
+          };
+          const result = await ddbMock.send(new GetCommand(params));
+          return result.Item;
+        });
 
-      sinon.stub(require("../../../lib/db"), "create").callsFake(async (item, table) => {
-        const params = {
-          TableName: table,
-          Item: item
-        };
-        return await ddbMock.send(new PutCommand(params));
-      });
+      sinon
+        .stub(require("../../../lib/db"), "create")
+        .callsFake(async (item, table) => {
+          const params = {
+            TableName: table,
+            Item: item
+          };
+          return await ddbMock.send(new PutCommand(params));
+        });
     } catch (error) {
       console.error("Error setting up mocks:", error);
       throw error;
@@ -142,7 +159,7 @@ describe("Profiles Service", () => {
     it("should return 406 when required fields are missing", async () => {
       const response = await wrappedCreate.run({
         body: JSON.stringify({
-          email: testEmail,
+          email: testEmail
           // missing eventID and year
         })
       });
@@ -202,12 +219,12 @@ describe("Profiles Service", () => {
       expect(response.statusCode).to.equal(201);
       const body = JSON.parse(response.body);
       expect(body.profile).to.include({
-        email: testEmail,
+        "email": testEmail,
         "eventID;year": `${testEventId};${testYear}`,
-        fname: mockRegistration.basicInformation.fname,
-        lname: mockRegistration.basicInformation.lname,
-        pronouns: mockRegistration.basicInformation.gender[0],
-        type: "Attendee"
+        "fname": mockRegistration.basicInformation.fname,
+        "lname": mockRegistration.basicInformation.lname,
+        "pronouns": mockRegistration.basicInformation.gender[0],
+        "type": "Attendee"
       });
     });
   });

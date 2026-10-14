@@ -22,44 +22,36 @@ it to be relevant. Ways to implement BP Wrapped directly into Companion could be
 
 */
 import fs from "fs";
-import {
-  SES
-} from "@aws-sdk/client-ses";
+import { SES } from "@aws-sdk/client-ses";
 import csv from "csv-parser";
 
-const {
-  accessKeyId,
-  secretAccessKey,
-  region
-} = {
+const { accessKeyId, secretAccessKey, region } = {
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  region: "us-west-2",
+  region: "us-west-2"
 };
 
-const ses =
-    new SES({
-      // The key apiVersion is no longer supported in v3, and can be removed.
-      // @deprecated The client uses the "latest" apiVersion.
-      apiVersion: "2010-12-01",
+const ses = new SES({
+  // The key apiVersion is no longer supported in v3, and can be removed.
+  // @deprecated The client uses the "latest" apiVersion.
+  apiVersion: "2010-12-01",
 
-      credentials: {
-        accessKeyId: accessKeyId,
-        secretAccessKey: secretAccessKey,
-      },
+  credentials: {
+    accessKeyId: accessKeyId,
+    secretAccessKey: secretAccessKey
+  },
 
-      region: region,
-    });
+  region: region
+});
 
 const subject = "Your Blueprint Wrapped 2024";
 const sourceEmail = "ubcbiztech@gmail.com";
 // csv is formatted as follows: email, partner1url, partner2url, partner3url
 const csvFilePath = "./scripts/data/bp_wrapped_emails.csv";
 
-// SES has rate limiting 14 emails a second. 
+// SES has rate limiting 14 emails a second.
 const delayBetweenBatchesMs = 1000;
 const batchSize = 3;
-
 
 const readCSV = async (csvFilePath) => {
   return new Promise((resolve, reject) => {
@@ -70,11 +62,14 @@ const readCSV = async (csvFilePath) => {
       fs.createReadStream(filePath)
         .pipe(csv())
         .on("headers", (headers) => {
-          csvHeader = headers.map(header => header.trim());
+          csvHeader = headers.map((header) => header.trim());
         })
         .on("data", (row) => {
           const cleanedRow = Object.fromEntries(
-            Object.entries(row).map(([key, value]) => [key.trim(), value.trim()])
+            Object.entries(row).map(([key, value]) => [
+              key.trim(),
+              value.trim()
+            ])
           );
           csvData.push(cleanedRow);
         })
@@ -174,31 +169,47 @@ async function sendEmailWithPNG(confirmSendEmailFlag) {
   async function sendEmailsWithDelay(emails, confirmSendEmailFlag) {
     for (let i = 0; i < emails.length; i += batchSize) {
       const batch = emails.slice(i, i + batchSize);
-      await Promise.all(batch.map(async (emailData) => {
-        const email = emailData.Destination.ToAddresses[0];
-        const body = emailData.Message.Body.Html.Data;
+      await Promise.all(
+        batch.map(async (emailData) => {
+          const email = emailData.Destination.ToAddresses[0];
+          const body = emailData.Message.Body.Html.Data;
 
-        console.log(`Preparing to send email to ${email} with data \n ${body}`);
+          console.log(
+            `Preparing to send email to ${email} with data \n ${body}`
+          );
 
-        if (confirmSendEmailFlag === "-confirm") {
-          await ses.sendEmail(emailData)
-            .then(() => {
-              console.log(`Email sent successfully to ${email}`);
-            })
-            .catch((err) => {
-              console.log("did not send email to ", email);
-              fs.appendFile("emailErrors.txt", `Error sending email to ${email}: ${err.message}\n`, (err) => {
-                if (err) console.error("Error writing to emailErrors.txt:", err);
+          if (confirmSendEmailFlag === "-confirm") {
+            await ses
+              .sendEmail(emailData)
+              .then(() => {
+                console.log(`Email sent successfully to ${email}`);
+              })
+              .catch((err) => {
+                console.log("did not send email to ", email);
+                fs.appendFile(
+                  "emailErrors.txt",
+                  `Error sending email to ${email}: ${err.message}\n`,
+                  (err) => {
+                    if (err)
+                      console.error("Error writing to emailErrors.txt:", err);
+                  }
+                );
               });
-            });
-        } else {
-          console.log(`Email prepared for ${email}, not sent. Use -confirm to send email.`);
-        }
-      }));
+          } else {
+            console.log(
+              `Email prepared for ${email}, not sent. Use -confirm to send email.`
+            );
+          }
+        })
+      );
 
       // Wait for a second before sending the next batch
-      console.log(`Batch sent, waiting ${delayBetweenBatchesMs / 1000} seconds before sending the next batch...`);
-      await new Promise(resolve => setTimeout(resolve, delayBetweenBatchesMs));
+      console.log(
+        `Batch sent, waiting ${delayBetweenBatchesMs / 1000} seconds before sending the next batch...`
+      );
+      await new Promise((resolve) =>
+        setTimeout(resolve, delayBetweenBatchesMs)
+      );
     }
   }
 

@@ -156,7 +156,10 @@ const s3 = new S3Client({ requestChecksumCalculation: "WHEN_REQUIRED" });
 // Shared storage and membership checks used by uploads, submissions, and cleanup.
 // Expected participant errors carry the HTTP status that handlers should return.
 export class ProductPlusError extends Error {
-  constructor(public statusCode: number, message: string) {
+  constructor(
+    public statusCode: number,
+    message: string
+  ) {
     super(message);
   }
 }
@@ -198,7 +201,7 @@ type TransactionItems = NonNullable<TransactWriteCommandInput["TransactItems"]>;
 // TODO(team workflow): reuse its membership helper when a compatible version merges.
 async function currentTeam(email: string, settings: StorageSettings) {
   // The registration gives the team code without trusting a code from the browser.
-  const registrationKey = { id: email, "eventID;year": settings.eventKey };
+  const registrationKey = { "id": email, "eventID;year": settings.eventKey };
   const registration = (await db.getOneCustom({
     TableName: settings.registrationsTable,
     Key: registrationKey,
@@ -223,14 +226,14 @@ async function currentTeam(email: string, settings: StorageSettings) {
   }
 
   // A stale registration cannot authorize someone removed from the team's list.
-  const teamKey = { id: teamCode, "eventID;year": settings.eventKey };
+  const teamKey = { "id": teamCode, "eventID;year": settings.eventKey };
   const team = (await db.getOneCustom({
     TableName: settings.teamsTable,
     Key: teamKey,
     ConsistentRead: true
   })) as TeamRecord | null;
 
-  if (!Array.isArray(team?.member_ids) || !team.member_ids.includes(email)) {
+  if (!Array.isArray(team?.memberIDs) || !team.memberIDs.includes(email)) {
     throw new ProductPlusError(403, "Current team membership is required.");
   }
 
@@ -260,7 +263,7 @@ function membershipChecks(
         TableName: settings.teamsTable,
         Key: team.teamKey,
         ConditionExpression: "contains(#members, :email)",
-        ExpressionAttributeNames: { "#members": "member_ids" },
+        ExpressionAttributeNames: { "#members": "memberIDs" },
         ExpressionAttributeValues: { ":email": email }
       }
     }
@@ -1207,7 +1210,7 @@ function absentTeam(
   return {
     ConditionCheck: {
       TableName: settings.teamsTable,
-      Key: { id: teamCode, "eventID;year": settings.eventKey },
+      Key: { "id": teamCode, "eventID;year": settings.eventKey },
       ConditionExpression: "attribute_not_exists(id)"
     }
   };
@@ -1408,7 +1411,7 @@ export async function cleanupProductPlus(task: CleanupTask) {
       // The caller's task is not proof of deletion: verify absence before removing data.
       const team = await db.getOneCustom({
         TableName: settings.teamsTable,
-        Key: { id: teamCode, "eventID;year": settings.eventKey },
+        Key: { "id": teamCode, "eventID;year": settings.eventKey },
         ConsistentRead: true
       });
 

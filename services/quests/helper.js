@@ -1,4 +1,9 @@
-import { QUEST_IDS, QUEST_DEFS, QUEST_TYPES, QUEST_EVENT_TYPES } from "./constants.js";
+import {
+  QUEST_IDS,
+  QUEST_DEFS,
+  QUEST_TYPES,
+  QUEST_EVENT_TYPES
+} from "./constants.js";
 /**
  * shape of initialized quest
  * def is the defined quest object from QUEST_DEFS
@@ -10,32 +15,36 @@ export function initStoredQuest(def, now) {
     target: def.target !== undefined ? def.target : null,
     startedAt: now,
     completedAt: null,
-    description: def.description,
+    description: def.description
   };
 }
 
 export function parseEvents(body) {
   switch (body.type) {
   case "connection": {
-    return [{
-      questId: QUEST_IDS.NEW_CONNECTIONS_5,
-      questType: QUEST_TYPES.COUNTER,
-      eventType: QUEST_EVENT_TYPES.NEW_CONNECTION,
-      eventParam: {},
-      count: 1,
-    }, {
-      questId: QUEST_IDS.NEW_CONNECTIONS_10,
-      questType: QUEST_TYPES.COUNTER,
-      eventType: QUEST_EVENT_TYPES.NEW_CONNECTION,
-      eventParam: {},
-      count: 1,
-    }, {
-      questId: QUEST_IDS.NEW_CONNECTIONS_20,
-      questType: QUEST_TYPES.COUNTER,
-      eventType: QUEST_EVENT_TYPES.NEW_CONNECTION,
-      eventParam: {},
-      count: 1,
-    }];
+    return [
+      {
+        questId: QUEST_IDS.NEW_CONNECTIONS_5,
+        questType: QUEST_TYPES.COUNTER,
+        eventType: QUEST_EVENT_TYPES.NEW_CONNECTION,
+        eventParam: {},
+        count: 1
+      },
+      {
+        questId: QUEST_IDS.NEW_CONNECTIONS_10,
+        questType: QUEST_TYPES.COUNTER,
+        eventType: QUEST_EVENT_TYPES.NEW_CONNECTION,
+        eventParam: {},
+        count: 1
+      },
+      {
+        questId: QUEST_IDS.NEW_CONNECTIONS_20,
+        questType: QUEST_TYPES.COUNTER,
+        eventType: QUEST_EVENT_TYPES.NEW_CONNECTION,
+        eventParam: {},
+        count: 1
+      }
+    ];
   }
 
   default:
@@ -54,13 +63,16 @@ export function applyQuestEvent(def, currentStored, event, now) {
 
   // COUNTER QUEST
   const increment = event.count || 1;
-  const next = Math.min(state.progress + increment, typeof state.target === "number" ? state.target : Infinity);
+  const next = Math.min(
+    state.progress + increment,
+    typeof state.target === "number" ? state.target : Infinity
+  );
   const completed = typeof state.target === "number" && next >= state.target;
 
   return {
     ...state,
     progress: next,
-    completedAt: completed ? (state.completedAt || now) : null,
+    completedAt: completed ? state.completedAt || now : null
   };
 }
 

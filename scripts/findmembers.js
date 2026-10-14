@@ -1,7 +1,5 @@
 import * as dotenv from "dotenv";
-import {
-  CognitoIdentityProvider
-} from "@aws-sdk/client-cognito-identity-provider";
+import { CognitoIdentityProvider } from "@aws-sdk/client-cognito-identity-provider";
 
 dotenv.config({
   path: "../.env"
@@ -10,7 +8,7 @@ dotenv.config({
 const awsConfig = {
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  region: "us-west-2",
+  region: "us-west-2"
 };
 
 const cognitoISP = new CognitoIdentityProvider(awsConfig);
@@ -26,7 +24,7 @@ const filterRegUsers = async (emails) => {
     try {
       const data = await cognitoISP.listUsers({
         UserPoolId: userPoolId,
-        Filter: `email = "${email}"`,
+        Filter: `email = "${email}"`
       });
 
       if (data.Users.length === 1) {
@@ -40,30 +38,32 @@ const filterRegUsers = async (emails) => {
   return counts;
 };
 
-cognitoISP.listUsers({
-  UserPoolId: userPoolId,
-  Filter: filter
-}, (err, data) => {
-  if (err) {
-    console.log("Error", err);
-  } else {
-    const threeMonthsAgo = new Date();
-    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+cognitoISP.listUsers(
+  {
+    UserPoolId: userPoolId,
+    Filter: filter
+  },
+  (err, data) => {
+    if (err) {
+      console.log("Error", err);
+    } else {
+      const threeMonthsAgo = new Date();
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
-    const recentUsers = data.Users.filter(user =>
-      new Date(user.UserCreateDate) >= threeMonthsAgo
-    );
-    const result = [];
-    recentUsers.forEach(user => {
-      user.Attributes.forEach(attribute => {
-        if (attribute.Name === "email") {
-          result.push(attribute.Value);
-        }
+      const recentUsers = data.Users.filter(
+        (user) => new Date(user.UserCreateDate) >= threeMonthsAgo
+      );
+      const result = [];
+      recentUsers.forEach((user) => {
+        user.Attributes.forEach((attribute) => {
+          if (attribute.Name === "email") {
+            result.push(attribute.Value);
+          }
+        });
       });
-    });
-    filterRegUsers(result).then(counts => {
-      console.log("Endangered Emails", counts);
-    });
+      filterRegUsers(result).then((counts) => {
+        console.log("Endangered Emails", counts);
+      });
+    }
   }
-});
-
+);

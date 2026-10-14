@@ -1,5 +1,4 @@
 ---
-
 title: Teams API
 nextjs:
   metadata:
@@ -119,13 +118,21 @@ Here is a detailed breakdown of the steps performed by the `makeTeam` function:
      ```javascript
      for (let i = 0; i < memberIDs.length; i++) {
        const memberID = memberIDs[i];
-       await db.getOne(memberID, USER_REGISTRATIONS_TABLE, {
-         "eventID;year": eventID_year
-       }).then((res) => {
-         if (!res) {
-           throw helpers.inputError("User " + memberID + " is not registered for event " + eventID_year, 403);
-         }
-       });
+       await db
+         .getOne(memberID, USER_REGISTRATIONS_TABLE, {
+           "eventID;year": eventID_year
+         })
+         .then((res) => {
+           if (!res) {
+             throw helpers.inputError(
+               "User " +
+                 memberID +
+                 " is not registered for event " +
+                 eventID_year,
+               403
+             );
+           }
+         });
      }
      ```
 
@@ -135,19 +142,20 @@ Here is a detailed breakdown of the steps performed by the `makeTeam` function:
    - Example:
      ```javascript
      const params = {
-       TableName: TEAMS_TABLE + (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
+       TableName:
+         TEAMS_TABLE + (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
        Item: {
-         id: uuidv4(),
-         teamName: team_name,
+         "id": uuidv4(),
+         "teamName": team_name,
          "eventID;year": eventID + ";" + year,
-         memberIDs: memberIDs,
-         scannedQRs: [],
-         points: 0,
-         pointsSpent: 0,
-         transactions: [],
-         inventory: [],
-         submission: "",
-         metadata: {}
+         "memberIDs": memberIDs,
+         "scannedQRs": [],
+         "points": 0,
+         "pointsSpent": 0,
+         "transactions": [],
+         "inventory": [],
+         "submission": "",
+         "metadata": {}
        }
      };
      ```
@@ -161,25 +169,37 @@ Here is a detailed breakdown of the steps performed by the `makeTeam` function:
        const memberID = memberIDs[i];
        db.getOne(memberID, USER_REGISTRATIONS_TABLE, {
          "eventID;year": eventID_year
-       }).then((res) => {
-         if (res.teamID) {
-           this._getTeamFromUserRegistration(memberID, eventID, year).then((team) => {
-             team.memberIDs = team.memberIDs.filter((id) => id !== memberID);
-             this._putTeam(team);
-           });
-         }
-         res.teamID = params.Item.id;
-         docClient.put({
-           TableName: USER_REGISTRATIONS_TABLE + (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
-           Item: res
-         }).promise().then(() => {}).catch((err) => {
+       })
+         .then((res) => {
+           if (res.teamID) {
+             this._getTeamFromUserRegistration(memberID, eventID, year).then(
+               (team) => {
+                 team.memberIDs = team.memberIDs.filter(
+                   (id) => id !== memberID
+                 );
+                 this._putTeam(team);
+               }
+             );
+           }
+           res.teamID = params.Item.id;
+           docClient
+             .put({
+               TableName:
+                 USER_REGISTRATIONS_TABLE +
+                 (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
+               Item: res
+             })
+             .promise()
+             .then(() => {})
+             .catch((err) => {
+               console.log(err);
+               throw new Error(err);
+             });
+         })
+         .catch((err) => {
            console.log(err);
            throw new Error(err);
          });
-       }).catch((err) => {
-         console.log(err);
-         throw new Error(err);
-       });
      }
      ```
 
@@ -194,7 +214,6 @@ Here is a detailed breakdown of the steps performed by the `makeTeam` function:
      ```
 
 ---
-
 
 ## Get Team from User ID
 

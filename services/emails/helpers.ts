@@ -4,20 +4,20 @@ import type { APIGatewayEvent, PayloadSchema } from "../../lib/types";
 const emailTemplateSchema = {
   templateName: {
     required: true,
-    type: "string",
+    type: "string"
   },
   subject: {
     required: true,
-    type: "string",
+    type: "string"
   },
   html: {
     required: true,
-    type: "string",
+    type: "string"
   },
   text: {
     required: true,
-    type: "string",
-  },
+    type: "string"
+  }
 } as const satisfies PayloadSchema;
 
 export type EmailTemplatePayload = {
@@ -33,7 +33,8 @@ const emailHelpers = {
   },
 
   isUnauthorized(event: APIGatewayEvent): boolean {
-    const email = event.requestContext.authorizer?.claims?.email?.toLowerCase() ?? "";
+    const email =
+      event.requestContext.authorizer?.claims?.email?.toLowerCase() ?? "";
     return !email.endsWith("@ubcbiztech.com");
   },
 
@@ -41,7 +42,7 @@ const emailHelpers = {
     const payload = JSON.parse(event.body as string) as Record<string, unknown>;
     helpers.checkPayloadProps(payload, emailTemplateSchema);
     return payload as EmailTemplatePayload;
-  },
+  }
 };
 
 export default emailHelpers;

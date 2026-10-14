@@ -2,20 +2,20 @@ import type { APIGatewayResponse } from "../../lib/types";
 
 /** Team item stored in biztechTeams. */
 export interface TeamRecord {
-  id: string;
-  team_code?: string; // Product Plus uses a separate six-digit code; other events need none.
-  teamName: string;
+  "id": string;
+  "team_code"?: string; // Product Plus uses a separate six-digit code; other events need none.
+  "teamName": string;
   "eventID;year": string;
-  memberIDs: string[];
-  memberNames?: string[];
-  scannedQRs: string[];
-  points: number;
-  pointsSpent: number;
-  transactions: string[];
-  inventory: string[];
-  submission: string;
-  metadata: Record<string, unknown>;
-  funding?: number;
+  "memberIDs": string[];
+  "memberNames"?: string[];
+  "scannedQRs": string[];
+  "points": number;
+  "pointsSpent": number;
+  "transactions": string[];
+  "inventory": string[];
+  "submission": string;
+  "metadata": Record<string, unknown>;
+  "funding"?: number;
   [key: string]: unknown;
 }
 
@@ -155,14 +155,14 @@ export interface UpdateCurrentTeamForJudgeBody {
 }
 
 export interface FeedbackRecord {
-  id: string;
+  "id": string;
   "teamID;round": string;
-  teamID?: string;
-  teamName?: string;
-  judgeName?: string;
-  scores?: ScoreMetrics;
-  feedback?: Record<string, unknown> | string;
-  createdAt?: string;
+  "teamID"?: string;
+  "teamName"?: string;
+  "judgeName"?: string;
+  "scores"?: ScoreMetrics;
+  "feedback"?: Record<string, unknown> | string;
+  "createdAt"?: string;
   [key: string]: unknown;
 }
 
@@ -190,55 +190,55 @@ export interface TeamsHelpers {
   _getTeamFromUserRegistration(
     userID: string,
     eventID: string,
-    year: number,
+    year: number
   ): Promise<TeamRecord | null>;
   updateJudgeTeam(
     judgeIDs: string[],
-    teamID: string,
+    teamID: string
   ): Promise<APIGatewayResponse>;
   _putTeam(team: TeamRecord, createNew: boolean): Promise<unknown>;
   leaveTeam(
     memberID: string,
     eventID: string,
-    year: number,
+    year: number
   ): Promise<TeamActionResult>;
   joinTeam(
     memberID: string,
     eventID: string,
     year: number,
-    teamID: string,
+    teamID: string
   ): Promise<TeamActionResult>;
   makeTeam(
     team_name: string,
     eventID: string,
     year: number,
-    memberIDs: string[],
+    memberIDs: string[]
   ): Promise<NewTeamRecord>;
   checkQRScanned(
     user_id: string,
     qr_code_id: string,
     eventID: string,
-    year: number,
+    year: number
   ): Promise<boolean>;
   addQRScan(
     user_id: string,
     qr_code_id: string,
     eventID: string,
     year: number,
-    points: number,
+    points: number
   ): Promise<unknown>;
   addQuestions(
     user_id: string,
     questions: string[],
     eventID: string,
     year: number,
-    pointsPerQuestion: number,
+    pointsPerQuestion: number
   ): Promise<unknown>;
   changeTeamName(
     user_id: string,
     eventID: string,
     year: number,
-    team_name: string,
+    team_name: string
   ): Promise<unknown>;
 }
 // ─── Hackathon judging (handlerJudging.ts) ────────────────────────────────
@@ -260,11 +260,31 @@ export interface JudgingDocument {
     name: string;
     scaleMax: number;
     scoreMode: "points" | "weighted";
-    criteria: Array<{ id: string; label: string; description?: string; weight: number; maxScore?: number }>;
+    criteria: Array<{
+      id: string;
+      label: string;
+      description?: string;
+      weight: number;
+      maxScore?: number;
+    }>;
   } | null;
   links: Array<{ id: string; label: string; url: string }>;
-  judges: Array<{ id: string; name: string; assignedTeamIds?: string[]; code?: string }>;
-  teams: Array<{ id: string; name: string; members: string[]; description?: string; github?: string; devpost?: string; imageUrls?: string[]; code?: string }>;
+  judges: Array<{
+    id: string;
+    name: string;
+    assignedTeamIds?: string[];
+    code?: string;
+  }>;
+  teams: Array<{
+    id: string;
+    name: string;
+    members: string[];
+    description?: string;
+    github?: string;
+    devpost?: string;
+    imageUrls?: string[];
+    code?: string;
+  }>;
   updatedAt: string;
 }
 

@@ -20,12 +20,12 @@ const PRIMARY_MEDIA_INSIGHT_METRICS = [
   "comments",
   "saved",
   "shares",
-  "views",
+  "views"
 ];
 const FALLBACK_MEDIA_INSIGHT_METRICS = [
   ...PRIMARY_MEDIA_INSIGHT_METRICS,
   "plays",
-  "video_views",
+  "video_views"
 ];
 
 type HttpThrow = { status: number; message: string; details?: unknown };
@@ -75,8 +75,10 @@ type BreakdownRow = {
 const cache = new Map<string, { createdAt: number; payload: unknown }>();
 let hasLoggedTokenStoreError = false;
 
-const createResponse = (statusCode: number, body?: unknown): APIGatewayResponse =>
-  res.send(statusCode, body);
+const createResponse = (
+  statusCode: number,
+  body?: unknown
+): APIGatewayResponse => res.send(statusCode, body);
 
 const errorStatus = (error: unknown): number =>
   typeof error === "object" &&
@@ -110,7 +112,7 @@ const parseDateOrThrow = (value: string, endOfDay = false): Date => {
   if (!isValidDateString(value)) {
     throw {
       status: 406,
-      message: `Invalid date format '${value}'. Expected YYYY-MM-DD.`,
+      message: `Invalid date format '${value}'. Expected YYYY-MM-DD.`
     } satisfies HttpThrow;
   }
 
@@ -118,7 +120,7 @@ const parseDateOrThrow = (value: string, endOfDay = false): Date => {
   if (Number.isNaN(date.getTime())) {
     throw {
       status: 406,
-      message: `Invalid date value '${value}'.`,
+      message: `Invalid date value '${value}'.`
     } satisfies HttpThrow;
   }
 
@@ -132,7 +134,11 @@ const logTokenStoreErrorOnce = (message: string, error: unknown): void => {
     error && typeof error === "object" && "message" in error
       ? String((error as { message: unknown }).message)
       : String(error);
-  console.warn("[instagram analytics] token store unavailable:", message, errMsg);
+  console.warn(
+    "[instagram analytics] token store unavailable:",
+    message,
+    errMsg
+  );
 };
 
 const readStoredTokenState = async (): Promise<StoredTokenItem | null> => {
@@ -140,8 +146,8 @@ const readStoredTokenState = async (): Promise<StoredTokenItem | null> => {
     const command = new GetCommand({
       TableName: TOKEN_TABLE_NAME,
       Key: {
-        id: TOKEN_RECORD_ID,
-      },
+        id: TOKEN_RECORD_ID
+      }
     });
     const result = await docClient.send(command);
     return (result?.Item as StoredTokenItem | undefined) || null;
@@ -168,12 +174,12 @@ const writeStoredTokenState = async (args: {
     expiresIn: typeof args.expiresIn === "number" ? args.expiresIn : null,
     expiresAt,
     refreshedAt: now,
-    source: args.source || "refresh",
+    source: args.source || "refresh"
   };
 
   const command = new PutCommand({
     TableName: TOKEN_TABLE_NAME,
-    Item: item as Record<string, unknown>,
+    Item: item as Record<string, unknown>
   });
   await docClient.send(command);
   return item;
@@ -185,7 +191,7 @@ const getCurrentTokenState = async (): Promise<TokenState> => {
     return {
       token: stored.accessToken,
       source: "stored",
-      state: stored,
+      state: stored
     };
   }
 
@@ -193,21 +199,21 @@ const getCurrentTokenState = async (): Promise<TokenState> => {
     return {
       token: ENV_ACCESS_TOKEN,
       source: "env",
-      state: null,
+      state: null
     };
   }
 
   return {
     token: null,
     source: "missing",
-    state: null,
+    state: null
   };
 };
 
 const makeRequest = async (
   urlOrPath: string,
   params: Record<string, string | number | undefined | null> | null = null,
-  accessToken: string | null | undefined = ENV_ACCESS_TOKEN,
+  accessToken: string | null | undefined = ENV_ACCESS_TOKEN
 ): Promise<Record<string, unknown>> => {
   const url = urlOrPath.startsWith("http")
     ? new URL(urlOrPath)
@@ -225,7 +231,7 @@ const makeRequest = async (
     if (!accessToken) {
       throw {
         status: 500,
-        message: "Instagram access token is not configured on the server.",
+        message: "Instagram access token is not configured on the server."
       } satisfies HttpThrow;
     }
     url.searchParams.set("access_token", accessToken);
@@ -245,11 +251,8 @@ const makeRequest = async (
     const msgObj = payload.message as string | undefined;
     throw {
       status: response.status,
-      message:
-        errObj?.message ||
-        msgObj ||
-        "Instagram API request failed.",
-      details: payload,
+      message: errObj?.message || msgObj || "Instagram API request failed.",
+      details: payload
     } satisfies HttpThrow;
   }
 
@@ -257,14 +260,14 @@ const makeRequest = async (
 };
 
 const getMe = async (
-  accessToken: string,
+  accessToken: string
 ): Promise<{ user_id: string; [key: string]: unknown }> => {
   const raw = await makeRequest(
     "me",
     {
-      fields: "user_id,username,account_type,followers_count,media_count",
+      fields: "user_id,username,account_type,followers_count,media_count"
     },
-    accessToken,
+    accessToken
   );
   return raw as { user_id: string; [key: string]: unknown };
 };
@@ -275,7 +278,7 @@ const getUserInsights = async (
   period: string,
   since: string,
   until: string,
-  accessToken: string,
+  accessToken: string
 ): Promise<unknown[]> => {
   const response = await makeRequest(
     `${igUserId}/insights`,
@@ -283,9 +286,9 @@ const getUserInsights = async (
       metric,
       period,
       since,
-      until,
+      until
     },
-    accessToken,
+    accessToken
   );
   return (response.data as unknown[]) || [];
 };
@@ -293,7 +296,7 @@ const getUserInsights = async (
 const getAllMedia = async (
   igUserId: string,
   sinceDate: Date,
-  accessToken: string,
+  accessToken: string
 ): Promise<
   Array<{
     id: string;
@@ -317,7 +320,7 @@ const getAllMedia = async (
       ? null
       : {
           fields: "id,caption,media_type,timestamp,permalink",
-          limit: 50,
+          limit: 50
         };
 
     const response = await makeRequest(nextUrl, requestParams, accessToken);
@@ -340,7 +343,7 @@ const getAllMedia = async (
 
 const getMediaInsights = async (
   mediaId: string,
-  accessToken: string,
+  accessToken: string
 ): Promise<
   Array<{
     name?: string;
@@ -351,25 +354,37 @@ const getMediaInsights = async (
     const response = await makeRequest(
       `${mediaId}/insights`,
       {
-        metric: PRIMARY_MEDIA_INSIGHT_METRICS.join(","),
+        metric: PRIMARY_MEDIA_INSIGHT_METRICS.join(",")
       },
-      accessToken,
+      accessToken
     );
-    return (response.data as Array<{ name?: string; values?: Array<{ value?: unknown }> }>) || [];
+    return (
+      (response.data as Array<{
+        name?: string;
+        values?: Array<{ value?: unknown }>;
+      }>) || []
+    );
   } catch {
     const settled = await Promise.allSettled(
       FALLBACK_MEDIA_INSIGHT_METRICS.map(async (metric) => {
         const response = await makeRequest(
           `${mediaId}/insights`,
           { metric },
-          accessToken,
+          accessToken
         );
-        return (response.data as Array<{ name?: string; values?: Array<{ value?: unknown }> }>) || [];
-      }),
+        return (
+          (response.data as Array<{
+            name?: string;
+            values?: Array<{ value?: unknown }>;
+          }>) || []
+        );
+      })
     );
 
-    const flattened: Array<{ name?: string; values?: Array<{ value?: unknown }> }> =
-      [];
+    const flattened: Array<{
+      name?: string;
+      values?: Array<{ value?: unknown }>;
+    }> = [];
     for (const result of settled) {
       if (result.status !== "fulfilled") continue;
       flattened.push(...(result.value || []));
@@ -377,7 +392,10 @@ const getMediaInsights = async (
 
     if (!flattened.length) return [];
 
-    const deduped = new Map<string, { name?: string; values?: Array<{ value?: unknown }> }>();
+    const deduped = new Map<
+      string,
+      { name?: string; values?: Array<{ value?: unknown }> }
+    >();
     for (const row of flattened) {
       if (!row?.name) continue;
       deduped.set(row.name, row);
@@ -387,7 +405,8 @@ const getMediaInsights = async (
 };
 
 const metricMap = (
-  insights: Array<{ name?: string; values?: Array<{ value?: unknown }> }> | undefined,
+  insights:
+    Array<{ name?: string; values?: Array<{ value?: unknown }> }> | undefined
 ): Record<string, number> => {
   const output: Record<string, number> = {};
   for (const metric of insights || []) {
@@ -408,7 +427,7 @@ const metricMap = (
 };
 
 const sumDailyInsightValues = (
-  insightData: Array<{ values?: Array<{ value?: unknown }> }> | undefined,
+  insightData: Array<{ values?: Array<{ value?: unknown }> }> | undefined
 ): number => {
   let total = 0;
   for (const metric of insightData || []) {
@@ -437,7 +456,7 @@ const computeDerivedMetrics = (metrics: Record<string, number>) => {
     shareRateByReach: reach > 0 ? (metrics.shares || 0) / reach : 0,
     likeRateByReach: reach > 0 ? (metrics.likes || 0) / reach : 0,
     commentRateByReach: reach > 0 ? (metrics.comments || 0) / reach : 0,
-    viewToReachRatio: reach > 0 ? views / reach : 0,
+    viewToReachRatio: reach > 0 ? views / reach : 0
   };
 };
 
@@ -471,7 +490,7 @@ const monthlyRollup = (posts: EnrichedPost[]) => {
         saved: 0,
         shares: 0,
         views: 0,
-        engagement: 0,
+        engagement: 0
       };
     }
 
@@ -490,17 +509,26 @@ const monthlyRollup = (posts: EnrichedPost[]) => {
       ...row,
       avgReachPerPost: row.posts ? row.reach / row.posts : 0,
       avgEngagementPerPost: row.posts ? row.engagement / row.posts : 0,
-      engagementRateByReach: row.reach ? row.engagement / row.reach : 0,
+      engagementRateByReach: row.reach ? row.engagement / row.reach : 0
     }))
     .sort((a, b) => a.month.localeCompare(b.month));
 };
 
 const breakdownBy = (
   posts: EnrichedPost[],
-  keyFn: (post: EnrichedPost) => string,
+  keyFn: (post: EnrichedPost) => string
 ): BreakdownRow[] => {
-  const buckets: Record<string, Omit<BreakdownRow, "avgReachPerPost" | "avgEngagementPerPost" | "engagementRateByReach" | "saveRateByReach" | "shareRateByReach">> =
-    {};
+  const buckets: Record<
+    string,
+    Omit<
+      BreakdownRow,
+      | "avgReachPerPost"
+      | "avgEngagementPerPost"
+      | "engagementRateByReach"
+      | "saveRateByReach"
+      | "shareRateByReach"
+    >
+  > = {};
 
   for (const post of posts) {
     const key = keyFn(post);
@@ -516,7 +544,7 @@ const breakdownBy = (
         saved: 0,
         shares: 0,
         views: 0,
-        engagement: 0,
+        engagement: 0
       };
     }
 
@@ -536,7 +564,7 @@ const breakdownBy = (
     avgEngagementPerPost: row.posts ? row.engagement / row.posts : 0,
     engagementRateByReach: row.reach ? row.engagement / row.reach : 0,
     saveRateByReach: row.reach ? row.saved / row.reach : 0,
-    shareRateByReach: row.reach ? row.shares / row.reach : 0,
+    shareRateByReach: row.reach ? row.shares / row.reach : 0
   }));
 };
 
@@ -551,20 +579,20 @@ const getHourBucket = (timestamp: string): string => {
 const sortTop = (
   posts: EnrichedPost[],
   valueFn: (post: EnrichedPost) => number,
-  limit = 5,
+  limit = 5
 ): EnrichedPost[] =>
   [...posts].sort((a, b) => valueFn(b) - valueFn(a)).slice(0, limit);
 
 const mapWithConcurrency = async <T, R>(
   items: T[],
   worker: (item: T, index: number) => Promise<R>,
-  concurrency = 6,
+  concurrency = 6
 ): Promise<R[]> => {
   const output: R[] = new Array(items.length);
   let cursor = 0;
 
   const workers = Array.from({
-    length: Math.min(concurrency, items.length),
+    length: Math.min(concurrency, items.length)
   }).map(async () => {
     while (cursor < items.length) {
       const index = cursor;
@@ -585,7 +613,7 @@ const setCache = (key: string, payload: unknown): void => {
 
   cache.set(key, {
     createdAt: Date.now(),
-    payload,
+    payload
   });
 };
 
@@ -600,14 +628,14 @@ const getCached = (key: string): unknown | null => {
 };
 
 const refreshLongLivedAccessToken = async (
-  currentToken: string,
+  currentToken: string
 ): Promise<{ accessToken: string; expiresIn: number | null }> => {
   const response = await makeRequest(
     "refresh_access_token",
     {
-      grant_type: "ig_refresh_token",
+      grant_type: "ig_refresh_token"
     },
-    currentToken,
+    currentToken
   );
 
   const accessToken = response.access_token as string | undefined;
@@ -616,7 +644,7 @@ const refreshLongLivedAccessToken = async (
       status: 500,
       message:
         "Instagram token refresh succeeded but no access_token was returned.",
-      details: response,
+      details: response
     } satisfies HttpThrow;
   }
 
@@ -625,13 +653,13 @@ const refreshLongLivedAccessToken = async (
     expiresIn:
       typeof response.expires_in === "number"
         ? (response.expires_in as number)
-        : Number(response.expires_in as string | number | undefined) || null,
+        : Number(response.expires_in as string | number | undefined) || null
   };
 };
 
 const buildRefreshResponse = (
   storedToken: StoredTokenItem | null,
-  previousSource: string,
+  previousSource: string
 ) => {
   const expiresAtIso = storedToken?.expiresAt
     ? new Date(storedToken.expiresAt).toISOString()
@@ -645,7 +673,7 @@ const buildRefreshResponse = (
     previousSource,
     expiresIn: storedToken?.expiresIn || null,
     expiresAt: expiresAtIso,
-    refreshedAt: refreshedAtIso,
+    refreshedAt: refreshedAtIso
   };
 };
 
@@ -655,7 +683,7 @@ const instagramHelpers = {
       const { token, source } = await getCurrentTokenState();
       if (!token) {
         return createResponse(500, {
-          message: "Instagram access token is not configured on the server.",
+          message: "Instagram access token is not configured on the server."
         });
       }
 
@@ -663,7 +691,7 @@ const instagramHelpers = {
       const stored = await writeStoredTokenState({
         accessToken: refreshed.accessToken,
         expiresIn: refreshed.expiresIn,
-        source: "manual_refresh",
+        source: "manual_refresh"
       });
       cache.clear();
 
@@ -671,8 +699,9 @@ const instagramHelpers = {
     } catch (error) {
       console.error("[instagram analytics] manual token refresh error", error);
       return createResponse(errorStatus(error), {
-        message: errorMessage(error) || "Failed to refresh Instagram access token.",
-        details: errorDetails(error),
+        message:
+          errorMessage(error) || "Failed to refresh Instagram access token.",
+        details: errorDetails(error)
       });
     }
   },
@@ -683,7 +712,7 @@ const instagramHelpers = {
       if (!token) {
         return createResponse(200, {
           skipped: true,
-          reason: "No token configured.",
+          reason: "No token configured."
         });
       }
 
@@ -693,7 +722,7 @@ const instagramHelpers = {
           const remainingDays = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
           return createResponse(200, {
             skipped: true,
-            reason: `Token not due for refresh yet (${remainingDays} day(s) remaining).`,
+            reason: `Token not due for refresh yet (${remainingDays} day(s) remaining).`
           });
         }
       }
@@ -702,19 +731,23 @@ const instagramHelpers = {
       const stored = await writeStoredTokenState({
         accessToken: refreshed.accessToken,
         expiresIn: refreshed.expiresIn,
-        source: "scheduled_refresh",
+        source: "scheduled_refresh"
       });
       cache.clear();
 
       return createResponse(200, {
         ...buildRefreshResponse(stored, source),
-        scheduled: true,
+        scheduled: true
       });
     } catch (error) {
-      console.error("[instagram analytics] scheduled token refresh error", error);
+      console.error(
+        "[instagram analytics] scheduled token refresh error",
+        error
+      );
       return createResponse(errorStatus(error), {
-        message: errorMessage(error) || "Failed to refresh Instagram access token.",
-        details: errorDetails(error),
+        message:
+          errorMessage(error) || "Failed to refresh Instagram access token.",
+        details: errorDetails(error)
       });
     }
   },
@@ -741,13 +774,14 @@ const instagramHelpers = {
         dueForRefresh:
           typeof remainingMs === "number"
             ? remainingMs <= REFRESH_LEAD_MS
-            : source === "env",
+            : source === "env"
       });
     } catch (error) {
       console.error("[instagram analytics] token status error", error);
       return createResponse(errorStatus(error), {
-        message: errorMessage(error) || "Failed to fetch Instagram token status.",
-        details: errorDetails(error),
+        message:
+          errorMessage(error) || "Failed to fetch Instagram token status.",
+        details: errorDetails(error)
       });
     }
   },
@@ -758,7 +792,7 @@ const instagramHelpers = {
 
       if (!accessToken) {
         return createResponse(500, {
-          message: "Instagram access token is not configured on the server.",
+          message: "Instagram access token is not configured on the server."
         });
       }
 
@@ -776,16 +810,16 @@ const instagramHelpers = {
 
       if (sinceDate > untilDate) {
         return createResponse(406, {
-          message: "'since' must be on or before 'until'.",
+          message: "'since' must be on or before 'until'."
         });
       }
 
       const daySpan = Math.ceil(
-        (untilDate.getTime() - sinceDate.getTime()) / (1000 * 60 * 60 * 24),
+        (untilDate.getTime() - sinceDate.getTime()) / (1000 * 60 * 60 * 24)
       );
       if (daySpan > 730) {
         return createResponse(406, {
-          message: "Date range is too large. Please select 730 days or fewer.",
+          message: "Date range is too large. Please select 730 days or fewer."
         });
       }
 
@@ -794,7 +828,7 @@ const instagramHelpers = {
       if (cached) {
         return createResponse(200, {
           ...(cached as Record<string, unknown>),
-          fromCache: true,
+          fromCache: true
         });
       }
 
@@ -808,7 +842,7 @@ const instagramHelpers = {
           "day",
           requestedSince,
           requestedUntil,
-          accessToken,
+          accessToken
         ),
         getUserInsights(
           igUserId,
@@ -816,9 +850,9 @@ const instagramHelpers = {
           "day",
           requestedSince,
           requestedUntil,
-          accessToken,
+          accessToken
         ),
-        getAllMedia(igUserId, sinceDate, accessToken),
+        getAllMedia(igUserId, sinceDate, accessToken)
       ]);
 
       const filteredMedia = media.filter((post) => {
@@ -838,36 +872,46 @@ const instagramHelpers = {
           timestamp: post.timestamp,
           permalink: post.permalink,
           metrics,
-          derived,
+          derived
         } satisfies EnrichedPost;
       });
 
-      posts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      posts.sort(
+        (a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
 
       const totals: Record<string, number> = {
         posts: posts.length,
-        accountReach: sumDailyInsightValues(reachData as Array<{ values?: Array<{ value?: unknown }> }>),
+        accountReach: sumDailyInsightValues(
+          reachData as Array<{ values?: Array<{ value?: unknown }> }>
+        ),
         netFollowers: sumDailyInsightValues(
-          followerCountData as Array<{ values?: Array<{ value?: unknown }> }>,
+          followerCountData as Array<{ values?: Array<{ value?: unknown }> }>
         ),
         postReach: posts.reduce(
           (sum, post) => sum + (post.metrics.reach || 0),
-          0,
+          0
         ),
         likes: posts.reduce((sum, post) => sum + (post.metrics.likes || 0), 0),
         comments: posts.reduce(
           (sum, post) => sum + (post.metrics.comments || 0),
-          0,
+          0
         ),
         saved: posts.reduce((sum, post) => sum + (post.metrics.saved || 0), 0),
-        shares: posts.reduce((sum, post) => sum + (post.metrics.shares || 0), 0),
+        shares: posts.reduce(
+          (sum, post) => sum + (post.metrics.shares || 0),
+          0
+        ),
         views: posts.reduce((sum, post) => sum + (post.metrics.views || 0), 0),
         engagement: posts.reduce(
           (sum, post) => sum + (post.derived.engagement || 0),
-          0,
-        ),
+          0
+        )
       };
-      totals.avgReachPerPost = totals.posts ? totals.postReach / totals.posts : 0;
+      totals.avgReachPerPost = totals.posts
+        ? totals.postReach / totals.posts
+        : 0;
       totals.avgEngagementPerPost = totals.posts
         ? totals.engagement / totals.posts
         : 0;
@@ -897,28 +941,28 @@ const instagramHelpers = {
 
       const mediaTypeBreakdown = breakdownBy(
         posts,
-        (post) => post.media_type,
+        (post) => post.media_type
       ).sort((a, b) => b.avgReachPerPost - a.avgReachPerPost);
 
       const weekdayOrder = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
       const weekdayBreakdown = breakdownBy(posts, (post) =>
-        getWeekdayName(post.timestamp),
+        getWeekdayName(post.timestamp)
       ).sort(
-        (a, b) => weekdayOrder.indexOf(a.key) - weekdayOrder.indexOf(b.key),
+        (a, b) => weekdayOrder.indexOf(a.key) - weekdayOrder.indexOf(b.key)
       );
 
       const hourBreakdown = breakdownBy(posts, (post) =>
-        getHourBucket(post.timestamp),
+        getHourBucket(post.timestamp)
       ).sort((a, b) => a.key.localeCompare(b.key));
 
       const topPosts = {
         byReach: sortTop(posts, (post) => post.metrics.reach || 0),
         byEngagementRate: sortTop(
           posts,
-          (post) => post.derived.engagementRateByReach || 0,
+          (post) => post.derived.engagementRateByReach || 0
         ),
         bySaved: sortTop(posts, (post) => post.metrics.saved || 0),
-        byShares: sortTop(posts, (post) => post.metrics.shares || 0),
+        byShares: sortTop(posts, (post) => post.metrics.shares || 0)
       };
 
       const payload = {
@@ -928,7 +972,7 @@ const instagramHelpers = {
         totals,
         accountInsights: {
           reach: reachData,
-          follower_count: followerCountData,
+          follower_count: followerCountData
         },
         monthly: monthlyRollup(posts),
         mediaTypeBreakdown,
@@ -936,7 +980,7 @@ const instagramHelpers = {
         hourBreakdown,
         topPosts,
         posts,
-        fetchedAt: Date.now(),
+        fetchedAt: Date.now()
       };
 
       setCache(cacheKey, payload);
@@ -946,10 +990,10 @@ const instagramHelpers = {
       console.error("[instagram analytics] error", error);
       return createResponse(errorStatus(error), {
         message: errorMessage(error) || "Failed to fetch Instagram analytics.",
-        details: errorDetails(error),
+        details: errorDetails(error)
       });
     }
-  },
+  }
 };
 
 export default instagramHelpers;

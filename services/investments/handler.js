@@ -1,6 +1,10 @@
 import helpers from "../../lib/handlerHelpers.js";
 import db from "../../lib/db.js";
-import { TEAMS_TABLE, USER_REGISTRATIONS_TABLE, INVESTMENTS_TABLE } from "../../constants/tables.js";
+import {
+  TEAMS_TABLE,
+  USER_REGISTRATIONS_TABLE,
+  INVESTMENTS_TABLE
+} from "../../constants/tables.js";
 import { protect, Access } from "../../lib/auth";
 import crypto from "crypto";
 
@@ -87,47 +91,54 @@ export const invest = protect(Access.USER, async (event) => {
   const updateInvestorPromise = db.updateDBCustom({
     TableName: USER_REGISTRATIONS_TABLE + (process.env.ENVIRONMENT || ""),
     Key: {
-      id: investorId,
+      "id": investorId,
       "eventID;year": eventUsed // update for specific event (differentiate between showcase)
     },
     UpdateExpression: "SET balance = :newBalance",
     ExpressionAttributeValues: {
-      ":newBalance": investor.balance - data.amount,
+      ":newBalance": investor.balance - data.amount
     },
     ConditionExpression: "attribute_exists(id)",
-    ReturnValues: "UPDATED_NEW",
+    ReturnValues: "UPDATED_NEW"
   });
 
   // 2. update team funding
   const updateTeamPromise = db.updateDBCustom({
     TableName: TEAMS_TABLE + (process.env.ENVIRONMENT || ""),
     Key: {
-      id: data.teamId,
+      "id": data.teamId,
       "eventID;year": "kickstart;2025" // for teams, it will always be kickstart, since audience can't form teams
     },
     UpdateExpression: "SET funding = :newFunding",
     ExpressionAttributeValues: {
-      ":newFunding": team.funding + data.amount,
+      ":newFunding": team.funding + data.amount
     },
     ConditionExpression: "attribute_exists(id)",
-    ReturnValues: "UPDATED_NEW",
+    ReturnValues: "UPDATED_NEW"
   });
 
   // 3. create investment
-  const createInvestmentPromise = db.create({
-    id: crypto.randomUUID(), // partition key
-    ["eventID;year"]: eventUsed, // sort key
-    investorId: investorId,
-    investorName: investor.fname,
-    teamId: data.teamId,
-    teamName: team.teamName,
-    amount: data.amount,
-    comment: data.comment,
-    isPartner: investor.isPartner ?? false, // differentiate for judging
-    createdAt: new Date().getTime(),
-  }, INVESTMENTS_TABLE);
+  const createInvestmentPromise = db.create(
+    {
+      id: crypto.randomUUID(), // partition key
+      ["eventID;year"]: eventUsed, // sort key
+      investorId: investorId,
+      investorName: investor.fname,
+      teamId: data.teamId,
+      teamName: team.teamName,
+      amount: data.amount,
+      comment: data.comment,
+      isPartner: investor.isPartner ?? false, // differentiate for judging
+      createdAt: new Date().getTime()
+    },
+    INVESTMENTS_TABLE
+  );
 
-  await Promise.all([updateInvestorPromise, updateTeamPromise, createInvestmentPromise]);
+  await Promise.all([
+    updateInvestorPromise,
+    updateTeamPromise,
+    createInvestmentPromise
+  ]);
 
   return helpers.createResponse(200, {
     message: "Investment successful"
@@ -161,15 +172,19 @@ export const teamStatus = protect(Access.USER, async (event) => {
   // Scan all investments made into this team
   // Utilize GSI
   // Already considers both kickstart and showcase
-  const teamInvestments = await db.query(INVESTMENTS_TABLE, "team-investments", {
-    expression: "#teamId = :teamId",
-    expressionNames: {
-      "#teamId": "teamId"
-    },
-    expressionValues: {
-      ":teamId": `${teamId}`
+  const teamInvestments = await db.query(
+    INVESTMENTS_TABLE,
+    "team-investments",
+    {
+      expression: "#teamId = :teamId",
+      expressionNames: {
+        "#teamId": "teamId"
+      },
+      expressionValues: {
+        ":teamId": `${teamId}`
+      }
     }
-  });
+  );
 
   return helpers.createResponse(200, {
     funding: team.funding,
@@ -187,7 +202,9 @@ export const investments = protect(Access.USER, async (event) => {
   try {
     const investments = await db.scan(INVESTMENTS_TABLE);
 
-    const limit = event.queryStringParameters?.limit ? parseInt(event.queryStringParameters.limit) : undefined;
+    const limit = event.queryStringParameters?.limit
+      ? parseInt(event.queryStringParameters.limit)
+      : undefined;
 
     const data = investments.sort((a, b) => {
       return b.createdAt - a.createdAt;
@@ -239,15 +256,19 @@ export const investorStatus = protect(Access.USER, async (event) => {
 
   // scan all investments made by this investor, utilize GSI
   // Already considers both kickstart and showcase
-  const investorInvestments = await db.query(INVESTMENTS_TABLE, "investor-investments", {
-    expression: "#investorId = :investorId",
-    expressionNames: {
-      "#investorId": "investorId"
-    },
-    expressionValues: {
-      ":investorId": `${investorId}`
+  const investorInvestments = await db.query(
+    INVESTMENTS_TABLE,
+    "investor-investments",
+    {
+      expression: "#investorId = :investorId",
+      expressionNames: {
+        "#investorId": "investorId"
+      },
+      expressionValues: {
+        ":investorId": `${investorId}`
+      }
     }
-  });
+  );
 
   return helpers.createResponse(200, {
     balance: investor.balance,

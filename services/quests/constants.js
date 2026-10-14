@@ -4,21 +4,21 @@
 export const QUEST_IDS = {
   NEW_CONNECTIONS_5: "new_connections_5",
   NEW_CONNECTIONS_10: "new_connections_10",
-  NEW_CONNECTIONS_20: "new_connections_20",
+  NEW_CONNECTIONS_20: "new_connections_20"
 };
 
 /**
  * Quest Types (controls how progress increments)
  */
 export const QUEST_TYPES = {
-  COUNTER: "COUNTER",
+  COUNTER: "COUNTER"
 };
 
 /**
  * Event types accepted by progress endpoint
  */
 export const QUEST_EVENT_TYPES = {
-  NEW_CONNECTION: "NEW_CONNECTION",
+  NEW_CONNECTION: "NEW_CONNECTION"
 };
 
 export const QUEST_DEFS = {
@@ -27,7 +27,7 @@ export const QUEST_DEFS = {
     type: QUEST_TYPES.COUNTER,
     target: 5,
     description: "Make 5 new connections",
-    eventType: QUEST_EVENT_TYPES.NEW_CONNECTION,
+    eventType: QUEST_EVENT_TYPES.NEW_CONNECTION
   },
 
   [QUEST_IDS.NEW_CONNECTIONS_10]: {
@@ -35,7 +35,7 @@ export const QUEST_DEFS = {
     type: QUEST_TYPES.COUNTER,
     target: 10,
     description: "Make 10 new connections",
-    eventType: QUEST_EVENT_TYPES.NEW_CONNECTION,
+    eventType: QUEST_EVENT_TYPES.NEW_CONNECTION
   },
 
   [QUEST_IDS.NEW_CONNECTIONS_20]: {
@@ -43,8 +43,6 @@ export const QUEST_DEFS = {
     type: QUEST_TYPES.COUNTER,
     target: 20,
     description: "Make 20 new connections",
-    eventType: QUEST_EVENT_TYPES.NEW_CONNECTION,
-  },
+    eventType: QUEST_EVENT_TYPES.NEW_CONNECTION
+  }
 };
-
-

@@ -8,20 +8,23 @@ const expect = mochaPlugin.chai.expect;
 import AWSMock from "aws-sdk-mock";
 let wrapped = mochaPlugin.getWrapper("userGetAll", "/handler.js", "getAll");
 
-
 describe("userGetAll", () => {
   afterEach(() => {
     AWSMock.restore("DynamoDB.DocumentClient");
   });
 
   it("successfully returns 200 and empty array when no users exist", async () => {
-    AWSMock.mock("DynamoDB.DocumentClient", "scan", function (params, callback){
-      Promise.resolve(
-        callback(null, {
-          Items: null
-        })
-      );
-    });
+    AWSMock.mock(
+      "DynamoDB.DocumentClient",
+      "scan",
+      function (params, callback) {
+        Promise.resolve(
+          callback(null, {
+            Items: null
+          })
+        );
+      }
+    );
     const response = await wrapped.run();
     expect(response).to.not.be.empty;
     expect(response.statusCode).to.equal(200);
@@ -31,20 +34,27 @@ describe("userGetAll", () => {
   });
 
   it("successfully returns 200 with all the users", async () => {
-    const users = [{
-      ename: "some random user"
-    }, {
-      ename: "another random user"
-    }];
+    const users = [
+      {
+        ename: "some random user"
+      },
+      {
+        ename: "another random user"
+      }
+    ];
 
-    AWSMock.mock("DynamoDB.DocumentClient", "scan", function (params, callback){
-      Promise.resolve(
-        callback(null, {
-          Items: users,
-          ScannedCount: 2
-        })
-      );
-    });
+    AWSMock.mock(
+      "DynamoDB.DocumentClient",
+      "scan",
+      function (params, callback) {
+        Promise.resolve(
+          callback(null, {
+            Items: users,
+            ScannedCount: 2
+          })
+        );
+      }
+    );
     const response = await wrapped.run();
     expect(response).to.not.be.empty;
 

@@ -9,14 +9,9 @@ import {
   submitPingShortcut,
   summarizeRecentMessages
 } from "./helpersSlack.js";
-import {
-  InvokeCommand,
-  LambdaClient
-} from "@aws-sdk/client-lambda";
+import { InvokeCommand, LambdaClient } from "@aws-sdk/client-lambda";
 
-import {
-  ack
-} from "./constants.js";
+import { ack } from "./constants.js";
 
 const processedEventIds = new Set();
 const lambdaClient = new LambdaClient({});
@@ -65,7 +60,9 @@ async function enqueueDocsAnswerJob(event) {
     channel_id: event.channel,
     thread_ts: event.thread_ts || event.ts,
     response_url: null,
-    question: String(event.text || "").replace(/<@[^>]+>/g, "").trim()
+    question: String(event.text || "")
+      .replace(/<@[^>]+>/g, "")
+      .trim()
   });
 }
 
@@ -163,10 +160,8 @@ export const shortcutHandler = async (event, ctx, callback) => {
   if (
     body.type === "event_callback" &&
     body.event &&
-    (
-      body.event.type === "app_mention" ||
-      (body.event.type === "message" && body.event.channel_type === "im")
-    )
+    (body.event.type === "app_mention" ||
+      (body.event.type === "message" && body.event.channel_type === "im"))
   ) {
     const event = body.event;
     const BOT_USER_ID = process.env.SLACK_BOT_USER_ID;

@@ -1,7 +1,5 @@
 "use strict";
-import {
-  expect
-} from "chai";
+import { expect } from "chai";
 
 import {
   INTEGRATION_TEST_PERSISTENT_USER_EMAIL,

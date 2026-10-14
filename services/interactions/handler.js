@@ -58,170 +58,183 @@ const BOOTH = "BOOTH";
 //   }
 // };
 
-export const postInteraction = protect(Access.USER, async (event, ctx, callback) => {
-  try {
-    const userID = event.auth.email;
-    const data = JSON.parse(event.body);
-
-    const membership = await db.getOne(userID, MEMBERS_TABLE);
-    if (!membership) {
-      return helpers.createResponse(403, {
-        message: "A BizTech membership is required to create connections"
-      });
-    }
-
+export const postInteraction = protect(
+  Access.USER,
+  async (event, ctx, callback) => {
     try {
-      helpers.checkPayloadProps(data, {
-        eventType: {
-          required: true
-        },
-        eventParam: {
-          required: true
+      const userID = event.auth.email;
+      const data = JSON.parse(event.body);
+
+      const membership = await db.getOne(userID, MEMBERS_TABLE);
+      if (!membership) {
+        return helpers.createResponse(403, {
+          message: "A BizTech membership is required to create connections"
+        });
+      }
+
+      try {
+        helpers.checkPayloadProps(data, {
+          eventType: {
+            required: true
+          },
+          eventParam: {
+            required: true
+          }
+        });
+      } catch (error) {
+        return error;
+      }
+
+      const timestamp = new Date().getTime();
+      const { eventType, eventParam } = data;
+
+      if (eventType != CONNECTION) {
+        throw handlerHelpers.createResponse(400, {
+          message: "interactionType argument does not match known case"
+        });
+      }
+
+      const response = await handleConnection(userID, eventParam, timestamp);
+      return response;
+    } catch (err) {
+      console.error(err);
+      return helpers.createResponse(500, { message: err.message || err });
+    }
+  }
+);
+
+export const checkConnection = protect(
+  Access.USER,
+  async (event, ctx, callback) => {
+    try {
+      if (
+        !event.pathParameters ||
+        !event.pathParameters.id ||
+        typeof event.pathParameters.id !== "string"
+      )
+        throw helpers.missingIdQueryResponse("profile ID in request path");
+
+      const connectionID = event.pathParameters.id;
+      const userID = event.auth.email;
+      const userData = await db.getOne(userID, USERS_TABLE);
+
+      if (!userData?.profileID)
+        return helpers.createResponse(200, {
+          message: `No profile associated with ${userID}`,
+          connected: false
+        });
+
+      const { profileID } = userData;
+
+      if (connectionID == profileID)
+        return helpers.createResponse(400, {
+          message: "cannot be connected to yourself",
+          connected: false
+        });
+
+      const result = await db.getOneCustom({
+        TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
+        Key: {
+          compositeID: `${TYPES.PROFILE}#${profileID}`,
+          type: `${TYPES.CONNECTION}#${connectionID}`
         }
+      });
+
+      return helpers.createResponse(200, {
+        connected: !!result
       });
     } catch (error) {
-      return error;
-    }
-
-    const timestamp = new Date().getTime();
-    const { eventType, eventParam } = data;
-
-    if (eventType != CONNECTION) {
-      throw handlerHelpers.createResponse(400, {
-        message: "interactionType argument does not match known case"
+      console.error(error);
+      return helpers.createResponse(502, {
+        message: "internal server error, contact a biztech exec"
       });
     }
-
-    const response = await handleConnection(userID, eventParam, timestamp);
-    return response;
-  } catch (err) {
-    console.error(err);
-    return helpers.createResponse(500, { message: err.message || err });
   }
-});
+);
 
-export const checkConnection = protect(Access.USER, async (event, ctx, callback) => {
-  try {
-    if (
-      !event.pathParameters ||
-      !event.pathParameters.id ||
-      typeof event.pathParameters.id !== "string"
-    )
-      throw helpers.missingIdQueryResponse("profile ID in request path");
+export const getAllConnections = protect(
+  Access.USER,
+  async (event, ctx, callback) => {
+    try {
+      const userID = event.auth.email;
 
-    const connectionID = event.pathParameters.id;
-    const userID = event.auth.email;
-    const userData = await db.getOne(userID, USERS_TABLE);
+      const userData = await db.getOne(userID, USERS_TABLE);
+      const { profileID } = userData || {};
 
-    if (!userData?.profileID)
-      return helpers.createResponse(200, {
-        message: `No profile associated with ${userID}`,
-        connected: false
-      });
-
-    const { profileID } = userData;
-
-    if (connectionID == profileID)
-      return helpers.createResponse(400, {
-        message: "cannot be connected to yourself",
-        connected: false
-      });
-
-    const result = await db.getOneCustom({
-      TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
-      Key: {
-        compositeID: `${TYPES.PROFILE}#${profileID}`,
-        type: `${TYPES.CONNECTION}#${connectionID}`
+      if (!profileID) {
+        throw helpers.notFoundResponse("Profile", userID);
       }
-    });
 
-    return helpers.createResponse(200, {
-      connected: !!result
-    });
-  } catch (error) {
-    console.error(error);
-    return helpers.createResponse(502, {
-      message: "internal server error, contact a biztech exec"
-    });
-  }
-});
+      let data = await db.query(PROFILES_TABLE, null, {
+        expression:
+          "compositeID = :compositeID AND begins_with(#type, :typePrefix)",
+        expressionValues: {
+          ":compositeID": `PROFILE#${profileID}`,
+          ":typePrefix": `${TYPES.CONNECTION}#`
+        },
+        expressionNames: {
+          "#type": "type"
+        }
+      });
 
-export const getAllConnections = protect(Access.USER, async (event, ctx, callback) => {
-  try {
-    const userID = event.auth.email;
+      // sort first
+      data.sort((a, b) => b.createdAt - a.createdAt);
 
-    const userData = await db.getOne(userID, USERS_TABLE);
-    const { profileID } = userData || {};
+      const qs = event.queryStringParameters || {};
+      const eventId = qs.eventId;
+      const year = qs.year;
 
-    if (!profileID) {
-      throw helpers.notFoundResponse("Profile", userID);
+      let message = `all connections for ${userID}`;
+
+      if (eventId && year) {
+        const existingEvent = await db.getOne(eventId, EVENTS_TABLE, {
+          year: Number(year)
+        });
+
+        if (existingEvent) {
+          let { startDate, endDate } = existingEvent;
+
+          if (startDate) {
+            const start = new Date(startDate).getTime();
+            data = data.filter((item) => item.createdAt >= start);
+          }
+
+          if (endDate) {
+            const end = new Date(endDate).getTime();
+            data = data.filter((item) => item.createdAt <= end);
+          }
+
+          const registeredOnly =
+            qs.registeredOnly === "true" || qs.registeredOnly === "1";
+
+          if (registeredOnly) {
+            data = await filterConnectionsRegisteredForEvent(
+              data,
+              eventId,
+              year
+            );
+          }
+
+          message = `all connections for ${userID} during event ${eventId} and year ${year}`;
+        }
+      }
+
+      data = await hydrateConnectionsFromProfiles(data);
+
+      const response = handlerHelpers.createResponse(200, {
+        message,
+        data
+      });
+
+      return response;
+    } catch (err) {
+      console.error(err);
+      return handlerHelpers.createResponse(500, {
+        message: "Internal server error"
+      });
     }
-
-    let data = await db.query(PROFILES_TABLE, null, {
-      expression:
-        "compositeID = :compositeID AND begins_with(#type, :typePrefix)",
-      expressionValues: {
-        ":compositeID": `PROFILE#${profileID}`,
-        ":typePrefix": `${TYPES.CONNECTION}#`
-      },
-      expressionNames: {
-        "#type": "type"
-      }
-    });
-
-    // sort first
-    data.sort((a, b) => b.createdAt - a.createdAt);
-
-    const qs = event.queryStringParameters || {};
-    const eventId = qs.eventId;
-    const year = qs.year;
-
-    let message = `all connections for ${userID}`;
-
-    if (eventId && year) {
-      const existingEvent = await db.getOne(eventId, EVENTS_TABLE, {
-        year: Number(year)
-      });
-
-      if (existingEvent) {
-        let { startDate, endDate } = existingEvent;
-
-        if (startDate) {
-          const start = new Date(startDate).getTime();
-          data = data.filter((item) => item.createdAt >= start);
-        }
-
-        if (endDate) {
-          const end = new Date(endDate).getTime();
-          data = data.filter((item) => item.createdAt <= end);
-        }
-
-        const registeredOnly =
-          qs.registeredOnly === "true" || qs.registeredOnly === "1";
-
-        if (registeredOnly) {
-          data = await filterConnectionsRegisteredForEvent(data, eventId, year);
-        }
-
-        message = `all connections for ${userID} during event ${eventId} and year ${year}`;
-      }
-    }
-
-    data = await hydrateConnectionsFromProfiles(data);
-
-    const response = handlerHelpers.createResponse(200, {
-      message,
-      data
-    });
-
-    return response;
-  } catch (err) {
-    console.error(err);
-    return handlerHelpers.createResponse(500, {
-      message: "Internal server error"
-    });
   }
-});
+);
 
 export const getWallSnapshot = async (event, ctx, callback) => {
   try {

@@ -338,9 +338,10 @@ export async function sendEmail(
     if (existingReg && existingReg.isPartner) {
       return;
     }
-    const statusField = emailType === "application"
-      ? STATUS_FIELD.APPLICATION
-      : STATUS_FIELD.REGISTRATION;
+    const statusField =
+      emailType === "application"
+        ? STATUS_FIELD.APPLICATION
+        : STATUS_FIELD.REGISTRATION;
     if (existingReg && existingReg[statusField] === userStatus) {
       return;
     }
@@ -433,104 +434,109 @@ export const post = async (event, ctx, callback) => {
   }
 };
 
-export const createPartnerRegistrations = protect(Access.ADMIN, async (event, ctx, callback) => {
-  try {
-    const data = JSON.parse(event.body || "{}");
-    const { eventID, year } = data;
+export const createPartnerRegistrations = protect(
+  Access.ADMIN,
+  async (event, ctx, callback) => {
+    try {
+      const data = JSON.parse(event.body || "{}");
+      const { eventID, year } = data;
 
-    if (typeof eventID !== "string") {
-      return helpers.inputError("eventID must be a string", data);
-    }
+      if (typeof eventID !== "string") {
+        return helpers.inputError("eventID must be a string", data);
+      }
 
-    if (typeof year !== "number" || isNaN(year)) {
-      return helpers.inputError("year must be a number", data);
-    }
+      if (typeof year !== "number" || isNaN(year)) {
+        return helpers.inputError("year must be a number", data);
+      }
 
-    if (!Array.isArray(data.partners)) {
-      return helpers.inputError("partners must be an array", data);
-    }
+      if (!Array.isArray(data.partners)) {
+        return helpers.inputError("partners must be an array", data);
+      }
 
-    const existingEvent = await db.getOne(eventID, EVENTS_TABLE, {
-      year
-    });
-    if (isEmpty(existingEvent)) {
-      return helpers.createResponse(404, {
-        message: `Event with id '${eventID}' and year '${year}' could not be found.`
+      const existingEvent = await db.getOne(eventID, EVENTS_TABLE, {
+        year
+      });
+      if (isEmpty(existingEvent)) {
+        return helpers.createResponse(404, {
+          message: `Event with id '${eventID}' and year '${year}' could not be found.`
+        });
+      }
+
+      const results = await Promise.all(
+        data.partners.map(async (partnerData) => {
+          const partner = normalizePartnerRegistration(partnerData);
+          const validationError = validatePartnerRegistration(partner);
+          if (validationError) {
+            return {
+              email: partner.email,
+              status: "failed",
+              reason: validationError
+            };
+          }
+
+          const existingRegistration = await db.getOne(
+            partner.email,
+            USER_REGISTRATIONS_TABLE,
+            {
+              "eventID;year": `${eventID};${year}`
+            }
+          );
+          if (!isEmpty(existingRegistration)) {
+            return {
+              email: partner.email,
+              status: "skipped",
+              reason: "registration already exists"
+            };
+          }
+
+          try {
+            await updateHelper(
+              {
+                eventID,
+                year,
+                email: partner.email,
+                fname: partner.firstName,
+                registrationStatus: REGISTRATION_STATUS.ACCEPTED_COMPLETE,
+                isPartner: true
+              },
+              true,
+              partner.email,
+              partner.firstName
+            );
+
+            return {
+              email: partner.email,
+              status: "created"
+            };
+          } catch (err) {
+            const body = err && err.body ? JSON.parse(err.body) : {};
+            return {
+              email: partner.email,
+              status: "failed",
+              reason:
+                body.code ||
+                body.message ||
+                (err && err.message) ||
+                "Failed to create partner registration"
+            };
+          }
+        })
+      );
+
+      return helpers.createResponse(200, {
+        eventID,
+        year,
+        ...summarizePartnerRegistrationResults(results),
+        results
+      });
+    } catch (err) {
+      console.error(err);
+      return helpers.createResponse(500, {
+        message: err.message || "Internal server error"
       });
     }
-
-    const results = await Promise.all(data.partners.map(async (partnerData) => {
-      const partner = normalizePartnerRegistration(partnerData);
-      const validationError = validatePartnerRegistration(partner);
-      if (validationError) {
-        return {
-          email: partner.email,
-          status: "failed",
-          reason: validationError
-        };
-      }
-
-      const existingRegistration = await db.getOne(
-        partner.email,
-        USER_REGISTRATIONS_TABLE,
-        {
-          "eventID;year": `${eventID};${year}`
-        }
-      );
-      if (!isEmpty(existingRegistration)) {
-        return {
-          email: partner.email,
-          status: "skipped",
-          reason: "registration already exists"
-        };
-      }
-
-      try {
-        await updateHelper(
-          {
-            eventID,
-            year,
-            email: partner.email,
-            fname: partner.firstName,
-            registrationStatus: REGISTRATION_STATUS.ACCEPTED_COMPLETE,
-            isPartner: true
-          },
-          true,
-          partner.email,
-          partner.firstName
-        );
-
-        return {
-          email: partner.email,
-          status: "created"
-        };
-      } catch (err) {
-        const body = err && err.body ? JSON.parse(err.body) : {};
-        return {
-          email: partner.email,
-          status: "failed",
-          reason:
-            body.code ||
-            body.message ||
-            (err && err.message) ||
-            "Failed to create partner registration"
-        };
-      }
-    }));
-
-    return helpers.createResponse(200, {
-      eventID,
-      year,
-      ...summarizePartnerRegistrationResults(results),
-      results
-    });
-  } catch (err) {
-    console.error(err);
-    return helpers.createResponse(500, {
-      message: err.message || "Internal server error"
-    });
   }
-});
+);
 
 /**
  * Update a registration entry.
@@ -627,12 +633,7 @@ export const put = async (event, ctx, callback) => {
       }
     }
 
-    const response = await updateHelper(
-      data,
-      false,
-      email,
-      fname
-    );
+    const response = await updateHelper(data, false, email, fname);
 
     return response;
   } catch (err) {

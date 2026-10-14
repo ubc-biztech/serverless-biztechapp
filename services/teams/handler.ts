@@ -35,7 +35,7 @@ import {
   TeamRecord,
   UpdateCurrentTeamForJudgeBody,
   UpdateJudgeSubmissionBody,
-  UpdateTeamPointsBody,
+  UpdateTeamPointsBody
 } from "./types";
 
 const errorMessage = (error: unknown): string =>
@@ -88,7 +88,7 @@ export const updateTeamPoints: LambdaHandler = async (event) => {
 
     if (!team) {
       return helpers.createResponse(404, {
-        message: "User not associated with a team",
+        message: "User not associated with a team"
       });
     }
 
@@ -105,7 +105,7 @@ export const updateTeamPoints: LambdaHandler = async (event) => {
 
     return helpers.createResponse(500, {
       message: "Failed to update team points",
-      error: errorMessage(error),
+      error: errorMessage(error)
     });
   }
 };
@@ -140,7 +140,10 @@ export const leaveTeam = protect(Access.USER, async (event) => {
     });
   } catch (error) {
     console.error("Error leaving team:", error);
-    if (error instanceof ProductPlusTeamError) return helpers.createResponse(error.statusCode, { message: error.message });
+    if (error instanceof ProductPlusTeamError)
+      return helpers.createResponse(error.statusCode, {
+        message: error.message
+      });
 
     return helpers.createResponse(500, {
       message: "Failed to leave team",
@@ -175,7 +178,12 @@ export const joinTeam = protect(Access.USER, async (event) => {
     // Non-admins can only act on themselves; admins may target the body memberID.
     const memberID = event.auth?.isAdmin ? data.memberID : event.auth!.email;
 
-    const { memberIDs, teamName } = await teamHelpers.joinTeam(memberID, data.eventID, data.year, data.teamID);
+    const { memberIDs, teamName } = await teamHelpers.joinTeam(
+      memberID,
+      data.eventID,
+      data.year,
+      data.teamID
+    );
 
     return helpers.createResponse(200, {
       message: "Successfully joined team.",
@@ -185,7 +193,10 @@ export const joinTeam = protect(Access.USER, async (event) => {
     });
   } catch (error) {
     console.error("Error joining team:", error);
-    if (error instanceof ProductPlusTeamError) return helpers.createResponse(error.statusCode, { message: error.message });
+    if (error instanceof ProductPlusTeamError)
+      return helpers.createResponse(error.statusCode, {
+        message: error.message
+      });
 
     return helpers.createResponse(500, {
       message: "Failed to join team",
@@ -219,9 +230,16 @@ export const makeTeam = protect(Access.USER, async (event) => {
 
     // Non-admins can only create a team for themselves; admins may pass the
     // full body memberIDs list.
-    const memberIDs = event.auth?.isAdmin ? data.memberIDs : [event.auth!.email];
+    const memberIDs = event.auth?.isAdmin
+      ? data.memberIDs
+      : [event.auth!.email];
 
-    const res = await teamHelpers.makeTeam(data.team_name, data.eventID, data.year, memberIDs);
+    const res = await teamHelpers.makeTeam(
+      data.team_name,
+      data.eventID,
+      data.year,
+      memberIDs
+    );
     return helpers.createResponse(200, {
       message: "Successfully created new team.",
       response: res
@@ -258,7 +276,11 @@ export const getTeamFromUserID: LambdaHandler = async (event) => {
       }
     });
 
-    const res = await teamHelpers._getTeamFromUserRegistration(data.user_id, data.eventID, data.year);
+    const res = await teamHelpers._getTeamFromUserRegistration(
+      data.user_id,
+      data.eventID,
+      data.year
+    );
 
     if (res) {
       return helpers.createResponse(200, {
@@ -304,7 +326,10 @@ export const get = protect(Access.USER, async (event) => {
       }
     };
 
-    const teams = (await db.scan(TEAMS_TABLE, filterExpression)) as TeamRecord[];
+    const teams = (await db.scan(
+      TEAMS_TABLE,
+      filterExpression
+    )) as TeamRecord[];
     const responseTeams = obfuscateEmails
       ? teams.map(({ memberIDs: _memberIDs, ...team }) => team)
       : teams;
@@ -354,7 +379,12 @@ export const changeTeamName: LambdaHandler = async (event) => {
       }
     });
 
-    const res = await teamHelpers.changeTeamName(data.user_id, data.eventID, data.year, data.team_name);
+    const res = await teamHelpers.changeTeamName(
+      data.user_id,
+      data.eventID,
+      data.year,
+      data.team_name
+    );
     return helpers.createResponse(200, {
       message: "Successfully changed team name.",
       response: res
@@ -414,7 +444,13 @@ export const addQRScan: LambdaHandler = async (event) => {
 
     const points = data.points ? data.points : 0;
 
-    const res = await teamHelpers.addQRScan(data.user_id, data.qr_code_id, data.eventID, data.year, points);
+    const res = await teamHelpers.addQRScan(
+      data.user_id,
+      data.qr_code_id,
+      data.eventID,
+      data.year,
+      points
+    );
     return helpers.createResponse(200, {
       message: "Successfully added QR code to scannedQRs array of team.",
       response: res
@@ -473,8 +509,7 @@ export const addMultipleQuestions: LambdaHandler = async (event) => {
     );
 
     return helpers.createResponse(200, {
-      message:
-        "Successfully added questions to scannedQRs array of team.",
+      message: "Successfully added questions to scannedQRs array of team.",
       response: res
     });
   } catch (error) {
@@ -517,11 +552,16 @@ export const checkQRScanned: LambdaHandler = async (event) => {
       }
     });
 
-    const bool = await teamHelpers.checkQRScanned(data.user_id, data.qr_code_id, data.eventID, data.year);
+    const bool = await teamHelpers.checkQRScanned(
+      data.user_id,
+      data.qr_code_id,
+      data.eventID,
+      data.year
+    );
 
     return helpers.createResponse(200, {
       message:
-        "Attached boolean for check if QR code has been scanned for that user's team; refer to \"response\" field.",
+        'Attached boolean for check if QR code has been scanned for that user\'s team; refer to "response" field.',
       response: bool
     });
   } catch (error) {
@@ -545,7 +585,10 @@ export const getNormalizedRoundScores: LambdaHandler = async () => {
     });
   }
 
-  const teamRawFeedback: Record<string, Array<{ judge: string } & ScoreMetrics>> = {};
+  const teamRawFeedback: Record<
+    string,
+    Array<{ judge: string } & ScoreMetrics>
+  > = {};
   const scoreByJudgeID: Record<string, JudgeScore[]> = {};
 
   for (let i = 0; i < scores.length; i++) {
@@ -570,7 +613,7 @@ export const getNormalizedRoundScores: LambdaHandler = async () => {
       metric2: scoreEntry.scores?.metric2 ?? 0,
       metric3: scoreEntry.scores?.metric3 ?? 0,
       metric4: scoreEntry.scores?.metric4 ?? 0,
-      metric5: scoreEntry.scores?.metric5 ?? 0,
+      metric5: scoreEntry.scores?.metric5 ?? 0
     };
 
     if (!scoreByJudgeID[scoreEntry.id]) {
@@ -794,7 +837,9 @@ export const getJudgeSubmissions: LambdaHandler = async (event) => {
       };
     });
 
-    const groupedScores = scoresPerRound.reduce<Record<string, typeof scoresPerRound>>((acc, item) => {
+    const groupedScores = scoresPerRound.reduce<
+      Record<string, typeof scoresPerRound>
+    >((acc, item) => {
       if (!acc[item.round]) {
         acc[item.round] = [];
       }
@@ -824,7 +869,10 @@ export const getJudgeCurrentTeam: LambdaHandler = async (event) => {
       });
     }
 
-    const judge = (await db.getOne(judgeID, JUDGING_TABLE)) as RoundRecord | null;
+    const judge = (await db.getOne(
+      judgeID,
+      JUDGING_TABLE
+    )) as RoundRecord | null;
 
     if (!judge) {
       throw helpers.createResponse(404, {
@@ -902,15 +950,19 @@ export const getTeamFeedbackScore: LambdaHandler = async (event) => {
       });
     }
 
-    const feedbackEntries = (await db.query(FEEDBACK_TABLE, "team-round-query", {
-      expression: "#team = :teamID",
-      expressionValues: {
-        ":teamID": teamID
-      },
-      expressionNames: {
-        "#team": "teamID"
+    const feedbackEntries = (await db.query(
+      FEEDBACK_TABLE,
+      "team-round-query",
+      {
+        expression: "#team = :teamID",
+        expressionValues: {
+          ":teamID": teamID
+        },
+        expressionNames: {
+          "#team": "teamID"
+        }
       }
-    })) as FeedbackRecord[];
+    )) as FeedbackRecord[];
 
     if (!feedbackEntries || feedbackEntries.length === 0) {
       throw helpers.createResponse(404, {
@@ -918,14 +970,19 @@ export const getTeamFeedbackScore: LambdaHandler = async (event) => {
       });
     }
 
-    const scoresPerRound = feedbackEntries.reduce<Record<string, Array<{
-      judgeID: string;
-      judgeName?: string;
-      scores?: ScoreMetrics;
-      feedback?: FeedbackRecord["feedback"];
-      createdAt?: string;
-      teamName?: string;
-    }>>>((acc, item) => {
+    const scoresPerRound = feedbackEntries.reduce<
+      Record<
+        string,
+        Array<{
+          judgeID: string;
+          judgeName?: string;
+          scores?: ScoreMetrics;
+          feedback?: FeedbackRecord["feedback"];
+          createdAt?: string;
+          teamName?: string;
+        }>
+      >
+    >((acc, item) => {
       const [, round] = item["teamID;round"].split(";");
       if (!acc[round]) {
         acc[round] = [];
@@ -1000,8 +1057,7 @@ export const updateJudgeSubmission: LambdaHandler = async (event) => {
     const updatedFeedback: FeedbackRecord = {
       "teamID;round": teamID_round,
       "id": data.judgeID,
-      "scores":
-        data.scores ?? existingFeedback?.scores,
+      "scores": data.scores ?? existingFeedback?.scores,
       "feedback":
         data.feedback || (existingFeedback ? existingFeedback.feedback : ""),
       "teamID":
@@ -1040,7 +1096,9 @@ export const updateJudgeSubmission: LambdaHandler = async (event) => {
 
 export const updateCurrentTeamForJudge: LambdaHandler = async (event) => {
   try {
-    const data = JSON.parse(event.body as string) as UpdateCurrentTeamForJudgeBody;
+    const data = JSON.parse(
+      event.body as string
+    ) as UpdateCurrentTeamForJudgeBody;
 
     try {
       helpers.checkPayloadProps(data, {
@@ -1061,17 +1119,21 @@ export const updateCurrentTeamForJudge: LambdaHandler = async (event) => {
     const roundRecord = (await db.getOne(ROUND, JUDGING_TABLE)) as RoundRecord;
     const round = roundRecord.currentTeam;
 
-    const feedbackEntries = (await db.query(FEEDBACK_TABLE, "team-round-query", {
-      expression: "#team = :teamID AND #rnd = :round",
-      expressionValues: {
-        ":teamID": teamID,
-        ":round": teamID + ";" + round
-      },
-      expressionNames: {
-        "#team": "teamID",
-        "#rnd": "teamID;round"
+    const feedbackEntries = (await db.query(
+      FEEDBACK_TABLE,
+      "team-round-query",
+      {
+        expression: "#team = :teamID AND #rnd = :round",
+        expressionValues: {
+          ":teamID": teamID,
+          ":round": teamID + ";" + round
+        },
+        expressionNames: {
+          "#team": "teamID",
+          "#rnd": "teamID;round"
+        }
       }
-    })) as FeedbackRecord[];
+    )) as FeedbackRecord[];
 
     if (
       judgeIDs.every((id) => {

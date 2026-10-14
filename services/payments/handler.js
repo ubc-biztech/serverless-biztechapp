@@ -36,7 +36,9 @@ const parseBoolean = (value) =>
   value === true || ["true", "yes", "1"].includes(String(value).toLowerCase());
 
 const publicProfileType = (email) =>
-  email.endsWith("@ubcbiztech.com") ? PROFILE_TYPES.EXEC : PROFILE_TYPES.ATTENDEE;
+  email.endsWith("@ubcbiztech.com")
+    ? PROFILE_TYPES.EXEC
+    : PROFILE_TYPES.ATTENDEE;
 
 const putIfMissing = async (item, table) => {
   const existing = await db.getOne(item.id, table);
@@ -201,7 +203,7 @@ export const payment = async (event) => {
       const isMember = !isEmpty(member);
       const samePricing = event.pricing.members === event.pricing.nonMembers;
       unit_amount =
-          (isMember ? event.pricing.members : event.pricing.nonMembers) * 100;
+        (isMember ? event.pricing.members : event.pricing.nonMembers) * 100;
       data.paymentName = `${event.ename} ${
         isMember || samePricing ? "" : "(Non-member)"
       }`;

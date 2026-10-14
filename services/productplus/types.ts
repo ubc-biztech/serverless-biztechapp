@@ -17,16 +17,16 @@ export type Config = {
 
 /** Fields Product Plus reads from biztechTeams. Member identifiers are verified emails. */
 export type TeamRecord = {
-  id: string; // Six-digit team code, retaining leading zeros.
+  "id": string; // Six-digit team code, retaining leading zeros.
   "eventID;year": string;
-  member_ids: string[];
+  "memberIDs": string[];
 };
 
 /** The event registration stores the user's current team code; teamID is not used. */
 export type RegistrationRecord = {
-  id: string; // Verified email.
+  "id": string; // Verified email.
   "eventID;year": string;
-  teamID?: string;
+  "teamID"?: string;
 };
 
 /** Keys shared by submission records and the reserved config row. */
@@ -65,12 +65,7 @@ export type UploadKey = {
 };
 
 export type UploadStatus =
-  | "pending"
-  | "promoting"
-  | "referenced"
-  | "replaced"
-  | "deleting"
-  | "deleted";
+  "pending" | "promoting" | "referenced" | "replaced" | "deleting" | "deleted";
 
 /** Tracking stays after file removal so interrupted operations can be reconciled. */
 export type UploadRecord = UploadKey & {

@@ -1,7 +1,10 @@
 import fs from "fs";
 import csv from "csv-parser";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  TransactWriteCommand
+} from "@aws-sdk/lib-dynamodb";
 import { humanId } from "human-id";
 import dotenv from "dotenv";
 import { MEMBERS_TABLE } from "../constants/tables.js";
@@ -27,7 +30,8 @@ const docClient = DynamoDBDocumentClient.from(client, {
 const USERS_TABLE = "biztechUsers" + (process.env.ENVIRONMENT || "");
 const PROFILES_TABLE = "biztechProfiles" + (process.env.ENVIRONMENT || "");
 const RESOLVED_MEMBERS_TABLE = MEMBERS_TABLE + (process.env.ENVIRONMENT || "");
-const USER_REGISTRATIONS_TABLE = "biztechRegistrations" + (process.env.ENVIRONMENT || "");
+const USER_REGISTRATIONS_TABLE =
+  "biztechRegistrations" + (process.env.ENVIRONMENT || "");
 
 // NOTE: Usage of this is mainly for kickstart;2025 event
 async function updateTables(user) {
@@ -47,7 +51,7 @@ async function updateTables(user) {
             fname: user.fname,
             lname: user.lname,
             createdAt: timestamp,
-            updatedAt: timestamp,
+            updatedAt: timestamp
           },
           ConditionExpression: "attribute_not_exists(id)"
         }
@@ -61,7 +65,7 @@ async function updateTables(user) {
             firstName: user.fname,
             lastName: user.lname,
             createdAt: timestamp,
-            updatedAt: timestamp,
+            updatedAt: timestamp
           },
           ConditionExpression: "attribute_not_exists(id)"
         }
@@ -116,7 +120,7 @@ async function updateTables(user) {
             isPartner: true, // flag as partner investment
             fname: user.fname,
             createdAt: timestamp,
-            updatedAt: timestamp,
+            updatedAt: timestamp
           },
           ConditionExpression: "attribute_not_exists(id)"
         }
@@ -127,7 +131,9 @@ async function updateTables(user) {
   try {
     const command = new TransactWriteCommand(transactParams);
     await docClient.send(command);
-    console.log(`Successfully created user, registration, and profile for ${user.email}`);
+    console.log(
+      `Successfully created user, registration, and profile for ${user.email}`
+    );
     console.log(`Profile ID: ${profileID}`);
     return true;
   } catch (error) {
@@ -140,7 +146,6 @@ async function updateTables(user) {
     return false;
   }
 }
-
 
 /**
  * Processes the CSV file and creates registrations
@@ -189,10 +194,13 @@ async function processCSV(filePath) {
 
             // add small delay to avoid throttling
             if (index < results.length - 1) {
-              await new Promise(resolve => setTimeout(resolve, 100));
+              await new Promise((resolve) => setTimeout(resolve, 100));
             }
           } catch (error) {
-            console.error(`Error processing record ${index + 1}:`, error.message);
+            console.error(
+              `Error processing record ${index + 1}:`,
+              error.message
+            );
             errors.push({
               row: index + 2, // +2 for 1-based index and header row
               error: error.message,
@@ -233,8 +241,12 @@ async function main() {
   const args = process.argv.slice(2);
 
   if (args.length === 0) {
-    console.log("Usage: node scripts/ingestPartnerRegistrations.js <path-to-csv>");
-    console.log("Example: node scripts/ingestPartnerRegistrations.js ./partner-registrations.csv");
+    console.log(
+      "Usage: node scripts/ingestPartnerRegistrations.js <path-to-csv>"
+    );
+    console.log(
+      "Example: node scripts/ingestPartnerRegistrations.js ./partner-registrations.csv"
+    );
     process.exit(1);
   }
 

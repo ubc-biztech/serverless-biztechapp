@@ -1,20 +1,38 @@
 import assert from "node:assert/strict";
 import { after, beforeEach, test } from "node:test";
 import { GetCommand, ScanCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
-import { CopyObjectCommand, DeleteObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
+import {
+  CopyObjectCommand,
+  DeleteObjectCommand,
+  HeadObjectCommand
+} from "@aws-sdk/client-s3";
 import { runtime } from "./support/runtime.mjs";
 
 const app = await runtime();
 beforeEach(() => app.reset());
 after(() => app.restore());
-const row = upload => app.get(app.table("UPLOADS"), { prd_path: upload.prd_path });
-const retire = upload => app.cleanup(app.task("retire_upload", { prd_path: upload.prd_path }));
-const removeTeam = () => app.delete(app.table("TEAMS"), { id: app.teamCode, "eventID;year": "productplus;2026" });
-const teamCleanup = () => app.cleanup(app.task("team_deleted", { team_code: app.teamCode }));
+const row = (upload) =>
+  app.get(app.table("UPLOADS"), { prd_path: upload.prd_path });
+const retire = (upload) =>
+  app.cleanup(app.task("retire_upload", { prd_path: upload.prd_path }));
+const removeTeam = () =>
+  app.delete(app.table("TEAMS"), {
+    "id": app.teamCode,
+    "eventID;year": "productplus;2026"
+  });
+const teamCleanup = () =>
+  app.cleanup(app.task("team_deleted", { team_code: app.teamCode }));
 async function replaced() {
-  const old = app.upload(1), next = app.upload(2);
-  assert.equal((await app.invoke(app.putSubmission, app.form(old.prd_path))).status, 200);
-  assert.equal((await app.invoke(app.putSubmission, app.form(next.prd_path))).status, 200);
+  const old = app.upload(1),
+    next = app.upload(2);
+  assert.equal(
+    (await app.invoke(app.putSubmission, app.form(old.prd_path))).status,
+    200
+  );
+  assert.equal(
+    (await app.invoke(app.putSubmission, app.form(next.prd_path))).status,
+    200
+  );
   return { old, next };
 }
 
@@ -43,7 +61,9 @@ test("a referenced PDF is protected even if tracking incorrectly says replaced",
 
 test("cleanup transaction rejects a reference created after its tracking read", async () => {
   const { old } = await replaced();
-  app.beforeTransaction = () => { app.submission().prd_path = app.permanent(old); };
+  app.beforeTransaction = () => {
+    app.submission().prd_path = app.permanent(old);
+  };
   assert.deepEqual(await retire(old), { cleaned: 0 });
   assert.equal(row(old).status, "replaced");
   assert.equal(app.objects.has(app.permanent(old)), true);
@@ -51,13 +71,20 @@ test("cleanup transaction rejects a reference created after its tracking read", 
 
 test("delete failure retains the original, deleting status and a replayable task", async () => {
   const { old } = await replaced();
-  app.beforeDelete = () => { throw new Error("Private signed URL must not be logged"); };
+  app.beforeDelete = () => {
+    throw new Error("Private signed URL must not be logged");
+  };
   await assert.rejects(retire(old), /cleanup failed/);
   assert.equal(row(old).status, "deleting");
   assert.equal(app.objects.has(app.permanent(old)), true);
-  assert.equal((await app.invoke(app.putSubmission, app.form(old.prd_path))).status, 400);
+  assert.equal(
+    (await app.invoke(app.putSubmission, app.form(old.prd_path))).status,
+    400
+  );
   assert.doesNotMatch(JSON.stringify(app.logs), /Private signed URL/);
-  const task = app.logs.find(([message]) => message === "Product Plus cleanup failed")[1].task;
+  const task = app.logs.find(
+    ([message]) => message === "Product Plus cleanup failed"
+  )[1].task;
   assert.deepEqual(task, app.task("retire_upload", { prd_path: old.prd_path }));
   app.beforeDelete = undefined;
   assert.equal((await app.cleanup(task)).cleaned, 1);
@@ -74,8 +101,11 @@ test("a manually deleted replacement is safe to clean up and retry", async () =>
 test("failed final bookkeeping retries after S3 deletion without requiring a source", async () => {
   const { old } = await replaced();
   let failed = false;
-  app.database.on(UpdateCommand).callsFake(input => {
-    if (!failed) { failed = true; throw new Error("Bookkeeping failed"); }
+  app.database.on(UpdateCommand).callsFake((input) => {
+    if (!failed) {
+      failed = true;
+      throw new Error("Bookkeeping failed");
+    }
     row(old).status = "deleted";
     return {};
   });
@@ -86,7 +116,8 @@ test("failed final bookkeeping retries after S3 deletion without requiring a sou
 });
 
 test("team cleanup removes its submission and files while retaining tracking and config", async () => {
-  const referenced = app.upload(1), pending = app.upload(2);
+  const referenced = app.upload(1),
+    pending = app.upload(2);
   await app.invoke(app.putSubmission, app.form(referenced.prd_path));
   removeTeam();
   assert.equal((await teamCleanup()).cleaned, 2);
@@ -112,10 +143,13 @@ test("existing or recreated teams prevent deletion", async () => {
   await app.invoke(app.putSubmission, app.form(upload.prd_path));
   await assert.rejects(teamCleanup());
   removeTeam();
-  app.beforeTransaction = () => app.put(app.table("TEAMS"), {
-    "eventID;year": "productplus;2026", id: app.teamCode, memberIDs: [app.email],
-    teamName: "Example Team"
-  });
+  app.beforeTransaction = () =>
+    app.put(app.table("TEAMS"), {
+      "eventID;year": "productplus;2026",
+      "id": app.teamCode,
+      "memberIDs": [app.email],
+      "teamName": "Example Team"
+    });
   await assert.rejects(teamCleanup());
   assert.ok(app.submission());
   assert.equal(app.objects.has(app.permanent(upload)), true);
@@ -124,7 +158,8 @@ test("existing or recreated teams prevent deletion", async () => {
 test("a failed team read cannot authorize submission or file deletion", async () => {
   const upload = app.upload();
   await app.invoke(app.putSubmission, app.form(upload.prd_path));
-  app.database.on(GetCommand, { TableName: app.table("TEAMS") })
+  app.database
+    .on(GetCommand, { TableName: app.table("TEAMS") })
     .rejects(new Error("Team lookup failed"));
 
   await assert.rejects(teamCleanup());
@@ -138,16 +173,36 @@ test("the same team code in another event keeps its submission and files", async
   const old = app.upload(1);
   await app.invoke(app.putSubmission, app.form(old.prd_path));
   const other = app.upload(2, { event_key: "other;2026" });
-  const otherSubmission = { ...app.submission(), event_key: "other;2026", prd_path: other.prd_path };
+  const otherSubmission = {
+    ...app.submission(),
+    event_key: "other;2026",
+    prd_path: other.prd_path
+  };
   app.put(app.table("SUBMISSIONS"), otherSubmission);
-  const otherTeam = { id: app.teamCode, "eventID;year": "other;2026", memberIDs: [app.email] };
+  const otherTeam = {
+    "id": app.teamCode,
+    "eventID;year": "other;2026",
+    "memberIDs": [app.email]
+  };
   app.put(app.table("TEAMS"), otherTeam);
   removeTeam();
   assert.equal((await teamCleanup()).cleaned, 1);
-  assert.deepEqual(app.get(app.table("SUBMISSIONS"), { event_key: "other;2026", team_code: app.teamCode }), otherSubmission);
+  assert.deepEqual(
+    app.get(app.table("SUBMISSIONS"), {
+      event_key: "other;2026",
+      team_code: app.teamCode
+    }),
+    otherSubmission
+  );
   assert.equal(app.objects.has(other.prd_path), true);
   assert.equal(row(other).status, "pending");
-  assert.deepEqual(app.get(app.table("TEAMS"), { id: app.teamCode, "eventID;year": "other;2026" }), otherTeam);
+  assert.deepEqual(
+    app.get(app.table("TEAMS"), {
+      "id": app.teamCode,
+      "eventID;year": "other;2026"
+    }),
+    otherTeam
+  );
 });
 
 test("strong scan paginates through filtered empty pages and ignores other teams", async () => {
@@ -159,16 +214,23 @@ test("strong scan paginates through filtered empty pages and ignores other teams
   assert.equal((await teamCleanup()).cleaned, 5);
   const scans = app.database.commandCalls(ScanCommand);
   assert.equal(scans.length, 7);
-  for (const call of scans) assert.equal(call.args[0].input.ConsistentRead, true);
+  for (const call of scans)
+    assert.equal(call.args[0].input.ConsistentRead, true);
   assert.equal(app.objects.has(other.prd_path), true);
   assert.equal(app.objects.has(otherEvent.prd_path), true);
 });
 
 test("team cleanup continues other files after a failure and retries unfinished files", async () => {
-  const first = app.upload(1), second = app.upload(2);
+  const first = app.upload(1),
+    second = app.upload(2);
   removeTeam();
   let failed = false;
-  app.beforeDelete = input => { if (input.Key === first.prd_path && !failed) { failed = true; throw new Error("Failed delete"); } };
+  app.beforeDelete = (input) => {
+    if (input.Key === first.prd_path && !failed) {
+      failed = true;
+      throw new Error("Failed delete");
+    }
+  };
   await assert.rejects(teamCleanup());
   assert.equal(row(first).status, "deleting");
   assert.equal(row(second).status, "deleted");
@@ -178,9 +240,15 @@ test("team cleanup continues other files after a failure and retries unfinished 
 test("invalid event, task, ownership, or generated key cannot delete objects", async () => {
   const upload = app.upload();
   row(upload).status = "replaced";
-  for (const task of [null, { internalTask: "unknown", payload: { event_key: "productplus;2026" } },
+  for (const task of [
+    null,
+    { internalTask: "unknown", payload: { event_key: "productplus;2026" } },
     app.task("team_deleted", { team_code: "config" }),
-    { internalTask: "retire_upload", payload: { event_key: "other;2026", prd_path: upload.prd_path } }]) {
+    {
+      internalTask: "retire_upload",
+      payload: { event_key: "other;2026", prd_path: upload.prd_path }
+    }
+  ]) {
     await assert.rejects(app.cleanup(task));
   }
   row(upload).permanent_path = "unrelated/private.pdf";
@@ -189,7 +257,11 @@ test("invalid event, task, ownership, or generated key cannot delete objects", a
 });
 
 test("team cleanup retains ambiguous promotions and succeeds after explicit reconciliation", async () => {
-  const upload = app.upload(1, { status: "promoting", promotion_token: "token", permanent_path: "" });
+  const upload = app.upload(1, {
+    status: "promoting",
+    promotion_token: "token",
+    permanent_path: ""
+  });
   row(upload).permanent_path = app.permanent(upload);
   app.objects.set(app.permanent(upload), app.objects.get(upload.prd_path));
   removeTeam();
@@ -202,13 +274,26 @@ test("team cleanup retains ambiguous promotions and succeeds after explicit reco
 });
 
 test("PROD cleanup uses only the injected PROD tables and bucket", async () => {
-  for (const kind of ["SUBMISSIONS", "UPLOADS", "TEAMS", "REGISTRATIONS"]) process.env[`PRODUCTPLUS_${kind}_TABLE`] += "PROD";
+  for (const kind of ["SUBMISSIONS", "UPLOADS", "TEAMS", "REGISTRATIONS"])
+    process.env[`PRODUCTPLUS_${kind}_TABLE`] += "PROD";
   process.env.PRODUCTPLUS_PRD_BUCKET = "biztech-pp-prd-prod";
   const upload = app.upload();
   assert.equal((await teamCleanup()).cleaned, 1);
   assert.equal(row(upload).status, "deleted");
-  assert.ok(app.s3.calls().every(call => call.args[0].input.Bucket === "biztech-pp-prd-prod"));
-  assert.ok(app.database.calls().every(call => !call.args[0].input.TableName || call.args[0].input.TableName.endsWith("PROD")));
+  assert.ok(
+    app.s3
+      .calls()
+      .every((call) => call.args[0].input.Bucket === "biztech-pp-prd-prod")
+  );
+  assert.ok(
+    app.database
+      .calls()
+      .every(
+        (call) =>
+          !call.args[0].input.TableName ||
+          call.args[0].input.TableName.endsWith("PROD")
+      )
+  );
 });
 
 test("team cleanup removes the submission before a file-listing failure", async () => {

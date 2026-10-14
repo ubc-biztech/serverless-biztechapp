@@ -6,10 +6,12 @@
 import mochaPlugin from "serverless-mocha-plugin";
 const expect = mochaPlugin.chai.expect;
 import AWSMock from "aws-sdk-mock";
-let wrapped = mochaPlugin.getWrapper("userFavEvent", "/handler.js", "favouriteEvent");
-import {
-  USERS_TABLE, EVENTS_TABLE
-} from "../../../constants/tables";
+let wrapped = mochaPlugin.getWrapper(
+  "userFavEvent",
+  "/handler.js",
+  "favouriteEvent"
+);
+import { USERS_TABLE, EVENTS_TABLE } from "../../../constants/tables";
 
 const testEntry = {
   eventID: "some event id",
@@ -29,12 +31,15 @@ const userObject = {
 describe("userFavEvent", () => {
   before(() => {
     AWSMock.mock("DynamoDB.DocumentClient", "get", (params, callback) => {
-      if(params.TableName.includes(USERS_TABLE) && params.Key.id === email) {
+      if (params.TableName.includes(USERS_TABLE) && params.Key.id === email) {
         callback(null, {
           Item: userObject
         });
-      }
-      else if(params.TableName.includes(EVENTS_TABLE) && params.Key.id === "some event id" && params.Key.year === 2020) {
+      } else if (
+        params.TableName.includes(EVENTS_TABLE) &&
+        params.Key.id === "some event id" &&
+        params.Key.year === 2020
+      ) {
         callback(null, {
           Item: {
             id: "some event id",
@@ -42,17 +47,21 @@ describe("userFavEvent", () => {
             capac: 100
           }
         });
-      }
-      else callback(null, {
-        Item: null
-      });
+      } else
+        callback(null, {
+          Item: null
+        });
     });
 
-    AWSMock.mock("DynamoDB.DocumentClient", "update", function (params, callback) {
-      callback(null, {
-        Item: "not null user"
-      });
-    });
+    AWSMock.mock(
+      "DynamoDB.DocumentClient",
+      "update",
+      function (params, callback) {
+        callback(null, {
+          Item: "not null user"
+        });
+      }
+    );
   });
 
   after(() => {
@@ -111,7 +120,7 @@ describe("userFavEvent", () => {
     expect(response.statusCode).to.equal(406);
   });
 
-  it ("returns 406 when isFavourite is not a boolean", async () => {
+  it("returns 406 when isFavourite is not a boolean", async () => {
     const response = await wrapped.run({
       body: JSON.stringify({
         eventID: "some event id",
@@ -125,7 +134,7 @@ describe("userFavEvent", () => {
     expect(response.statusCode).to.equal(406);
   });
 
-  it ("returns 404 when user does not exist", async () => {
+  it("returns 404 when user does not exist", async () => {
     const response = await wrapped.run({
       body: JSON.stringify({
         eventID: "some event id",
@@ -139,7 +148,7 @@ describe("userFavEvent", () => {
     expect(response.statusCode).to.equal(404);
   });
 
-  it ("returns 404 when event does not exist", async () => {
+  it("returns 404 when event does not exist", async () => {
     const response = await wrapped.run({
       body: JSON.stringify({
         eventID: "some event that does not exist",

@@ -64,7 +64,6 @@ functions:
                 profile_id: true
           cors: true
 
-
   all:
     handler: handler.all
     events:

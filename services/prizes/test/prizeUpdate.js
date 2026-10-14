@@ -23,20 +23,20 @@ describe("prizeUpdate", () => {
   before(() => {
     AWSMock.mock("DynamoDB.DocumentClient", "get", (params, callback) => {
       let returnValue = null;
-      if(existingPrizes.includes(params.Key.id)) returnValue = {
-        ...updatePayload,
-        id: params.Key.id
-      };
+      if (existingPrizes.includes(params.Key.id))
+        returnValue = {
+          ...updatePayload,
+          id: params.Key.id
+        };
       callback(null, {
         Item: returnValue
       });
     });
 
     AWSMock.mock("DynamoDB.DocumentClient", "update", (params, callback) => {
-      if(params.Key.id && existingPrizes.includes(params.Key.id)) {
+      if (params.Key.id && existingPrizes.includes(params.Key.id)) {
         callback(null, "successfully updated item in database");
-      }
-      else callback("item not found in database");
+      } else callback("item not found in database");
     });
   });
 

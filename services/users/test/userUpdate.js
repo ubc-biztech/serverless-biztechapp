@@ -26,22 +26,27 @@ describe("userUpdate", () => {
   before(() => {
     AWSMock.mock("DynamoDB.DocumentClient", "get", (params, callback) => {
       let returnValue = null;
-      if(existingUserIds.includes(params.Key.id)) returnValue = {
-        ...testEntry,
-        id: params.Key.id
-      };
+      if (existingUserIds.includes(params.Key.id))
+        returnValue = {
+          ...testEntry,
+          id: params.Key.id
+        };
       callback(null, {
         Item: returnValue
       });
     });
 
-    AWSMock.mock("DynamoDB.DocumentClient", "update", function (params, callback) {
-      Promise.resolve(
-        callback(null, {
-          Item: "not null user"
-        })
-      );
-    });
+    AWSMock.mock(
+      "DynamoDB.DocumentClient",
+      "update",
+      function (params, callback) {
+        Promise.resolve(
+          callback(null, {
+            Item: "not null user"
+          })
+        );
+      }
+    );
   });
 
   after(() => {

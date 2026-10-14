@@ -5,7 +5,11 @@ import { fileURLToPath } from "node:url";
 import { compileFunction } from "node:vm";
 import { build } from "esbuild";
 import { mockClient } from "aws-sdk-client-mock";
-import { DynamoDBDocumentClient, GetCommand, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  GetCommand,
+  TransactWriteCommand
+} from "@aws-sdk/lib-dynamodb";
 
 // Use the actual S3 signer with test credentials, without making AWS requests.
 const environment = {
@@ -23,27 +27,47 @@ const environment = {
   PRODUCTPLUS_CLEANUP_FUNCTION: "biztechApi-productplus-dev-productplusCleanup"
 };
 const originalEnvironment = Object.fromEntries(
-  Object.keys(environment).map(key => [key, process.env[key]])
+  Object.keys(environment).map((key) => [key, process.env[key]])
 );
 Object.assign(process.env, environment);
 
 const start = Date.parse("2026-10-05T12:00:00.250Z");
 let clock = start;
 class TestDate extends Date {
-  constructor(...args) { super(...(args.length ? args : [clock])); }
-  static now() { return clock; }
+  constructor(...args) {
+    super(...(args.length ? args : [clock]));
+  }
+  static now() {
+    return clock;
+  }
 }
 const bundle = await build({
   entryPoints: [fileURLToPath(new URL("../handler.ts", import.meta.url))],
-  bundle: true, platform: "node", target: "node22", format: "cjs",
-  packages: "external", write: false, logLevel: "silent"
+  bundle: true,
+  platform: "node",
+  target: "node22",
+  format: "cjs",
+  packages: "external",
+  write: false,
+  logLevel: "silent"
 });
 const module = { exports: {} };
 compileFunction(bundle.outputFiles[0].text, [
-  "require", "module", "exports", "process", "Buffer", "console", "Date"
+  "require",
+  "module",
+  "exports",
+  "process",
+  "Buffer",
+  "console",
+  "Date"
 ])(
-  createRequire(import.meta.url), module, module.exports, process, Buffer,
-  { error() {} }, TestDate
+  createRequire(import.meta.url),
+  module,
+  module.exports,
+  process,
+  Buffer,
+  { error() {} },
+  TestDate
 );
 const { createUpload } = module.exports;
 const database = mockClient(DynamoDBDocumentClient);
@@ -52,11 +76,21 @@ let config, registration, team;
 
 function event(body = { content_type: "application/pdf" }, claims = {}) {
   return {
-    body: typeof body === "string" || body === null ? body : JSON.stringify(body),
-    headers: {}, pathParameters: null, queryStringParameters: null,
-    requestContext: { authorizer: { claims: {
-      email, email_verified: "true", "cognito:groups": "attendee", ...claims
-    } } }
+    body:
+      typeof body === "string" || body === null ? body : JSON.stringify(body),
+    headers: {},
+    pathParameters: null,
+    queryStringParameters: null,
+    requestContext: {
+      authorizer: {
+        claims: {
+          email,
+          "email_verified": "true",
+          "cognito:groups": "attendee",
+          ...claims
+        }
+      }
+    }
   };
 }
 async function invoke(request = event()) {
@@ -64,12 +98,16 @@ async function invoke(request = event()) {
   return { status: result.statusCode, body: JSON.parse(result.body) };
 }
 function transaction() {
-  return database.commandCalls(TransactWriteCommand).at(-1).args[0].input.TransactItems;
+  return database.commandCalls(TransactWriteCommand).at(-1).args[0].input
+    .TransactItems;
 }
 function signedExpiry(url) {
   const value = new URL(url).searchParams;
   const timestamp = value.get("X-Amz-Date");
-  const iso = timestamp.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/, "$1-$2-$3T$4:$5:$6Z");
+  const iso = timestamp.replace(
+    /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/,
+    "$1-$2-$3T$4:$5:$6Z"
+  );
   return Date.parse(iso) + Number(value.get("X-Amz-Expires")) * 1000;
 }
 
@@ -77,22 +115,38 @@ beforeEach(() => {
   clock = start;
   Object.assign(process.env, environment);
   config = {
-    event_key: environment.PRODUCTPLUS_EVENT_KEY, team_code: "config",
+    event_key: environment.PRODUCTPLUS_EVENT_KEY,
+    team_code: "config",
     submission_deadline: "2026-10-05T13:00:00Z",
     voting_deadline: "2026-10-06T13:00:00Z"
   };
-  registration = { id: email, "eventID;year": config.event_key, team_code: "012345" };
-  team = { id: "012345", "eventID;year": config.event_key, memberIDs: [email] };
+  registration = {
+    "id": email,
+    "eventID;year": config.event_key,
+    "team_code": "012345"
+  };
+  team = {
+    "id": "012345",
+    "eventID;year": config.event_key,
+    "memberIDs": [email]
+  };
   database.reset();
   database.onAnyCommand().rejects(new Error("Unexpected database operation"));
-  database.on(GetCommand).callsFake(input => {
-    if (input.TableName === process.env.PRODUCTPLUS_SUBMISSIONS_TABLE) return { Item: config };
+  database.on(GetCommand).callsFake((input) => {
+    if (input.TableName === process.env.PRODUCTPLUS_SUBMISSIONS_TABLE)
+      return { Item: config };
     if (input.TableName === process.env.PRODUCTPLUS_REGISTRATIONS_TABLE) {
-      assert.deepEqual(input.Key, { id: email, "eventID;year": environment.PRODUCTPLUS_EVENT_KEY });
+      assert.deepEqual(input.Key, {
+        "id": email,
+        "eventID;year": environment.PRODUCTPLUS_EVENT_KEY
+      });
       return { Item: registration };
     }
     if (input.TableName === process.env.PRODUCTPLUS_TEAMS_TABLE) {
-      assert.deepEqual(input.Key, { id: registration.team_code, "eventID;year": environment.PRODUCTPLUS_EVENT_KEY });
+      assert.deepEqual(input.Key, {
+        "id": registration.team_code,
+        "eventID;year": environment.PRODUCTPLUS_EVENT_KEY
+      });
       return { Item: team };
     }
     throw new Error("Unexpected table");
@@ -115,8 +169,15 @@ test("upload requires a verified caller before accessing storage", async () => {
 });
 
 test("upload accepts only the PDF content-type body and rejects caller-supplied ownership", async () => {
-  for (const body of [null, "broken JSON", "null", "[]", {},
-    { content_type: "image/png" }, { content_type: "application/pdf", team_code: "999999" }]) {
+  for (const body of [
+    null,
+    "broken JSON",
+    "null",
+    "[]",
+    {},
+    { content_type: "image/png" },
+    { content_type: "application/pdf", team_code: "999999" }
+  ]) {
     assert.equal((await invoke(event(body))).status, 400);
   }
   assert.equal(database.calls().length, 0);
@@ -127,10 +188,21 @@ test("signed PUT uses the private bucket, unique team path and mandatory signed 
   const second = await invoke();
   assert.equal(first.status, 200);
   assert.equal(second.status, 200);
-  assert.deepEqual(Object.keys(first.body).sort(), ["prd_path", "upload_headers", "upload_method", "upload_url"]);
+  assert.deepEqual(Object.keys(first.body).sort(), [
+    "prd_path",
+    "upload_headers",
+    "upload_method",
+    "upload_url"
+  ]);
   assert.equal(first.body.upload_method, "PUT");
-  assert.deepEqual(first.body.upload_headers, { "Content-Type": "application/pdf", "If-None-Match": "*" });
-  assert.match(first.body.prd_path, /^productplus\/temp\/productplus;2026\/012345\/[\da-f-]{36}\/prd\.pdf$/);
+  assert.deepEqual(first.body.upload_headers, {
+    "Content-Type": "application/pdf",
+    "If-None-Match": "*"
+  });
+  assert.match(
+    first.body.prd_path,
+    /^productplus\/temp\/productplus;2026\/012345\/[\da-f-]{36}\/prd\.pdf$/
+  );
   assert.notEqual(first.body.prd_path, second.body.prd_path);
   const url = new URL(first.body.upload_url);
   assert.equal(url.hostname, "biztech-pp-prd.s3.us-west-2.amazonaws.com");
@@ -146,11 +218,16 @@ test("signed PUT uses the private bucket, unique team path and mandatory signed 
 });
 
 test("tracking and membership/deadline conditions are written in one transaction", async () => {
-  const result = await invoke(event(undefined, { email: " MEMBER@EXAMPLE.COM " }));
+  const result = await invoke(
+    event(undefined, { email: " MEMBER@EXAMPLE.COM " })
+  );
   assert.equal(result.status, 200);
   const [upload, registrationCheck, teamCheck, configCheck] = transaction();
   assert.equal(upload.Put.TableName, "biztechPPUploads");
-  assert.equal(upload.Put.ConditionExpression, "attribute_not_exists(prd_path)");
+  assert.equal(
+    upload.Put.ConditionExpression,
+    "attribute_not_exists(prd_path)"
+  );
   const item = upload.Put.Item;
   assert.equal(item.prd_path, result.body.prd_path);
   assert.equal(item.event_key, "productplus;2026");
@@ -161,24 +238,55 @@ test("tracking and membership/deadline conditions are written in one transaction
   assert.equal(item.status, "pending");
   assert.equal(item.created_at, new Date(start).toISOString());
   assert.equal(item.updated_at, item.created_at);
-  assert.equal(Date.parse(item.upload_expires_at), signedExpiry(result.body.upload_url));
-  assert.deepEqual(registrationCheck.ConditionCheck.Key, { id: email, "eventID;year": "productplus;2026" });
-  assert.deepEqual(registrationCheck.ConditionCheck.ExpressionAttributeValues, { ":code": team.id });
-  assert.deepEqual(teamCheck.ConditionCheck.Key, { id: "012345", "eventID;year": "productplus;2026" });
-  assert.match(teamCheck.ConditionCheck.ConditionExpression, /contains\(#members, :email\)/);
-  assert.deepEqual(teamCheck.ConditionCheck.ExpressionAttributeNames, { "#members": "memberIDs" });
-  assert.deepEqual(teamCheck.ConditionCheck.ExpressionAttributeValues, { ":email": email });
-  assert.deepEqual(configCheck.ConditionCheck.Key, { event_key: "productplus;2026", team_code: "config" });
-  assert.equal(configCheck.ConditionCheck.ExpressionAttributeValues[":deadline"], config.submission_deadline);
-  for (const call of database.commandCalls(GetCommand)) assert.equal(call.args[0].input.ConsistentRead, true);
+  assert.equal(
+    Date.parse(item.upload_expires_at),
+    signedExpiry(result.body.upload_url)
+  );
+  assert.deepEqual(registrationCheck.ConditionCheck.Key, {
+    "id": email,
+    "eventID;year": "productplus;2026"
+  });
+  assert.deepEqual(registrationCheck.ConditionCheck.ExpressionAttributeValues, {
+    ":code": team.id
+  });
+  assert.deepEqual(teamCheck.ConditionCheck.Key, {
+    "id": "012345",
+    "eventID;year": "productplus;2026"
+  });
+  assert.match(
+    teamCheck.ConditionCheck.ConditionExpression,
+    /contains\(#members, :email\)/
+  );
+  assert.deepEqual(teamCheck.ConditionCheck.ExpressionAttributeNames, {
+    "#members": "memberIDs"
+  });
+  assert.deepEqual(teamCheck.ConditionCheck.ExpressionAttributeValues, {
+    ":email": email
+  });
+  assert.deepEqual(configCheck.ConditionCheck.Key, {
+    event_key: "productplus;2026",
+    team_code: "config"
+  });
+  assert.equal(
+    configCheck.ConditionCheck.ExpressionAttributeValues[":deadline"],
+    config.submission_deadline
+  );
+  for (const call of database.commandCalls(GetCommand))
+    assert.equal(call.args[0].input.ConsistentRead, true);
 });
 
 test("URL expires no later than fractional-second deadlines", async () => {
   config.submission_deadline = new Date(start + 10500).toISOString();
   const result = await invoke();
   assert.equal(result.status, 200);
-  assert.equal(new URL(result.body.upload_url).searchParams.get("X-Amz-Expires"), "10");
-  assert.ok(signedExpiry(result.body.upload_url) <= Date.parse(config.submission_deadline));
+  assert.equal(
+    new URL(result.body.upload_url).searchParams.get("X-Amz-Expires"),
+    "10"
+  );
+  assert.ok(
+    signedExpiry(result.body.upload_url) <=
+      Date.parse(config.submission_deadline)
+  );
 });
 
 test("closed and sub-second windows reject without writing tracking", async () => {
@@ -192,7 +300,11 @@ test("closed and sub-second windows reject without writing tracking", async () =
 test("both the event registration and team's memberIDs list must authorize the caller", async () => {
   registration = undefined;
   assert.equal((await invoke()).status, 403);
-  registration = { id: email, "eventID;year": "productplus;2026", team_code: team.id };
+  registration = {
+    "id": email,
+    "eventID;year": "productplus;2026",
+    "team_code": team.id
+  };
   const originalTeam = team;
   team = undefined;
   assert.equal((await invoke()).status, 403);
@@ -239,7 +351,9 @@ test("conditional transaction failure returns conflict without releasing a URL",
 });
 
 test("database failure returns a generic error and expiry during tracking returns no URL", async () => {
-  database.on(TransactWriteCommand).rejects(new Error("Sensitive database details"));
+  database
+    .on(TransactWriteCommand)
+    .rejects(new Error("Sensitive database details"));
   const failure = await invoke();
   assert.equal(failure.status, 500);
   assert.doesNotMatch(JSON.stringify(failure.body), /Sensitive/);
@@ -255,16 +369,30 @@ test("database failure returns a generic error and expiry during tracking return
 });
 
 test("PROD table/bucket names use the injected environment", async () => {
-  for (const key of ["PRODUCTPLUS_SUBMISSIONS_TABLE", "PRODUCTPLUS_UPLOADS_TABLE",
-    "PRODUCTPLUS_TEAMS_TABLE", "PRODUCTPLUS_REGISTRATIONS_TABLE"]) process.env[key] += "PROD";
+  for (const key of [
+    "PRODUCTPLUS_SUBMISSIONS_TABLE",
+    "PRODUCTPLUS_UPLOADS_TABLE",
+    "PRODUCTPLUS_TEAMS_TABLE",
+    "PRODUCTPLUS_REGISTRATIONS_TABLE"
+  ])
+    process.env[key] += "PROD";
   process.env.PRODUCTPLUS_PRD_BUCKET = "biztech-pp-prd-prod";
   const request = event({ content_type: "application/pdf" });
   const result = await invoke(request);
   assert.equal(result.status, 200);
-  assert.equal(new URL(result.body.upload_url).hostname, "biztech-pp-prd-prod.s3.us-west-2.amazonaws.com");
-  assert.deepEqual(transaction().map(item => (item.Put || item.ConditionCheck).TableName), [
-    "biztechPPUploadsPROD", "biztechRegistrationsPROD", "biztechTeamsPROD", "biztechPPSubmissionsPROD"
-  ]);
+  assert.equal(
+    new URL(result.body.upload_url).hostname,
+    "biztech-pp-prd-prod.s3.us-west-2.amazonaws.com"
+  );
+  assert.deepEqual(
+    transaction().map((item) => (item.Put || item.ConditionCheck).TableName),
+    [
+      "biztechPPUploadsPROD",
+      "biztechRegistrationsPROD",
+      "biztechTeamsPROD",
+      "biztechPPSubmissionsPROD"
+    ]
+  );
 });
 
 test("missing upload environment fails before storage access", async () => {
@@ -275,7 +403,10 @@ test("missing upload environment fails before storage access", async () => {
 
 test("missing shared table settings fail before AWS access in both environments", async () => {
   for (const suffix of ["", "PROD"]) {
-    for (const key of ["PRODUCTPLUS_TEAMS_TABLE", "PRODUCTPLUS_REGISTRATIONS_TABLE"]) {
+    for (const key of [
+      "PRODUCTPLUS_TEAMS_TABLE",
+      "PRODUCTPLUS_REGISTRATIONS_TABLE"
+    ]) {
       Object.assign(process.env, environment);
       process.env.ENVIRONMENT = suffix;
       delete process.env[key];

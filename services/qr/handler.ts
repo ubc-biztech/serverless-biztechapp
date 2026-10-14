@@ -2,7 +2,11 @@ import { EVENTS_TABLE, QRS_TABLE } from "../../constants/tables.js";
 import db from "../../lib/db.js";
 import helpers from "../../lib/handlerHelpers";
 import res from "../../lib/responseHelpers";
-import type { APIGatewayEvent, LambdaCallback, LambdaContext } from "../../lib/types";
+import type {
+  APIGatewayEvent,
+  LambdaCallback,
+  LambdaContext
+} from "../../lib/types";
 import { isEmpty } from "../../lib/utils.js";
 import registrationHelpers from "./helpers";
 
@@ -24,7 +28,7 @@ const errorMessage = (err: unknown): string =>
 export const post = async (
   event: APIGatewayEvent,
   _ctx: LambdaContext,
-  _callback: LambdaCallback,
+  _callback: LambdaCallback
 ) => {
   try {
     const data = JSON.parse(event.body as string) as Record<string, unknown>;
@@ -32,33 +36,33 @@ export const post = async (
     helpers.checkPayloadProps(data, {
       qrCodeID: {
         required: true,
-        type: "string",
+        type: "string"
       },
       eventID: {
         required: true,
-        type: "string",
+        type: "string"
       },
       year: {
         required: true,
-        type: "number",
+        type: "number"
       },
       email: {
         required: true,
-        type: "string",
+        type: "string"
       },
       negativePointsConfirmed: {
         required: true,
-        type: "boolean",
+        type: "boolean"
       },
       admin: {
         required: false,
-        type: "boolean",
-      },
+        type: "boolean"
+      }
     });
 
     const scanRes = (await registrationHelpers.qrScanPostHelper(
       data as never,
-      data.email as string,
+      data.email as string
     )) as Record<string, unknown>;
 
     console.log(scanRes);
@@ -73,14 +77,14 @@ export const post = async (
           : 403;
       return res.send(status, {
         message: "ERROR: " + scanRes.errorMessage,
-        response: scanRes,
+        response: scanRes
       });
     }
 
     try {
       await registrationHelpers.logQRScan(
         data.qrCodeID as string,
-        data.email as string,
+        data.email as string
       );
     } catch (logErr) {
       console.error("Error logging QR scan:", logErr);
@@ -88,7 +92,7 @@ export const post = async (
 
     return res.ok({
       message: "Successfully scanned QR code.",
-      response: scanRes,
+      response: scanRes
     });
   } catch (err: unknown) {
     console.error(err);
@@ -99,7 +103,7 @@ export const post = async (
 export const get = async (
   _event: APIGatewayEvent,
   _ctx: LambdaContext,
-  _callback: LambdaCallback,
+  _callback: LambdaCallback
 ) => {
   try {
     const qrs = await db.scan(QRS_TABLE, {});
@@ -113,7 +117,7 @@ export const get = async (
 export const getOne = async (
   event: APIGatewayEvent,
   _ctx: LambdaContext,
-  _callback: LambdaCallback,
+  _callback: LambdaCallback
 ) => {
   try {
     if (
@@ -127,7 +131,7 @@ export const getOne = async (
     const { id, eventID, year } = event.pathParameters;
     const eventIDAndYear = `${eventID};${year}`;
     const qr = await db.getOne(id, QRS_TABLE, {
-      "eventID;year": eventIDAndYear,
+      "eventID;year": eventIDAndYear
     });
     return res.ok(qr);
   } catch (err: unknown) {
@@ -139,7 +143,7 @@ export const getOne = async (
 export const create = async (
   event: APIGatewayEvent,
   _ctx: LambdaContext,
-  _callback: LambdaCallback,
+  _callback: LambdaCallback
 ) => {
   try {
     const timestamp = new Date().getTime();
@@ -147,38 +151,34 @@ export const create = async (
 
     helpers.checkPayloadProps(data, {
       id: {
-        required: true,
+        required: true
       },
       eventID: {
         required: true,
-        type: "string",
+        type: "string"
       },
       year: {
         required: true,
-        type: "number",
+        type: "number"
       },
       points: {
         required: false,
-        type: "number",
+        type: "number"
       },
       type: {
         required: true,
-        type: "string",
+        type: "string"
       },
       data: {
         required: false,
-        type: "object",
-      },
+        type: "object"
+      }
     });
 
     const eventIDAndYear = `${(data as { eventID: string }).eventID};${(data as { year: number }).year}`;
-    const existingQR = await db.getOne(
-      (data as { id: string }).id,
-      QRS_TABLE,
-      {
-        "eventID;year": eventIDAndYear,
-      },
-    );
+    const existingQR = await db.getOne((data as { id: string }).id, QRS_TABLE, {
+      "eventID;year": eventIDAndYear
+    });
     if (!isEmpty(existingQR)) {
       throw helpers.duplicateResponse("id and event", data);
     }
@@ -186,25 +186,26 @@ export const create = async (
       (data as { eventID: string }).eventID,
       EVENTS_TABLE,
       {
-        year: (data as { year: number }).year,
-      },
+        year: (data as { year: number }).year
+      }
     );
     if (isEmpty(existingEvent)) {
       throw res.notAcceptable("Event does not exist", data);
     }
 
     const item = {
-      id: (data as { id: string }).id,
+      "id": (data as { id: string }).id,
       "eventID;year": eventIDAndYear,
-      points: (data as { points?: number }).points
+      "points": (data as { points?: number }).points
         ? (data as { points: number }).points
         : 0,
-      isActive: (data as { isActive?: unknown }).isActive,
-      isUnlimitedScans: (data as { isUnlimitedScans?: unknown }).isUnlimitedScans,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      type: (data as { type: string }).type,
-      data: (data as { data?: unknown }).data,
+      "isActive": (data as { isActive?: unknown }).isActive,
+      "isUnlimitedScans": (data as { isUnlimitedScans?: unknown })
+        .isUnlimitedScans,
+      "createdAt": timestamp,
+      "updatedAt": timestamp,
+      "type": (data as { type: string }).type,
+      "data": (data as { data?: unknown }).data
     };
 
     const createRes = await db.create(item, QRS_TABLE);
@@ -212,7 +213,7 @@ export const create = async (
     return res.created({
       message: `Create QR with id ${(data as { id: string }).id} for the event ${eventIDAndYear}!`,
       response: createRes,
-      item,
+      item
     });
   } catch (err: unknown) {
     console.log(err);
@@ -223,7 +224,7 @@ export const create = async (
 export const update = async (
   event: APIGatewayEvent,
   _ctx: LambdaContext,
-  _callback: LambdaCallback,
+  _callback: LambdaCallback
 ) => {
   try {
     if (
@@ -238,7 +239,7 @@ export const update = async (
     const eventIDAndYear = `${eventID};${year}`;
 
     const existingQR = await db.getOne(id, QRS_TABLE, {
-      "eventID;year": eventIDAndYear,
+      "eventID;year": eventIDAndYear
     });
     if (isEmpty(existingQR)) {
       throw res.notFound("QR", id, eventIDAndYear);
@@ -248,31 +249,31 @@ export const update = async (
     const {
       updateExpression,
       expressionAttributeValues,
-      expressionAttributeNames,
+      expressionAttributeNames
     } = db.createUpdateExpression(data);
 
     const params = {
       Key: {
         id,
-        eventIDAndYear,
+        eventIDAndYear
       },
       TableName:
         QRS_TABLE + (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
       ExpressionAttributeValues: expressionAttributeValues,
       ExpressionAttributeNames: {
-        ...expressionAttributeNames,
+        ...expressionAttributeNames
       },
       UpdateExpression: updateExpression,
       ReturnValues: "UPDATED_NEW" as const,
       ConditionExpression:
-        "attribute_exists(id) and attribute_exists(eventID;year)",
+        "attribute_exists(id) and attribute_exists(eventID;year)"
     };
 
     const updateRes = await db.updateDBCustom(params);
 
     return res.ok({
       message: `Updated QR with id ${id} and event ${eventIDAndYear}!`,
-      response: updateRes,
+      response: updateRes
     });
   } catch (err: unknown) {
     console.log(err);
@@ -283,7 +284,7 @@ export const update = async (
 export const del = async (
   event: APIGatewayEvent,
   _ctx: LambdaContext,
-  _callback: LambdaCallback,
+  _callback: LambdaCallback
 ) => {
   try {
     if (
@@ -298,19 +299,19 @@ export const del = async (
     const eventIDAndYear = `${eventID};${year}`;
 
     const existingQR = await db.getOne(id, QRS_TABLE, {
-      "eventID;year": eventIDAndYear,
+      "eventID;year": eventIDAndYear
     });
     if (isEmpty(existingQR)) {
       throw res.notFound("QR", id, eventIDAndYear);
     }
 
     const deleteRes = await db.deleteOne(id, QRS_TABLE, {
-      "eventID;year": eventIDAndYear,
+      "eventID;year": eventIDAndYear
     });
 
     return res.ok({
       message: `Deleted QR with id ${id} and event ${eventIDAndYear}!`,
-      response: deleteRes,
+      response: deleteRes
     });
   } catch (err: unknown) {
     console.log(err);

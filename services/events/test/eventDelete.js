@@ -7,16 +7,16 @@ import AWSMock from "aws-sdk-mock";
 import mochaPlugin from "serverless-mocha-plugin";
 const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper("eventDelete", "/handler.ts", "del");
-import {
-  EVENTS_TABLE
-} from "../../../constants/tables";
+import { EVENTS_TABLE } from "../../../constants/tables";
 
 describe("eventDelete", () => {
   // Stores the id and year of our current created events in a dictionary
-  const existingEvents = [{
-    id: "existingEvent1",
-    year: 2020
-  }];
+  const existingEvents = [
+    {
+      id: "existingEvent1",
+      year: 2020
+    }
+  ];
 
   before(() => {
     // Mocks the GET request to DyanmoDB
@@ -24,33 +24,49 @@ describe("eventDelete", () => {
       // Check if the table exists first
       if (params.TableName.includes(EVENTS_TABLE)) {
         // Check if an entry with the same id and year already exists in our table
-        if (params.Key.id && params.Key.year && existingEvents.some(key => key.id === params.Key.id && key.year === params.Key.year)) callback(null, {
-          Item: {
-            id: params.Key.id,
-            year: params.Key.year,
-            capac: 100
-          }
-        });
+        if (
+          params.Key.id &&
+          params.Key.year &&
+          existingEvents.some(
+            (key) => key.id === params.Key.id && key.year === params.Key.year
+          )
+        )
+          callback(null, {
+            Item: {
+              id: params.Key.id,
+              year: params.Key.year,
+              capac: 100
+            }
+          });
 
         // Id and year does not exist in our table
-        else callback(null, {
-          Item: null
-        });
+        else
+          callback(null, {
+            Item: null
+          });
       }
     });
 
     // Mocks the DELETE request to DynamoDB
     AWSMock.mock("DynamoDB.DocumentClient", "delete", (params, callback) => {
       // Check if an entry with the same id and year already exists in our table
-      if (params.Key.id && params.Key.year && existingEvents.some(key => key.id === params.Key.id && key.year === params.Key.year)) {
+      if (
+        params.Key.id &&
+        params.Key.year &&
+        existingEvents.some(
+          (key) => key.id === params.Key.id && key.year === params.Key.year
+        )
+      ) {
         // Remove this entry from our table
-        existingEvents.splice(existingEvents.indexOf({
-          id: params.Key.id,
-          year: params.Key.year
-        }),1);
+        existingEvents.splice(
+          existingEvents.indexOf({
+            id: params.Key.id,
+            year: params.Key.year
+          }),
+          1
+        );
         callback(null, "successfully deleted item in database");
-      }
-      else callback(new Error(""));
+      } else callback(new Error(""));
     });
   });
   after(() => {

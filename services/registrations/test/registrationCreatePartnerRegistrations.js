@@ -4,18 +4,13 @@
 
 import mochaPlugin from "serverless-mocha-plugin";
 const expect = mochaPlugin.chai.expect;
-import {
-  mockClient
-} from "aws-sdk-client-mock";
+import { mockClient } from "aws-sdk-client-mock";
 import {
   DynamoDBDocumentClient,
   GetCommand,
   UpdateCommand
 } from "@aws-sdk/lib-dynamodb";
-import {
-  SNSClient,
-  PublishCommand
-} from "@aws-sdk/client-sns";
+import { SNSClient, PublishCommand } from "@aws-sdk/client-sns";
 import {
   EVENTS_TABLE,
   USER_REGISTRATIONS_TABLE
@@ -214,7 +209,7 @@ describe("registrationCreatePartnerRegistrations", () => {
       ) {
         return {
           Item: {
-            id: partnerEmail,
+            "id": partnerEmail,
             "eventID;year": "kickstart;2025"
           }
         };
@@ -320,9 +315,9 @@ describe("registrationCreatePartnerRegistrations", () => {
     expect(updateParams.ExpressionAttributeValues[":fname"]).to.equal(
       "Katherine"
     );
-    expect(updateParams.ExpressionAttributeValues[":registrationStatus"]).to.equal(
-      "acceptedComplete"
-    );
+    expect(
+      updateParams.ExpressionAttributeValues[":registrationStatus"]
+    ).to.equal("acceptedComplete");
     expect(updateParams.ExpressionAttributeValues[":isPartner"]).to.equal(true);
   });
 

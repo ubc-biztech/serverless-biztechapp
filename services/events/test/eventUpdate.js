@@ -7,9 +7,7 @@ import AWSMock from "aws-sdk-mock";
 import mochaPlugin from "serverless-mocha-plugin";
 const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper("eventUpdate", "/handler.ts", "update");
-import {
-  EVENTS_TABLE
-} from "../../../constants/tables";
+import { EVENTS_TABLE } from "../../../constants/tables";
 
 const updatePayload = {
   id: "existingEvent1",
@@ -22,20 +20,22 @@ const updatePayload = {
   facebookUrl: "https://www.facebook.com/BizTechUBC/",
   imageUrl: "https://www.facebook.com/BizTechUBC/",
   elocation: "https://i.picsum.photos/id/320/200/300.jpg",
-  longitude: -120.00,
-  latitude: 78.00,
+  longitude: -120.0,
+  latitude: 78.0,
   createdAt: "20200607T000000-0400",
   updatedAt: "20200607T000000-0400",
   registrationFormKey: "mis",
-  feedback: "updated-test-feedback-form-link",
+  feedback: "updated-test-feedback-form-link"
 };
 
 describe("eventUpdate", () => {
   let lastUpdateParams;
-  const existingEvents = [{
-    id: "existingEvent1",
-    year: 2020
-  }];
+  const existingEvents = [
+    {
+      id: "existingEvent1",
+      year: 2020
+    }
+  ];
 
   before(() => {
     // Mocks the GET request to DyanmoDB
@@ -43,28 +43,41 @@ describe("eventUpdate", () => {
       // Check if the table exists first
       if (params.TableName.includes(EVENTS_TABLE)) {
         // Check if an entry with the same id and year already exists in our table
-        if (params.Key.id && params.Key.year && existingEvents.some(key => key.id === params.Key.id && key.year === params.Key.year)) callback(null, {
-          Item: {
-            id: params.Key.id,
-            year: params.Key.year,
-            capac: 100
-          }
-        });
+        if (
+          params.Key.id &&
+          params.Key.year &&
+          existingEvents.some(
+            (key) => key.id === params.Key.id && key.year === params.Key.year
+          )
+        )
+          callback(null, {
+            Item: {
+              id: params.Key.id,
+              year: params.Key.year,
+              capac: 100
+            }
+          });
 
         // Id and year does not exist in our table
-        else callback(null, {
-          Item: null
-        });
+        else
+          callback(null, {
+            Item: null
+          });
       }
     });
 
     AWSMock.mock("DynamoDB.DocumentClient", "update", (params, callback) => {
       lastUpdateParams = params;
       // Check if an entry with the same id and year already exists in our table
-      if (params.Key.id && params.Key.year && existingEvents.some(key => key.id === params.Key.id && key.year === params.Key.year)) {
+      if (
+        params.Key.id &&
+        params.Key.year &&
+        existingEvents.some(
+          (key) => key.id === params.Key.id && key.year === params.Key.year
+        )
+      ) {
         callback(null, "successfully updated item in database");
-      }
-      else callback(new Error(""));
+      } else callback(new Error(""));
     });
   });
   after(() => {
@@ -73,8 +86,7 @@ describe("eventUpdate", () => {
 
   it("return 400 for trying to update an event with no id", async () => {
     const response = await wrapped.run({
-      pathParameters: {
-      }
+      pathParameters: {}
     });
     expect(response.statusCode).to.be.equal(400);
   });
@@ -117,7 +129,8 @@ describe("eventUpdate", () => {
       body: JSON.stringify(updatePayload)
     });
     expect(response.statusCode).to.be.equal(200);
-    expect(lastUpdateParams.ExpressionAttributeValues[":registrationFormKey"])
-      .to.equal(updatePayload.registrationFormKey);
+    expect(
+      lastUpdateParams.ExpressionAttributeValues[":registrationFormKey"]
+    ).to.equal(updatePayload.registrationFormKey);
   });
 });

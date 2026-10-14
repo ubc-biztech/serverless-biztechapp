@@ -2,12 +2,16 @@ import { v4 as uuidv4 } from "uuid";
 import {
   USER_REGISTRATIONS_TABLE,
   TEAMS_TABLE,
-  JUDGING_TABLE,
+  JUDGING_TABLE
 } from "../../constants/tables";
 import helpers from "../../lib/handlerHelpers.js";
 import db from "../../lib/db.js";
 import docClient from "../../lib/docClient.js";
-import { GetCommand, TransactWriteCommand, type TransactWriteCommandInput } from "@aws-sdk/lib-dynamodb";
+import {
+  GetCommand,
+  TransactWriteCommand,
+  type TransactWriteCommandInput
+} from "@aws-sdk/lib-dynamodb";
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
 import type {
   JudgeScore,
@@ -16,7 +20,7 @@ import type {
   NormalizedScore,
   ScoreAverage,
   TeamRecord,
-  TeamsHelpers,
+  TeamsHelpers
 } from "./types";
 
 /*
@@ -49,111 +53,236 @@ type JudgeRecord = {
 };
 
 export class ProductPlusTeamError extends Error {
-  constructor(public statusCode: number, message: string) { super(message); }
+  constructor(
+    public statusCode: number,
+    message: string
+  ) {
+    super(message);
+  }
 }
 
 const cleanupLambda = new LambdaClient({ maxAttempts: 2 });
 
 /** Product Plus alone requires atomic membership writes and empty-team deletion. */
-async function updateProductPlusMembership(memberID: string, eventKey: string, action: "join" | "leave", requestedTeamID?: string) {
+async function updateProductPlusMembership(
+  memberID: string,
+  eventKey: string,
+  action: "join" | "leave",
+  requestedTeamID?: string
+) {
   const suffix = process.env.ENVIRONMENT || "";
   const teamsTable = TEAMS_TABLE + suffix;
   const registrationsTable = USER_REGISTRATIONS_TABLE + suffix;
   try {
     for (let attempt = 0; attempt < 3; attempt++) {
-      const registrationKey = { id: memberID, "eventID;year": eventKey };
-      const registration = (await docClient.send(new GetCommand({
-        TableName: registrationsTable, Key: registrationKey, ConsistentRead: true
-      }))).Item as RegistrationRecord | undefined;
-      if (!registration) throw new ProductPlusTeamError(404, "Event registration is required.");
-      if (action === "join" && registration.registrationStatus?.toLowerCase() !== "checkedin") {
+      const registrationKey = { "id": memberID, "eventID;year": eventKey };
+      const registration = (
+        await docClient.send(
+          new GetCommand({
+            TableName: registrationsTable,
+            Key: registrationKey,
+            ConsistentRead: true
+          })
+        )
+      ).Item as RegistrationRecord | undefined;
+      if (!registration)
+        throw new ProductPlusTeamError(404, "Event registration is required.");
+      if (
+        action === "join" &&
+        registration.registrationStatus?.toLowerCase() !== "checkedin"
+      ) {
         throw new ProductPlusTeamError(403, "Check in before joining a team.");
       }
-      if (action === "join" && registration.teamID) throw new ProductPlusTeamError(400, "You are already on a team.");
+      if (action === "join" && registration.teamID)
+        throw new ProductPlusTeamError(400, "You are already on a team.");
       const teamID = action === "leave" ? registration.teamID : requestedTeamID;
-      if (!teamID) throw new ProductPlusTeamError(400, "Current team membership is required.");
-      const teamKey = { id: teamID, "eventID;year": eventKey };
-      const team = (await docClient.send(new GetCommand({
-        TableName: teamsTable, Key: teamKey, ConsistentRead: true
-      }))).Item as TeamRecord | undefined;
-      if (!team || !Array.isArray(team.memberIDs)) throw new ProductPlusTeamError(404, "Team does not exist.");
-      if (action === "leave" && !team.memberIDs.includes(memberID)) throw new ProductPlusTeamError(403, "Current team membership is required.");
-      if (action === "join" && team.memberIDs.includes(memberID)) throw new ProductPlusTeamError(400, "You are already on this team.");
-      const members = action === "join" ? [...team.memberIDs, memberID] : team.memberIDs.filter(id => id !== memberID);
+      if (!teamID)
+        throw new ProductPlusTeamError(
+          400,
+          "Current team membership is required."
+        );
+      const teamKey = { "id": teamID, "eventID;year": eventKey };
+      const team = (
+        await docClient.send(
+          new GetCommand({
+            TableName: teamsTable,
+            Key: teamKey,
+            ConsistentRead: true
+          })
+        )
+      ).Item as TeamRecord | undefined;
+      if (!team || !Array.isArray(team.memberIDs))
+        throw new ProductPlusTeamError(404, "Team does not exist.");
+      if (action === "leave" && !team.memberIDs.includes(memberID))
+        throw new ProductPlusTeamError(
+          403,
+          "Current team membership is required."
+        );
+      if (action === "join" && team.memberIDs.includes(memberID))
+        throw new ProductPlusTeamError(400, "You are already on this team.");
+      const members =
+        action === "join"
+          ? [...team.memberIDs, memberID]
+          : team.memberIDs.filter((id) => id !== memberID);
       const removeTeam = action === "leave" && members.length === 0;
-      if (removeTeam && (typeof team.team_code !== "string" || !/^\d{6}$/.test(team.team_code))) {
-        throw new ProductPlusTeamError(409, "The Product Plus team needs its six-digit code before deletion.");
+      if (
+        removeTeam &&
+        (typeof team.team_code !== "string" || !/^\d{6}$/.test(team.team_code))
+      ) {
+        throw new ProductPlusTeamError(
+          409,
+          "The Product Plus team needs its six-digit code before deletion."
+        );
       }
       const teamCondition = {
-        TableName: teamsTable, Key: teamKey,
-        ConditionExpression: "attribute_exists(id) AND #members = :before" + (removeTeam ? " AND team_code = :code" : ""),
+        TableName: teamsTable,
+        Key: teamKey,
+        ConditionExpression:
+          "attribute_exists(id) AND #members = :before" +
+          (removeTeam ? " AND team_code = :code" : ""),
         ExpressionAttributeNames: { "#members": "memberIDs" },
-        ExpressionAttributeValues: { ":before": team.memberIDs, ...(removeTeam ? { ":code": team.team_code } : {}) }
+        ExpressionAttributeValues: {
+          ":before": team.memberIDs,
+          ...(removeTeam ? { ":code": team.team_code } : {})
+        }
       };
-      const transaction: NonNullable<TransactWriteCommandInput["TransactItems"]> = [
-        removeTeam ? { Delete: teamCondition } : { Update: {
-          ...teamCondition, UpdateExpression: "SET #members = :after",
-          ExpressionAttributeValues: { ...teamCondition.ExpressionAttributeValues, ":after": members }
-        } },
-        { Update: {
-          TableName: registrationsTable, Key: registrationKey,
-          ConditionExpression: "attribute_exists(id) AND " +
-            (registration.teamID === undefined ? "attribute_not_exists(#team)" : "#team = :before") +
-            (action === "join" ? " AND registrationStatus = :status" : ""),
-          UpdateExpression: "SET #team = :after",
-          ExpressionAttributeNames: { "#team": "teamID" },
-          ExpressionAttributeValues: {
-            ":after": action === "join" ? teamID : "",
-            ...(registration.teamID === undefined ? {} : { ":before": registration.teamID }),
-            ...(action === "join" ? { ":status": registration.registrationStatus } : {})
+      const transaction: NonNullable<
+        TransactWriteCommandInput["TransactItems"]
+      > = [
+        removeTeam
+          ? { Delete: teamCondition }
+          : {
+              Update: {
+                ...teamCondition,
+                UpdateExpression: "SET #members = :after",
+                ExpressionAttributeValues: {
+                  ...teamCondition.ExpressionAttributeValues,
+                  ":after": members
+                }
+              }
+            },
+        {
+          Update: {
+            TableName: registrationsTable,
+            Key: registrationKey,
+            ConditionExpression:
+              "attribute_exists(id) AND " +
+              (registration.teamID === undefined
+                ? "attribute_not_exists(#team)"
+                : "#team = :before") +
+              (action === "join" ? " AND registrationStatus = :status" : ""),
+            UpdateExpression: "SET #team = :after",
+            ExpressionAttributeNames: { "#team": "teamID" },
+            ExpressionAttributeValues: {
+              ":after": action === "join" ? teamID : "",
+              ...(registration.teamID === undefined
+                ? {}
+                : { ":before": registration.teamID }),
+              ...(action === "join"
+                ? { ":status": registration.registrationStatus }
+                : {})
+            }
           }
-        } }
+        }
       ];
       try {
         // Conditional Update prevents a stale join from putting a deleted team back.
-        await docClient.send(new TransactWriteCommand({ TransactItems: transaction }));
+        await docClient.send(
+          new TransactWriteCommand({ TransactItems: transaction })
+        );
       } catch (error) {
-        if (error instanceof Error && (error.name === "TransactionConflictException" ||
-          (error.name === "TransactionCanceledException" && "CancellationReasons" in error &&
-            Array.isArray(error.CancellationReasons) && error.CancellationReasons.some(reason =>
-              ["ConditionalCheckFailed", "TransactionConflict"].includes(reason?.Code))))) continue;
+        if (
+          error instanceof Error &&
+          (error.name === "TransactionConflictException" ||
+            (error.name === "TransactionCanceledException" &&
+              "CancellationReasons" in error &&
+              Array.isArray(error.CancellationReasons) &&
+              error.CancellationReasons.some((reason) =>
+                ["ConditionalCheckFailed", "TransactionConflict"].includes(
+                  reason?.Code
+                )
+              )))
+        )
+          continue;
         // A transport timeout can happen after the atomic write committed.
         const [savedTeam, savedRegistration] = await Promise.all([
-          docClient.send(new GetCommand({ TableName: teamsTable, Key: teamKey, ConsistentRead: true })),
-          docClient.send(new GetCommand({ TableName: registrationsTable, Key: registrationKey, ConsistentRead: true }))
+          docClient.send(
+            new GetCommand({
+              TableName: teamsTable,
+              Key: teamKey,
+              ConsistentRead: true
+            })
+          ),
+          docClient.send(
+            new GetCommand({
+              TableName: registrationsTable,
+              Key: registrationKey,
+              ConsistentRead: true
+            })
+          )
         ]);
-        const committed = action === "join"
-          ? savedRegistration.Item?.teamID === teamID && savedTeam.Item?.memberIDs?.includes(memberID)
-          : savedRegistration.Item?.teamID === "" && (removeTeam ? !savedTeam.Item :
-            Array.isArray(savedTeam.Item?.memberIDs) && !savedTeam.Item.memberIDs.includes(memberID));
+        const committed =
+          action === "join"
+            ? savedRegistration.Item?.teamID === teamID &&
+              savedTeam.Item?.memberIDs?.includes(memberID)
+            : savedRegistration.Item?.teamID === "" &&
+              (removeTeam
+                ? !savedTeam.Item
+                : Array.isArray(savedTeam.Item?.memberIDs) &&
+                  !savedTeam.Item.memberIDs.includes(memberID));
         if (!committed) {
           console.error("Product Plus membership write needs recovery", {
-            event_key: eventKey, team_id: teamID, team_code: team.team_code,
+            event_key: eventKey,
+            team_id: teamID,
+            team_code: team.team_code,
             error: error instanceof Error ? error.name : "UnknownError"
           });
           throw error;
         }
       }
       if (removeTeam) {
-        const task = { internalTask: "team_deleted", payload: { event_key: eventKey, team_id: teamID, team_code: team.team_code } };
+        const task = {
+          internalTask: "team_deleted",
+          payload: {
+            event_key: eventKey,
+            team_id: teamID,
+            team_code: team.team_code
+          }
+        };
         try {
           const functionName = process.env.PRODUCTPLUS_CLEANUP_FUNCTION;
-          if (!functionName) throw new Error("Cleanup function is not configured.");
-          const result = await cleanupLambda.send(new InvokeCommand({
-            FunctionName: functionName, InvocationType: "Event", Payload: Buffer.from(JSON.stringify(task))
-          }));
-          if (result.StatusCode !== 202) throw new Error("Cleanup invocation was not accepted.");
+          if (!functionName)
+            throw new Error("Cleanup function is not configured.");
+          const result = await cleanupLambda.send(
+            new InvokeCommand({
+              FunctionName: functionName,
+              InvocationType: "Event",
+              Payload: Buffer.from(JSON.stringify(task))
+            })
+          );
+          if (result.StatusCode !== 202)
+            throw new Error("Cleanup invocation was not accepted.");
         } catch (error) {
           // Membership already committed. Log a replayable task without failing leave.
-          console.error("Product Plus team cleanup delivery failed", { task, error: error instanceof Error ? error.name : "UnknownError" });
+          console.error("Product Plus team cleanup delivery failed", {
+            task,
+            error: error instanceof Error ? error.name : "UnknownError"
+          });
         }
       }
-      return { success: true, message: action === "join" ? "Joined team." : "Left team.", memberIDs: members, teamName: team.teamName };
+      return {
+        success: true,
+        message: action === "join" ? "Joined team." : "Left team.",
+        memberIDs: members,
+        teamName: team.teamName
+      };
     }
     throw new ProductPlusTeamError(409, "Team membership changed. Try again.");
   } catch (error) {
     if (error instanceof ProductPlusTeamError) throw error;
-    console.error("Product Plus membership failed", { error: error instanceof Error ? error.name : "UnknownError" });
+    console.error("Product Plus membership failed", {
+      error: error instanceof Error ? error.name : "UnknownError"
+    });
     throw new ProductPlusTeamError(500, "Unable to update team membership.");
   }
 }
@@ -169,7 +298,7 @@ const teamHelpers: TeamsHelpers = {
     try {
       // Get the user registration for this event+year
       const res = (await db.getOne(userID, USER_REGISTRATIONS_TABLE, {
-        "eventID;year": eventID_year,
+        "eventID;year": eventID_year
       })) as RegistrationRecord | null;
 
       if (!res) {
@@ -183,14 +312,14 @@ const teamHelpers: TeamsHelpers = {
 
       // Fetch the team
       const team = (await db.getOne(teamID, TEAMS_TABLE, {
-        "eventID;year": eventID_year,
+        "eventID;year": eventID_year
       })) as TeamRecord;
 
       // List of member IDs
       const teamMemberKeys = team.memberIDs.map((id) => {
         return {
           id,
-          "eventID;year": eventID_year,
+          "eventID;year": eventID_year
         };
       });
       // Fetch member registration objects
@@ -198,14 +327,14 @@ const teamHelpers: TeamsHelpers = {
         USER_REGISTRATIONS_TABLE + (process.env.ENVIRONMENT || "");
       const batchResult = (await db.batchGet(
         teamMemberKeys,
-        registrationsTable,
+        registrationsTable
       )) as unknown as { Responses: Record<string, RegistrationRecord[]> };
       const teamMembers = batchResult.Responses[registrationsTable];
 
       // Extract names
       const teamMemberEmails = teamMembers.map((member) => member.id);
       const teamMemberNames = teamMembers.map(
-        (member) => member.fname ?? "Participant",
+        (member) => member.fname ?? "Participant"
       );
       team.memberIDs = teamMemberEmails;
       team.memberNames = teamMemberNames;
@@ -233,13 +362,13 @@ const teamHelpers: TeamsHelpers = {
 
             const judge = (await db.getOne(
               judgeID,
-              JUDGING_TABLE,
+              JUDGING_TABLE
             )) as JudgeRecord | null;
             if (!judge) {
               console.log(`Judge ${judgeID} not found, skipping.`);
               return {
                 judgeID,
-                status: "not found",
+                status: "not found"
               };
             }
             judge.currentTeam = teamID;
@@ -248,17 +377,17 @@ const teamHelpers: TeamsHelpers = {
             console.log(`Judge ${judgeID} updated to team ${teamID}`);
             return {
               judgeID,
-              status: "updated",
+              status: "updated"
             };
           } catch (err) {
             console.error(`Failed to update judge ${judgeID}:`, err);
             return {
               judgeID,
               status: "failed",
-              error: err instanceof Error ? err.message : String(err),
+              error: err instanceof Error ? err.message : String(err)
             };
           }
-        }),
+        })
       );
 
       console.log("All judges updated successfully:", updateResults);
@@ -266,7 +395,7 @@ const teamHelpers: TeamsHelpers = {
       return helpers.createResponse(200, {
         message: "Judges updated successfully",
         updatedJudges: judgeIDs,
-        newTeamID: teamID,
+        newTeamID: teamID
       });
     } catch (error) {
       console.error("Database update error:", error);
@@ -289,13 +418,13 @@ const teamHelpers: TeamsHelpers = {
     }
 
     const registration = (await db.getOne(memberID, USER_REGISTRATIONS_TABLE, {
-      "eventID;year": eventID_year,
+      "eventID;year": eventID_year
     })) as RegistrationRecord | null;
 
     if (!registration) {
       throw helpers.inputError(
         `User ${memberID} is not registered for event ${eventID_year}`,
-        404,
+        404
       );
     }
 
@@ -306,7 +435,7 @@ const teamHelpers: TeamsHelpers = {
     const team = await teamHelpers._getTeamFromUserRegistration(
       memberID,
       eventID,
-      year,
+      year
     );
     if (!team) {
       throw helpers.inputError(`Team not found for user ${memberID}`, 404);
@@ -324,69 +453,73 @@ const teamHelpers: TeamsHelpers = {
     const {
       updateExpression,
       expressionAttributeValues,
-      expressionAttributeNames,
+      expressionAttributeNames
     } = db.createUpdateExpression(registration);
 
     const updateParams = {
       Key: {
         id: registration.id,
-        ["eventID;year"]: eventID_year,
+        ["eventID;year"]: eventID_year
       },
-      TableName:
-        USER_REGISTRATIONS_TABLE + (process.env.ENVIRONMENT || ""),
+      TableName: USER_REGISTRATIONS_TABLE + (process.env.ENVIRONMENT || ""),
       ExpressionAttributeValues: expressionAttributeValues,
       ExpressionAttributeNames: {
         ...expressionAttributeNames,
-        "#eventIDYear": "eventID;year",
+        "#eventIDYear": "eventID;year"
       },
       UpdateExpression: updateExpression,
       ReturnValues: "UPDATED_NEW",
       ConditionExpression:
-        "attribute_exists(id) and attribute_exists(#eventIDYear)",
+        "attribute_exists(id) and attribute_exists(#eventIDYear)"
     };
 
     await db.updateDBCustom(updateParams);
 
     return {
       success: true,
-      message: `User ${memberID} has left the team.`,
+      message: `User ${memberID} has left the team.`
     };
   },
 
   async joinTeam(memberID, eventID, year, teamID) {
     const eventID_year = eventID + ";" + year;
     if (eventID_year === process.env.PRODUCTPLUS_EVENT_KEY) {
-      return updateProductPlusMembership(memberID, eventID_year, "join", teamID);
+      return updateProductPlusMembership(
+        memberID,
+        eventID_year,
+        "join",
+        teamID
+      );
     }
 
     const registration = (await db.getOne(memberID, USER_REGISTRATIONS_TABLE, {
-      "eventID;year": eventID_year,
+      "eventID;year": eventID_year
     })) as RegistrationRecord | null;
 
     if (!registration) {
       throw helpers.inputError(
         `User ${memberID} is not registered for event ${eventID_year}`,
-        403,
+        403
       );
     }
 
     if (registration.registrationStatus?.toLowerCase() !== "checkedin") {
       throw helpers.inputError(
         `User ${memberID} has not checked in for event ${eventID_year}`,
-        403,
+        403
       );
     }
 
     if ((registration.teamID?.length ?? 0) > 0) {
       throw helpers.inputError(
         `User ${memberID} is already in another team`,
-        400,
+        400
       );
     }
 
     // Get the team
     const team = (await db.getOne(teamID, TEAMS_TABLE, {
-      "eventID;year": eventID_year,
+      "eventID;year": eventID_year
     })) as TeamRecord | null;
 
     if (!team) {
@@ -397,7 +530,7 @@ const teamHelpers: TeamsHelpers = {
     if (team.memberIDs.includes(memberID)) {
       throw helpers.inputError(
         `User ${memberID} is already in team ${teamID}`,
-        400,
+        400
       );
     }
 
@@ -412,13 +545,13 @@ const teamHelpers: TeamsHelpers = {
     const {
       updateExpression,
       expressionAttributeValues,
-      expressionAttributeNames,
+      expressionAttributeNames
     } = db.createUpdateExpression(registration);
 
     const updateParams = {
       Key: {
         id: registration.id,
-        ["eventID;year"]: eventID_year,
+        ["eventID;year"]: eventID_year
       },
       TableName:
         USER_REGISTRATIONS_TABLE +
@@ -426,12 +559,12 @@ const teamHelpers: TeamsHelpers = {
       ExpressionAttributeValues: expressionAttributeValues,
       ExpressionAttributeNames: {
         ...expressionAttributeNames,
-        "#eventIDYear": "eventID;year",
+        "#eventIDYear": "eventID;year"
       },
       UpdateExpression: updateExpression,
       ReturnValues: "UPDATED_NEW",
       ConditionExpression:
-        "attribute_exists(id) and attribute_exists(#eventIDYear)",
+        "attribute_exists(id) and attribute_exists(#eventIDYear)"
     };
 
     await db.updateDBCustom(updateParams);
@@ -440,7 +573,7 @@ const teamHelpers: TeamsHelpers = {
       success: true,
       message: `User ${memberID} joined team ${team.teamName}`,
       memberIDs, // return list of members in the team
-      teamName: team.teamName, // return team name
+      teamName: team.teamName // return team name
     };
   },
 
@@ -458,7 +591,7 @@ const teamHelpers: TeamsHelpers = {
       // get user's registration
       await db
         .getOne(memberID, USER_REGISTRATIONS_TABLE, {
-          "eventID;year": eventID_year,
+          "eventID;year": eventID_year
         })
         .then((res) => {
           const registration = res as RegistrationRecord | null;
@@ -468,7 +601,7 @@ const teamHelpers: TeamsHelpers = {
                 memberID +
                 " is not registered for event " +
                 eventID_year,
-              403,
+              403
             );
           }
 
@@ -479,31 +612,31 @@ const teamHelpers: TeamsHelpers = {
                 memberID +
                 " is not checked in for event " +
                 eventID_year,
-              403,
+              403
             );
           }
 
           // disallow users from adding people already in other teams to their own team
           if ((registration.teamID?.length ?? 0) > 0) {
             throw helpers.inputError(
-              "User " + memberID + " is already registered to a team",
+              "User " + memberID + " is already registered to a team"
             );
           }
         });
     }
 
     const params: NewTeamRecord = {
-      id: uuidv4(),
-      teamName: team_name,
+      "id": uuidv4(),
+      "teamName": team_name,
       "eventID;year": eventID + ";" + year,
-      memberIDs: memberIDs,
-      scannedQRs: [],
-      points: 0,
-      pointsSpent: 0,
-      transactions: [],
-      inventory: [],
-      submission: "",
-      metadata: {},
+      "memberIDs": memberIDs,
+      "scannedQRs": [],
+      "points": 0,
+      "pointsSpent": 0,
+      "transactions": [],
+      "inventory": [],
+      "submission": "",
+      "metadata": {}
     };
 
     // HARDCODED FOR KICKSTART PURPOSES
@@ -521,7 +654,7 @@ const teamHelpers: TeamsHelpers = {
 
         // Get the user's registration
         const res = (await db.getOne(memberID, USER_REGISTRATIONS_TABLE, {
-          "eventID;year": eventID_year,
+          "eventID;year": eventID_year
         })) as RegistrationRecord;
 
         if (res.teamID) {
@@ -529,7 +662,7 @@ const teamHelpers: TeamsHelpers = {
           const team = await teamHelpers._getTeamFromUserRegistration(
             memberID,
             eventID,
-            year,
+            year
           );
           if (team) {
             team.memberIDs = team.memberIDs.filter((id) => id !== memberID);
@@ -544,13 +677,13 @@ const teamHelpers: TeamsHelpers = {
         const {
           updateExpression,
           expressionAttributeValues,
-          expressionAttributeNames,
+          expressionAttributeNames
         } = db.createUpdateExpression(res);
 
         let updateParams = {
           Key: {
             id: res.id,
-            ["eventID;year"]: eventID + ";" + year,
+            ["eventID;year"]: eventID + ";" + year
           },
           TableName:
             USER_REGISTRATIONS_TABLE +
@@ -558,11 +691,11 @@ const teamHelpers: TeamsHelpers = {
           ExpressionAttributeValues: expressionAttributeValues,
           ExpressionAttributeNames: {
             ...expressionAttributeNames,
-            "#eventIDYear": "eventID;year",
+            "#eventIDYear": "eventID;year"
           },
           UpdateExpression: updateExpression,
           ReturnValues: "UPDATED_NEW",
-          ConditionExpression: conditionExpression,
+          ConditionExpression: conditionExpression
         };
 
         await db.updateDBCustom(updateParams);
@@ -658,7 +791,7 @@ const teamHelpers: TeamsHelpers = {
         }
 
         const uniqueQuestions = questions.filter(
-          (question) => !team.scannedQRs.includes(question),
+          (question) => !team.scannedQRs.includes(question)
         ); // Only add new questions
 
         team.scannedQRs.push(...uniqueQuestions);
@@ -715,14 +848,14 @@ const teamHelpers: TeamsHelpers = {
             });
         });
       });
-  },
+  }
 };
 
 export default teamHelpers;
 
 export const normalizeScores = (
   scores: JudgeScore[],
-  scoreAvg: ScoreAverage,
+  scoreAvg: ScoreAverage
 ): NormalizedScore[] => {
   let normalizedScores: NormalizedScore[] = [];
   const count = scores.length;
@@ -757,7 +890,7 @@ export const normalizeScores = (
       metric3: s3N !== 0 ? (scores[i].metric3 - scoreAvg.metric3) / s3N : 0,
       metric4: s4N !== 0 ? (scores[i].metric4 - scoreAvg.metric4) / s4N : 0,
       metric5: s5N !== 0 ? (scores[i].metric5 - scoreAvg.metric5) / s5N : 0,
-      originalScores: scores,
+      originalScores: scores
     };
 
     normalizedScores.push(scoreObj);
@@ -769,14 +902,14 @@ export const normalizeScores = (
 // UNSAFE
 // doesn't account for length == 0 cause it will only be called on arrays > 0 length
 export const scoreObjectAverage = (
-  originalScores: JudgeScore[],
+  originalScores: JudgeScore[]
 ): ScoreAverage => {
   let scoreAvg: ScoreAverage = {
     metric1: 0,
     metric2: 0,
     metric3: 0,
     metric4: 0,
-    metric5: 0,
+    metric5: 0
   };
 
   for (let i = 0; i < originalScores.length; i++) {
@@ -802,14 +935,14 @@ export const scoreObjectAverageWeighted = (
   w2: number,
   w3: number,
   w4: number,
-  w5: number,
+  w5: number
 ): number => {
   let scoreAvg: ScoreAverage = {
     metric1: 0,
     metric2: 0,
     metric3: 0,
     metric4: 0,
-    metric5: 0,
+    metric5: 0
   };
 
   for (let i = 0; i < originalScores.length; i++) {

@@ -6,11 +6,13 @@ import AWSMock from "aws-sdk-mock";
 
 import mochaPlugin from "serverless-mocha-plugin";
 const expect = mochaPlugin.chai.expect;
-let wrapped = mochaPlugin.getWrapper("transactionCreate", "/handler.js", "create");
+let wrapped = mochaPlugin.getWrapper(
+  "transactionCreate",
+  "/handler.js",
+  "create"
+);
 
-import {
-  USERS_TABLE
-} from "../../../constants/tables";
+import { USERS_TABLE } from "../../../constants/tables";
 
 const transactionPayload = {
   userId: 77777777,
@@ -28,14 +30,16 @@ describe("transactionCreate", () => {
   before(() => {
     AWSMock.mock("DynamoDB.DocumentClient", "get", (params, callback) => {
       let returnValue = null;
-      if(params.TableName.includes(USERS_TABLE) && userCredits[params.Key.id] !== undefined) {
+      if (
+        params.TableName.includes(USERS_TABLE) &&
+        userCredits[params.Key.id] !== undefined
+      ) {
         // if searching for users
         returnValue = {
           id: params.Key.id,
           credits: userCredits[params.Key.id]
         };
-      }
-      else if(createdTransactionIds.includes(params.Key.id)) {
+      } else if (createdTransactionIds.includes(params.Key.id)) {
         // if searching for transactions
         returnValue = {
           ...transactionPayload,
@@ -48,7 +52,8 @@ describe("transactionCreate", () => {
     });
 
     AWSMock.mock("DynamoDB.DocumentClient", "put", (params, callback) => {
-      if(params.Item.id && createdTransactionIds.includes(params.Item.id)) callback("Transaction already exists!");
+      if (params.Item.id && createdTransactionIds.includes(params.Item.id))
+        callback("Transaction already exists!");
       else {
         createdTransactionIds.push(params.Item.id);
         callback(null, "Successfully put item in database");

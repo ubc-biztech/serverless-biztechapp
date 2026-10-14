@@ -8,7 +8,9 @@ import mochaPlugin from "serverless-mocha-plugin";
 const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper("eventGet", "/handler.ts", "get");
 import {
-  EVENTS_TABLE, USERS_TABLE, USER_REGISTRATIONS_TABLE
+  EVENTS_TABLE,
+  USERS_TABLE,
+  USER_REGISTRATIONS_TABLE
 } from "../../../constants/tables";
 
 import eventData from "./events.json";
@@ -19,10 +21,12 @@ const getEventResponse = {
 import getEventRegistrationResponse from "./eventRegistrations.json";
 
 describe("eventGet", () => {
-  const existingEvents = [{
-    id: "existingEvent1",
-    year: 2020
-  }];
+  const existingEvents = [
+    {
+      id: "existingEvent1",
+      year: 2020
+    }
+  ];
 
   before(() => {
     // Mocks the GET request to DyanmoDB
@@ -30,19 +34,26 @@ describe("eventGet", () => {
       // Check if the table exists first
       if (params.TableName.includes(EVENTS_TABLE)) {
         // Check if an entry with the same id and year already exists in our table
-        if (params.Key.id && params.Key.year && existingEvents.some(key => key.id === params.Key.id && key.year === params.Key.year)) callback(null, getEventResponse);
+        if (
+          params.Key.id &&
+          params.Key.year &&
+          existingEvents.some(
+            (key) => key.id === params.Key.id && key.year === params.Key.year
+          )
+        )
+          callback(null, getEventResponse);
 
         // Id and year does not exist in our table
-        else callback(null, {
-          Item: null
-        });
+        else
+          callback(null, {
+            Item: null
+          });
       }
     });
 
-
     // event counts from registration table
     AWSMock.mock("DynamoDB.DocumentClient", "scan", (params, callback) => {
-      if(params.TableName.includes(USER_REGISTRATIONS_TABLE)) {
+      if (params.TableName.includes(USER_REGISTRATIONS_TABLE)) {
         callback(null, getEventRegistrationResponse);
       }
     });
@@ -51,21 +62,24 @@ describe("eventGet", () => {
     AWSMock.mock("DynamoDB.DocumentClient", "batchGet", (params, callback) => {
       const tables = Object.keys(params.RequestItems);
 
-      if(tables.includes(USERS_TABLE)) {
+      if (tables.includes(USERS_TABLE)) {
         const table = tables[0];
         const response = {
-          Responses: {
-          }
+          Responses: {}
         };
 
         // return users here
-        response.Responses[table] = [{
-          id: 1
-        }, {
-          id: 2
-        }, {
-          id: 3
-        }];
+        response.Responses[table] = [
+          {
+            id: 1
+          },
+          {
+            id: 2
+          },
+          {
+            id: 3
+          }
+        ];
 
         callback(null, response);
       } else callback(new Error("error during batch get!"));
@@ -81,7 +95,7 @@ describe("eventGet", () => {
     const response = await wrapped.run({
       pathParameters: {
         id: unknownId,
-        year:validYear
+        year: validYear
       }
     });
     expect(response.statusCode).to.be.equal(404);
@@ -93,7 +107,7 @@ describe("eventGet", () => {
     const response = await wrapped.run({
       pathParameters: {
         id: validId,
-        year:unknownYear
+        year: unknownYear
       }
     });
     expect(response.statusCode).to.be.equal(404);
@@ -106,7 +120,7 @@ describe("eventGet", () => {
     const response = await wrapped.run({
       pathParameters: {
         id: validId,
-        year:validYear
+        year: validYear
       }
     });
     expect(response.statusCode).to.be.equal(200);

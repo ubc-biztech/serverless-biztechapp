@@ -23,20 +23,20 @@ describe("userDelete", () => {
   before(() => {
     AWSMock.mock("DynamoDB.DocumentClient", "get", (params, callback) => {
       let returnValue = null;
-      if(existingUsers.includes(params.Key.id)) returnValue = {
-        ...userPayload,
-        id: params.Key.id
-      };
+      if (existingUsers.includes(params.Key.id))
+        returnValue = {
+          ...userPayload,
+          id: params.Key.id
+        };
       callback(null, {
         Item: returnValue
       });
     });
 
     AWSMock.mock("DynamoDB.DocumentClient", "delete", (params, callback) => {
-      if(params.Key.id && existingUsers.includes(params.Key.id)) {
+      if (params.Key.id && existingUsers.includes(params.Key.id)) {
         callback(null, "successfully deleted item in database");
-      }
-      else callback("item not found in database");
+      } else callback("item not found in database");
     });
   });
 
@@ -46,8 +46,7 @@ describe("userDelete", () => {
 
   it("return 400 for trying to delete a user with no email", async () => {
     const response = await wrapped.run({
-      pathParameters: {
-      }
+      pathParameters: {}
     });
     expect(response.statusCode).to.be.equal(400);
   });

@@ -2,14 +2,14 @@ import {
   GetCommand,
   PutCommand,
   ScanCommand,
-  UpdateCommand,
+  UpdateCommand
 } from "@aws-sdk/lib-dynamodb";
 import {
   EVENTS_TABLE,
   QR_SCANS_RECORD,
   QRS_TABLE,
   TEAMS_TABLE,
-  USER_REGISTRATIONS_TABLE,
+  USER_REGISTRATIONS_TABLE
 } from "../../constants/tables.js";
 import docClient from "../../lib/docClient.js";
 import db from "../../lib/db.js";
@@ -54,10 +54,10 @@ type QrRecord = {
 const registrationHelpers = {
   async checkValidQR(
     id: string,
-    eventIDAndYear: string,
+    eventIDAndYear: string
   ): Promise<QrRecord | null> {
     const result = await db.getOne(id, QRS_TABLE, {
-      "eventID;year": eventIDAndYear,
+      "eventID;year": eventIDAndYear
     });
     return result as QrRecord | null;
   },
@@ -74,7 +74,7 @@ const registrationHelpers = {
     ) {
       throw res.notAcceptable(
         "Incorrect types for eventID and year in registration.updateHelper",
-        data,
+        data
       );
     }
 
@@ -82,7 +82,7 @@ const registrationHelpers = {
       if (qr === null) {
         throw res.send(403, {
           message: "Invalid QR code - not scannable for this BizTech event!",
-          data,
+          data
         });
       }
       if (negativePointsConfirmed === false && qr.points < 0) {
@@ -90,7 +90,7 @@ const registrationHelpers = {
           message:
             "Please confirm with the user that they want to redeem a negative point QR code.",
           data,
-          qr_points: qr.points,
+          qr_points: qr.points
         });
       }
       return this.createRedemption(
@@ -100,7 +100,7 @@ const registrationHelpers = {
         eventIDAndYear,
         qrCodeID,
         eventID,
-        year,
+        year
       );
     });
   },
@@ -112,21 +112,21 @@ const registrationHelpers = {
     eventIDAndYear: string,
     qrCodeID: string,
     eventID: string,
-    year: number,
+    year: number
   ) {
     try {
       const params = {
         FilterExpression: "#eventIDYear = :query",
         ExpressionAttributeNames: {
-          "#eventIDYear": "eventID;year",
+          "#eventIDYear": "eventID;year"
         },
         ExpressionAttributeValues: {
-          ":query": eventIDAndYear,
-        },
+          ":query": eventIDAndYear
+        }
       };
       const result = (await db.scan(
         USER_REGISTRATIONS_TABLE,
-        params,
+        params
       )) as UserRegistrationRecord[];
 
       try {
@@ -136,14 +136,14 @@ const registrationHelpers = {
           qr.type === "Partner" &&
           (await this.checkIfAlreadyScannedPartnerQR(
             userRegistration as UserRegistrationRecord,
-            eventIDAndYear,
+            eventIDAndYear
           ))
         ) {
           return {
             current_points: userRegistration!.points,
             redeemed_points: 0,
             redemption_type: "user",
-            qr_data: qr.data,
+            qr_data: qr.data
           };
         }
 
@@ -167,7 +167,7 @@ const registrationHelpers = {
               ? userRegistration!.points
               : 0,
             redeemed_points: -1,
-            redemption_type: "user",
+            redemption_type: "user"
           };
         }
 
@@ -183,15 +183,15 @@ const registrationHelpers = {
             USER_REGISTRATIONS_TABLE +
             (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
           Key: {
-            id: email,
-            "eventID;year": eventIDAndYear,
+            "id": email,
+            "eventID;year": eventIDAndYear
           },
           UpdateExpression: "set points = :points, scannedQRs = :scannedQRs",
           ExpressionAttributeValues: {
             ":points": userRegistration!.points,
-            ":scannedQRs": JSON.stringify(scannedQRs.concat(qrCodeID)),
+            ":scannedQRs": JSON.stringify(scannedQRs.concat(qrCodeID))
           },
-          ReturnValues: "UPDATED_NEW" as const,
+          ReturnValues: "UPDATED_NEW" as const
         };
 
         if (isEventsTeamEnabled) {
@@ -205,7 +205,7 @@ const registrationHelpers = {
                     "Team QR code already scanned and is not an unlimited scan QR code",
                   current_points: team.points,
                   redeemed_points: 0,
-                  redemption_type: "team",
+                  redemption_type: "team"
                 };
               }
               if (team.points + qr.points < 0) {
@@ -214,7 +214,7 @@ const registrationHelpers = {
                   current_points: team.points,
                   redeemed_points: -1,
                   redemption_type: "team",
-                  qr_points: qr.points,
+                  qr_points: qr.points
                 };
               }
 
@@ -229,11 +229,11 @@ const registrationHelpers = {
                   return {
                     current_points: teamPoints,
                     redeemed_points: qr.points,
-                    redemption_type: "team",
+                    redemption_type: "team"
                   };
-                },
+                }
               );
-            },
+            }
           );
         }
 
@@ -243,7 +243,7 @@ const registrationHelpers = {
             current_points: userRegistration!.points,
             redeemed_points: qr.points,
             redemption_type: "user",
-            qr_data: qr.data,
+            qr_data: qr.data
           }))
           .catch((error: unknown) => {
             console.error(error);
@@ -253,19 +253,19 @@ const registrationHelpers = {
                 ? userRegistration!.points
                 : 0,
               redeemed_points: -1,
-              redemption_type: "user",
+              redemption_type: "user"
             };
           });
         try {
           console.log("socketing");
           const ws = new WebSocket(
-            "wss://zx441lpsv8.execute-api.us-west-2.amazonaws.com/production/",
+            "wss://zx441lpsv8.execute-api.us-west-2.amazonaws.com/production/"
           );
           ws.onopen = () => {
             console.log("WebSocket connected");
             const message = {
               action: "sendmessage",
-              message: "leaderboard",
+              message: "leaderboard"
             };
             ws.send(JSON.stringify(message));
             console.log(`sent ${message.message}`);
@@ -281,7 +281,7 @@ const registrationHelpers = {
           errorMessage: error,
           current_points: 0,
           redeemed_points: -1,
-          redemption_type: "user",
+          redemption_type: "user"
         };
       }
     } catch (err: unknown) {
@@ -301,12 +301,12 @@ const registrationHelpers = {
   async _getTeamFromUserRegistration(
     userID: string,
     eventID: string,
-    year: number,
+    year: number
   ): Promise<TeamRecord | null> {
     const eventID_year = `${eventID};${year}`;
 
     const res = (await db.getOne(userID, USER_REGISTRATIONS_TABLE, {
-      "eventID;year": eventID_year,
+      "eventID;year": eventID_year
     })) as UserRegistrationRecord | null;
 
     const teamID = res?.teamID;
@@ -316,12 +316,11 @@ const registrationHelpers = {
 
     const params = {
       TableName:
-        TEAMS_TABLE +
-        (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
+        TEAMS_TABLE + (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
       Key: {
-        id: teamID,
-        "eventID;year": eventID_year,
-      },
+        "id": teamID,
+        "eventID;year": eventID_year
+      }
     };
 
     const data = await docClient.send(new GetCommand(params));
@@ -332,19 +331,19 @@ const registrationHelpers = {
     user_id: string,
     qr_code_id: string,
     eventID: string,
-    year: number,
+    year: number
   ): Promise<{ alreadyScanned: boolean; team: TeamRecord }> {
     return this._getTeamFromUserRegistration(user_id, eventID, year)
       .then((team) => {
         if (team === null) {
           throw new Error(
-            "This event is set to use teams, but the user is not on a team.",
+            "This event is set to use teams, but the user is not on a team."
           );
         }
 
         return {
           alreadyScanned: team.scannedQRs.includes(qr_code_id),
-          team,
+          team
         };
       })
       .catch((err: unknown) => {
@@ -363,7 +362,7 @@ const registrationHelpers = {
 
     return db
       .getOne(eventName, EVENTS_TABLE, {
-        year: y,
+        year: y
       })
       .then((res: Record<string, unknown> | null) => {
         if (res && Object.prototype.hasOwnProperty.call(res, "teamsEnabled")) {
@@ -380,7 +379,7 @@ const registrationHelpers = {
   async _addTeamQRScan(
     team: TeamRecord,
     qr_code_id: string,
-    points: number,
+    points: number
   ): Promise<number> {
     team.scannedQRs.push(qr_code_id);
 
@@ -404,7 +403,7 @@ const registrationHelpers = {
     const params = {
       TableName:
         TEAMS_TABLE + (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
-      Item: team as Record<string, unknown>,
+      Item: team as Record<string, unknown>
     };
 
     return docClient.send(new PutCommand(params)).then(() => team);
@@ -414,14 +413,14 @@ const registrationHelpers = {
     const scanRecord = {
       timestamp: new Date().getTime().toString(),
       qrCodeID,
-      userID,
+      userID
     };
     await db.create(scanRecord, QR_SCANS_RECORD);
   },
 
   async checkIfAlreadyScannedPartnerQR(
     userRegistration: UserRegistrationRecord,
-    eventIDAndYear: string,
+    eventIDAndYear: string
   ): Promise<boolean> {
     if (!userRegistration.scannedQRs) {
       return false;
@@ -434,11 +433,11 @@ const registrationHelpers = {
         QRS_TABLE + (process.env.ENVIRONMENT ? process.env.ENVIRONMENT : ""),
       FilterExpression: "#eventIDYear = :query",
       ExpressionAttributeNames: {
-        "#eventIDYear": "eventID;year",
+        "#eventIDYear": "eventID;year"
       },
       ExpressionAttributeValues: {
-        ":query": eventIDAndYear,
-      },
+        ":query": eventIDAndYear
+      }
     };
 
     const scanOut = await docClient.send(new ScanCommand(params));
@@ -456,7 +455,7 @@ const registrationHelpers = {
       }
     }
     return false;
-  },
+  }
 };
 
 export default registrationHelpers;

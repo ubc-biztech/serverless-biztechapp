@@ -1,8 +1,6 @@
 import db from "../lib/db.js";
 import docClient from "../lib/docClient.js";
-import {
-  USER_REGISTRATIONS_TABLE
-} from "../constants/tables.js";
+import { USER_REGISTRATIONS_TABLE } from "../constants/tables.js";
 import * as fs from "fs";
 import csv from "csv-parser";
 
@@ -20,19 +18,23 @@ let registrationData = {
     companyName: "",
     role: ""
   },
-  dynamicResponses: {
-  }
+  dynamicResponses: {}
 };
 
 let googleFormToDevForm = {
   "What is your confirmed role?": "e79bd73c-9b27-424c-af0d-ed5b2b170675",
   "LinkedIn URL": "96d4e60e-6832-4f9f-b127-ecf734cbb05f",
   "Headshot": "4026ffed-9f12-4519-8e53-11720b5cfaae",
-  "Do you have any dietary restrictions?": "12596ae4-98ad-4ed0-9b62-1d40aecb2e4a",
-  "Please indicate any accessibility/mobility needs below": "75f50fe7-e2b3-4e56-84db-a8e923756c23",
-  "What is your area of expertise? Example : UX Research, Venture Capital, Project Management": "647f5bd4-d8b8-47fc-a016-b00c6ab8afd7",
-  "Is there anything else that you'd like us to be aware of?": "dfe5b2e4-28f8-4f0f-b934-1f2a79a16060",
-  "[For Panelists & Workshop Hosts] Brief biography of current and/or past work experience, professional interests, etc. (3-4 sentences)": "9917f8fe-29c8-4a8b-8124-afc72425ba8c",
+  "Do you have any dietary restrictions?":
+    "12596ae4-98ad-4ed0-9b62-1d40aecb2e4a",
+  "Please indicate any accessibility/mobility needs below":
+    "75f50fe7-e2b3-4e56-84db-a8e923756c23",
+  "What is your area of expertise? Example : UX Research, Venture Capital, Project Management":
+    "647f5bd4-d8b8-47fc-a016-b00c6ab8afd7",
+  "Is there anything else that you'd like us to be aware of?":
+    "dfe5b2e4-28f8-4f0f-b934-1f2a79a16060",
+  "[For Panelists & Workshop Hosts] Brief biography of current and/or past work experience, professional interests, etc. (3-4 sentences)":
+    "9917f8fe-29c8-4a8b-8124-afc72425ba8c",
   "Company Name": "aca15284-fd6c-4f9e-a083-f03bacbccc86",
   "Skills": "dff0b50a-0552-4f6c-a1ed-c9eeac11bb63"
 };
@@ -91,12 +93,15 @@ const readCSV = async (csvFilePath) => {
         .pipe(csv())
         .on("headers", (headers) => {
           // Trim spaces from headers
-          csvHeader = headers.map(header => header.trim());
+          csvHeader = headers.map((header) => header.trim());
         })
         .on("data", (row) => {
           // Trim spaces from key values in the data
           const cleanedRow = Object.fromEntries(
-            Object.entries(row).map(([key, value]) => [key.trim(), value.trim()])
+            Object.entries(row).map(([key, value]) => [
+              key.trim(),
+              value.trim()
+            ])
           );
           csvData.push(cleanedRow);
         })
@@ -112,7 +117,6 @@ const readCSV = async (csvFilePath) => {
     processCSV(csvFilePath);
   });
 };
-
 
 const removeDefaultKeys = (data) => {
   const formResponse = data;
@@ -200,7 +204,6 @@ const migrate = async (id, year) => {
 };
 
 migrate("blueprint", 2024);
-
 
 /*
 [

@@ -2,35 +2,27 @@
 
 const mochaPlugin = require("serverless-mocha-plugin");
 const expect = mochaPlugin.chai.expect;
-const {
-  mockClient
-} = require("aws-sdk-client-mock");
+const { mockClient } = require("aws-sdk-client-mock");
 const {
   DynamoDBDocumentClient,
   GetCommand,
   UpdateCommand,
-  ScanCommand,
+  ScanCommand
 } = require("@aws-sdk/lib-dynamodb");
-const {
-  SNSClient, PublishCommand
-} = require("@aws-sdk/client-sns");
-const {
-  SESClient
-} = require("@aws-sdk/client-ses");
+const { SNSClient, PublishCommand } = require("@aws-sdk/client-sns");
+const { SESClient } = require("@aws-sdk/client-ses");
 const {
   EVENTS_TABLE,
   MEMBERS_TABLE,
   USERS_TABLE,
-  USER_REGISTRATIONS_TABLE,
+  USER_REGISTRATIONS_TABLE
 } = require("../../../constants/tables");
 const sinon = require("sinon");
 const nodemailer = require("nodemailer");
 
 const SESEmailService = require("../EmailService/SESEmailService").default;
 
-const {
-  sendSNSNotification
-} = require("../../../lib/snsHelper");
+const { sendSNSNotification } = require("../../../lib/snsHelper");
 
 const registrationHelpers = require("../helpers").default;
 
@@ -46,7 +38,7 @@ const userResponse = {
   fname: "Test",
   lname: "User",
   faculty: "Science",
-  email: email,
+  email: email
 };
 
 const eventResponse = {
@@ -60,7 +52,7 @@ const eventResponse = {
   startDate: "2024-02-09T05:55:11.131Z",
   endDate: "2024-02-09T05:55:11.131Z",
   imageUrl: "https://example.com/image.jpg",
-  updatedAt: 1581227718674,
+  updatedAt: 1581227718674
 };
 
 const registrationsResponse = [
@@ -69,15 +61,15 @@ const registrationsResponse = [
     eventID: "event",
     year: 2020,
     updatedAt: 1600669844493,
-    registrationStatus: "registered",
+    registrationStatus: "registered"
   },
   {
     email: email2,
     eventID: "event",
     year: 2020,
     updatedAt: 1600669844493,
-    registrationStatus: "registered",
-  },
+    registrationStatus: "registered"
+  }
 ];
 
 describe("registrationPut", () => {
@@ -102,8 +94,8 @@ describe("registrationPut", () => {
       // Stub nodemailer to avoid real SES calls
       sinon.stub(nodemailer, "createTransport").returns({
         sendMail: sinon.stub().resolves({
-          messageId: "mock-email-id",
-        }),
+          messageId: "mock-email-id"
+        })
       });
 
       // Stub SESEmailService methods
@@ -163,16 +155,16 @@ describe("registrationPut", () => {
         }
         return {
           Attributes: {
-            message: "Updated!",
-          },
+            message: "Updated!"
+          }
         };
       });
 
       snsMock.on(PublishCommand).resolves({
         MessageId: "mock-sns-id",
         $metadata: {
-          httpStatusCode: 200,
-        },
+          httpStatusCode: 200
+        }
       });
 
       sinon.stub(registrationHelpers, "getEventCounts").callsFake(async () => {
@@ -262,7 +254,7 @@ describe("registrationPut", () => {
     expect(response.statusCode).to.equal(404);
   });
 
-  // TODO - We shouldn't be able to update registrations for unknown users, otherwise it's just POST. 
+  // TODO - We shouldn't be able to update registrations for unknown users, otherwise it's just POST.
   //  More investigation needed.
   xit("should return 404 when unknown user is provided", async () => {
     const response = await wrapped.run({

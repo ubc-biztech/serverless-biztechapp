@@ -1,5 +1,5 @@
 {
-    "ENVIRONMENT": "",
-    "REQUIRE_API_KEY": false,
-    "PRODUCTPLUS_PRD_BUCKET": "biztech-pp-prd"
+  "ENVIRONMENT": "",
+  "REQUIRE_API_KEY": false,
+  "PRODUCTPLUS_PRD_BUCKET": "biztech-pp-prd"
 }

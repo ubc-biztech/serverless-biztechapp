@@ -14,8 +14,9 @@ const mocks = {
     export const createProfile = async () => ({ statusCode: 201 });
   `,
   "human-id": "export const humanId = () => 'test-profile';",
-  "@aws-sdk/client-s3": "export class S3Client {} export class PutObjectCommand {}",
-  "@aws-sdk/s3-request-presigner": "export const getSignedUrl = () => {};",
+  "@aws-sdk/client-s3":
+    "export class S3Client {} export class PutObjectCommand {}",
+  "@aws-sdk/s3-request-presigner": "export const getSignedUrl = () => {};"
 };
 const bundle = await build({
   entryPoints: [fileURLToPath(new URL("../handler.js", import.meta.url))],
@@ -23,14 +24,19 @@ const bundle = await build({
   write: false,
   platform: "node",
   format: "cjs",
-  plugins: [{
-    name: "isolated-infrastructure",
-    setup(build) {
-      build.onResolve({ filter: /.*/ }, ({ path }) =>
-        Object.hasOwn(mocks, path) ? { path, namespace: "mock" } : undefined);
-      build.onLoad({ filter: /.*/, namespace: "mock" }, ({ path }) => ({ contents: mocks[path] }));
-    },
-  }],
+  plugins: [
+    {
+      name: "isolated-infrastructure",
+      setup(build) {
+        build.onResolve({ filter: /.*/ }, ({ path }) =>
+          Object.hasOwn(mocks, path) ? { path, namespace: "mock" } : undefined
+        );
+        build.onLoad({ filter: /.*/, namespace: "mock" }, ({ path }) => ({
+          contents: mocks[path]
+        }));
+      }
+    }
+  ]
 });
 
 async function submit(education, studentNumber, existingProfile = true) {
@@ -38,28 +44,50 @@ async function submit(education, studentNumber, existingProfile = true) {
   const db = {
     async updateDB(id, data) {
       writes.push(data);
-      return { Attributes: existingProfile ? { profileID: "test-profile" } : {} };
-    },
+      return {
+        Attributes: existingProfile ? { profileID: "test-profile" } : {}
+      };
+    }
   };
   const context = vm.createContext({
-    module: { exports: {} }, process: { env: {} }, console: { error() {} },
-    infrastructure: { db },
+    module: { exports: {} },
+    process: { env: {} },
+    console: { error() {} },
+    infrastructure: { db }
   });
   vm.runInContext(bundle.outputFiles[0].text, context);
   const response = await context.module.exports.create({
-    requestContext: { authorizer: { claims: { email: "applicant@example.com" } } },
+    requestContext: {
+      authorizer: { claims: { email: "applicant@example.com" } }
+    },
     body: JSON.stringify({
-      firstName: "Test", lastName: "Applicant", education, studentNumber,
-      pronouns: "They/Them", levelOfStudy: "1st Year", faculty: "Science",
-      major: "CS", internationalStudent: "No", previousMember: "No",
-      dietaryRestrictions: "None", referral: "Website", topics: [],
-    }),
+      firstName: "Test",
+      lastName: "Applicant",
+      education,
+      studentNumber,
+      pronouns: "They/Them",
+      levelOfStudy: "1st Year",
+      faculty: "Science",
+      major: "CS",
+      internationalStudent: "No",
+      previousMember: "No",
+      dietaryRestrictions: "None",
+      referral: "Website",
+      topics: []
+    })
   });
   return { response, writes };
 }
 
 for (const education of ["UBC", "UNI", "NA"]) {
-  for (const studentNumber of [undefined, "", "   ", "123", "00123456", " 12345678 "]) {
+  for (const studentNumber of [
+    undefined,
+    "",
+    "   ",
+    "123",
+    "00123456",
+    " 12345678 "
+  ]) {
     test(`${education} accepts student number ${JSON.stringify(studentNumber)}`, async () => {
       const { response, writes } = await submit(education, studentNumber);
       assert.equal(response.statusCode, 200);

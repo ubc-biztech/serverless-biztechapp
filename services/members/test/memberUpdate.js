@@ -16,7 +16,7 @@ const testEntry = {
   prevMember: "yes",
   international: "yes",
   topics: "Cyber Security, Careers in the Tech Industry",
-  heardFrom: "Instagram",
+  heardFrom: "Instagram"
 };
 
 describe("memberUpdate", () => {
@@ -28,7 +28,7 @@ describe("memberUpdate", () => {
       if (existingMemberIds.includes(params.Key.id))
         returnValue = {
           ...testEntry,
-          id: params.Key.id,
+          id: params.Key.id
         };
       callback(null, {
         Item: returnValue
@@ -39,9 +39,11 @@ describe("memberUpdate", () => {
       "DynamoDB.DocumentClient",
       "update",
       function (params, callback) {
-        Promise.resolve(callback(null, {
-          Item: "not null user"
-        }));
+        Promise.resolve(
+          callback(null, {
+            Item: "not null user"
+          })
+        );
       }
     );
   });
@@ -57,7 +59,7 @@ describe("memberUpdate", () => {
       body: JSON.stringify(testEntry),
       pathParameters: {
         email: badEmail
-      },
+      }
     });
     expect(response.statusCode).to.equal(406);
   });
@@ -69,7 +71,7 @@ describe("memberUpdate", () => {
       body: JSON.stringify(testEntry),
       pathParameters: {
         email: unknownEmail
-      },
+      }
     });
     expect(response.statusCode).to.equal(404);
   });
@@ -79,7 +81,7 @@ describe("memberUpdate", () => {
       body: JSON.stringify(testEntry),
       pathParameters: {
         email
-      },
+      }
     });
     expect(response.statusCode).to.equal(200);
   });

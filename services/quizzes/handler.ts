@@ -1,18 +1,22 @@
 import { PROFILES_TABLE, QUIZZES_TABLE } from "../../constants/tables.js";
 import db from "../../lib/db.js";
 import helpers from "../../lib/handlerHelpers";
-import type { APIGatewayEvent, LambdaCallback, LambdaContext } from "../../lib/types";
+import type {
+  APIGatewayEvent,
+  LambdaCallback,
+  LambdaContext
+} from "../../lib/types";
 import { TYPES } from "../profiles/constants.js";
 import {
   calculateAverage,
   generateMBTI,
-  validateQuestionScores,
+  validateQuestionScores
 } from "./helpers";
 
 export const upload = async (
   event: APIGatewayEvent,
   _ctx: LambdaContext,
-  _callback: LambdaCallback,
+  _callback: LambdaCallback
 ) => {
   try {
     const data = JSON.parse(event.body as string) as Record<string, unknown>;
@@ -20,24 +24,24 @@ export const upload = async (
     helpers.checkPayloadProps(data, {
       id: {
         required: true,
-        type: "string",
+        type: "string"
       },
       domain: {
         required: true,
-        type: "object",
+        type: "object"
       },
       mode: {
         required: true,
-        type: "object",
+        type: "object"
       },
       environment: {
         required: true,
-        type: "object",
+        type: "object"
       },
       focus: {
         required: true,
-        type: "object",
-      },
+        type: "object"
+      }
     });
 
     const domainAvg = validateQuestionScores(data.domain)
@@ -67,12 +71,12 @@ export const upload = async (
       TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
       Key: {
         compositeID: `PROFILE#${data.id as string}`,
-        type: TYPES.PROFILE,
-      },
+        type: TYPES.PROFILE
+      }
     });
 
     const entry = await db.getOne(data.id as string, QUIZZES_TABLE, {
-      "eventID;year": "blueprint;2026",
+      "eventID;year": "blueprint;2026"
     });
     const exists = !!entry;
 
@@ -85,7 +89,7 @@ export const upload = async (
       modeAvg,
       environmentAvg,
       focusAvg,
-      mbti,
+      mbti
     };
 
     await db.put(dbEntry, QUIZZES_TABLE, !exists);
@@ -94,21 +98,21 @@ export const upload = async (
       TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
       Key: {
         compositeID: "PROFILE#" + data.id,
-        type: "PROFILE",
+        type: "PROFILE"
       },
       UpdateExpression: "SET mbti = :mbti",
       ExpressionAttributeValues: {
-        ":mbti": mbti,
+        ":mbti": mbti
       },
-      ConditionExpression: "attribute_exists(compositeID)",
+      ConditionExpression: "attribute_exists(compositeID)"
     });
 
     return helpers.createResponse(200, {
-      message: "Upload successful",
+      message: "Upload successful"
     });
   } catch (_error: unknown) {
     return helpers.createResponse(500, {
-      message: "Internal Server Error",
+      message: "Internal Server Error"
     });
   }
 };
@@ -116,33 +120,33 @@ export const upload = async (
 export const report = async (
   event: APIGatewayEvent,
   _ctx: LambdaContext,
-  _callback: LambdaCallback,
+  _callback: LambdaCallback
 ) => {
   try {
     if (!event.pathParameters || !event.pathParameters.profile_id) {
       return helpers.createResponse(400, {
-        message: "Missing profile_id path parameter",
+        message: "Missing profile_id path parameter"
       });
     }
 
     const profileID = event.pathParameters.profile_id;
 
     const entry = await db.getOne(profileID, QUIZZES_TABLE, {
-      "eventID;year": "blueprint;2026",
+      "eventID;year": "blueprint;2026"
     });
 
     if (!entry) {
       return helpers.createResponse(404, {
-        message: "Quiz report not found",
+        message: "Quiz report not found"
       });
     }
 
     return helpers.createResponse(200, {
-      data: entry,
+      data: entry
     });
   } catch (_error: unknown) {
     return helpers.createResponse(500, {
-      message: "Internal Server Error",
+      message: "Internal Server Error"
     });
   }
 };
@@ -150,7 +154,7 @@ export const report = async (
 export const all = async (
   event: APIGatewayEvent,
   _ctx: LambdaContext,
-  _callback: LambdaCallback,
+  _callback: LambdaCallback
 ) => {
   try {
     let eventAndYear = "blueprint;2026";
@@ -162,11 +166,11 @@ export const all = async (
     const keyCondition = {
       expression: "#eventIDYear = :query",
       expressionNames: {
-        "#eventIDYear": "eventID;year",
+        "#eventIDYear": "eventID;year"
       },
       expressionValues: {
-        ":query": eventAndYear,
-      },
+        ":query": eventAndYear
+      }
     };
 
     const quizzes = await db.query(QUIZZES_TABLE, "event-query", keyCondition);
@@ -174,7 +178,7 @@ export const all = async (
     return helpers.createResponse(200, quizzes);
   } catch (_error: unknown) {
     return helpers.createResponse(500, {
-      message: "Internal Server Error",
+      message: "Internal Server Error"
     });
   }
 };
@@ -182,7 +186,7 @@ export const all = async (
 export const aggregate = async (
   event: APIGatewayEvent,
   _ctx: LambdaContext,
-  _callback: LambdaCallback,
+  _callback: LambdaCallback
 ) => {
   try {
     let eventAndYear = "blueprint;2026";
@@ -194,11 +198,11 @@ export const aggregate = async (
     const keyCondition = {
       expression: "#eventIDYear = :query",
       expressionNames: {
-        "#eventIDYear": "eventID;year",
+        "#eventIDYear": "eventID;year"
       },
       expressionValues: {
-        ":query": eventAndYear,
-      },
+        ":query": eventAndYear
+      }
     };
 
     const quizzes = await db.query(QUIZZES_TABLE, "event-query", keyCondition);
@@ -209,8 +213,8 @@ export const aggregate = async (
         data: {
           totalResponses: 0,
           averages: null,
-          mbtiCount: {},
-        },
+          mbtiCount: {}
+        }
       });
     }
 
@@ -220,7 +224,7 @@ export const aggregate = async (
       domainAvg: 0,
       modeAvg: 0,
       environmentAvg: 0,
-      focusAvg: 0,
+      focusAvg: 0
     };
 
     const mbtiCount: Record<string, number> = {};
@@ -239,7 +243,7 @@ export const aggregate = async (
       domainAvg: totals.domainAvg / count,
       modeAvg: totals.modeAvg / count,
       environmentAvg: totals.environmentAvg / count,
-      focusAvg: totals.focusAvg / count,
+      focusAvg: totals.focusAvg / count
     };
 
     return helpers.createResponse(200, {
@@ -247,13 +251,13 @@ export const aggregate = async (
       data: {
         totalResponses: count,
         averages,
-        mbtiCount,
-      },
+        mbtiCount
+      }
     });
   } catch (error: unknown) {
     console.error(error);
     return helpers.createResponse(500, {
-      message: "Internal Server Error",
+      message: "Internal Server Error"
     });
   }
 };
@@ -261,7 +265,7 @@ export const aggregate = async (
 export const wrapped = async (
   event: APIGatewayEvent,
   _ctx: LambdaContext,
-  _callback: LambdaCallback,
+  _callback: LambdaCallback
 ) => {
   try {
     const data = JSON.parse(event.body as string) as Record<string, unknown>;
@@ -269,8 +273,8 @@ export const wrapped = async (
     helpers.checkPayloadProps(data, {
       mbti: {
         required: true,
-        type: "string",
-      },
+        type: "string"
+      }
     });
 
     let eventAndYear = "blueprint;2026";
@@ -282,11 +286,11 @@ export const wrapped = async (
     const keyCondition = {
       expression: "#eventIDYear = :query",
       expressionNames: {
-        "#eventIDYear": "eventID;year",
+        "#eventIDYear": "eventID;year"
       },
       expressionValues: {
-        ":query": eventAndYear,
-      },
+        ":query": eventAndYear
+      }
     };
 
     const quizzes = await db.query(QUIZZES_TABLE, "event-query", keyCondition);
@@ -296,11 +300,11 @@ export const wrapped = async (
 
     return helpers.createResponse(200, {
       totalResponses,
-      totalWithMbtiCount,
+      totalWithMbtiCount
     });
   } catch (_error: unknown) {
     return helpers.createResponse(500, {
-      message: "Internal Server Error",
+      message: "Internal Server Error"
     });
   }
 };
@@ -308,7 +312,7 @@ export const wrapped = async (
 export const perMbti = async (
   event: APIGatewayEvent,
   _ctx: LambdaContext,
-  _callback: LambdaCallback,
+  _callback: LambdaCallback
 ) => {
   try {
     if (!event.pathParameters || !event.pathParameters.mbti) {
@@ -320,25 +324,25 @@ export const perMbti = async (
     const keyCondition = {
       expression: "#mbti = :query",
       expressionNames: {
-        "#mbti": "mbti",
+        "#mbti": "mbti"
       },
       expressionValues: {
-        ":query": mbti,
-      },
+        ":query": mbti
+      }
     };
 
     const mbtiQuizzes = await db.query(
       QUIZZES_TABLE,
       "mbti-query",
-      keyCondition,
+      keyCondition
     );
 
     return helpers.createResponse(200, {
-      [`mbtiQuizzes-${mbti}`]: mbtiQuizzes,
+      [`mbtiQuizzes-${mbti}`]: mbtiQuizzes
     });
   } catch (_error: unknown) {
     return helpers.createResponse(500, {
-      message: "Internal Server Error",
+      message: "Internal Server Error"
     });
   }
 };

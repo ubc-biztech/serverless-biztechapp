@@ -525,7 +525,9 @@ export async function runLeaderboardCommand() {
         score: Number(row.score || 0)
       }))
       .filter((row) => row.username)
-      .sort((a, b) => b.score - a.score || a.username.localeCompare(b.username));
+      .sort(
+        (a, b) => b.score - a.score || a.username.localeCompare(b.username)
+      );
 
     if (!leaderboard.length) {
       return {

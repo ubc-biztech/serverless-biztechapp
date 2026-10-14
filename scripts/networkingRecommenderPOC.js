@@ -59,12 +59,14 @@ async function extractTextFromPDF(pdfBuffer) {
 
 function normalizer(text) {
   if (!text) return "";
-  return text
-    // eslint-disable-next-line no-control-regex
-    .replace(/[\x00-\x1F\x7F-\x9F]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .substring(0, 10000); // text cap
+  return (
+    text
+      // eslint-disable-next-line no-control-regex
+      .replace(/[\x00-\x1F\x7F-\x9F]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .substring(0, 10000)
+  ); // text cap
 }
 
 async function parseResume(resumeURL) {
@@ -114,7 +116,8 @@ async function parseRegistrationsToProfiles(registrations) {
       name: `${registration.basicInformation.fname} ${registration.basicInformation.lname}`,
       companiesWorkedAt: responses[BLUEPRINT_RESPONSE_MAP.experience] || "",
       rolesInterested: responses[BLUEPRINT_RESPONSE_MAP.interested_roles] || "",
-      industriesInterested: responses[BLUEPRINT_RESPONSE_MAP.interested_industries] || "",
+      industriesInterested:
+        responses[BLUEPRINT_RESPONSE_MAP.interested_industries] || "",
       resumeText
     });
   }
@@ -124,40 +127,49 @@ async function parseRegistrationsToProfiles(registrations) {
 async function cleanWithLLM(text) {
   if (!text || text.length < 10) return text;
 
-  const systemInstructions = "You are a JSON-only API. Extract exactly 30 keywords from the resume focusing on companies, skills, technologies, and interests. Respond with ONLY valid JSON array format: [\"keyword1\",\"keyword2\",...]. NO markdown, NO explanations, NO code blocks, NO extra text.";
+  const systemInstructions =
+    "You are a JSON-only API. Extract exactly 30 keywords from the resume focusing on companies, skills, technologies, and interests. Respond with ONLY valid JSON array format: [\"keyword1\",\"keyword2\",...]. NO markdown, NO explanations, NO code blocks, NO extra text.";
 
   try {
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.GROQ_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
-        messages: [
-          {
-            role: "system",
-            content: systemInstructions
-          },
-          {
-            role: "user",
-            content: text
-          }
-        ],
-        temperature: 0
-      })
-    });
+    const response = await fetch(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.GROQ_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "llama-3.1-8b-instant",
+          messages: [
+            {
+              role: "system",
+              content: systemInstructions
+            },
+            {
+              role: "user",
+              content: text
+            }
+          ],
+          temperature: 0
+        })
+      }
+    );
 
     if (!response.ok) {
-      console.error(`Groq API failed: ${response.status} ${response.statusText}`);
+      console.error(
+        `Groq API failed: ${response.status} ${response.statusText}`
+      );
       return "";
     }
 
     const data = await response.json();
     let content = data.choices?.[0]?.message?.content || "";
 
-    content = content.replace(/```json/g, "").replace(/```/g, "").trim();
+    content = content
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
 
     const jsonMatch = content.match(/\[[\s\S]*\]|\{[\s\S]*\}/);
     if (!jsonMatch) {
@@ -166,7 +178,7 @@ async function cleanWithLLM(text) {
     }
 
     const parsed = JSON.parse(jsonMatch[0]);
-    const keywords = Array.isArray(parsed) ? parsed : (parsed.keywords || []);
+    const keywords = Array.isArray(parsed) ? parsed : parsed.keywords || [];
     return keywords.join(", ");
   } catch (e) {
     console.error("LLM error:", e.message);
@@ -176,8 +188,8 @@ async function cleanWithLLM(text) {
 
 async function run(eventID, year) {
   const allProfiles = await fetchProfiles(String(eventID), String(year));
-  const checkedIn = (allProfiles.Items || []).filter(r =>
-    r.registrationStatus?.toLowerCase() === "checkedin"
+  const checkedIn = (allProfiles.Items || []).filter(
+    (r) => r.registrationStatus?.toLowerCase() === "checkedin"
   );
 
   console.log(`Found ${checkedIn.length} checked-in users.`);
@@ -194,4 +206,3 @@ async function run(eventID, year) {
 }
 
 run("blueprint", 2026).catch(console.error);
-

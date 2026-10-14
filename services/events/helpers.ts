@@ -1,17 +1,25 @@
 import { v4 as uuidv4 } from "uuid";
 import helpers from "../../lib/handlerHelpers";
 import registrationHelpers from "../registrations/helpers.js";
-import type {
-  RegistrationQuestion,
-  RegistrationQuestionWithId,
-} from "./types";
+import type { RegistrationQuestion, RegistrationQuestionWithId } from "./types";
 
-export const QA_CATEGORIES = new Set<string>(["Career", "Tech", "Networking", "General", "Other"]);
+export const QA_CATEGORIES = new Set<string>([
+  "Career",
+  "Tech",
+  "Networking",
+  "General",
+  "Other"
+]);
 export const MAX_QUESTION_LENGTH = 500;
 export const MAX_ANSWER_LENGTH = 2000;
 
 /** Emails that must never reach the public Q&A response. */
-const PRIVATE_QA_FIELDS = ["authorId", "updatedBy", "pinnedBy", "upvotedBy"] as const;
+const PRIVATE_QA_FIELDS = [
+  "authorId",
+  "updatedBy",
+  "pinnedBy",
+  "upvotedBy"
+] as const;
 
 export interface QaPatchFields {
   answer?: unknown;
@@ -31,37 +39,49 @@ export const getEventCounts = registrationHelpers.getEventCounts;
 
 /** Ensures every question has a stable questionId (existing IDs kept). */
 export function addIdsToRegistrationQuestions(
-  registrationQuestions: RegistrationQuestion[],
+  registrationQuestions: RegistrationQuestion[]
 ): RegistrationQuestionWithId[] {
   return registrationQuestions.map((question) => ({
     ...question,
-    questionId: question.questionId ?? uuidv4(),
+    questionId: question.questionId ?? uuidv4()
   }));
 }
 
 /** Validates path params for event routes. Returns id, year, eventIDYear or throws. */
 export function validateEventPath(pathParams: Record<string, any> | null) {
-  if (!pathParams || !pathParams.id) throw helpers.missingIdQueryResponse("event");
+  if (!pathParams || !pathParams.id)
+    throw helpers.missingIdQueryResponse("event");
   const id = pathParams.id;
   if (!pathParams.year) throw helpers.missingPathParamResponse("event", "year");
 
   const year = parseInt(pathParams.year, 10);
   if (isNaN(year))
-    throw helpers.inputError("Year path parameter must be a number", pathParams);
+    throw helpers.inputError(
+      "Year path parameter must be a number",
+      pathParams
+    );
 
   return { id, year, eventIDYear: `${id};${year}` };
 }
 
 /** Validates a question is a non-empty string within max length. Returns trimmed. */
-export function validateQuestionBody(body: unknown, maxLength = MAX_QUESTION_LENGTH) {
+export function validateQuestionBody(
+  body: unknown,
+  maxLength = MAX_QUESTION_LENGTH
+) {
   if (typeof body !== "string" || !body.trim()) {
-    throw helpers.inputError("Question body is required and must be a non-empty string");
+    throw helpers.inputError(
+      "Question body is required and must be a non-empty string"
+    );
   }
   const trimmed = body.trim();
   if (trimmed.length > maxLength) {
-    throw helpers.inputError(`Question body cannot exceed ${maxLength} characters`, {
-      length: trimmed.length,
-    });
+    throw helpers.inputError(
+      `Question body cannot exceed ${maxLength} characters`,
+      {
+        length: trimmed.length
+      }
+    );
   }
   return trimmed;
 }
@@ -77,19 +97,23 @@ export function validateCategory(category?: string) {
 /** Validates an answer is a non-empty string within max length. Returns trimmed. */
 export function validateAnswer(answer: unknown, maxLength = MAX_ANSWER_LENGTH) {
   if (typeof answer !== "string" || !answer.trim()) {
-    throw helpers.inputError("Answer is required and must be a non-empty string");
+    throw helpers.inputError(
+      "Answer is required and must be a non-empty string"
+    );
   }
   const trimmed = answer.trim();
   if (trimmed.length > maxLength) {
     throw helpers.inputError(`Answer cannot exceed ${maxLength} characters`, {
-      length: trimmed.length,
+      length: trimmed.length
     });
   }
   return trimmed;
 }
 
 /** Strips private emails and reduces answeredBy to a display name. */
-export function toPublicQuestion(question: Record<string, any>): Record<string, any> {
+export function toPublicQuestion(
+  question: Record<string, any>
+): Record<string, any> {
   const publicQuestion = { ...question };
   for (const field of PRIVATE_QA_FIELDS) delete publicQuestion[field];
 
@@ -112,7 +136,7 @@ export function toPublicQuestion(question: Record<string, any>): Record<string, 
 export function buildQaUpdateExpression({
   updates,
   email,
-  now,
+  now
 }: {
   updates: QaPatchFields;
   email: string;
@@ -121,7 +145,7 @@ export function buildQaUpdateExpression({
   const setParts = ["updatedAt = :updatedAt", "updatedBy = :updatedBy"];
   const exprValues: Record<string, any> = {
     ":updatedAt": now,
-    ":updatedBy": email,
+    ":updatedBy": email
   };
   const exprNames: Record<string, string> = {};
 
@@ -156,8 +180,8 @@ export function buildQaUpdateExpression({
     UpdateExpression: `SET ${setParts.join(", ")}`,
     ExpressionAttributeValues: exprValues,
     ...(Object.keys(exprNames).length > 0 && {
-      ExpressionAttributeNames: exprNames,
-    }),
+      ExpressionAttributeNames: exprNames
+    })
   };
 }
 
@@ -175,7 +199,7 @@ export function buildQaSlackMessage({
   eventId,
   year,
   body,
-  category,
+  category
 }: {
   eventName: string;
   eventId: string;
@@ -197,13 +221,13 @@ export function buildQaSlackMessage({
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*🙋 New Q&A question* · *${escapeSlackText(eventName)}*`,
-        },
+          text: `*🙋 New Q&A question* · *${escapeSlackText(eventName)}*`
+        }
       },
       {
         // ">>>" quotes every line; a bare ">" would only quote the first.
         type: "section",
-        text: { type: "mrkdwn", text: `>>> ${escapeSlackText(body)}` },
+        text: { type: "mrkdwn", text: `>>> ${escapeSlackText(body)}` }
       },
       {
         type: "actions",
@@ -211,16 +235,16 @@ export function buildQaSlackMessage({
           {
             type: "button",
             text: { type: "plain_text", text: "Answer in portal", emoji: true },
-            url: qaUrl,
-          },
-        ],
+            url: qaUrl
+          }
+        ]
       },
       {
         type: "context",
         elements: [
-          { type: "mrkdwn", text: `Category: *${escapeSlackText(category)}*` },
-        ],
-      },
-    ],
+          { type: "mrkdwn", text: `Category: *${escapeSlackText(category)}*` }
+        ]
+      }
+    ]
   };
 }
