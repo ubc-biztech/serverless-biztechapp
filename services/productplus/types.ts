@@ -1,6 +1,6 @@
 /** API response. prd_view_url is generated when responding, never stored. */
 export type Submission = {
-  team_code: string;
+  teamID: string;
   team_name: string;
   member_names: string[];
   video_url: string;
@@ -19,20 +19,20 @@ export type Config = {
 export type TeamRecord = {
   id: string; // Six-digit team code, retaining leading zeros.
   "eventID;year": string;
-  memberIDs: string[];
+  member_ids: string[];
 };
 
 /** The event registration stores the user's current team code; teamID is not used. */
 export type RegistrationRecord = {
   id: string; // Verified email.
   "eventID;year": string;
-  team_code?: string;
+  teamID?: string;
 };
 
 /** Keys shared by submission records and the reserved config row. */
 export type SubmissionKey = {
   event_key: string; // eventid;year
-  team_code: string; // Six-digit string for teams; "config" for configuration.
+  teamID: string; // Six-digit string for teams; "config" for configuration.
 };
 
 /** Stored rubric shape shared with the judging workflow. */
@@ -54,7 +54,7 @@ export type SubmissionRecord = Omit<Submission, "prd_view_url"> &
 /** Stored in the submissions table under (event_key, "config"). */
 export type ConfigRecord = Config & {
   event_key: string;
-  team_code: "config";
+  teamID: "config";
   updated_at: string;
 };
 
@@ -75,7 +75,7 @@ export type UploadStatus =
 /** Tracking stays after file removal so interrupted operations can be reconciled. */
 export type UploadRecord = UploadKey & {
   event_key: string;
-  team_code: string;
+  teamID: string;
   upload_id: string;
   content_type: "application/pdf";
   status: UploadStatus;
@@ -94,7 +94,7 @@ export type CleanupTask =
     }
   | {
       internalTask: "team_deleted";
-      payload: { event_key: string; team_code: string };
+      payload: { event_key: string; teamID: string };
     };
 
 export type GetSubmissionResponse = {

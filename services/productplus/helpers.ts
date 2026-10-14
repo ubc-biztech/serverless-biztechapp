@@ -110,7 +110,7 @@ function configLocation() {
   }
 
   // The full environment-selected table name already includes its PROD suffix.
-  return { TableName, Key: { event_key, team_code: "config" } };
+  return { TableName, Key: { event_key, teamID: "config" } };
 }
 
 /** Read the latest committed config; the custom wrapper accepts our actual key names. */
@@ -209,7 +209,7 @@ async function currentTeam(email: string, settings: StorageSettings) {
     throw new ProductPlusError(403, "Current team membership is required.");
   }
 
-  const teamCode = registration.team_code;
+  const teamCode = registration.teamID;
 
   if (teamCode === undefined || teamCode === "") {
     throw new ProductPlusError(403, "Current team membership is required.");
@@ -230,7 +230,7 @@ async function currentTeam(email: string, settings: StorageSettings) {
     ConsistentRead: true
   })) as TeamRecord | null;
 
-  if (!Array.isArray(team?.memberIDs) || !team.memberIDs.includes(email)) {
+  if (!Array.isArray(team?.member_ids) || !team.member_ids.includes(email)) {
     throw new ProductPlusError(403, "Current team membership is required.");
   }
 
@@ -251,7 +251,7 @@ function membershipChecks(
         TableName: settings.registrationsTable,
         Key: team.registrationKey,
         ConditionExpression: "#code = :code",
-        ExpressionAttributeNames: { "#code": "team_code" },
+        ExpressionAttributeNames: { "#code": "teamID" },
         ExpressionAttributeValues: { ":code": team.teamCode }
       }
     },
@@ -260,7 +260,7 @@ function membershipChecks(
         TableName: settings.teamsTable,
         Key: team.teamKey,
         ConditionExpression: "contains(#members, :email)",
-        ExpressionAttributeNames: { "#members": "memberIDs" },
+        ExpressionAttributeNames: { "#members": "member_ids" },
         ExpressionAttributeValues: { ":email": email }
       }
     }
@@ -275,7 +275,7 @@ function deadlineCheck(
   return {
     ConditionCheck: {
       TableName: settings.submissionsTable,
-      Key: { event_key: settings.eventKey, team_code: "config" },
+      Key: { event_key: settings.eventKey, teamID: "config" },
       ConditionExpression: "#deadline = :deadline",
       ExpressionAttributeNames: { "#deadline": "submission_deadline" },
       ExpressionAttributeValues: { ":deadline": deadline }
@@ -287,7 +287,7 @@ function deadlineCheck(
 async function readSubmission(teamCode: string, settings: StorageSettings) {
   const item = await db.getOneCustom({
     TableName: settings.submissionsTable,
-    Key: { event_key: settings.eventKey, team_code: teamCode },
+    Key: { event_key: settings.eventKey, teamID: teamCode },
     ConsistentRead: true
   });
 
@@ -308,7 +308,7 @@ async function readUpload(prdPath: string, settings: StorageSettings) {
 // Object keys and upload state: ownership comes from tracking, not a supplied URL.
 /** Derive the permanent destination from the upload's server-generated ID. */
 function permanentPath(upload: UploadRecord, settings: StorageSettings) {
-  return `productplus/submitted/${settings.eventKey}/${upload.team_code}/${upload.upload_id}/prd.pdf`;
+  return `productplus/submitted/${settings.eventKey}/${upload.teamID}/${upload.upload_id}/prd.pdf`;
 }
 
 function storedPath(upload: UploadRecord) {
@@ -326,7 +326,7 @@ function ownedUpload(
 
   return (
     upload.event_key === settings.eventKey &&
-    upload.team_code === teamCode &&
+    upload.teamID === teamCode &&
     typeof teamCode === "string" &&
     /^\d{6}$/.test(teamCode) &&
     typeof upload.upload_id === "string" &&
@@ -373,13 +373,13 @@ function uploadCondition(upload: UploadRecord) {
   return {
     ConditionExpression:
       "#status = :priorStatus AND #updated = :priorUpdated AND " +
-      "event_key = :event AND team_code = :code",
+      "event_key = :event AND teamID = :code",
     ExpressionAttributeNames: { "#status": "status", "#updated": "updated_at" },
     ExpressionAttributeValues: {
       ":priorStatus": upload.status,
       ":priorUpdated": upload.updated_at,
       ":event": upload.event_key,
-      ":code": upload.team_code
+      ":code": upload.teamID
     }
   };
 }
@@ -481,7 +481,7 @@ export async function createPrdUpload(
   const upload: UploadRecord = {
     prd_path: prdPath,
     event_key: settings.eventKey,
-    team_code: team.teamCode,
+    teamID: team.teamCode,
     upload_id: uploadId,
     content_type: "application/pdf",
     status: "pending",
@@ -578,7 +578,7 @@ export async function submissionResponse(
 
   // Select public fields explicitly so upload, judging, and voting metadata stays private.
   return {
-    team_code: record.team_code,
+    teamID: record.teamID,
     team_name: record.team_name,
     member_names: record.member_names,
     video_url: record.video_url,
@@ -823,11 +823,11 @@ function submissionWrite(
   return {
     Update: {
       TableName: settings.submissionsTable,
-      Key: { event_key: settings.eventKey, team_code: team.teamCode },
+      Key: { event_key: settings.eventKey, teamID: team.teamCode },
       // The previous PDF must still match, or another save won and we need a fresh read.
       ConditionExpression: prior
         ? "prd_path = :priorPath"
-        : "attribute_not_exists(team_code)",
+        : "attribute_not_exists(teamID)",
       UpdateExpression:
         "SET team_name = :name, member_names = :members, " +
         "video_url = :video, prd_path = :path, updated_at = :now, " +
@@ -1087,7 +1087,7 @@ export async function saveSubmission(
         {
           ...form,
           prd_path: path,
-          team_code: context.team.teamCode,
+          teamID: context.team.teamCode,
           submitted_at: prior?.submitted_at || now,
           updated_at: now
         },
@@ -1191,7 +1191,7 @@ function noReference(
   return {
     ConditionCheck: {
       TableName: settings.submissionsTable,
-      Key: { event_key: settings.eventKey, team_code: upload.team_code },
+      Key: { event_key: settings.eventKey, teamID: upload.teamID },
       ConditionExpression:
         "attribute_not_exists(prd_path) OR prd_path <> :path",
       ExpressionAttributeValues: { ":path": storedPath(upload) }
@@ -1237,8 +1237,8 @@ async function cleanUpload(
   }
 
   if (
-    !ownedUpload(upload, settings, upload.team_code) ||
-    (teamCode && upload.team_code !== teamCode)
+    !ownedUpload(upload, settings, upload.teamID) ||
+    (teamCode && upload.teamID !== teamCode)
   ) {
     throw new Error("Cleanup upload ownership is invalid.");
   }
@@ -1280,7 +1280,7 @@ async function cleanUpload(
             }
           },
           noReference(upload, settings),
-          ...(mode === "team" ? [absentTeam(upload.team_code, settings)] : [])
+          ...(mode === "team" ? [absentTeam(upload.teamID, settings)] : [])
         ]
       })
     );
@@ -1290,7 +1290,7 @@ async function cleanUpload(
     }
 
     const latest = await readUpload(key, settings);
-    const submission = await readSubmission(upload.team_code, settings);
+    const submission = await readSubmission(upload.teamID, settings);
 
     if (
       latest?.status === "deleted" ||
@@ -1363,7 +1363,7 @@ async function teamUploads(
       new ScanCommand({
         TableName: settings.uploadsTable,
         ConsistentRead: true,
-        FilterExpression: "event_key = :event AND team_code = :code",
+        FilterExpression: "event_key = :event AND teamID = :code",
         ExpressionAttributeValues: {
           ":event": settings.eventKey,
           ":code": teamCode
@@ -1399,7 +1399,7 @@ export async function cleanupProductPlus(task: CleanupTask) {
         await cleanUpload(task.payload.prd_path, "retire", settings)
       );
     } else if (task.internalTask === "team_deleted") {
-      const { team_code: teamCode } = task.payload;
+      const { teamID: teamCode } = task.payload;
 
       if (typeof teamCode !== "string" || !/^\d{6}$/.test(teamCode)) {
         throw new Error("Invalid cleanup team.");
@@ -1426,7 +1426,7 @@ export async function cleanupProductPlus(task: CleanupTask) {
               {
                 Delete: {
                   TableName: settings.submissionsTable,
-                  Key: { event_key: settings.eventKey, team_code: teamCode },
+                  Key: { event_key: settings.eventKey, teamID: teamCode },
                   ConditionExpression: "prd_path = :path",
                   ExpressionAttributeValues: {
                     ":path": submission.prd_path
