@@ -67,6 +67,7 @@ jobs:
           STRIPE_PROD_ENDPOINT: ${{ secrets.STRIPE_PROD_ENDPOINT }}
           STRIPE_PROD_CANCEL: ${{ secrets.STRIPE_PROD_CANCEL }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_QA_CHANNEL_ID: ${{ secrets.SLACK_QA_CHANNEL_ID }}
           SLACK_SIGNING_SECRET: ${{ secrets.SLACK_SIGNING_SECRET }}
           SLACK_APP_TOKEN: ${{ secrets.SLACK_APP_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

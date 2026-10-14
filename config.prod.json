@@ -1,4 +1,6 @@
 {
+    "PRODUCTPLUS_EVENT_KEY": "productplus;2026",
     "ENVIRONMENT": "PROD",
-    "REQUIRE_API_KEY": true
+    "REQUIRE_API_KEY": true,
+    "PRODUCTPLUS_PRD_BUCKET": "biztech-pp-prd-prod"
 }

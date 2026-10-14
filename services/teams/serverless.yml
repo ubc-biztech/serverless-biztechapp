@@ -22,11 +22,25 @@ provider:
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
+    PRODUCTPLUS_EVENT_KEY: ${file(../../config.${self:provider.stage}.json):PRODUCTPLUS_EVENT_KEY}
+    PRODUCTPLUS_SUBMISSIONS_TABLE: biztechPPSubmissions${self:provider.environment.ENVIRONMENT}
+    PRODUCTPLUS_PRD_BUCKET: ${file(../../config.${self:provider.stage}.json):PRODUCTPLUS_PRD_BUCKET}
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
     restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
 
   iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - s3:GetObject
+      Resource: "arn:aws:s3:::${self:provider.environment.PRODUCTPLUS_PRD_BUCKET}/*"
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:GetItem
+        - dynamodb:UpdateItem
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/${self:provider.environment.PRODUCTPLUS_SUBMISSIONS_TABLE}"
     - Effect: Allow
       Action:
         - dynamodb:Scan
@@ -79,6 +93,68 @@ provider:
 custom: ${file(../../serverless.common.yml):custom}
 
 functions:
+  productPlusAdminSubmission:
+    handler: handlerProductPlus.adminSubmission
+    events:
+      - http:
+          path: productplus/admin/submissions/{team_code}
+          method: get
+          cors: true
+          request:
+            parameters:
+              paths:
+                team_code: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  productPlusAdminSubmissions:
+    handler: handlerProductPlus.adminSubmissions
+    events:
+      - http:
+          path: productplus/admin/submissions
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  productPlusSaveRubric:
+    handler: handlerProductPlus.saveRubric
+    events:
+      - http:
+          path: productplus/admin/submissions/{team_code}/rubric
+          method: put
+          cors: true
+          request:
+            parameters:
+              paths:
+                team_code: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  productPlusAudienceSubmissions:
+    handler: handlerProductPlus.audienceSubmissions
+    events:
+      - http:
+          path: productplus/audience/submissions
+          method: get
+          cors: true
+      - http:
+          path: productplus/audience/submissions/self
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+  productPlusAudienceVote:
+    handler: handlerProductPlus.audienceVote
+    events:
+      - http:
+          path: productplus/audience/vote
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   updateTeamPoints:
     handler: handler.updateTeamPoints
     events:

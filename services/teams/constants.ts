@@ -1,3 +1,6 @@
+// Product Plus rubric contract.
+export const PRODUCT_PLUS_RUBRIC_SCORE_COUNT = 4;
+
 export const WEIGHTS = {
   ORIGINAL: 0.15,
   TECHNICAL: 0.4,

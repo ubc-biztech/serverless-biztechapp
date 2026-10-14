@@ -22,6 +22,8 @@ provider:
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
+    SLACK_BOT_TOKEN: ${env:SLACK_BOT_TOKEN,""}
+    SLACK_QA_CHANNEL_ID: ${env:SLACK_QA_CHANNEL_ID,""}
   timeout: 15 # in seconds
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
