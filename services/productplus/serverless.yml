@@ -29,7 +29,7 @@ provider:
     # Both use eventID;year as the sort key; registration.teamID points to team.id.
     PRODUCTPLUS_TEAMS_TABLE: biztechTeams${self:provider.environment.ENVIRONMENT}
     PRODUCTPLUS_REGISTRATIONS_TABLE: biztechRegistrations${self:provider.environment.ENVIRONMENT}
-    PRODUCTPLUS_EVENT_KEY: "productplus;2026"
+    PRODUCTPLUS_EVENT_KEY: ${file(../../config.${self:provider.stage}.json):PRODUCTPLUS_EVENT_KEY}
     PRODUCTPLUS_MAX_PRD_BYTES: "5000000"
     PRODUCTPLUS_CLEANUP_FUNCTION: ${self:service}-${self:provider.stage}-productplusCleanup
   apiGateway:
