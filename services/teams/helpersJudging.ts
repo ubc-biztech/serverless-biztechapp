@@ -3,7 +3,7 @@ import db from "../../lib/db.js";
 import helpers from "../../lib/handlerHelpers";
 import { JUDGING_TABLE } from "../../constants/tables.js";
 import { APIGatewayEvent, APIGatewayResponse, LambdaHandler } from "../../lib/types";
-import { JudgingDocument, JudgingPrincipal } from "./types";
+import { JudgingDocument, JudgingPrincipal, JudgingRound, JudgingRubric } from "./types";
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const ROLE_RANK = {
@@ -18,6 +18,36 @@ const ROLE_RANK = {
 export const JUDGING_CODE_HEADER = "x-judging-code";
 
 export const JUDGING_PHASES = ["submission", "prelim", "finals", "closed"];
+
+export const rubricForRound = (doc: Pick<JudgingDocument, "rubric" | "roundRubrics">, round: JudgingRound) =>
+  doc.roundRubrics?.[round] ?? doc.rubric;
+
+export const rubricScoring = (rubric: JudgingRubric | null) => JSON.stringify(rubric && {
+  scaleMax: rubric.scaleMax,
+  scoreMode: rubric.scoreMode,
+  criteria: rubric.criteria.map(({ id, label, maxScore, weight }) => ({
+    id, label, maxScore: maxScore ?? rubric.scaleMax, weight
+  }))
+});
+
+export const rubricError = (value: unknown): string => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "Enter a rubric.";
+  const r = value as JudgingRubric;
+  if (typeof r.name !== "string" || !r.name.trim()) return "Name the rubric.";
+  if (!Number.isInteger(r.scaleMax) || r.scaleMax < 1 || !["points", "weighted"].includes(r.scoreMode))
+    return "Choose a valid scoring scale and mode.";
+  if (!Array.isArray(r.criteria) || !r.criteria.length) return "Include at least one criterion.";
+  const ids = new Set<string>();
+  for (const c of r.criteria) {
+    if (!c || typeof c.id !== "string" || !c.id.trim() || ids.has(c.id)) return "Criterion IDs must be unique and nonempty.";
+    ids.add(c.id);
+    if (typeof c.label !== "string" || !c.label.trim()) return "Name every criterion.";
+    if (!Number.isFinite(c.weight) || c.weight <= 0) return "Every weight must be greater than zero.";
+    if (c.maxScore !== undefined && (!Number.isInteger(c.maxScore) || c.maxScore < 1)) return "Maximum scores must be positive integers.";
+    if (c.description !== undefined && typeof c.description !== "string") return "Scoring guidance must be text.";
+  }
+  return "";
+};
 
 export const eventKeyOf = (event: APIGatewayEvent): string =>
   `${event.pathParameters?.eventID};${event.pathParameters?.year}`;
@@ -108,6 +138,7 @@ export const redact = (doc: JudgingDocument, role: JudgingPrincipal["role"] | "a
     updatedAt,
     settings,
     rubric,
+    roundRubrics: doc.roundRubrics ?? {},
     links,
     judges: stripCodes(judges),
     teams: stripCodes(teams)
