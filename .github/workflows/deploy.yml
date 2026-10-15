@@ -22,11 +22,11 @@ concurrency:
 jobs:
   deploy:
     if: github.event_name != 'release' || !github.event.release.prerelease
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       ESBUILD_BINARY_PATH: ${{ github.workspace }}/node_modules/@esbuild/linux-x64/bin/esbuild
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag || github.ref }}
           fetch-depth: 0
@@ -36,7 +36,7 @@ jobs:
           TAG: ${{ inputs.tag || github.ref_name }}
         run: scripts/check-release.sh "$TAG"
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "22.x"
           cache: "npm"

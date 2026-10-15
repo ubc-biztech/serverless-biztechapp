@@ -171,6 +171,38 @@ redeploys that code; it does not undo data or table changes.
 `scripts/deploy.sh <dev|prod>` runs the same deploy CI does, using your own AWS
 credentials and `SERVERLESS_ACCESS_KEY`. Use it only when Actions is down.
 
+### CI runtime and deployment bucket permissions
+
+The application and Lambda functions use Node.js 22. GitHub Actions such as
+`checkout`, `setup-node`, and `github-script` run on their own Node.js 24 runtime;
+changing the action version does not change the application's Node version.
+CI uses Ubuntu 24.04 to avoid changes when `ubuntu-latest` moves to a new release.
+
+[Serverless Framework v4](https://www.serverless.com/framework/docs/guides/deployment-bucket)
+uses a shared regional deployment bucket for new services. Older services can
+continue using their existing per-service buckets, so a new service can expose
+a missing bucket permission even when earlier services deploy successfully.
+
+The CI user `serverless-agent` already has artifact read, write, delete, and list
+permissions through `ServerlessCredentials`. The additive policy in
+[`infrastructure/iam/serverless-agent-deployment-bucket.json`](infrastructure/iam/serverless-agent-deployment-bucket.json)
+grants the missing `s3:GetBucketLocation` action for the existing `us-west-2`
+deployment bucket. It belongs on the deployment user, rather than a Lambda
+execution role in `provider.iamRoleStatements`.
+
+To apply or restore this policy, run from the repo root with AWS credentials
+authorized to manage that user in account `432714361962`:
+
+```sh
+aws iam put-user-policy \
+  --user-name serverless-agent \
+  --policy-name ServerlessDeploymentBucketLocation \
+  --policy-document file://infrastructure/iam/serverless-agent-deployment-bucket.json
+```
+
+Committing this file does not apply the IAM policy automatically. If the shared
+bucket is replaced, update the exact bucket ARN in the file and reapply it.
+
 
 ## Contributing
 Contributions are accepted from members of the biztech team. General instructions to start contributing are as follows:

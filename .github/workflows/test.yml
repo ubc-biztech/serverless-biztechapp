@@ -6,14 +6,14 @@ on:
 
 jobs:
   sls-package:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
       ESBUILD_BINARY_PATH: ${{ github.workspace }}/node_modules/@esbuild/linux-x64/bin/esbuild
     steps:
-      - uses: actions/checkout@v2
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - name: Use Node.js 22
+        uses: actions/setup-node@v7
         with:
           node-version: "22.x"
 

@@ -107,7 +107,7 @@ functions:
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   productplusPutSubmission:
     handler: handler.putSubmission
-    timeout: 30
+    timeout: 29
     events:
       - http:
           path: productplus/submissions
