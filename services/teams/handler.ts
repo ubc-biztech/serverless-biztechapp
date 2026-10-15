@@ -23,7 +23,7 @@ import {
 import db from "../../lib/db.js";
 import { WEIGHTS, ROUND } from "./constants.js";
 import { LambdaHandler } from "../../lib/types";
-import { protect, Access } from "../../lib/auth";
+import { protect, Access, type AuthEvent } from "../../lib/auth";
 import {
   AddMultipleQuestionsBody,
   AddQRScanBody,
@@ -246,7 +246,31 @@ export const makeTeam = protect(Access.USER, async (event) => {
   }
 });
 
-export const getTeamFromUserID = protect(Access.USER, async (event) => {
+// API Gateway preserves percent escapes in these path parameters. Decode once
+// before event lookups and caller comparisons; '+' is literal in a URL path.
+const eventTeamRoute = (
+  handler: (event: AuthEvent) => Promise<unknown>
+): LambdaHandler => protect(Access.USER, async (event) => {
+  try {
+    event = {
+      ...event,
+      pathParameters: event.pathParameters && Object.fromEntries(
+        Object.entries(event.pathParameters).map(([name, value]) => [
+          name,
+          value === undefined ? value : decodeURIComponent(value)
+        ])
+      )
+    };
+  } catch (error) {
+    if (error instanceof URIError) {
+      return helpers.createResponse(400, { message: "Invalid URL encoding in team path parameters" });
+    }
+    throw error;
+  }
+  return handler(event);
+});
+
+export const getTeamFromUserID = eventTeamRoute(async (event) => {
   /*
     Returns the user's team teamcode for the event, or null if they are not on one.
 
@@ -303,7 +327,7 @@ export const getTeamFromUserID = protect(Access.USER, async (event) => {
   }
 });
 
-export const removeTeamMember = protect(Access.USER, async (event) => {
+export const removeTeamMember = eventTeamRoute(async (event) => {
   /*
     The team leader removes another member. Members can remove themselves via leaveTeam.
 
@@ -356,7 +380,7 @@ export const removeTeamMember = protect(Access.USER, async (event) => {
   }
 });
 
-export const createEventTeam = protect(Access.USER, async (event) => {
+export const createEventTeam = eventTeamRoute(async (event) => {
   /*
     Creates a team for this event with the caller as its leader.
 
@@ -411,7 +435,7 @@ export const createEventTeam = protect(Access.USER, async (event) => {
   }
 });
 
-export const joinEventTeam = protect(Access.USER, async (event) => {
+export const joinEventTeam = eventTeamRoute(async (event) => {
   /*
     Joins the team holding this 6-digit code within the event.
 
@@ -474,7 +498,7 @@ export const joinEventTeam = protect(Access.USER, async (event) => {
   }
 });
 
-export const leaveEventTeam = protect(Access.USER, async (event) => {
+export const leaveEventTeam = eventTeamRoute(async (event) => {
   /*
     Removes the caller from their team. A departing leader hands off to a random
     remaining member; the last member out takes the team with them.
@@ -526,7 +550,7 @@ export const leaveEventTeam = protect(Access.USER, async (event) => {
   }
 });
 
-export const get = protect(Access.USER, async (event) => {
+export const get = eventTeamRoute(async (event) => {
   // Admins see raw memberIDs; everyone else gets them stripped.
   const obfuscateEmails = !event.auth?.isAdmin;
 

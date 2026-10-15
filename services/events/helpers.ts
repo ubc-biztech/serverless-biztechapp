@@ -42,7 +42,13 @@ export function addIdsToRegistrationQuestions(
 /** Validates path params for event routes. Returns id, year, eventIDYear or throws. */
 export function validateEventPath(pathParams: Record<string, any> | null) {
   if (!pathParams || !pathParams.id) throw helpers.missingIdQueryResponse("event");
-  const id = pathParams.id;
+  let id: string;
+  try {
+    // Decode once so product%2B and product+ resolve to the same event.
+    id = decodeURIComponent(pathParams.id);
+  } catch {
+    throw helpers.createResponse(400, { message: "Invalid URL encoding in event ID" });
+  }
   if (!pathParams.year) throw helpers.missingPathParamResponse("event", "year");
 
   const year = parseInt(pathParams.year, 10);
