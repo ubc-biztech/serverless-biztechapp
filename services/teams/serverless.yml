@@ -497,3 +497,17 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+# ProductPlus adds sibling routes below prefixes owned by this stack.
+resources:
+  Outputs:
+    ProductPlusApiGatewayResourceId:
+      Value:
+        Ref: ApiGatewayResourceProductplus
+      Export:
+        Name: ${self:provider.stage}-ProductPlusApiGatewayResourceId
+    ProductPlusAdminApiGatewayResourceId:
+      Value:
+        Ref: ApiGatewayResourceProductplusAdmin
+      Export:
+        Name: ${self:provider.stage}-ProductPlusAdminApiGatewayResourceId

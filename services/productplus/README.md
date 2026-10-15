@@ -27,6 +27,13 @@ field names identify their respective storage/API contracts.
 All routes use the existing Cognito authorizer and shared verified-email auth.
 Config endpoints additionally require admin access.
 
+The `teams` service owns the shared API Gateway prefixes `/productplus` and
+`/productplus/admin`. This service imports their resource IDs from the team's
+CloudFormation exports instead of creating duplicate paths. The shared
+`scripts/deploy.sh <dev|prod>` script deploys `teams` before `productplus` so the
+exports exist before they are imported, including on a stage's first deployment.
+When deploying these services individually, deploy `teams` first.
+
 | Method | Path | Behavior |
 | --- | --- | --- |
 | GET | `/productplus/submissions` | Current team's submission (or null), submission deadline, and `can_edit` |

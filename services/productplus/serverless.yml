@@ -35,6 +35,12 @@ provider:
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
     restApiRootResourceId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiRootResourceId
+    # The teams stack owns these shared path prefixes.
+    restApiResources:
+      /productplus:
+        Fn::ImportValue: ${self:provider.stage}-ProductPlusApiGatewayResourceId
+      /productplus/admin:
+        Fn::ImportValue: ${self:provider.stage}-ProductPlusAdminApiGatewayResourceId
   iamRoleStatements:
     # HEAD needs ListBucket to report a missing PDF as 404 rather than 403.
     - Effect: Allow

@@ -14,8 +14,20 @@ esac
 
 cd "$(dirname "$0")/.."
 
-for service in services/*/; do
+deploy_service() {
+  local service="$1"
   echo "::group::${service%/} -> $stage"
   (cd "$service" && npx sls deploy --stage "$stage" --conceal)
   echo "::endgroup::"
+}
+
+for service in services/*/; do
+  case "$service" in
+    services/teams/ | services/productplus/) continue ;;
+  esac
+  deploy_service "$service"
 done
+
+# Teams must export /productplus and /productplus/admin before ProductPlus
+deploy_service services/teams/
+deploy_service services/productplus/
