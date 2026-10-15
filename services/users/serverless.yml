@@ -63,13 +63,6 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
-  userCreate:
-    handler: handler.create
-    events:
-      - http:
-          path: users/
-          method: post
-          cors: true
   checkUser:
     handler: handler.checkUser
     events:
