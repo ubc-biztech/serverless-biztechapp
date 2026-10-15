@@ -157,14 +157,6 @@ custom:
       - dev
 
 functions:
-  search:
-    handler: handler.searchHandler
-    events:
-      - http:
-          path: interactions/search
-          method: post
-          cors: true
-
   interactionCreate:
     handler: handler.postInteraction
     events:
@@ -220,9 +212,9 @@ functions:
           path: interactions/wall
           method: get
           cors: true
-          # authorizer:
-          #   type: COGNITO_USER_POOLS
-          #   authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
 
   wsConnect:
     handler: handler.wsConnect
