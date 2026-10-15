@@ -70,7 +70,7 @@ Uploads and saves close at the submission deadline; reads remain available.
 | Upload tracking | `biztechPPUploads` | `biztechPPUploadsPROD` | `prd_path` (String) |
 | Private PDFs | `biztech-pp-prd` | `biztech-pp-prd-prod` | Server-generated S3 key |
 
-The config row uses `{ event_key: "productplus;2026", team_code: "config" }`.
+The config row uses `{ event_key: "product+;2026", team_code: "config" }`.
 Submission records share that event key and use their six-digit team code.
 Rubrics are stored in `graded_submissions`, counters in `upvotes`/`downvotes`,
 and voter emails in `voter_ids: Set<string>` (absent until the first vote).
@@ -108,13 +108,13 @@ bucket. Permanent submitted PDFs are excluded from the temporary-file rule.
 The private `productplusCleanup` Lambda accepts replacement tasks:
 
 ```json
-{ "internalTask": "retire_upload", "payload": { "event_key": "productplus;2026", "prd_path": "productplus/temp/.../prd.pdf" } }
+{ "internalTask": "retire_upload", "payload": { "event_key": "product+;2026", "prd_path": "productplus/temp/.../prd.pdf" } }
 ```
 
 It also accepts canonical team-deletion tasks:
 
 ```json
-{ "internalTask": "team_deleted", "payload": { "event_key": "productplus;2026", "team_code": "012345" } }
+{ "internalTask": "team_deleted", "payload": { "event_key": "product+;2026", "team_code": "012345" } }
 ```
 
 The existing legacy Product Plus leave flow invokes this worker asynchronously
