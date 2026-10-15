@@ -50,6 +50,9 @@ functions:
       - http:
           path: quizzes/upload
           method: post
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
           cors: true
 
   report:
@@ -58,6 +61,9 @@ functions:
       - http:
           path: quizzes/report/{profile_id}
           method: get
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
           request:
             parameters:
               paths:
@@ -71,6 +77,9 @@ functions:
       - http:
           path: quizzes/{event}
           method: get
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
           request:
             parameters:
               paths:
@@ -83,6 +92,9 @@ functions:
       - http:
           path: quizzes/aggregate/{event}
           method: get
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
           request:
             parameters:
               paths:
@@ -95,6 +107,9 @@ functions:
       - http:
           path: quizzes/perMbti/{mbti}
           method: get
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
           request:
             parameters:
               paths:
@@ -107,6 +122,9 @@ functions:
       - http:
           path: quizzes/wrapped
           method: post
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
           cors: true
 
 resources:
