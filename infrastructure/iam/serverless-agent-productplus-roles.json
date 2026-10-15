@@ -1,0 +1,22 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "TagAndInspectProductPlusDeploymentRoles",
+      "Effect": "Allow",
+      "Action": [
+        "iam:TagRole",
+        "iam:UntagRole",
+        "iam:GetRolePolicy",
+        "iam:ListRolePolicies",
+        "iam:ListAttachedRolePolicies"
+      ],
+      "Resource": [
+        "arn:aws:iam::432714361962:role/biztechApi-productplus-dev-us-west-2-lambdaRole",
+        "arn:aws:iam::432714361962:role/biztechApi-productplus-prod-us-west-2-lambdaRole",
+        "arn:aws:iam::432714361962:role/biztechApi-productplus-dev-ProductPlusCorsRole-*",
+        "arn:aws:iam::432714361962:role/biztechApi-productplus-prod-ProductPlusCorsRole-*"
+      ]
+    }
+  ]
+}

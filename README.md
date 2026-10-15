@@ -203,6 +203,31 @@ aws iam put-user-policy \
 Committing this file does not apply the IAM policy automatically. If the shared
 bucket is replaced, update the exact bucket ARN in the file and reapply it.
 
+### ProductPlus deployment role permissions
+
+CloudFormation needs permission to tag and inspect the IAM roles it creates.
+The existing `ServerlessCredentials` policy allows role creation and inline
+policy writes, but lacks `iam:TagRole`, `iam:UntagRole`, `iam:GetRolePolicy`,
+`iam:ListRolePolicies`, and `iam:ListAttachedRolePolicies`, which the
+`AWS::IAM::Role` resource provider requires for creation, reads, and cleanup.
+
+The additive policy in
+[`infrastructure/iam/serverless-agent-productplus-roles.json`](infrastructure/iam/serverless-agent-productplus-roles.json)
+grants those actions on ProductPlus's execution and CORS helper roles in `dev`
+and `prod`. The helper role has a generated suffix, so its ARN uses a wildcard
+only after the stack name and `ProductPlusCorsRole` logical name.
+
+Apply or restore it with credentials authorized to manage `serverless-agent`:
+
+```sh
+aws iam put-user-policy \
+  --user-name serverless-agent \
+  --policy-name ServerlessProductPlusRoleMetadata \
+  --policy-document file://infrastructure/iam/serverless-agent-productplus-roles.json
+```
+
+As with the bucket policy, committing the file does not apply it automatically.
+
 
 ## Contributing
 Contributions are accepted from members of the biztech team. General instructions to start contributing are as follows:
