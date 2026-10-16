@@ -10,7 +10,8 @@ import teamHelpers, {
   createTeamWithLeader,
   generateTeamCode,
   addTeamMember,
-  removeSelfFromTeam
+  removeSelfFromTeam,
+  enqueueTeamDeletedCleanup
 } from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import {
@@ -536,9 +537,10 @@ export const leaveEventTeam = eventTeamRoute(async (event) => {
 
     await removeSelfFromTeam(team, userID, remaining);
 
-    // TODO(workflow-2): an emptied team leaves its Product Plus submission and PRD
-    // behind. Durable cleanup belongs on a DynamoDB stream or in the submissions
-    // service -- this point is post-commit with no retry behind it.
+    // The last member out deleted the team; its Product Plus submission and files go too
+    if (remaining.length === 0 && eventKey === process.env.PRODUCTPLUS_EVENT_KEY) {
+      await enqueueTeamDeletedCleanup(eventKey, team.id);
+    }
     return helpers.createResponse(204);
   } catch (error) {
     console.error("Error leaving team:", error);

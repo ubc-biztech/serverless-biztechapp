@@ -61,6 +61,22 @@ export class ProductPlusTeamError extends Error {
 
 const cleanupLambda = new LambdaClient({ maxAttempts: 2 });
 
+/** Asks Product Plus to remove a deleted team's submission and files. Call only after the delete commits. */
+export async function enqueueTeamDeletedCleanup(eventKey: string, teamCode: string) {
+  const task: CleanupTask = { internalTask: "team_deleted", payload: { event_key: eventKey, team_code: teamCode } };
+  try {
+    const functionName = process.env.PRODUCTPLUS_CLEANUP_FUNCTION;
+    if (!functionName) throw new Error("Cleanup function is not configured.");
+    const result = await cleanupLambda.send(new InvokeCommand({
+      FunctionName: functionName, InvocationType: "Event", Payload: Buffer.from(JSON.stringify(task))
+    }));
+    if (result.StatusCode !== 202) throw new Error("Cleanup invocation was not accepted.");
+  } catch (error) {
+    // Membership already committed. Log a replayable task without failing leave.
+    console.error("Product Plus team cleanup delivery failed", { task, error: error instanceof Error ? error.name : "UnknownError" });
+  }
+}
+
 /** Product Plus alone requires atomic membership writes and empty-team deletion. */
 async function updateProductPlusMembership(memberID: string, eventKey: string, action: "join" | "leave", requestedTeamID?: string) {
   const suffix = process.env.ENVIRONMENT || "";
@@ -141,20 +157,7 @@ async function updateProductPlusMembership(memberID: string, eventKey: string, a
           throw error;
         }
       }
-      if (removeTeam) {
-        const task: CleanupTask = { internalTask: "team_deleted", payload: { event_key: eventKey, team_code: team.id } };
-        try {
-          const functionName = process.env.PRODUCTPLUS_CLEANUP_FUNCTION;
-          if (!functionName) throw new Error("Cleanup function is not configured.");
-          const result = await cleanupLambda.send(new InvokeCommand({
-            FunctionName: functionName, InvocationType: "Event", Payload: Buffer.from(JSON.stringify(task))
-          }));
-          if (result.StatusCode !== 202) throw new Error("Cleanup invocation was not accepted.");
-        } catch (error) {
-          // Membership already committed. Log a replayable task without failing leave.
-          console.error("Product Plus team cleanup delivery failed", { task, error: error instanceof Error ? error.name : "UnknownError" });
-        }
-      }
+      if (removeTeam) await enqueueTeamDeletedCleanup(eventKey, team.id);
       return { success: true, message: action === "join" ? "Joined team." : "Left team.", memberIDs: [...members], teamName: team.team_name };
     }
     throw new ProductPlusTeamError(409, "Team membership changed. Try again.");
