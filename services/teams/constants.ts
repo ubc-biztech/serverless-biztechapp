@@ -1,5 +1,13 @@
 // Product Plus rubric contract.
-export const PRODUCT_PLUS_RUBRIC_SCORE_COUNT = 4;
+export const PRODUCT_PLUS_RUBRIC_CRITERIA = [
+  { label: "Problem Definition", weight: 25 },
+  { label: "Problem-Solution Fit", weight: 25 },
+  { label: "Business Viability", weight: 25 },
+  { label: "Research & Supporting Evidence", weight: 15 },
+  { label: "Video Pitch & Creativity", weight: 10 }
+] as const;
+export const PRODUCT_PLUS_RUBRIC_SCORE_COUNT = PRODUCT_PLUS_RUBRIC_CRITERIA.length;
+export const PRODUCT_PLUS_RUBRIC_SCORE_MAX = 10;
 
 export const WEIGHTS = {
   ORIGINAL: 0.15,

@@ -74,6 +74,12 @@ The config row uses `{ event_key: "product+;2026", team_code: "config" }`.
 Submission records share that event key and use their six-digit team code.
 Rubrics are stored in `graded_submissions`, counters in `upvotes`/`downvotes`,
 and voter emails in `voter_ids: Set<string>` (absent until the first vote).
+Each rubric stores five raw scores out of 10 and five corresponding comments,
+ordered Problem Definition, Problem-Solution Fit, Business Viability,
+Research & Supporting Evidence, and Video Pitch & Creativity. Judging applies
+weights of 25%, 25%, 25%, 15%, and 10% when reporting totals out of 100; the saved
+scores remain unweighted. See [the judging contract](../teams/productplus.md)
+for validation and averaging details.
 Workflow 3 should reuse the types and `submissionResponse` in this service,
 including the project title and filename fields for admin detail. Public audience
 responses should continue to project only their permitted fields.

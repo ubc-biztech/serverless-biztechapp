@@ -5,13 +5,26 @@ import { QueryCommand } from "@aws-sdk/lib-dynamodb";
 import type {
   Config,
   AdminSubmission,
+  Rubric,
   Submission,
   SubmissionRecord
 } from "./typesProductPlus.js";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import {
+  PRODUCT_PLUS_RUBRIC_CRITERIA,
+  PRODUCT_PLUS_RUBRIC_SCORE_MAX
+} from "./constants.js";
 
 const s3 = new S3Client({ region: "us-west-2" });
+
+/** Convert five raw scores out of 10, in criterion order, to a weighted total out of 100. */
+export const calculateRubricTotal = (scores: Readonly<Rubric["scores"]>): number =>
+  PRODUCT_PLUS_RUBRIC_CRITERIA.reduce(
+    (total, criterion, index) =>
+      total + (scores[index] / PRODUCT_PLUS_RUBRIC_SCORE_MAX) * criterion.weight,
+    0
+  );
 
 /** WF2 supplies the complete environment-selected name, including any PROD suffix. */
 export const tableName = () => {

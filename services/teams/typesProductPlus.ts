@@ -34,14 +34,14 @@ export type Config = {
 
 export type Rubric = {
   judge_user_id: string;
-  scores: number[];
-  comments: string[]; // comments[i] corresponds to scores[i].
+  scores: [number, number, number, number, number]; // Finite scores in [0, 10], in PRODUCT_PLUS_RUBRIC_CRITERIA order.
+  comments: [string, string, string, string, string]; // comments[i] corresponds to scores[i].
 };
 
 export type RankedSubmission = {
   team_code: string;
   team_name: string;
-  rubric_average: number | null;
+  rubric_average: number | null; // Mean of judges' weighted totals out of 100; null if ungraded.
   rubric_count: number;
   upvotes: number;
   downvotes: number;

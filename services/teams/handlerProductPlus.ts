@@ -8,7 +8,8 @@ import {
   querySubmissions,
   tableName,
   isVotingOpen,
-  submissionResponse
+  submissionResponse,
+  calculateRubricTotal
 } from "./helpersProductPlus";
 import {
   Submission,
@@ -16,7 +17,10 @@ import {
   RankedSubmission,
   SubmissionRecord
 } from "./typesProductPlus";
-import { PRODUCT_PLUS_RUBRIC_SCORE_COUNT } from "./constants";
+import {
+  PRODUCT_PLUS_RUBRIC_SCORE_COUNT,
+  PRODUCT_PLUS_RUBRIC_SCORE_MAX
+} from "./constants";
 import { handle } from "./helpersJudging";
 import { AuthEvent } from "../../lib/auth";
 
@@ -149,10 +153,15 @@ export const saveRubric = protect(
 
     const validScores = data.scores.every(
       (score: unknown) =>
-        typeof score === "number" && Number.isFinite(score)
+        typeof score === "number" &&
+        Number.isFinite(score) &&
+        score >= 0 &&
+        score <= PRODUCT_PLUS_RUBRIC_SCORE_MAX
     );
     if (!validScores)
-      return helpers.inputError("Scores must be finite numbers");
+      return helpers.inputError(
+        `Scores must be finite numbers between 0 and ${PRODUCT_PLUS_RUBRIC_SCORE_MAX}`
+      );
 
     const rubric: Rubric = {
       judge_user_id: (event as AuthEvent).auth!.email,
@@ -226,8 +235,7 @@ export const adminSubmissions = protect(
     const submissions: RankedSubmission[] = rows.map((row) => {
       const rubrics = row.graded_submissions ?? [];
       const rubric_total = rubrics.reduce(
-        (total, rubric) =>
-          total + rubric.scores.reduce((sum, score) => sum + score, 0),
+        (total, rubric) => total + calculateRubricTotal(rubric.scores),
         0
       );
       const upvotes = row.upvotes ?? 0;

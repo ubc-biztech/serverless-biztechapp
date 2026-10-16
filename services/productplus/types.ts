@@ -42,8 +42,8 @@ export type SubmissionKey = {
 /** Stored rubric shape shared with the judging workflow. */
 export type Rubric = {
   judge_user_id: string;
-  scores: number[]; // Exactly four scores; the frontend controls the score range.
-  comments: string[]; // Exactly four comments; comments[i] corresponds to scores[i].
+  scores: [number, number, number, number, number]; // Finite scores in [0, 10], in the judging workflow's criterion order.
+  comments: [string, string, string, string, string]; // comments[i] corresponds to scores[i].
 };
 
 /** Stored submission. Updates must preserve judging and voting attributes. */

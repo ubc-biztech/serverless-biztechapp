@@ -36,9 +36,18 @@ are reread and retried as before. This preserves Workflow 2's stored shape and
 does not change the submission's `updated_at`, form fields, votes, or counters.
 No rubric-map migration or separate version field is introduced.
 
-Each new rubric contains exactly four finite numeric scores and four string
-comments. Score bounds are controlled by the frontend; the API has no minimum
-or maximum. `comments[i]` describes `scores[i]`; the judge ID comes
+Each rubric contains exactly five finite numeric scores between 0 and 10
+(inclusive) and five string comments. The frontend and API use this fixed order:
+
+| Index | Criterion | Raw maximum | Weight |
+| --- | --- | --- | --- |
+| 0 | Problem Definition | 10 | 25% |
+| 1 | Problem-Solution Fit | 10 | 25% |
+| 2 | Business Viability | 10 | 25% |
+| 3 | Research & Supporting Evidence | 10 | 15% |
+| 4 | Video Pitch & Creativity | 10 | 10% |
+
+`comments[i]` describes `scores[i]`; the judge ID comes
 from the authenticated user. Saving again replaces that judge's entire rubric,
 while retaining other judges' rubrics. A team's submission re-upload preserves
 the saved rubrics.
@@ -47,14 +56,21 @@ Example rubric request:
 
 ```json
 {
-  "scores": [4, 3, 5, 4],
-  "comments": ["Clear problem", "Needs more detail", "Strong solution", "Good presentation"]
+  "scores": [10, 8, 6, 4, 2],
+  "comments": ["Clear problem", "Strong fit", "Business model needs work", "Add evidence", "Improve presentation"]
 }
 ```
 
-Existing stored rubrics are not migrated by this change. Workflow 2 preserves
-the rubric array without interpreting its contents; its duplicate `Rubric` type
-must also use `comments: string[]` when integrating the branches.
+Store and return these raw scores without applying weights. The admin list's
+`rubric_average` is the mean of judges' weighted totals out of 100. Each total is
+`sum(scores[i] / 10 * weight[i])`, using percentage-point weights
+`[25, 25, 25, 15, 10]`; the example scores above produce 68/100. An ungraded
+submission returns `rubric_average: null` and `rubric_count: 0`. Frontend totals
+and subsequent score displays must apply this same calculation once.
+
+Previous scores have been deleted, so stored rubrics are assumed to have this
+five-criterion shape. There is no compatibility fallback or migration.
+Workflow 2 preserves the rubric array without interpreting its contents.
 
 Fractional scores are accepted. No comment-length limit is imposed.
 
@@ -86,6 +102,8 @@ These handlers remain in the Teams service. The specific local proxy mounts
 `/productplus/audience` and `/productplus/admin/submissions` precede Workflow 2's
 broader `/productplus` mount so requests reach the declaring service.
 
-Inherited event-Q&A/Slack changes from dev are retained without further changes.
-Branch-added unit tests are removed as requested, with no new CI test
-step. Team deletion behavior and its existing cleanup follow-up are unchanged.
+Run the isolated rubric handler checks with
+`node --test services/teams/test/productPlusRubric.test.mjs`.
+They keep the real authentication, validation, weighting, and response handling
+while replacing AWS infrastructure. No new CI test step is introduced.
+Team deletion behavior and its existing cleanup follow-up are unchanged.
