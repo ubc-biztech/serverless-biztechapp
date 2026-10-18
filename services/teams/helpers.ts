@@ -730,25 +730,34 @@ const teamHelpers: TeamsHelpers = {
 
 export default teamHelpers;
 
-export const toTeamResponse = async (team: EventTeamRecord): Promise<Team> => {
-  const memberIDs = [...team.member_ids];
+/** Display names from biztechUsers, keyed by user id; batched to DynamoDB's 100-key limit. */
+export const getMemberNames = async (userIDs: string[]): Promise<Map<string, string>> => {
   const usersTable = USERS_TABLE + (process.env.ENVIRONMENT || "");
-  const { Responses } = (await db.batchGet(
-    memberIDs.map((id) => ({ id })),
-    usersTable,
-  )) as unknown as { Responses: Record<string, { id: string; fname?: string; lname?: string }[]> };
-  const users = new Map(Responses[usersTable].map((user) => [user.id, user]));
-
-  return {
-    team_code: team.id,
-    team_name: team.team_name,
-    leader_user_id: team.leader_user_id,
-    members: memberIDs.map((user_id) => ({
-      user_id,
-      name: [users.get(user_id)?.fname, users.get(user_id)?.lname].filter(Boolean).join(" ") || "Participant",
-    })),
-  };
+  const ids = [...new Set(userIDs)];
+  const names = new Map<string, string>();
+  for (let start = 0; start < ids.length; start += 100) {
+    const { Responses } = (await db.batchGet(
+      ids.slice(start, start + 100).map((id) => ({ id })),
+      usersTable,
+    )) as unknown as { Responses: Record<string, { id: string; fname?: string; lname?: string }[]> };
+    for (const user of Responses[usersTable] ?? [])
+      names.set(user.id, [user.fname, user.lname].filter(Boolean).join(" "));
+  }
+  return names;
 };
+
+export const toTeamMembers = (team: EventTeamRecord, names: Map<string, string>): Team["members"] =>
+  [...team.member_ids].map((user_id) => ({
+    user_id,
+    name: names.get(user_id) || "Participant",
+  }));
+
+export const toTeamResponse = async (team: EventTeamRecord): Promise<Team> => ({
+  team_code: team.id,
+  team_name: team.team_name,
+  leader_user_id: team.leader_user_id,
+  members: toTeamMembers(team, await getMemberNames([...team.member_ids])),
+});
 
 export const getEventRegistration = async (
   userID: string,

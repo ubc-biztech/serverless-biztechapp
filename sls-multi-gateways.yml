@@ -8,6 +8,9 @@ services:
   - srvName: teams
     srvPath: productplus/admin/submissions
     srvSource: services/teams
+  - srvName: teams
+    srvPath: productplus/admin/teams
+    srvSource: services/teams
   - srvName: events
     srvPath: events
     srvSource: services/events

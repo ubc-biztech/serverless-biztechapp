@@ -1,4 +1,5 @@
 import db from "../../lib/db.js";
+import { TEAMS_TABLE } from "../../constants/tables";
 import res from "../../lib/responseHelpers";
 import helpers from "../../lib/handlerHelpers";
 import { Access, protect } from "../../lib/auth";
@@ -12,11 +13,14 @@ import {
   calculateRubricTotal
 } from "./helpersProductPlus";
 import {
+  AdminTeam,
   Submission,
   Rubric,
   RankedSubmission,
   SubmissionRecord
 } from "./typesProductPlus";
+import type { EventTeamRecord } from "./types";
+import { getMemberNames, toTeamMembers } from "./helpers";
 import {
   PRODUCT_PLUS_RUBRIC_SCORE_COUNT,
   PRODUCT_PLUS_RUBRIC_SCORE_MAX
@@ -252,6 +256,49 @@ export const adminSubmissions = protect(
     });
 
     return res.ok(submissions);
+  })
+);
+
+export const adminTeams = protect(
+  Access.ADMIN,
+  handle(async () => {
+    const event_key = getEventKey();
+    const [items, rows] = await Promise.all([
+      db.scan(TEAMS_TABLE, {
+        FilterExpression: "#eventIDyear = :eventKey",
+        ExpressionAttributeNames: { "#eventIDyear": "eventID;year" },
+        ExpressionAttributeValues: { ":eventKey": event_key }
+      }) as Promise<Record<string, unknown>[]>,
+      querySubmissions(event_key, "team_code, submitted_at, video_url") as Promise<
+        Pick<Submission, "team_code" | "submitted_at" | "video_url">[]
+      >
+    ]);
+    // Product+ widget teams keep members in a Set; legacy event teams use memberIDs.
+    const teams = items.filter(
+      (item): item is EventTeamRecord & Record<string, unknown> => item.member_ids instanceof Set
+    );
+    const submissions = new Map(rows.map((row) => [row.team_code, row]));
+    const names = await getMemberNames(teams.flatMap((team) => [...team.member_ids]));
+
+    const response: AdminTeam[] = teams.map((team) => {
+      const submission = submissions.get(team.id);
+      return {
+        team_code: team.id,
+        team_name: team.team_name,
+        leader_user_id: team.leader_user_id,
+        members: toTeamMembers(team, names),
+        submission_status: !submission
+          ? "none"
+          : submission.submitted_at && submission.video_url
+            ? "submitted"
+            : "draft"
+      };
+    });
+    response.sort((a, b) =>
+      a.team_name.localeCompare(b.team_name, undefined, { sensitivity: "base" })
+    );
+
+    return res.ok(response);
   })
 );
 

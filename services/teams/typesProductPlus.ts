@@ -1,3 +1,10 @@
+import type { Team } from "./types";
+
+/** Admin view of every team for the event, with how far its submission has progressed. */
+export type AdminTeam = Team & {
+  submission_status: "submitted" | "draft" | "none";
+};
+
 /** Submission contract aligned with WF2 (services/productplus/types.ts). */
 export type Submission = {
   team_code: string;
