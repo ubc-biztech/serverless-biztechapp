@@ -36,7 +36,7 @@ When deploying these services individually, deploy `teams` first.
 
 | Method | Path | Behavior |
 | --- | --- | --- |
-| GET | `/productplus/submissions` | Current team's submission (or null), submission deadline, and `can_edit` |
+| GET | `/productplus/submissions` | Current team's submission (or null), submission deadline, `can_edit`, and judge `feedback` (comments only, no scores) |
 | POST | `/productplus/submissions/upload` | Signed private PDF upload URL and server-generated `prd_path` |
 | PUT | `/productplus/submissions` | Save the current team's form and validated PDF |
 | GET | `/productplus/admin/config` | Read deadlines |
