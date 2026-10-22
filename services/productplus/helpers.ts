@@ -625,7 +625,16 @@ export async function loadSubmission(
       ? await submissionResponse(submission, settings.bucket)
       : null,
     submission_deadline: config.submission_deadline,
-    can_edit: Date.now() < Date.parse(config.submission_deadline)
+    can_edit: Date.now() < Date.parse(config.submission_deadline),
+    // Select comments explicitly so judges' scores stay private.
+    feedback: (submission?.graded_submissions ?? [])
+      .filter((rubric) =>
+        rubric.comments?.some((comment) => comment?.trim())
+      )
+      .map((rubric) => ({
+        judge_user_id: rubric.judge_user_id,
+        comments: rubric.comments
+      }))
   };
 }
 

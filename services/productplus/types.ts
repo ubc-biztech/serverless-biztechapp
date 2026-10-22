@@ -102,10 +102,14 @@ export type CleanupTask =
       payload: { event_key: string; team_code: string };
     };
 
+/** Judge comments shown to the team. Scores stay private to judges. */
+export type JudgeFeedback = Pick<Rubric, "judge_user_id" | "comments">;
+
 export type GetSubmissionResponse = {
   submission: Submission | null;
   submission_deadline: string;
   can_edit: boolean;
+  feedback: JudgeFeedback[]; // Only judges who left at least one comment.
 };
 
 export type UploadSubmissionBody = {
