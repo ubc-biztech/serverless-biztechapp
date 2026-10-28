@@ -25,7 +25,16 @@ provider:
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
-    WS_API_ENDPOINT: https://bn27jq3bal.execute-api.us-west-2.amazonaws.com/prod
+    WS_API_ENDPOINT:
+      Fn::Join:
+        - ""
+        - - "https://"
+          - Ref: WebsocketsApi
+          - ".execute-api."
+          - Ref: AWS::Region
+          - "."
+          - Ref: AWS::URLSuffix
+          - "/${self:provider.stage}"
 
   apiGateway:
     restApiId: !ImportValue ${self:provider.stage}-ExtApiGatewayRestApiId
