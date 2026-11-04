@@ -7,7 +7,15 @@ export const groups = {
     "karens",
     "elijah"
   ],
-  "internal": ["rohan", "kailey", "hannah", "marcus"],
+  "internal": [
+    "rohan", 
+    "kailey", 
+    "hannah", 
+    "marcus", 
+    "viv", 
+    "samuel", 
+    "michelle" 
+  ],
   "experiences": [
     "jay",
     "john",
@@ -24,7 +32,7 @@ export const groups = {
     "jimmy",
     "karens",
     "amara",
-    "kash",
+    "hasan",
     "keanan",
     "allison",
     "jack",
@@ -54,7 +62,8 @@ export const groups = {
     "shun",
     "thomas",
     "daniel",
-    "vi",
+    "arian",
+    "josh",
     "isaac"
   ],
 };
