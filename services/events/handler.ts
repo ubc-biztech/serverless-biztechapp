@@ -175,6 +175,7 @@ export const create = protect(Access.ADMIN, async (event) => {
       latitude: data.latitude,
       pricing: data.pricing,
       registrationFormKey: data.registrationFormKey,
+      partnerRegistrationFormKey: data.partnerRegistrationFormKey,
       createdAt: timestamp,
       updatedAt: timestamp,
       requiredTextFields: data.requiredTextFields,
