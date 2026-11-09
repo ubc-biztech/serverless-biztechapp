@@ -55,6 +55,7 @@ export interface CreateEventBody {
   latitude?: number;
   pricing?: Record<string, unknown>;
   registrationFormKey?: string;
+  partnerRegistrationFormKey?: string;
   registrationQuestions?: RegistrationQuestion[];
   partnerRegistrationQuestions?: RegistrationQuestion[];
   attendeeFeedbackQuestions?: RawFeedbackQuestion[] | FeedbackQuestion[];
@@ -104,6 +105,7 @@ export interface EventRecord {
   latitude?: number;
   pricing?: Record<string, unknown>;
   registrationFormKey?: string;
+  partnerRegistrationFormKey?: string;
   createdAt?: number;
   updatedAt?: number;
   registrationQuestions?: RegistrationQuestionWithId[];
