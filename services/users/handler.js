@@ -3,6 +3,7 @@ import db from "../../lib/db";
 import { isEmpty, isValidEmail } from "../../lib/utils";
 import {
   USERS_TABLE,
+  PROFILES_TABLE,
   EVENTS_TABLE,
   MEMBERS_TABLE,
   IMMUTABLE_USER_PROPS
@@ -10,6 +11,7 @@ import {
 import { CURRENT_ONBOARDING_YEAR } from "../../constants/onboarding";
 import docClient from "../../lib/docClient";
 import { protect, Access } from "../../lib/auth";
+import { PROFILE_TYPES, TYPES } from "../profiles/constants";
 
 export const create = async (event) => {
   const timestamp = new Date().getTime();
@@ -226,9 +228,22 @@ export const get = protect(Access.USER, async (event) => {
       return helpers.notFoundResponse("user", email);
     }
 
+    let needsOnboarding = user.onboardingYear !== CURRENT_ONBOARDING_YEAR;
+    if (needsOnboarding && user.profileID) {
+      // Imported partners already have a profile and skip annual onboarding.
+      const profile = await db.getOneCustom({
+        TableName: PROFILES_TABLE + (process.env.ENVIRONMENT || ""),
+        Key: {
+          compositeID: `PROFILE#${user.profileID}`,
+          type: TYPES.PROFILE
+        }
+      });
+      needsOnboarding = profile?.profileType !== PROFILE_TYPES.PARTNER;
+    }
+
     const response = helpers.createResponse(200, {
       ...user,
-      needsOnboarding: user.onboardingYear !== CURRENT_ONBOARDING_YEAR
+      needsOnboarding
     });
     return response;
   } catch (err) {

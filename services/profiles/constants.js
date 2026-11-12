@@ -10,6 +10,13 @@ export const PROFILE_TYPES = Object.freeze({
 });
 
 export const MUTABLE_PROFILE_ATTRIBUTES = Object.freeze({
+  fname: "fname",
+  lname: "lname",
+  pronouns: "pronouns",
+  major: "major",
+  year: "year",
+  company: "company",
+  position: "position",
   hobby1: "hobby1",
   hobby2: "hobby2",
   funQuestion1: "funQuestion1",
@@ -19,4 +26,12 @@ export const MUTABLE_PROFILE_ATTRIBUTES = Object.freeze({
   additionalLink: "additionalLink",
   resumeURL: "resumeURL",
   description: "description"
+});
+
+export const PROFILE_USER_ATTRIBUTES = Object.freeze({
+  fname: "fname",
+  lname: "lname",
+  pronouns: "gender",
+  major: "major",
+  year: "year"
 });
