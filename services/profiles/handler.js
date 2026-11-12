@@ -6,6 +6,7 @@ import { PROFILES_TABLE, USERS_TABLE } from "../../constants/tables.js";
 import { CURRENT_ONBOARDING_YEAR } from "../../constants/onboarding.js";
 import {
   MUTABLE_PROFILE_ATTRIBUTES,
+  PROFILE_USER_ATTRIBUTES,
   PROFILE_TYPES,
   TYPES
 } from "./constants.js";
@@ -305,19 +306,45 @@ export const createPartialPartnerProfile = async (event) => {
 export const updatePublicProfile = protect(Access.USER, async (event) => {
   try {
     const userID = event.auth.email;
-    const body = JSON.parse(event.body);
-    helpers.checkPayloadProps(body, {
-      viewableMap: {
-        required: true
-      }
-    });
-    const { viewableMap } = body;
+    let body;
+    try {
+      body = JSON.parse(event.body || "{}");
+    } catch {
+      return helpers.inputError("Profile update must contain valid JSON");
+    }
+    if (!body || Object.prototype.toString.call(body) !== "[object Object]") {
+      return helpers.inputError("Profile update must be an object");
+    }
 
+    const { viewableMap } = body;
     if (
-      !viewableMap ||
-      Object.prototype.toString.call(viewableMap) !== "[object Object]"
+      viewableMap !== undefined &&
+      (!viewableMap || Object.prototype.toString.call(viewableMap) !== "[object Object]")
     ) {
-      throw helpers.inputError("Viewable map is not a literal object", body);
+      return helpers.inputError("Viewable map is not a literal object");
+    }
+
+    const updateBody = {};
+    for (const [key, value] of Object.entries(body)) {
+      if (!Object.hasOwn(MUTABLE_PROFILE_ATTRIBUTES, key)) continue;
+      // Older profiles may use a numeric year; preserve that representation.
+      const numericYear = key === "year" && Number.isInteger(value);
+      if (typeof value !== "string" && !numericYear) {
+        return helpers.inputError(`${key} must be ${key === "year" ? "a string or integer" : "a string"}`);
+      }
+      if ((key === "fname" || key === "lname") && !value.trim()) {
+        return helpers.inputError(`${key} must not be empty`);
+      }
+      updateBody[key] = key === "fname" || key === "lname" ? value.trim() : value;
+    }
+
+    const visibilityUpdates = {};
+    for (const [key, value] of Object.entries(viewableMap || {})) {
+      if (!Object.hasOwn(MUTABLE_PROFILE_ATTRIBUTES, key)) continue;
+      if (typeof value !== "boolean") {
+        return helpers.inputError(`Visibility for ${key} must be a boolean`);
+      }
+      visibilityUpdates[key] = value;
     }
 
     const user = await db.getOne(userID, USERS_TABLE);
@@ -348,42 +375,78 @@ export const updatePublicProfile = protect(Access.USER, async (event) => {
 
     const profile = result[0];
 
-    Object.keys(viewableMap).forEach((key) => {
-      if (
-        Object.hasOwn(MUTABLE_PROFILE_ATTRIBUTES, key) &&
-        typeof viewableMap[key] === "boolean"
-      ) {
-        profile.viewableMap[key] = viewableMap[key];
+    const updatedVisibility = Object.keys(visibilityUpdates).length
+      ? {
+        ...profile.viewableMap,
+        ...visibilityUpdates
       }
-    });
-
-    delete body["viewableMap"];
-
-    const updateBody = {};
-    Object.keys(body).forEach((key) => {
-      if (
-        Object.hasOwn(MUTABLE_PROFILE_ATTRIBUTES, key) &&
-        typeof body[key] === "string"
-      ) {
-        updateBody[key] = body[key];
-      }
-    });
-
+      : null;
+    const timestamp = Date.now();
     const updateProfileParam = buildProfileUpdateParams(
       compositeID,
       updateBody,
-      profile.viewableMap,
+      updatedVisibility,
       PROFILES_TABLE,
-      new Date().getTime()
+      timestamp
     );
 
-    const data = await db.updateDBCustom(updateProfileParam);
+    // Transactions add the environment suffix themselves and cannot return attributes.
+    delete updateProfileParam.ReturnValues;
+    updateProfileParam.TableName = PROFILES_TABLE;
+    updateProfileParam.ConditionExpression = "attribute_exists(compositeID)";
+    if (updatedVisibility) {
+      // Do not overwrite another request's intervening visibility changes.
+      updateProfileParam.ExpressionAttributeNames["#previousVisibility"] = "viewableMap";
+      if (profile.viewableMap === undefined) {
+        updateProfileParam.ConditionExpression += " AND attribute_not_exists(#previousVisibility)";
+      } else {
+        updateProfileParam.ConditionExpression += " AND #previousVisibility = :previousVisibility";
+        updateProfileParam.ExpressionAttributeValues[":previousVisibility"] = profile.viewableMap;
+      }
+    }
+
+    const userNames = { "#profileID": "profileID" };
+    const userValues = { ":profileID": profileID };
+    const userUpdates = [];
+    for (const [key, value] of Object.entries(updateBody)) {
+      if (!Object.hasOwn(PROFILE_USER_ATTRIBUTES, key)) continue;
+      const userKey = PROFILE_USER_ATTRIBUTES[key];
+      userNames[`#${userKey}`] = userKey;
+      userValues[`:${userKey}`] = value;
+      userUpdates.push(`#${userKey} = :${userKey}`);
+    }
+
+    const userWrite = {
+      TableName: USERS_TABLE,
+      Key: { id: userID },
+      ConditionExpression: "attribute_exists(id) AND #profileID = :profileID",
+      ExpressionAttributeNames: userNames,
+      ExpressionAttributeValues: userValues
+    };
+    if (userUpdates.length) {
+      userNames["#updatedAt"] = "updatedAt";
+      userValues[":updatedAt"] = timestamp;
+      userWrite.UpdateExpression = `SET ${[...userUpdates, "#updatedAt = :updatedAt"].join(", ")}`;
+    }
+
+    await db.writeMultiple([
+      { Update: updateProfileParam },
+      userUpdates.length ? { Update: userWrite } : { ConditionCheck: userWrite }
+    ]);
+    const data = {
+      Attributes: {
+        ...updateBody,
+        ...(updatedVisibility ? { viewableMap: updatedVisibility } : {}),
+        updatedAt: timestamp
+      }
+    };
     return helpers.createResponse(200, {
       message: `successfully updated profile: ${userID}`,
       data
     });
   } catch (err) {
     console.error(err);
+    if (err?.statusCode && err?.body) return err;
     return helpers.createResponse(500, { message: err.message || err });
   }
 });
