@@ -1,6 +1,7 @@
 import { PutBuilder } from "./build/PutBuilder.js";
 import { UpdateBuilder } from "./build/UpdateBuilder.js";
 import { DeleteBuilder } from "./build/DeleteBuilder.js";
+import { ConditionCheckBuilder } from "./build/ConditionCheckBuilder.js";
 
 export { field, anyOf, allOf } from "./build/ConditionBuilder.js";
 
@@ -18,5 +19,8 @@ export const build = {
   },
   delete(table: string, key: Record<string, unknown>) {
     return new DeleteBuilder(table, key);
+  },
+  conditionCheck(table: string, key: Record<string, unknown>) {
+    return new ConditionCheckBuilder(table, key);
   }
 };
