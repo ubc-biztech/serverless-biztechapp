@@ -13,6 +13,7 @@ import {
 import SESEmailService from "./EmailService/SESEmailService";
 import awsConfig from "../../lib/config";
 import { REGISTRATION_STATUS, STATUS_FIELD } from "./constants";
+import { KICKSTART_EVENT_KEY } from "../../constants/kickstart";
 
 // const CHECKIN_COUNT_SANITY_CHECK = 500;
 
@@ -43,6 +44,32 @@ const summarizePartnerRegistrationResults = (results) => {
   );
 };
 
+// BatchWrite cannot enforce conditions. Keep each Kickstart deletion request atomic,
+// including the single-record route, so a concurrent team join cancels the deletion.
+async function deleteKickstartRegistrations(emails) {
+  const uniqueEmails = [...new Set(emails)];
+  if (uniqueEmails.length === 0) return {};
+  if (uniqueEmails.length > 100) {
+    throw helpers.createResponse(400, { message: "Delete up to 100 Kickstart registrations at a time." });
+  }
+  try {
+    return await db.txn(...uniqueEmails.map(id =>
+      db.build.delete(USER_REGISTRATIONS_TABLE, {
+        id,
+        "eventID;year": KICKSTART_EVENT_KEY
+      })
+        .if("teamID").notExists()
+    ));
+  } catch (error) {
+    if (db.isConflict(error)) {
+      throw helpers.createResponse(409, {
+        message: "A registration is on a team or changed. Leave the team before deleting it, then retry."
+      });
+    }
+    throw error;
+  }
+}
+
 /* returns error 403 if the given id/eventID DNE in database
    returns error 502 if there is a problem with processing data or sending an email
    returns 201 when entry is created successfully, error 409 if a registration with the same id/eventID exists
@@ -65,6 +92,10 @@ export async function updateHelper(
     applicationStatus
   } = data;
   const eventIDAndYear = eventID + ";" + year;
+
+  if (eventIDAndYear === KICKSTART_EVENT_KEY && Object.prototype.hasOwnProperty.call(data, "teamID")) {
+    throw helpers.createResponse(400, { message: "Team membership must be changed using the team endpoints." });
+  }
 
   // Normalize email to lowercase
   const normalizedEmail = email.toLowerCase();
@@ -810,9 +841,11 @@ export const del = protect(Access.USER, async (event, ctx, callback) => {
 
     const eventIDAndYear = data.eventID + ";" + data.year;
 
-    const res = await db.deleteOne(email, USER_REGISTRATIONS_TABLE, {
-      ["eventID;year"]: eventIDAndYear
-    });
+    const res = eventIDAndYear === KICKSTART_EVENT_KEY
+      ? await deleteKickstartRegistrations([email])
+      : await db.deleteOne(email, USER_REGISTRATIONS_TABLE, {
+        ["eventID;year"]: eventIDAndYear
+      });
 
     return helpers.createResponse(200, {
       message: "Registration entry Deleted!",
@@ -862,7 +895,9 @@ export const delMany = protect(Access.ADMIN, async (event, ctx, callback) => {
       ["eventID;year"]: `${eventIDAndYear}` // sort key
     }));
 
-    const res = await db.batchDelete(itemsToDelete, USER_REGISTRATIONS_TABLE);
+    const res = eventIDAndYear === KICKSTART_EVENT_KEY
+      ? await deleteKickstartRegistrations(lowercaseEmails)
+      : await db.batchDelete(itemsToDelete, USER_REGISTRATIONS_TABLE);
 
     return helpers.createResponse(200, {
       message: "Registration entry Deleted!",

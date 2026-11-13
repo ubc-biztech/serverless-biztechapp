@@ -68,6 +68,20 @@ provider:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechTeams${self:provider.environment.ENVIRONMENT}"
     - Effect: Allow
       Action:
+        - dynamodb:PutItem
+        - dynamodb:GetItem
+        - dynamodb:ConditionCheckItem
+        - dynamodb:DeleteItem
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/bizBtxProjects${self:provider.environment.ENVIRONMENT}"
+    - Effect: Allow
+      Action:
+        - dynamodb:PutItem
+        - dynamodb:DeleteItem
+      Resource:
+        - "arn:aws:dynamodb:us-west-2:432714361962:table/bizBtxPrices${self:provider.environment.ENVIRONMENT}"
+    - Effect: Allow
+      Action:
         - dynamodb:GetItem
         - dynamodb:PutItem
         - dynamodb:UpdateItem
@@ -195,16 +209,6 @@ functions:
           path: team/addQuestions
           method: put
           cors: true
-  joinTeam:
-    handler: handler.joinTeam
-    events:
-      - http:
-          path: team/join
-          method: post
-          cors: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
   leaveTeam:
     handler: handler.leaveTeam
     events:

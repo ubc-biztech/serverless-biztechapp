@@ -37,6 +37,7 @@ export const IMMUTABLE_USER_PROPS = ["admin", "isMember", "onboardingYear", "pro
 export const EVENT_QA_TABLE = "biztechEventQA";
 
 export const BTX_PROJECTS_TABLE = "bizBtxProjects";
+export const BTX_PRICES_TABLE = "bizBtxPrices";
 export const BTX_ACCOUNTS_TABLE = "bizBtxAccounts";
 export const BTX_HOLDINGS_TABLE = "bizBtxHoldings";
 export const BTX_TRADES_TABLE = "bizBtxTrades";
