@@ -141,6 +141,28 @@ custom:
       - dev
 
 functions:
+  btxGetCompanyProfile:
+    handler: profileHandler.getCompanyProfile
+    events:
+      - http:
+          path: btx/projects/{projectId}
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  btxPatchCompanyProfile:
+    handler: profileHandler.patchCompanyProfile
+    events:
+      - http:
+          path: btx/projects/{projectId}
+          method: patch
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
   btxGetProjects:
     handler: handler.getProjects
     events:
