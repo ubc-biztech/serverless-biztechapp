@@ -19,6 +19,7 @@ export function buildInitialCompany(input: {
     companyName: input.companyName,
     blurb: "",
     youtubeURL: "",
+    twitterURL: "",
     currentPriceCents: SEED_PRICE_CENTS,
     netShares: 0,
     seedSharesAtIpo: null,
