@@ -2,15 +2,13 @@ import { BTX_PRICES_TABLE, BTX_PROJECTS_TABLE } from "../../constants/tables";
 import db from "../../lib/db.js";
 import type { WriteBuilder } from "../../lib/db/build/WriteBuilder.js";
 import { SEED_PRICE_CENTS } from "./marketConstants";
+import type { CompanyProfile } from "./companyProfile";
 
 /** Company profile and initial market state stored in bizBtxProjects. */
-export interface BtxCompanyRecord {
+export interface BtxCompanyRecord extends CompanyProfile {
   projectId: string;
   eventId: string;
   teamId: string;
-  companyName: string;
-  blurb: string;
-  youtubeURL: string;
   netShares: number;
   seedSharesAtIpo: number | null;
   seedStartedAt: string | null;
@@ -40,6 +38,7 @@ export function buildInitialCompany(input: {
     companyName: input.companyName,
     blurb: "",
     youtubeURL: "",
+    twitterURL: "",
     netShares: 0,
     seedSharesAtIpo: null,
     seedStartedAt: null,
