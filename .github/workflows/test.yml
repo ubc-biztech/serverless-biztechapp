@@ -70,6 +70,13 @@ jobs:
             pid=$!
             pids+=("$pid")
             cd ..
+            # Bound concurrent Serverless/esbuild processes on the runner.
+            if [ "${#pids[@]}" -ge 2 ]; then
+              for pid in "${pids[@]}"; do
+                wait "$pid" || exit 1
+              done
+              pids=()
+            fi
           done
 
           for pid in "${pids[@]}"; do
@@ -111,6 +118,13 @@ jobs:
             pid=$!
             pids+=("$pid")
             cd ..
+            # Bound concurrent Serverless/esbuild processes on the runner.
+            if [ "${#pids[@]}" -ge 2 ]; then
+              for pid in "${pids[@]}"; do
+                wait "$pid" || exit 1
+              done
+              pids=()
+            fi
           done
 
           for pid in "${pids[@]}"; do

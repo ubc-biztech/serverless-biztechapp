@@ -35,7 +35,6 @@ import {
   EventTeamRecord,
   FeedbackRecord,
   JoinEventTeamBody,
-  JoinTeamBody,
   JudgeRegistrationRecord,
   JudgeScore,
   LeaveTeamBody,
@@ -49,7 +48,9 @@ import {
   UpdateJudgeSubmissionBody,
   UpdateTeamPointsBody,
 } from "./types";
-import { ProductPlusTeamError } from "./helpers";
+import { EventTeamConflictError, ProductPlusTeamError } from "./helpers";
+import { KICKSTART_EVENT_KEY } from "../../constants/kickstart";
+import { TeamFormationError } from "../btx/teamFormation";
 
 const errorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
@@ -145,6 +146,12 @@ export const leaveTeam = protect(Access.USER, async (event) => {
     // Non-admins can only act on themselves; admins may target the body memberID.
     const memberID = event.auth?.isAdmin ? data.memberID : event.auth!.email;
 
+    if (`${data.eventID};${data.year}` === KICKSTART_EVENT_KEY) {
+      return helpers.createResponse(400, {
+        message: "Use the event-scoped team leave endpoint for Kickstart 2027",
+      });
+    }
+
     await teamHelpers.leaveTeam(memberID, data.eventID, data.year);
 
     return helpers.createResponse(200, {
@@ -157,51 +164,6 @@ export const leaveTeam = protect(Access.USER, async (event) => {
 
     return helpers.createResponse(500, {
       message: "Failed to leave team",
-      error: errorMessage(error)
-    });
-  }
-});
-
-export const joinTeam = protect(Access.USER, async (event) => {
-  try {
-    const data = JSON.parse(event.body as string) as JoinTeamBody;
-
-    helpers.checkPayloadProps(data, {
-      memberID: {
-        required: true,
-        type: "string"
-      },
-      eventID: {
-        required: true,
-        type: "string"
-      },
-      year: {
-        required: true,
-        type: "number"
-      },
-      teamID: {
-        required: true,
-        type: "string"
-      }
-    });
-
-    // Non-admins can only act on themselves; admins may target the body memberID.
-    const memberID = event.auth?.isAdmin ? data.memberID : event.auth!.email;
-
-    const { memberIDs, teamName } = await teamHelpers.joinTeam(memberID, data.eventID, data.year, data.teamID);
-
-    return helpers.createResponse(200, {
-      message: "Successfully joined team.",
-      response: data,
-      memberIDs,
-      teamName
-    });
-  } catch (error) {
-    console.error("Error joining team:", error);
-    if (error instanceof ProductPlusTeamError) return helpers.createResponse(error.statusCode, { message: error.message });
-
-    return helpers.createResponse(500, {
-      message: "Failed to join team",
       error: errorMessage(error)
     });
   }
@@ -233,6 +195,12 @@ export const makeTeam = protect(Access.USER, async (event) => {
     // Non-admins can only create a team for themselves; admins may pass the
     // full body memberIDs list.
     const memberIDs = event.auth?.isAdmin ? data.memberIDs : [event.auth!.email];
+
+    if (`${data.eventID};${data.year}` === KICKSTART_EVENT_KEY) {
+      return helpers.createResponse(400, {
+        message: "Use the event-scoped team creation endpoint for Kickstart 2027",
+      });
+    }
 
     const res = await teamHelpers.makeTeam(data.team_name, data.eventID, data.year, memberIDs);
     return helpers.createResponse(200, {
@@ -285,6 +253,10 @@ export const getTeamFromUserID = eventTeamRoute(async (event) => {
 
     const year = Number(yearParam);
 
+    if (!Number.isInteger(year)) {
+      return helpers.createResponse(400, { message: "Year path parameter must be a number" });
+    }
+
     if (!event.auth?.isAdmin && userIDParam !== event.auth!.email) {
       return helpers.createResponse(403, { message: "You can only look up your own team" });
     }
@@ -322,8 +294,7 @@ export const getTeamFromUserID = eventTeamRoute(async (event) => {
     console.error("Error retrieving team:", error);
 
     return helpers.createResponse(500, {
-      message: "Could not retrieve team.",
-      error: errorMessage(error)
+      message: "Could not retrieve team."
     });
   }
 });
@@ -342,7 +313,7 @@ export const removeTeamMember = eventTeamRoute(async (event) => {
 
     const year = Number(yearParam);
     if (!Number.isInteger(year)) {
-      return helpers.inputError("Year path parameter must be a number", yearParam);
+      return helpers.createResponse(400, { message: "Year path parameter must be a number" });
     }
 
     const callerID = event.auth!.email;
@@ -372,11 +343,16 @@ export const removeTeamMember = eventTeamRoute(async (event) => {
     await removeMemberAsLeader(team, callerID, userIDParam);
     return helpers.createResponse(204);
   } catch (error) {
+    if (error instanceof EventTeamConflictError) {
+      return helpers.createResponse(409, { message: error.message });
+    }
+    if (error instanceof TeamFormationError) {
+      return helpers.createResponse(error.statusCode, { message: error.message });
+    }
     console.error("Error removing team member:", error);
 
     return helpers.createResponse(500, {
-      message: "Failed to remove team member",
-      error: errorMessage(error)
+      message: "Failed to remove team member"
     });
   }
 });
@@ -396,13 +372,13 @@ export const createEventTeam = eventTeamRoute(async (event) => {
 
     const year = Number(yearParam);
     if (!Number.isInteger(year)) {
-      return helpers.inputError("Year path parameter must be a number", yearParam);
+      return helpers.createResponse(400, { message: "Year path parameter must be a number" });
     }
 
     const data = JSON.parse(event.body || "{}") as CreateEventTeamBody;
-    const teamName = typeof data.team_name === "string" ? data.team_name.trim() : "";
+    const teamName = typeof data?.team_name === "string" ? data.team_name.trim() : "";
     if (!teamName) {
-      return helpers.inputError("team_name is required", event.body);
+      return helpers.createResponse(400, { message: "team_name is required" });
     }
 
     if (!(await db.getOne(eventID, EVENTS_TABLE, { year }))) {
@@ -423,15 +399,23 @@ export const createEventTeam = eventTeamRoute(async (event) => {
       member_ids: new Set([userID])
     };
 
-    await createTeamWithLeader(team);
+    const createdTeam = await createTeamWithLeader(team);
 
-    return helpers.createResponse(201, await toTeamResponse(team));
+    return helpers.createResponse(201, await toTeamResponse(createdTeam));
   } catch (error) {
+    if (error instanceof EventTeamConflictError) {
+      return helpers.createResponse(409, { message: error.message });
+    }
+    if (error instanceof TeamFormationError) {
+      return helpers.createResponse(error.statusCode, { message: error.message });
+    }
+    if (error instanceof SyntaxError) {
+      return helpers.createResponse(400, { message: "Request body must be valid JSON" });
+    }
     console.error("Error creating team:", error);
 
     return helpers.createResponse(500, {
-      message: "Failed to create team",
-      error: errorMessage(error)
+      message: "Failed to create team"
     });
   }
 });
@@ -451,13 +435,13 @@ export const joinEventTeam = eventTeamRoute(async (event) => {
 
     const year = Number(yearParam);
     if (!Number.isInteger(year)) {
-      return helpers.inputError("Year path parameter must be a number", yearParam);
+      return helpers.createResponse(400, { message: "Year path parameter must be a number" });
     }
 
     const data = JSON.parse(event.body || "{}") as JoinEventTeamBody;
-    const teamCode = typeof data.team_code === "string" ? data.team_code.trim() : "";
+    const teamCode = typeof data?.team_code === "string" ? data.team_code.trim() : "";
     if (!/^\d{6}$/.test(teamCode)) {
-      return helpers.inputError("team_code must be 6 digits", event.body);
+      return helpers.createResponse(400, { message: "team_code must be 6 digits" });
     }
 
     if (!(await db.getOne(eventID, EVENTS_TABLE, { year }))) {
@@ -490,11 +474,19 @@ export const joinEventTeam = eventTeamRoute(async (event) => {
       })
     );
   } catch (error) {
+    if (error instanceof EventTeamConflictError) {
+      return helpers.createResponse(409, { message: error.message });
+    }
+    if (error instanceof TeamFormationError) {
+      return helpers.createResponse(error.statusCode, { message: error.message });
+    }
+    if (error instanceof SyntaxError) {
+      return helpers.createResponse(400, { message: "Request body must be valid JSON" });
+    }
     console.error("Error joining team:", error);
 
     return helpers.createResponse(500, {
-      message: "Failed to join team",
-      error: errorMessage(error)
+      message: "Failed to join team"
     });
   }
 });
@@ -514,7 +506,7 @@ export const leaveEventTeam = eventTeamRoute(async (event) => {
 
     const year = Number(yearParam);
     if (!Number.isInteger(year)) {
-      return helpers.inputError("Year path parameter must be a number", yearParam);
+      return helpers.createResponse(400, { message: "Year path parameter must be a number" });
     }
 
     if (!(await db.getOne(eventID, EVENTS_TABLE, { year }))) {
@@ -543,11 +535,16 @@ export const leaveEventTeam = eventTeamRoute(async (event) => {
     }
     return helpers.createResponse(204);
   } catch (error) {
+    if (error instanceof EventTeamConflictError) {
+      return helpers.createResponse(409, { message: error.message });
+    }
+    if (error instanceof TeamFormationError) {
+      return helpers.createResponse(error.statusCode, { message: error.message });
+    }
     console.error("Error leaving team:", error);
 
     return helpers.createResponse(500, {
-      message: "Failed to leave team",
-      error: errorMessage(error)
+      message: "Failed to leave team"
     });
   }
 });
