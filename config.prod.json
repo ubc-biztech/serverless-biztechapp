@@ -1,5 +1,7 @@
 {
     "PRODUCTPLUS_EVENT_KEY": "product+;2026",
+    "KICKSTART_EVENT_KEY": "kickstart;2026",
+    "KICKSTART_EVENT_ENDS_AT": "2026-11-26T08:00:00.000Z",
     "ENVIRONMENT": "PROD",
     "REQUIRE_API_KEY": true,
     "PRODUCTPLUS_PRD_BUCKET": "biztech-pp-prd-prod"

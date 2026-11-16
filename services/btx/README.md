@@ -1,4 +1,8 @@
-# BTX connections
+# BTX
+
+TypeScript service (`handler.ts` entrypoints).
+
+## WebSocket connections
 
 BTX has its own WebSocket API. Its Lambda functions derive the management
 endpoint from that API and the deployment stage. Do not use the interactions
