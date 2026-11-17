@@ -4,7 +4,9 @@ import {
   BTX_PRICES_TABLE as BTX_PRICES_BASE,
   BTX_PROJECTS_TABLE as BTX_PROJECTS_BASE,
   BTX_SOCKETS_TABLE as BTX_SOCKETS_BASE,
-  BTX_TRADES_TABLE as BTX_TRADES_BASE
+  BTX_TRADES_TABLE as BTX_TRADES_BASE,
+  USER_REGISTRATIONS_TABLE as REGISTRATIONS_BASE,
+  TEAMS_TABLE as TEAMS_BASE
 } from "../../../constants/tables.js";
 
 const env = process.env.ENVIRONMENT || "";
@@ -15,3 +17,5 @@ export const HOLDINGS_TABLE = `${BTX_HOLDINGS_BASE}${env}`;
 export const TRADES_TABLE = `${BTX_TRADES_BASE}${env}`;
 export const SOCKETS_TABLE = `${BTX_SOCKETS_BASE}${env}`;
 export const PRICES_TABLE = `${BTX_PRICES_BASE}${env}`;
+export const TEAMS_TABLE = `${TEAMS_BASE}${env}`;
+export const REGISTRATIONS_TABLE = `${REGISTRATIONS_BASE}${env}`;

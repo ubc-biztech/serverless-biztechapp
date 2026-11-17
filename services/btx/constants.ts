@@ -6,6 +6,13 @@ export const KICKSTART_INITIAL_CASH = 50000;
 /** Fixed BUY price during the seed window. */
 export const SEED_PRICE = 100;
 
+/** Backend-timed seed window length. */
+export const SEED_WINDOW_MS = 30 * 60 * 1000;
+
+/** How long a quote remains valid. */
+export const QUOTE_WINDOW_MINUTES = 0.5;
+export const QUOTE_WINDOW_MS = QUOTE_WINDOW_MINUTES * 60 * 1000;
+
 /** Live-market price floor. */
 export const MIN_PRICE = 0.1;
 

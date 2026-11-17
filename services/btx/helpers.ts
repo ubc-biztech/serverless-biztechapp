@@ -1,15 +1,10 @@
-// services/btx/helpers.ts
-// PR1: foundation helpers only. Pricing/reads → PR2; trade engine/WS fanout → PR3.
-
-import { PutCommand, QueryCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
+import { PutCommand, DeleteCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
 import { validate as validateUuid, version as uuidVersion } from "uuid";
 
 import docClient from "../../lib/docClient";
-import { MIN_PRICE } from "./constants";
 import { PROJECTS_TABLE, SOCKETS_TABLE } from "./repos/tables";
-import type { BtxProject } from "./types";
+import type { BtxEventConfig } from "./types";
 
-/** Expected client/domain failures — handlers map these to HTTP responses. */
 export class BtxError extends Error {
   constructor(
     public statusCode: number,
@@ -21,37 +16,29 @@ export class BtxError extends Error {
   }
 }
 
-/** Round dollar amounts / prices to 2 decimal places. */
 export function roundMoney(value: number): number {
   return Math.round(Number(value) * 100) / 100;
 }
 
-export function roundPrice(value: number): number {
-  return roundMoney(value);
-}
-
-export function clampPrice(value: number): number {
-  return Math.max(MIN_PRICE, roundPrice(value));
-}
-
-export function configProjectId(eventId: string): string {
+export function configProjectId(eventId = configuredEvent()) {
   return `config:${eventId}`;
 }
 
-export function buildProjectId(eventId: string, teamCode: string): string {
+export function buildProjectId(eventId: string, teamCode: string) {
   return `${eventId}:${teamCode}`;
 }
 
-export function accountId(eventId: string, userId: string): string {
+export function accountId(eventId: string, userId: string) {
   return `${eventId}#${userId}`;
 }
 
-/** Client trade IDs must be UUIDv7 (sortable, stable across retries). */
+export function eventEndsAtMs(): number {
+  return Date.parse(process.env.KICKSTART_EVENT_ENDS_AT!);
+}
+
 export function isUuidV7(value: unknown): value is string {
   return (
-    typeof value === "string" &&
-    validateUuid(value) &&
-    uuidVersion(value) === 7
+    typeof value === "string" && validateUuid(value) && uuidVersion(value) === 7
   );
 }
 
@@ -64,24 +51,28 @@ export function assertUuidV7(tradeId: unknown): string {
   return tradeId;
 }
 
-export async function saveSocketConnection({
-  connectionId,
-  eventId,
-  userId
-}: {
+export async function getEventConfig(): Promise<BtxEventConfig> {
+  const projectId = configProjectId();
+  const res = await docClient.send(
+    new GetCommand({
+      TableName: PROJECTS_TABLE,
+      Key: { projectId },
+      ConsistentRead: true
+    })
+  );
+  if (!res.Item) return { projectId, ipoAt: null };
+  return { projectId, ipoAt: (res.Item as BtxEventConfig).ipoAt ?? null };
+}
+
+export async function saveSocketConnection(params: {
   connectionId: string;
   eventId: string;
   userId: string;
-}): Promise<void> {
+}) {
   await docClient.send(
     new PutCommand({
       TableName: SOCKETS_TABLE,
-      Item: {
-        connectionId,
-        eventId,
-        userId,
-        connectedAt: Date.now()
-      }
+      Item: { ...params, connectedAt: Date.now() }
     })
   );
 }
@@ -99,17 +90,6 @@ export async function removeSocketConnection({
   );
 }
 
-/** Company listings via byEvent. Control rows omit eventId so they are not indexed. */
-export async function listProjectsForEvent(): Promise<BtxProject[]> {
-  const res = await docClient.send(
-    new QueryCommand({
-      TableName: PROJECTS_TABLE,
-      IndexName: "byEvent",
-      KeyConditionExpression: "eventId = :e",
-      ExpressionAttributeValues: {
-        ":e": process.env.KICKSTART_EVENT_KEY!
-      }
-    })
-  );
-  return (res.Items ?? []) as BtxProject[];
+export function configuredEvent() {
+  return process.env.KICKSTART_EVENT_KEY!;
 }

@@ -29,3 +29,24 @@ the hosted frontend after changing it. For production, read the output from
 For fully local BTX development, use the frontend's `local` stage and
 `NEXT_PUBLIC_BTX_WS_URL=ws://localhost:3005`, with the backend's local HTTP proxy
 and BTX service running.
+
+## Market
+
+BTX runs the KickStart market for the configured event. Eligible participants
+can invest without joining a team, but cannot invest in their own company. A
+team member starts one 30-minute seed window; seed buying is fixed-price and
+selling opens after the admin launches the IPO.
+
+Listings and accounts are safe to retry. Quotes require a whole-share quantity
+and report price, fees, expiry, and timing without reserving funds. Public
+market endpoints provide listings, snapshots, trades, history, and the
+leaderboard; authenticated users can read portfolios and quotes. Admin grants
+take participant email addresses in `targets` and a stable `requestId`, so
+retries do not credit a participant twice.
+
+## Development
+
+```sh
+node --test services/btx/test/market.test.mjs
+./node_modules/.bin/tsc --noEmit
+```
