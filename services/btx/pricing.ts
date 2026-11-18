@@ -39,7 +39,7 @@ export function stockPrice(project: BtxProject, ipoAt: number | null) {
   return project.currentPrice!;
 }
 
-export function validateShares(shares: unknown) {
+export function validateShares(shares: number) {
   if (!Number.isSafeInteger(shares) || shares <= 0) {
     throw new BtxError(400, "shares must be a positive safe integer", {
       code: "VALIDATION_ERROR"
