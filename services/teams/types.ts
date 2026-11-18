@@ -36,6 +36,8 @@ export interface Team {
   team_code: string;
   team_name: string;
   leader_user_id: string;
+  /** Linked BTX company ID; included only for Kickstart 2027. */
+  projectId?: string;
   members: {
     user_id: string;
     name: string;
@@ -98,14 +100,6 @@ export interface LeaveTeamBody {
   memberID: string;
   eventID: string;
   year: number;
-  [key: string]: unknown;
-}
-
-export interface JoinTeamBody {
-  memberID: string;
-  eventID: string;
-  year: number;
-  teamID: string;
   [key: string]: unknown;
 }
 
@@ -225,12 +219,6 @@ export interface TeamsHelpers {
     memberID: string,
     eventID: string,
     year: number,
-  ): Promise<TeamActionResult>;
-  joinTeam(
-    memberID: string,
-    eventID: string,
-    year: number,
-    teamID: string,
   ): Promise<TeamActionResult>;
   makeTeam(
     team_name: string,
