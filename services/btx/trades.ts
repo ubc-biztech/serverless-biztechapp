@@ -29,7 +29,7 @@ import {
   PROJECTS_TABLE,
   TRADES_TABLE
 } from "./repos/tables";
-import { tradeQuote } from "./pricing";
+import { tradeQuote, validateShares } from "./pricing";
 import { publishTrade } from "./sockets";
 import {
   TradeStatus,
@@ -75,6 +75,7 @@ export async function submitTrade(
     limitPrice: number;
   }
 ) {
+  validateShares(input.shares);
   const tradeId = assertUuidV7(input.tradeId);
   const existing = await getTrade(input.projectId, tradeId);
 

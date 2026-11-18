@@ -39,6 +39,14 @@ export function stockPrice(project: BtxProject, ipoAt: number | null) {
   return project.currentPrice!;
 }
 
+export function validateShares(shares: unknown) {
+  if (!Number.isSafeInteger(shares) || shares <= 0) {
+    throw new BtxError(400, "shares must be a positive safe integer", {
+      code: "VALIDATION_ERROR"
+    });
+  }
+}
+
 // Share quantity is positive for both sides; only the cash change is signed.
 export function costQuote(side: "BUY" | "SELL", shares: number, price: number) {
   const notional = roundMoney(shares * price);
@@ -57,10 +65,9 @@ export function tradeQuote(
   ipoAt: number | null,
   now: number,
   side: "BUY" | "SELL",
-  quantity: number
+  shares: number
 ) {
-  const shares = quantity;
-  if (shares <= 0) throw new BtxError(400, "shares must be positive");
+  validateShares(shares);
   if (ipoAt == null) {
     const status = seedStatus(project, ipoAt, now);
     if (side === "SELL")
