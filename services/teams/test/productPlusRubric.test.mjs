@@ -9,7 +9,12 @@ import { build } from "esbuild";
 const mocks = {
   "../../lib/db.js": "export default globalThis.infrastructure.db;",
   "../../lib/docClient.js": "export default globalThis.infrastructure.docClient;",
-  "@aws-sdk/lib-dynamodb": "export class QueryCommand { constructor(input) { this.input = input; } }",
+  "@aws-sdk/lib-dynamodb": `
+    export class QueryCommand { constructor(input) { this.input = input; } }
+    export class GetCommand {}
+    export class TransactWriteCommand {}
+  `,
+  "@aws-sdk/client-lambda": "export class LambdaClient {} export class InvokeCommand {}",
   "@aws-sdk/client-s3": "export class S3Client {} export class GetObjectCommand {}",
   "@aws-sdk/s3-request-presigner": "export const getSignedUrl = () => {};"
 };
