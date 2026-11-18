@@ -65,12 +65,22 @@ provider:
         - dynamodb:GetItem
       Resource:
         - arn:aws:dynamodb:us-west-2:${aws:accountId}:table/biztechTeams${self:provider.environment.ENVIRONMENT}
+        - arn:aws:dynamodb:us-west-2:${aws:accountId}:table/biztechRegistrations${self:provider.environment.ENVIRONMENT}
 
     - Effect: Allow
       Action:
         - execute-api:ManageConnections
       Resource:
         - arn:aws:execute-api:${self:provider.region}:${aws:accountId}:*/${self:provider.stage}/@connections/*
+
+    # Transaction checks do not grant writes to registration or team records.
+    - Effect: Allow
+      Action:
+        - dynamodb:ConditionCheckItem
+      Resource:
+        - arn:aws:dynamodb:us-west-2:${aws:accountId}:table/bizBtxProjects${self:provider.environment.ENVIRONMENT}
+        - arn:aws:dynamodb:us-west-2:${aws:accountId}:table/biztechTeams${self:provider.environment.ENVIRONMENT}
+        - arn:aws:dynamodb:us-west-2:${aws:accountId}:table/biztechRegistrations${self:provider.environment.ENVIRONMENT}
 
 custom:
   prune:
@@ -115,6 +125,28 @@ custom:
       - dev
 
 functions:
+  btxGetCompanyProfile:
+    handler: profileHandler.getCompanyProfile
+    events:
+      - http:
+          path: btx/projects/{projectId}
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  btxPatchCompanyProfile:
+    handler: profileHandler.patchCompanyProfile
+    events:
+      - http:
+          path: btx/projects/{projectId}
+          method: patch
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
   btxGetProjects:
     handler: handler.getProjects
     events:

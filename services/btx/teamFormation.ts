@@ -13,6 +13,8 @@ export interface BtxEventConfigRecord {
   projectId: string;
   phase: "PRE_IPO" | "IPO_PREPARING" | "LIVE";
   ipoAt: string | null;
+  /** Required by profile editing; older formation-only configs may omit it. */
+  eventEndsAt?: string;
 }
 
 export class TeamFormationError extends Error {

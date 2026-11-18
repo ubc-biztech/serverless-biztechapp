@@ -18,6 +18,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import db from "../../lib/db.js";
 // Writes use the shared client directly so conditional errors remain available for retries.
 import docClient from "../../lib/docClient.js";
+import { isSupportedYouTubeURL } from "../../lib/youtube";
 import type {
   Config,
   ConfigRecord,
@@ -638,42 +639,6 @@ export async function loadSubmission(
   };
 }
 
-/** Validate YouTube URL structure only; this does not check visibility or video duration. */
-function supportedVideo(value: string) {
-  let url: URL;
-
-  try {
-    url = new URL(value);
-  } catch {
-    return false;
-  }
-
-  if (url.protocol !== "https:" || url.username || url.password || url.port) {
-    return false;
-  }
-
-  let videoId: string | null | undefined;
-
-  // Extract the video ID from supported hosts/paths, then validate its exact format.
-  if (url.hostname === "youtu.be") {
-    videoId = /^\/([^/]+)\/?$/.exec(url.pathname)?.[1];
-  } else if (
-    ["youtube.com", "www.youtube.com", "m.youtube.com"].includes(url.hostname)
-  ) {
-    if (url.pathname === "/watch") {
-      if (url.searchParams.getAll("v").length !== 1) {
-        return false;
-      }
-
-      videoId = url.searchParams.get("v");
-    } else {
-      videoId = /^\/(?:shorts|embed)\/([^/]+)\/?$/.exec(url.pathname)?.[1];
-    }
-  }
-
-  return typeof videoId === "string" && /^[A-Za-z0-9_-]{11}$/.test(videoId);
-}
-
 /** Accept the editable fields and optional project title; filename comes from upload tracking. */
 function parseSubmissionBody(body: string | null): PutSubmissionBody {
   let value;
@@ -726,7 +691,7 @@ function parseSubmissionBody(body: string | null): PutSubmissionBody {
 
   if (
     typeof value.video_url !== "string" ||
-    !supportedVideo(value.video_url.trim())
+    !isSupportedYouTubeURL(value.video_url.trim())
   ) {
     throw new ProductPlusError(
       400,
