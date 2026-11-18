@@ -5,6 +5,17 @@ on:
     branches: [master]
 
 jobs:
+  unit-tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22.x"
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - run: npm test
+
   sls-package:
     runs-on: ubuntu-24.04
     env:

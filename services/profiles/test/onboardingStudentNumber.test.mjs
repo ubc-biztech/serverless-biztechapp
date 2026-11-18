@@ -47,7 +47,9 @@ async function submit(education, studentNumber, existingProfile = true) {
   });
   vm.runInContext(bundle.outputFiles[0].text, context);
   const response = await context.module.exports.create({
-    requestContext: { authorizer: { claims: { email: "applicant@example.com" } } },
+    requestContext: {
+      authorizer: { claims: { email: "applicant@example.com", email_verified: "true" } },
+    },
     body: JSON.stringify({
       firstName: "Test", lastName: "Applicant", education, studentNumber,
       pronouns: "They/Them", levelOfStudy: "1st Year", faculty: "Science",

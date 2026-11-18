@@ -48,6 +48,7 @@
     "yaml": "^1.10.2"
   },
   "scripts": {
+    "test": "node --test \"services/*/test/*.test.mjs\"",
     "lint": "eslint . --fix",
     "pretty": "prettier --write \"./**/*.{js,jsx,ts,tsx,json}\"",
     "fix-sls-offline": "node ./scripts/run-in-services.js node ../../scripts/fix-sls-offline.js",

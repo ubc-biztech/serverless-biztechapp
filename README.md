@@ -96,50 +96,27 @@ Our serverless API are documented using the [Postman API Documentation Tool](htt
 
 ## Testing
 
-During development, be sure to write unit/integration tests to ensure that the handlers are free from error and covers all the required use cases.
+Use Node.js 22. Install dependencies and run the unit tests from the repository root.
 
-See our [notion doc](https://www.notion.so/ubcbiztech/Unit-Testing-Notes-a7016cc431744dc0b98b57277e572572) for more information on writing unit tests.
-
-**Unit tests** can be run using the following command:
-
-```
-npm run utest <service_name> <function_name>
-```
-This command runs a shell script that indirectly runs the serverless command: `sls invoke test -f <function>`
-
-Not specifying a `service_name` will run all the tests in the repo.
-
-Specifying a `service_name`, but not specifying a `function_name` will run all the tests in a service.
-
-**Integration tests** can be run using the following command:
-
-```
-npm run itest <function_name>
-```
-This command runs a shell script that indirectly runs the mocha command: `mocha <path_to_function>`
-
-Not specifying a `function_name` will run all the tests instead.
-
-In order to run integration tests, however, you need to [deploy](#development-dev) the API to dev environment first.
-
-[Travis CI](https://travis-ci.org) is used to automatically run all our tests for our Pull Requests and when releasing.
-
-
-Both integration and unit tests can be run at the same time by:
-```
-npm run test
+```sh
+npm ci --legacy-peer-deps
+npm test
 ```
 
-### Running tests from inside each service file
+The `unit-tests` GitHub Actions job runs the same commands on pull requests
+and pushes to `master`. The suites use Node's built-in test runner and mock
+external services, so they run locally without AWS credentials or a deployment.
 
-The test functions can also be run from inside each of the service files.
+To run one suite while developing, pass its path to Node.
 
-When you do so, the nested `package.json` files are set up so that the `service_name` argument is no longer needed, and the first argument of the command is replaced with the `function_name` instead.
+```sh
+node --test services/profiles/test/onboardingStudentNumber.test.mjs
+```
 
-For example, from inside `service/hello`, you will be able to run:
-
-`npm run utest <function_name>` and
-`npm run itest <function_name>`
+Place new unit tests in `services/<service>/test/<name>.test.mjs` for
+automatic discovery by `npm test`. The older Mocha files in those directories
+are outside this command. The suites under `services/*/test_integration/`
+exercise a deployed API and are run separately.
 
 ## Deployment
 
