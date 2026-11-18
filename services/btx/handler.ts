@@ -61,7 +61,7 @@ export const getMarketSnapshot = protect(Access.PUBLIC, async () => {
       .map((p) => {
         const status = seedStatus(p, config.ipoAt, serverTime);
         const priceCents = stockPriceCents(p, config.ipoAt);
-        const netShares = Number(p.netShares || 0);
+        const netShares = p.netShares;
         return {
           ...p,
           seedStatus: status,

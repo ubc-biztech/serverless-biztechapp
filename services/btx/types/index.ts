@@ -28,12 +28,13 @@ export interface BtxProject {
   ticker?: string;
   name?: string;
   description?: string;
+  // Listing creation sets the seed price before seeding opens. IPO replaces it.
   currentPriceCents: number;
-  netShares?: number;
+  netShares: number;
   seedStartedAt?: number | null;
   seedEndsAt?: number | null;
   seedSharesAtIpo?: number | null;
-  lastPriceTs?: number;
+  lastPriceTs: number;
   lastScheduledTickTs?: number;
   isActive?: boolean;
   createdAt?: number;

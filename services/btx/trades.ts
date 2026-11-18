@@ -15,7 +15,8 @@ import {
   buildProjectId,
   configuredEvent,
   eventEndsAtMs,
-  getEventConfig
+  getEventConfig,
+  requireSafeCents
 } from "./helpers";
 import { eligibleRegistration } from "./eligibility";
 import { getQuote } from "./market";
@@ -228,12 +229,12 @@ export async function processTrade(projectId: string, tradeId: string) {
 
     let shares = ownedShares + trade.shares;
     let costBasisCents = previousCostBasisCents - quote.cashDeltaCents;
-    let netShares = project.netShares! + trade.shares;
+    let netShares = project.netShares + trade.shares;
     let realizedPnlCents = 0;
 
     if (trade.side === "SELL") {
       shares = ownedShares - trade.shares;
-      netShares = project.netShares! - trade.shares;
+      netShares = project.netShares - trade.shares;
       let removedCostCents = previousCostBasisCents;
       if (shares > 0) {
         removedCostCents = Math.round(
@@ -245,7 +246,7 @@ export async function processTrade(projectId: string, tradeId: string) {
     }
 
     if (netShares < 0) throw new Error("Company shares do not match holdings");
-    const priceTs = Math.max(now, project.lastPriceTs! + 1);
+    const priceTs = Math.max(now, project.lastPriceTs + 1);
 
     const filled: BtxTrade = {
       ...trade,

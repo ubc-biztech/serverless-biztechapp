@@ -66,7 +66,7 @@ async function processCompanyTick(projectId: string, scheduledTickTs: number) {
   const currentPriceCents = Math.round(
     Math.max(MIN_PRICE_CENTS, project.currentPriceCents * (1 + priceChangePct))
   );
-  const ts = Math.max(now, project.lastPriceTs! + 1);
+  const ts = Math.max(now, project.lastPriceTs + 1);
   
   await docClient.send(
     new TransactWriteCommand({

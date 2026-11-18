@@ -201,7 +201,7 @@ export async function launchIpo() {
   const now = Date.now();
   const ipoAt = Math.max(
     now,
-    ...projects.map((project) => project.lastPriceTs! + 1)
+    ...projects.map((project) => project.lastPriceTs + 1)
   );
   const items: NonNullable<TransactWriteCommandInput["TransactItems"]> = [
     {
@@ -216,7 +216,7 @@ export async function launchIpo() {
   ];
 
   for (const { projectId, netShares } of projects) {
-    const priceCents = ipoStockPriceCents(netShares!);
+    const priceCents = ipoStockPriceCents(netShares);
     items.push(
       {
         Update: {

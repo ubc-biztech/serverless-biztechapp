@@ -34,7 +34,8 @@ export function seedStatus(
   return now < project.seedEndsAt ? "ACTIVE" : "ENDED";
 }
 
-export function stockPriceCents(project: BtxProject, ipoAt: number | null) {
+export function stockPriceCents(project: BtxProject, ipoAt: number | null): number {
+  // Seed pricing is fixed by phase. Live pricing uses the initialized listing price.
   if (ipoAt == null) return SEED_PRICE_CENTS;
   return project.currentPriceCents;
 }
@@ -81,7 +82,7 @@ export function tradeQuote(
       ...costQuote(side, shares, SEED_PRICE_CENTS)
     };
   }
-  const priceCents = stockPriceCents(project, ipoAt);
+  const priceCents = project.currentPriceCents;
   const priceChange = (priceCents * shares * LIVE_IMPACT_BPS_PER_SHARE) / 10_000;
   const end = side === "SELL" ? priceCents - priceChange : priceCents + priceChange;
   // All shares execute at the current price; price impact applies after the order.
