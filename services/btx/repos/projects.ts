@@ -30,7 +30,7 @@ export async function listProjectsForEvent() {
       ExpressionAttributeValues: { ":e": configuredEvent() }
     })
   );
-  return (Items ?? []) as BtxProject[];
+  return (Items || []) as BtxProject[];
 }
 
 export async function getPriceHistory(
@@ -52,7 +52,7 @@ export async function getPriceHistory(
     })
   );
   return {
-    items: (res.Items ?? []) as BtxPricePoint[],
+    items: (res.Items || []) as BtxPricePoint[],
     nextPageKey: res.LastEvaluatedKey
       ? JSON.stringify(res.LastEvaluatedKey)
       : null

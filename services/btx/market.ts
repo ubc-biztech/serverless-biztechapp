@@ -2,7 +2,7 @@ import {
   GetCommand,
   PutCommand,
   TransactWriteCommand,
-  UpdateCommand
+  type TransactWriteCommandInput
 } from "@aws-sdk/lib-dynamodb";
 import docClient from "../../lib/docClient";
 import { SEED_PRICE, SEED_WINDOW_MS, QUOTE_WINDOW_MS } from "./constants";
@@ -15,8 +15,8 @@ import {
   roundMoney
 } from "./helpers";
 import { currentTeamMember, eligibleRegistration } from "./eligibility";
-import { seedTradeQuote, seedStatus } from "./pricing";
-import { getProject } from "./repos/projects";
+import { ipoStockPrice, tradeQuote, seedStatus } from "./pricing";
+import { getProject, listProjectsForEvent } from "./repos/projects";
 import {
   EVENT_ACCOUNTS_TABLE,
   PRICES_TABLE,
@@ -26,6 +26,7 @@ import {
 } from "./repos/tables";
 import { ensureAccount } from "./repos/accounts";
 import type { BtxProject } from "./types";
+import { publishMarketUpdate } from "./sockets";
 
 /** IPO creates the config row; missing or null ipoAt means pre-IPO. */
 function preIpoCheck(projectId: string) {
@@ -60,20 +61,21 @@ export async function initializeMarketListing(input: {
   if (existing) return { project: existing as BtxProject, created: false };
   const config = await getEventConfig();
   const now = Date.now();
+
+  let companyName = input.companyName ?? input.name ?? input.ticker ?? input.teamCode;
+  let blurb = input.blurb ?? input.description ?? "";
+
   const project: BtxProject = {
     projectId,
     eventId,
-    companyName:
-      input.companyName ?? input.name ?? input.ticker ?? input.teamCode,
-    blurb: input.blurb ?? input.description ?? "",
-    youtubeURL: input.youtubeURL ?? "",
-    name: input.companyName ?? input.name ?? input.ticker ?? input.teamCode,
-    description: input.blurb ?? input.description ?? "",
+    companyName,
+    blurb,
+    youtubeURL: input.youtubeURL || "",
+    name: companyName,
+    description: blurb,
     ticker: input.ticker,
-    basePrice: SEED_PRICE,
     currentPrice: SEED_PRICE,
     netShares: 0,
-    version: 1,
     seedStartedAt: null,
     seedEndsAt: null,
     seedSharesAtIpo: null,
@@ -123,8 +125,7 @@ function seedResponse(
     seedEndsAt: project.seedEndsAt,
     seedStatus: seedStatus(project, ipoAt, now),
     serverTime: now,
-    ipoAt,
-    version: project.version
+    ipoAt
   };
 }
 
@@ -139,8 +140,7 @@ export async function startSeeding(userId: string, projectId: string) {
   const updated = {
     ...project,
     seedStartedAt: now,
-    seedEndsAt: now + SEED_WINDOW_MS,
-    version: (project.version ?? 0) + 1
+    seedEndsAt: now + SEED_WINDOW_MS
   };
   await docClient.send(
     new TransactWriteCommand({
@@ -171,14 +171,12 @@ export async function startSeeding(userId: string, projectId: string) {
             TableName: PROJECTS_TABLE,
             Key: { projectId },
             UpdateExpression:
-              "SET seedStartedAt = :s, seedEndsAt = :e, updatedAt = :s, version = :next",
+              "SET seedStartedAt = :s, seedEndsAt = :e, updatedAt = :s",
             ConditionExpression:
-              "version = :version AND (attribute_not_exists(seedStartedAt) OR seedStartedAt = :null) AND (attribute_not_exists(seedEndsAt) OR seedEndsAt = :null)",
+              "(attribute_not_exists(seedStartedAt) OR seedStartedAt = :null) AND (attribute_not_exists(seedEndsAt) OR seedEndsAt = :null)",
             ExpressionAttributeValues: {
               ":s": now,
               ":e": updated.seedEndsAt,
-              ":version": project.version,
-              ":next": updated.version,
               ":null": null
             }
           }
@@ -186,30 +184,70 @@ export async function startSeeding(userId: string, projectId: string) {
       ]
     })
   );
+  await publishMarketUpdate(seedResponse(updated, null, now));
   return seedResponse(updated, null, now);
 }
 
-/** Lazy IPO: company snapshots/history belong to first live mutation and PR3's worker. */
 export async function launchIpo() {
   const config = await getEventConfig();
-  if (config.ipoAt != null)
-    return {
-      ipoAt: config.ipoAt,
-      live: true,
-      repeated: true,
-      serverTime: Date.now()
-    };
-  const now = Date.now();
-  await docClient.send(
-    new UpdateCommand({
-      TableName: PROJECTS_TABLE,
-      Key: { projectId: config.projectId },
-      UpdateExpression: "SET ipoAt = :now",
-      ConditionExpression: "attribute_not_exists(ipoAt) OR ipoAt = :null",
-      ExpressionAttributeValues: { ":now": now, ":null": null }
-    })
+  if (config.ipoAt != null) return;
+
+  const listings = await listProjectsForEvent();
+  
+  // Read the share counts from the base table so the last seed trade is included.
+  const projects = await Promise.all(
+    listings.map(({ projectId }) => getProject(projectId))
   );
-  return { ipoAt: now, live: true, repeated: false, serverTime: now };
+  const now = Date.now();
+  const ipoAt = Math.max(
+    now,
+    ...projects.map((project) => project.lastPriceTs! + 1)
+  );
+  const items: NonNullable<TransactWriteCommandInput["TransactItems"]> = [
+    {
+      Update: {
+        TableName: PROJECTS_TABLE,
+        Key: { projectId: config.projectId },
+        UpdateExpression: "SET ipoAt = :ipoAt",
+        ConditionExpression: "attribute_not_exists(ipoAt) OR ipoAt = :null",
+        ExpressionAttributeValues: { ":ipoAt": ipoAt, ":null": null }
+      }
+    }
+  ];
+
+  for (const { projectId, netShares } of projects) {
+    const price = ipoStockPrice(netShares!);
+    items.push(
+      {
+        Update: {
+          TableName: PROJECTS_TABLE,
+          Key: { projectId },
+          UpdateExpression:
+            "SET seedSharesAtIpo = :shares, currentPrice = :price, lastPriceTs = :ipoAt, updatedAt = :now",
+          ExpressionAttributeValues: {
+            ":shares": netShares,
+            ":price": price,
+            ":ipoAt": ipoAt,
+            ":now": now
+          }
+        }
+      },
+      {
+        Put: {
+          TableName: PRICES_TABLE,
+          Item: { projectId, ts: ipoAt, price, source: "IPO" },
+          ConditionExpression: "attribute_not_exists(projectId)"
+        }
+      }
+    );
+  }
+  await docClient.send(new TransactWriteCommand({ TransactItems: items }));
+  await publishMarketUpdate({
+    eventId: configuredEvent(),
+    ipoAt,
+    phase: "LIVE",
+    serverTime: now
+  });
 }
 
 export async function getQuote(params: {
@@ -232,7 +270,9 @@ export async function getQuote(params: {
     throw new BtxError(403, "Cannot trade your own company", {
       code: "FORBIDDEN"
     });
-  const quote = seedTradeQuote(
+  if (now >= eventEndsAtMs())
+    throw new BtxError(409, "Event ended", { code: "EVENT_ENDED" });
+  const quote = tradeQuote(
     project,
     config.ipoAt,
     now,
@@ -255,7 +295,6 @@ export async function getQuote(params: {
     ),
     side: params.side,
     shares: params.shares,
-    version: project.version,
     totalCost: params.side === "BUY" ? -quote.cashDelta : null,
     proceeds: params.side === "SELL" ? quote.cashDelta : null,
     seedStartedAt: project.seedStartedAt ?? null,
@@ -343,7 +382,6 @@ export async function applyGrant(params: {
     try {
       const account = await ensureAccount(userId);
       const balance = roundMoney(account.cashBalance + amount);
-      const allocated = roundMoney(account.totalAllocated + amount);
       await docClient.send(
         new TransactWriteCommand({
           TransactItems: [
@@ -371,13 +409,9 @@ export async function applyGrant(params: {
                 TableName: EVENT_ACCOUNTS_TABLE,
                 Key: { userId, eventId },
                 UpdateExpression:
-                  "SET cashBalance = :cash, totalAllocated = :allocated, version = :next, updatedAt = :now",
-                ConditionExpression: "version = :version",
+                  "SET updatedAt = :now ADD cashBalance :amount, totalAllocated :amount",
                 ExpressionAttributeValues: {
-                  ":cash": balance,
-                  ":allocated": allocated,
-                  ":version": account.version,
-                  ":next": account.version + 1,
+                  ":amount": amount,
                   ":now": Date.now()
                 }
               }

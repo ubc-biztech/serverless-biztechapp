@@ -10,17 +10,20 @@ import {
   removeSocketConnection,
   saveSocketConnection
 } from "./helpers";
-import { applyGrant, getQuote, launchIpo, startSeeding } from "./market";
+import { applyGrant, getQuote, startSeeding } from "./market";
 import { stockPrice, seedStatus } from "./pricing";
 import {
   getPortfolioForUser,
   getRecentTrades,
   getTraderLeaderboard
 } from "./repos/accounts";
+import { getPriceHistory, listProjectsForEvent } from "./repos/projects";
 import {
-  getPriceHistory,
-  listProjectsForEvent
-} from "./repos/projects";
+  accountTrades,
+  enqueueMarketCommand,
+  getTrade,
+  submitTrade
+} from "./trades";
 
 const clientError = (error: unknown, fallback: string): APIGatewayResponse => {
   if (error instanceof BtxError) {
@@ -127,7 +130,7 @@ export const getPriceHistoryHandler = protect(Access.PUBLIC, async (event) => {
     }
     const page = await getPriceHistory(
       qs.projectId,
-      Number(qs?.limit ?? 500),
+      Number(qs.limit || 500),
       qs.prevPageKey
     );
     return helpers.createResponse(200, {
@@ -146,8 +149,8 @@ export const getLeaderboard = protect(Access.PUBLIC, async (event) => {
     return helpers.createResponse(200, {
       message: "BTX leaderboard",
       data: await getTraderLeaderboard(
-        Number(qs?.limitTop ?? 5),
-        Number(qs?.limitBottom ?? 5)
+        Number(qs.limitTop || 5),
+        Number(qs.limitBottom || 5)
       )
     });
   } catch (err) {
@@ -164,7 +167,7 @@ export const getQuoteHandler = protect(Access.USER, async (event) => {
       message: "BTX quote",
       data: await getQuote({
         projectId,
-        side: String(qs.side ?? "") as "BUY" | "SELL",
+        side: qs.side as "BUY" | "SELL",
         shares: Number(qs.shares),
         userId: event.auth!.email
       })
@@ -193,9 +196,9 @@ export const postStartSeeding = protect(Access.USER, async (event) => {
 
 export const postIpo = protect(Access.ADMIN, async () => {
   try {
-    return helpers.createResponse(200, {
-      message: "BTX IPO",
-      data: await launchIpo()
+    await enqueueMarketCommand({ type: "IPO" });
+    return helpers.createResponse(202, {
+      message: "BTX IPO queued"
     });
   } catch (err) {
     return clientError(err, "BTX IPO failed");
@@ -204,7 +207,7 @@ export const postIpo = protect(Access.ADMIN, async () => {
 
 export const postGrant = protect(Access.ADMIN, async (event) => {
   try {
-    const b = JSON.parse(event.body ?? "{}");
+    const b = JSON.parse(event.body!);
     return helpers.createResponse(200, {
       message: "Grant applied",
       data: await applyGrant({
@@ -218,12 +221,76 @@ export const postGrant = protect(Access.ADMIN, async (event) => {
   }
 });
 
+export const postBuy = protect(Access.USER, async (event) => {
+  try {
+    const trade = await submitTrade(
+      event.auth!.email,
+      "BUY",
+      JSON.parse(event.body!)
+    );
+    return helpers.createResponse(202, {
+      message: trade.status,
+      data: trade
+    });
+  } catch (error) {
+    return clientError(error, "BTX buy failed");
+  }
+});
+
+export const postSell = protect(Access.USER, async (event) => {
+  try {
+    const trade = await submitTrade(
+      event.auth!.email,
+      "SELL",
+      JSON.parse(event.body!)
+    );
+    return helpers.createResponse(202, {
+      message: trade.status,
+      data: trade
+    });
+  } catch (error) {
+    return clientError(error, "BTX sell failed");
+  }
+});
+
+export const getTradeStatus = protect(Access.USER, async (event) => {
+  try {
+    const trade = await getTrade(
+      event.pathParameters!.projectId!,
+      event.pathParameters!.tradeId!
+    );
+    if (!trade) throw new BtxError(404, "Trade not found");
+    if (trade.userId !== event.auth!.email && !event.auth!.isAdmin)
+      throw new BtxError(403, "Trade belongs to another participant");
+    return helpers.createResponse(200, { message: "BTX trade", data: trade });
+  } catch (error) {
+    return clientError(error, "BTX trade status failed");
+  }
+});
+
+export const getAccountTrades = protect(Access.USER, async (event) => {
+  try {
+    const page = await accountTrades(
+      event.auth!.email,
+      Number(event.queryStringParameters?.limit || 50),
+      event.queryStringParameters?.prevPageKey
+    );
+    return helpers.createResponse(200, {
+      message: "BTX account trades",
+      data: page.items,
+      nextPageKey: page.nextPageKey
+    });
+  } catch (error) {
+    return clientError(error, "BTX account history failed");
+  }
+});
+
 export const wsConnect = async (event: any) => {
   try {
     const connectionId = event.requestContext.connectionId;
     await saveSocketConnection({
       connectionId,
-      eventId: process.env.KICKSTART_EVENT_KEY!,
+      eventId: configuredEvent(),
       userId: "__anon__"
     });
     return { statusCode: 200, body: "connected" };
@@ -248,16 +315,10 @@ export const wsSubscribe = async (event: any) => {
   try {
     const connectionId = event.requestContext.connectionId;
     const body = JSON.parse(event.body || "{}");
-    const eventId = process.env.KICKSTART_EVENT_KEY!;
-    // PR3 authenticates $connect and ignores client-supplied userId.
+    const eventId = configuredEvent();
     const userId = body.userId || "__anon__";
 
-    await saveSocketConnection({
-      connectionId,
-      eventId,
-      userId
-    });
-
+    await saveSocketConnection({ connectionId, eventId, userId });
     return { statusCode: 200, body: "subscribed" };
   } catch (err) {
     console.error("[BTX] wsSubscribe error", err);

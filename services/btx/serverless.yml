@@ -78,6 +78,9 @@ provider:
     - Effect: Allow
       Action:
         - sqs:SendMessage
+        - sqs:ReceiveMessage
+        - sqs:DeleteMessage
+        - sqs:GetQueueAttributes
       Resource:
         - Fn::GetAtt: [BtxTradeCommandsQueue, Arn]
 
@@ -88,6 +91,10 @@ provider:
         - arn:aws:execute-api:${self:provider.region}:${aws:accountId}:*/${self:provider.stage}/@connections/*
 
 custom:
+  esbuild:
+    # Bundle the existing SDK's SQS client; Node 22 Lambda does not provide SDK v2.
+    exclude: []
+
   prune:
     automatic: true
     number: 3
@@ -222,8 +229,66 @@ functions:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
 
-  # buy/sell async ingress → PR3
-  # initializeMarketListing exported for WF1 (no HTTP admin create route)
+  btxBuy:
+    handler: handler.postBuy
+    events:
+      - http:
+          path: btx/market/buy
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  btxSell:
+    handler: handler.postSell
+    events:
+      - http:
+          path: btx/market/sell
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  btxTradeStatus:
+    handler: handler.getTradeStatus
+    events:
+      - http:
+          path: btx/trades/{projectId}/{tradeId}
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  btxAccountTrades:
+    handler: handler.getAccountTrades
+    events:
+      - http:
+          path: btx/account/trades
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  btxTradeProcessor:
+    handler: workers.processMarketQueue
+    reservedConcurrency: 1
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt: [BtxTradeCommandsQueue, Arn]
+          batchSize: 1
+
+  btxMarketTick:
+    handler: workers.marketTick
+    timeout: 60
+    events:
+      - schedule:
+          name: btx-market-tick-${self:provider.stage}
+          rate: rate(1 minute)
 
   wsConnect:
     handler: handler.wsConnect

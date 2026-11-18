@@ -36,7 +36,7 @@ export async function currentTeamMember(userId: string, projectId: string) {
       ConsistentRead: true
     })
   );
-  const members = new Set(team?.member_ids ?? []);
+  const members = new Set(team?.member_ids || []);
   if (registration.teamID !== teamCode || !members.has(userId)) {
     throw new BtxError(403, "Current team membership required", {
       code: "FORBIDDEN"

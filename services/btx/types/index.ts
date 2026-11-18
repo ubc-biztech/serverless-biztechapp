@@ -1,11 +1,15 @@
 export const TradeStatus = {
   PENDING: "PENDING",
-  PROCESSING: "PROCESSING",
   FILLED: "FILLED",
   REJECTED: "REJECTED"
 } as const;
 
 export type TradeStatus = (typeof TradeStatus)[keyof typeof TradeStatus];
+
+export type MarketCommand =
+  | { type: "TRADE"; projectId: string; tradeId: string }
+  | { type: "TICK"; projectId: string; scheduledTickTs: number }
+  | { type: "IPO" };
 
 export type SeedStatus = "NOT_STARTED" | "ACTIVE" | "ENDED" | "LIVE";
 
@@ -24,14 +28,13 @@ export interface BtxProject {
   ticker?: string;
   name?: string;
   description?: string;
-  basePrice?: number;
   currentPrice?: number;
   netShares?: number;
   seedStartedAt?: number | null;
   seedEndsAt?: number | null;
   seedSharesAtIpo?: number | null;
-  version?: number;
   lastPriceTs?: number;
+  lastScheduledTickTs?: number;
   isActive?: boolean;
   createdAt?: number;
   updatedAt?: number;
@@ -43,7 +46,6 @@ export interface BtxEventAccount {
   eventId: string;
   cashBalance: number;
   totalAllocated: number;
-  version: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -60,11 +62,23 @@ export interface BtxTrade {
   projectId: string;
   tradeId: string;
   userId: string;
+  eventId: string;
+  accountId: string;
   side: "BUY" | "SELL";
   shares: number;
   price?: number;
-  status?: TradeStatus;
-  createdAt?: number;
+  status: TradeStatus;
+  createdAt: number;
+  /** Market phase when submitted; null means pre-IPO. */
+  acceptedIpoAt: number | null;
+  /** BUY: maximum execution price per share. SELL: minimum. Fees are separate. */
+  limitPrice: number;
+  result?: {
+    cashBalance: number;
+    shares: number;
+    costBasis: number;
+  };
+  rejection?: { code: BtxErrorCode; message: string };
   [key: string]: unknown;
 }
 
@@ -85,4 +99,7 @@ export type BtxErrorCode =
   | "TRANSITION_UNAVAILABLE"
   | "INVALID_TRADE_ID"
   | "EVENT_ENDED"
+  | "STALE_QUOTE"
+  | "LIMIT_PRICE_EXCEEDED"
+  | "TRADE_REJECTED"
   | "VALIDATION_ERROR";

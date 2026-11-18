@@ -3,13 +3,13 @@ import { validate as validateUuid, version as uuidVersion } from "uuid";
 
 import docClient from "../../lib/docClient";
 import { PROJECTS_TABLE, SOCKETS_TABLE } from "./repos/tables";
-import type { BtxEventConfig } from "./types";
+import type { BtxErrorCode, BtxEventConfig } from "./types";
 
 export class BtxError extends Error {
   constructor(
     public statusCode: number,
     message: string,
-    public data?: Record<string, unknown>
+    public data?: Record<string, unknown> & { code?: BtxErrorCode }
   ) {
     super(message);
     this.name = "BtxError";
@@ -61,7 +61,9 @@ export async function getEventConfig(): Promise<BtxEventConfig> {
     })
   );
   if (!res.Item) return { projectId, ipoAt: null };
-  return { projectId, ipoAt: (res.Item as BtxEventConfig).ipoAt ?? null };
+  let ipoAt = (res.Item as BtxEventConfig).ipoAt;
+  if (ipoAt == null) ipoAt = null;
+  return { projectId, ipoAt };
 }
 
 export async function saveSocketConnection(params: {

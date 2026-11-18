@@ -32,7 +32,6 @@ export async function ensureAccount(userId: string) {
     eventId,
     cashBalance: KICKSTART_INITIAL_CASH,
     totalAllocated: KICKSTART_INITIAL_CASH,
-    version: 1,
     createdAt: now,
     updatedAt: now
   };
@@ -59,7 +58,7 @@ export async function getPortfolioForUser(userId: string) {
           ExpressionAttributeValues: { ":u": userId }
         })
       )
-      .then(({ Items }) => (Items ?? []) as BtxHolding[]),
+      .then(({ Items }) => (Items || []) as BtxHolding[]),
     getEventConfig()
   ]);
   const now = Date.now();
@@ -74,7 +73,7 @@ export async function getPortfolioForUser(userId: string) {
     const price = stockPrice(project, config.ipoAt);
     const shares = Number(h.shares || 0);
     const marketValue = roundMoney(price * shares);
-    const costBasis = Number(h.costBasis ?? 0);
+    const costBasis = Number(h.costBasis || 0);
     equity = roundMoney(equity + marketValue);
     holdings.push({
       projectId: h.projectId,
@@ -100,10 +99,10 @@ export async function getPortfolioForUser(userId: string) {
   const realizedPnl = roundMoney(
     trades
       .filter((t) => !t.status || t.status === TradeStatus.FILLED)
-      .reduce((sum, t) => sum + Number(t.realizedPnl ?? 0), 0)
+      .reduce((sum, t) => sum + Number(t.realizedPnl || 0), 0)
   );
   const unrealizedPnl = roundMoney(holdings.reduce((sum, h) => sum + h.pnl, 0));
-  
+
   return {
     account,
     holdings,
@@ -141,7 +140,7 @@ export async function getRecentTrades(
     })
   );
   return {
-    items: (res.Items ?? []).map((tr) => ({
+    items: (res.Items || []).map((tr) => ({
       tradeId: tr.tradeId,
       side: tr.side,
       shares: tr.shares,
@@ -194,7 +193,7 @@ export async function getTraderLeaderboard(limitTop = 5, limitBottom = 5) {
     }
   }
 
-  const ranked = ((accounts.Items ?? []) as BtxEventAccount[])
+  const ranked = ((accounts.Items || []) as BtxEventAccount[])
     .map((a) => ({
       displayName: "Participant",
       totalPnl: roundMoney(

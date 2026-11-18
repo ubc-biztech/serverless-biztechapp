@@ -20,7 +20,7 @@ export const MIN_PRICE = 0.1;
 export const TRANSACTION_FEE_BPS = 200;
 
 /** Live demand impact: 2 bps of price per share traded. */
-export const LIVE_IMPACT_BPS_PER_SHARE = 2;
+export const LIVE_IMPACT_BPS_PER_SHARE = 5;
 
 /** Target seed float used for IPO opening-price calc. */
 export const SEED_TARGET_SHARES = 5000;

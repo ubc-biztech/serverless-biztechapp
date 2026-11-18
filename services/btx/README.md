@@ -32,21 +32,46 @@ and BTX service running.
 
 ## Market
 
-BTX runs the KickStart market for the configured event. Eligible participants
-can invest without joining a team, but cannot invest in their own company. A
-team member starts one 30-minute seed window; seed buying is fixed-price and
-selling opens after the admin launches the IPO.
+Participants with a completed, accepted registration start with $50,000. They
+can trade without joining a team and cannot trade their own company.
 
-Listings and accounts are safe to retry. Quotes require a whole-share quantity
-and report price, fees, expiry, and timing without reserving funds. Public
-market endpoints provide listings, snapshots, trades, history, and the
-leaderboard; authenticated users can read portfolios and quotes. Admin grants
-take participant email addresses in `targets` and a stable `requestId`, so
-retries do not credit a participant twice.
+- A team member opens their company's 30-minute seed window with
+  `POST /btx/projects/{projectId}/seed/start`. Seed orders are buys at $100 per share.
+- `POST /btx/admin/ipo` returns `202` when queued. Buying and selling go live for
+  all companies once IPO completes. The seed timer alone does not start live trading.
+- Use `GET /btx/market/snapshot` for the current phase, server time, and event cutoff
+  (`eventEndsAt`). Trading closes at the cutoff.
+
+Admin grants take participant email addresses in `targets`. Reuse the same
+`requestId` for the same batch to avoid double credits. Grants increase available
+cash and total funding without counting as trading profit.
+
+## Trading
+
+1. Get a quote from `GET /btx/market/quote`. Use its price, fees, and `expiresAt`
+   for the preview. The quote does not reserve cash, shares, or a price.
+2. Send `{projectId, tradeId, shares, limitPrice}` to `POST /btx/market/buy` or
+   `POST /btx/market/sell`. Use a positive whole-share quantity and generate one
+   UUIDv7 `tradeId` per order. `limitPrice` is the maximum per share on a buy or
+   minimum on a sell, excluding the 2% fee.
+3. Treat `202 PENDING` as queued. Poll `GET /btx/trades/{projectId}/{tradeId}` for
+   `FILLED` or `REJECTED`. If the submission response is lost or returns a duplicate
+   ID conflict, look up the original ID before sending another order.
+
+All shares fill at the current price when the order runs. In live trading, the
+fill then moves the price up for a buy or down for a sell, with a $0.10 floor.
+Each minute also applies a random ±1% adjustment to the current price.
+Rejected orders leave cash and holdings unchanged and include a `rejection.code`.
+Seed orders still queued at IPO are rejected with `STALE_QUOTE`.
+
+WebSockets send public `MARKET_UPDATE` messages for prices and seed/IPO changes.
+Use `asOf` to ignore older prices for the same company and refresh the market
+snapshot after reconnect. Read private trade results and balances over HTTP.
+For `GET /btx/account/trades` and `GET /btx/price-history`, pass the returned
+`nextPageKey` as `prevPageKey`.
 
 ## Development
 
 ```sh
-node --test services/btx/test/market.test.mjs
 ./node_modules/.bin/tsc --noEmit
 ```
