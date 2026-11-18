@@ -11,7 +11,7 @@ import {
   saveSocketConnection
 } from "./helpers";
 import { applyGrant, getQuote, startSeeding } from "./market";
-import { stockPrice, seedStatus } from "./pricing";
+import { stockPriceCents, seedStatus } from "./pricing";
 import {
   getPortfolioForUser,
   getRecentTrades,
@@ -60,17 +60,17 @@ export const getMarketSnapshot = protect(Access.PUBLIC, async () => {
     const rows = projects
       .map((p) => {
         const status = seedStatus(p, config.ipoAt, serverTime);
-        const price = stockPrice(p, config.ipoAt);
+        const priceCents = stockPriceCents(p, config.ipoAt);
         const netShares = Number(p.netShares || 0);
         return {
           ...p,
           seedStatus: status,
-          currentPrice: price,
+          currentPriceCents: priceCents,
           asOf: serverTime,
-          marketCap: price * netShares
+          marketCapCents: priceCents * netShares
         };
       })
-      .sort((a, b) => b.marketCap - a.marketCap);
+      .sort((a, b) => b.marketCapCents - a.marketCapCents);
 
     return helpers.createResponse(200, {
       message: `BTX snapshot for ${eventId}`,
@@ -212,7 +212,7 @@ export const postGrant = protect(Access.ADMIN, async (event) => {
       message: "Grant applied",
       data: await applyGrant({
         requestId: b.requestId,
-        amount: b.amount,
+        amountCents: b.amountCents,
         targetEmails: b.targets
       })
     });

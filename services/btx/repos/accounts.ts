@@ -1,16 +1,15 @@
 import { GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import docClient from "../../../lib/docClient";
-import { KICKSTART_INITIAL_CASH } from "../constants";
+import { KICKSTART_INITIAL_CASH_CENTS } from "../constants";
 import {
   accountId,
   configuredEvent,
-  getEventConfig,
-  roundMoney
+  getEventConfig
 } from "../helpers";
-import { stockPrice } from "../pricing";
+import { stockPriceCents } from "../pricing";
 import { EVENT_ACCOUNTS_TABLE, HOLDINGS_TABLE, TRADES_TABLE } from "./tables";
 import { getProject, listProjectsForEvent } from "./projects";
-import type { BtxEventAccount, BtxHolding } from "../types";
+import type { BtxEventAccount, BtxHolding, BtxTrade } from "../types";
 import { TradeStatus } from "../types";
 import { eligibleRegistration } from "../eligibility";
 
@@ -30,8 +29,8 @@ export async function ensureAccount(userId: string) {
   const account: BtxEventAccount = {
     userId,
     eventId,
-    cashBalance: KICKSTART_INITIAL_CASH,
-    totalAllocated: KICKSTART_INITIAL_CASH,
+    cashBalanceCents: KICKSTART_INITIAL_CASH_CENTS,
+    totalAllocatedCents: KICKSTART_INITIAL_CASH_CENTS,
     createdAt: now,
     updatedAt: now
   };
@@ -63,31 +62,34 @@ export async function getPortfolioForUser(userId: string) {
   ]);
   const now = Date.now();
   const eventId = configuredEvent();
-  let equity = 0;
+  let equityCents = 0;
+  let unrealizedPnlCents = 0;
   const holdings = [];
 
   for (const h of holdingRows) {
     if (!h.projectId.startsWith(`${eventId}:`)) continue;
     const project = await getProject(h.projectId);
     if (project.eventId !== eventId) continue;
-    const price = stockPrice(project, config.ipoAt);
+    const priceCents = stockPriceCents(project, config.ipoAt);
     const shares = Number(h.shares || 0);
-    const marketValue = roundMoney(price * shares);
-    const costBasis = Number(h.costBasis || 0);
-    equity = roundMoney(equity + marketValue);
+    const marketValueCents = priceCents * shares;
+    const costBasisCents = h.costBasisCents;
+    const pnlCents = marketValueCents - costBasisCents;
+    equityCents += marketValueCents;
+    unrealizedPnlCents += pnlCents;
     holdings.push({
       projectId: h.projectId,
       ticker: project.ticker,
       name: project.name,
       shares,
-      costBasis: roundMoney(costBasis),
-      currentPrice: price,
-      marketValue,
-      pnl: roundMoney(marketValue - costBasis)
+      costBasisCents,
+      currentPriceCents: priceCents,
+      marketValueCents,
+      pnlCents
     });
   }
 
-  const cash = roundMoney(account.cashBalance);
+  const { cashBalanceCents, totalAllocatedCents } = account;
   const { Items: trades = [] } = await docClient.send(
     new QueryCommand({
       TableName: TRADES_TABLE,
@@ -96,22 +98,19 @@ export async function getPortfolioForUser(userId: string) {
       ExpressionAttributeValues: { ":account": accountId(eventId, userId) }
     })
   );
-  const realizedPnl = roundMoney(
-    trades
-      .filter((t) => !t.status || t.status === TradeStatus.FILLED)
-      .reduce((sum, t) => sum + Number(t.realizedPnl || 0), 0)
-  );
-  const unrealizedPnl = roundMoney(holdings.reduce((sum, h) => sum + h.pnl, 0));
+  const realizedPnlCents = (trades as BtxTrade[])
+    .filter((t) => !t.status || t.status === TradeStatus.FILLED)
+    .reduce((sum, t) => sum + (t.realizedPnlCents ?? 0), 0);
 
   return {
     account,
     holdings,
-    totalEquityValue: equity,
-    totalPortfolioValue: roundMoney(cash + equity),
-    totalAllocated: account.totalAllocated,
-    realizedPnl,
-    unrealizedPnl,
-    totalPnl: roundMoney(cash + equity - account.totalAllocated),
+    totalEquityValueCents: equityCents,
+    totalPortfolioValueCents: cashBalanceCents + equityCents,
+    totalAllocatedCents,
+    realizedPnlCents,
+    unrealizedPnlCents,
+    totalPnlCents: cashBalanceCents + equityCents - totalAllocatedCents,
     serverTime: now,
     live: config.ipoAt != null
   };
@@ -144,7 +143,7 @@ export async function getRecentTrades(
       tradeId: tr.tradeId,
       side: tr.side,
       shares: tr.shares,
-      price: tr.price,
+      priceCents: tr.priceCents,
       createdAt: tr.createdAt
     })),
     nextCursor: res.LastEvaluatedKey
@@ -169,12 +168,12 @@ export async function getTraderLeaderboard(limitTop = 5, limitBottom = 5) {
   ]);
   const now = Date.now();
   const prices = new Map(
-    projects.map((p) => [p.projectId, stockPrice(p, config.ipoAt)])
+    projects.map((p) => [p.projectId, stockPriceCents(p, config.ipoAt)])
   );
   const equity = new Map<string, number>();
 
   for (const p of projects) {
-    const price = prices.get(p.projectId)!;
+    const priceCents = prices.get(p.projectId)!;
     const { Items: rows = [] } = await docClient.send(
       new QueryCommand({
         TableName: HOLDINGS_TABLE,
@@ -188,7 +187,7 @@ export async function getTraderLeaderboard(limitTop = 5, limitBottom = 5) {
       if (!uid) continue;
       equity.set(
         uid,
-        roundMoney((equity.get(uid) || 0) + price * Number(h.shares || 0))
+        (equity.get(uid) || 0) + priceCents * Number(h.shares || 0)
       );
     }
   }
@@ -196,11 +195,9 @@ export async function getTraderLeaderboard(limitTop = 5, limitBottom = 5) {
   const ranked = ((accounts.Items || []) as BtxEventAccount[])
     .map((a) => ({
       displayName: "Participant",
-      totalPnl: roundMoney(
-        a.cashBalance + (equity.get(a.userId) || 0) - a.totalAllocated
-      )
+      totalPnlCents: a.cashBalanceCents + (equity.get(a.userId) || 0) - a.totalAllocatedCents
     }))
-    .sort((a, b) => b.totalPnl - a.totalPnl);
+    .sort((a, b) => b.totalPnlCents - a.totalPnlCents);
 
   return {
     traders: ranked.length,

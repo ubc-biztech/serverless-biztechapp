@@ -16,8 +16,12 @@ export class BtxError extends Error {
   }
 }
 
-export function roundMoney(value: number): number {
-  return Math.round(Number(value) * 100) / 100;
+export function requireSafeCents(cents: number, field = "Amount") {
+  if (!Number.isSafeInteger(cents))
+    throw new BtxError(400, `${field} must be a safe integer in cents`, {
+      code: "VALIDATION_ERROR"
+    });
+  return cents;
 }
 
 export function configProjectId(eventId = configuredEvent()) {

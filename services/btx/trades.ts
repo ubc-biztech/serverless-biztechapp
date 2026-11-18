@@ -15,8 +15,7 @@ import {
   buildProjectId,
   configuredEvent,
   eventEndsAtMs,
-  getEventConfig,
-  roundMoney
+  getEventConfig
 } from "./helpers";
 import { eligibleRegistration } from "./eligibility";
 import { getQuote } from "./market";
@@ -72,10 +71,11 @@ export async function submitTrade(
     projectId: string;
     tradeId: string;
     shares: number;
-    limitPrice: number;
+    limitPriceCents: number;
   }
 ) {
   validateShares(input.shares);
+  const limitPriceCents = requireSafeCents(input.limitPriceCents, "limitPriceCents");
   const tradeId = assertUuidV7(input.tradeId);
   const existing = await getTrade(input.projectId, tradeId);
 
@@ -98,7 +98,7 @@ export async function submitTrade(
     accountId: accountId(configuredEvent(), userId),
     side,
     shares: input.shares,
-    limitPrice: input.limitPrice,
+    limitPriceCents,
     acceptedIpoAt: quote.ipoAt,
     status: TradeStatus.PENDING,
     createdAt: Date.now()
@@ -139,7 +139,7 @@ export async function accountTrades(
   );
 
   return {
-    items: Items || [],
+    items: (Items || []) as BtxTrade[],
     nextPageKey: LastEvaluatedKey ? JSON.stringify(LastEvaluatedKey) : null
   };
 }
@@ -184,11 +184,11 @@ export async function processTrade(projectId: string, tradeId: string) {
 
     const holding = holdingResponse.Item as BtxHolding | undefined;
     let ownedShares = 0;
-    let previousCostBasis = 0;
+    let previousCostBasisCents = 0;
 
     if (holding) {
       ownedShares = holding.shares;
-      previousCostBasis = holding.costBasis!;
+      previousCostBasisCents = holding.costBasisCents;
     }
 
     if (trade.side === "SELL" && ownedShares < trade.shares) {
@@ -208,39 +208,40 @@ export async function processTrade(projectId: string, tradeId: string) {
       trade.shares
     );
 
-    if (trade.side === "BUY" && quote.price > trade.limitPrice) {
+    if (trade.side === "BUY" && quote.priceCents > trade.limitPriceCents) {
       throw new BtxError(409, "Execution price exceeds buy limit", {
         code: "LIMIT_PRICE_EXCEEDED"
       });
     }
 
-    if (trade.side === "SELL" && quote.price < trade.limitPrice) {
+    if (trade.side === "SELL" && quote.priceCents < trade.limitPriceCents) {
       throw new BtxError(409, "Execution price is below sell limit", {
         code: "LIMIT_PRICE_EXCEEDED"
       });
     }
     
-    const cashBalance = roundMoney(account.cashBalance + quote.cashDelta);
+    const cashBalanceCents = account.cashBalanceCents + quote.cashDeltaCents;
 
-    if (cashBalance < 0) {
+    if (cashBalanceCents < 0) {
       throw new BtxError(409, "Insufficient funds", { code: "INSUFFICIENT_FUNDS" });
     }
 
     let shares = ownedShares + trade.shares;
-    let costBasis = roundMoney(previousCostBasis - quote.cashDelta);
+    let costBasisCents = previousCostBasisCents - quote.cashDeltaCents;
     let netShares = project.netShares! + trade.shares;
-    let realizedPnl = 0;
+    let realizedPnlCents = 0;
 
     if (trade.side === "SELL") {
       shares = ownedShares - trade.shares;
       netShares = project.netShares! - trade.shares;
-      let removedCost = previousCostBasis;
-      if (shares > 0)
-        removedCost = roundMoney(
-          (previousCostBasis * trade.shares) / ownedShares
+      let removedCostCents = previousCostBasisCents;
+      if (shares > 0) {
+        removedCostCents = Math.round(
+          (previousCostBasisCents * trade.shares) / ownedShares
         );
-      costBasis = roundMoney(previousCostBasis - removedCost);
-      realizedPnl = roundMoney(quote.cashDelta - removedCost);
+      }
+      costBasisCents = previousCostBasisCents - removedCostCents;
+      realizedPnlCents = quote.cashDeltaCents - removedCostCents;
     }
 
     if (netShares < 0) throw new Error("Company shares do not match holdings");
@@ -249,17 +250,17 @@ export async function processTrade(projectId: string, tradeId: string) {
     const filled: BtxTrade = {
       ...trade,
       status: TradeStatus.FILLED,
-      price: quote.price,
-      endPrice: quote.endPrice,
-      fee: quote.fee,
-      cashDelta: quote.cashDelta,
-      realizedPnl,
+      priceCents: quote.priceCents,
+      endPriceCents: quote.endPriceCents,
+      feeCents: quote.feeCents,
+      cashDeltaCents: quote.cashDeltaCents,
+      realizedPnlCents,
       completedAt: now,
       priceTs,
       result: {
-        cashBalance,
+        cashBalanceCents,
         shares,
-        costBasis
+        costBasisCents
       }
     };
 
@@ -271,9 +272,9 @@ export async function processTrade(projectId: string, tradeId: string) {
               TableName: EVENT_ACCOUNTS_TABLE,
               Key: { userId: trade.userId, eventId: configuredEvent() },
               UpdateExpression:
-                "SET updatedAt = :now ADD cashBalance :cashDelta",
+                "SET updatedAt = :now ADD cashBalanceCents :cashDelta",
               ExpressionAttributeValues: {
-                ":cashDelta": quote.cashDelta,
+                ":cashDelta": quote.cashDeltaCents,
                 ":now": now
               }
             }
@@ -288,7 +289,7 @@ export async function processTrade(projectId: string, tradeId: string) {
             : {
                 Put: {
                   TableName: HOLDINGS_TABLE,
-                  Item: { userId: trade.userId, projectId, shares, costBasis }
+                  Item: { userId: trade.userId, projectId, shares, costBasisCents }
                 }
               },
           {
@@ -296,10 +297,10 @@ export async function processTrade(projectId: string, tradeId: string) {
               TableName: PROJECTS_TABLE,
               Key: { projectId },
               UpdateExpression:
-                "SET netShares = :shares, currentPrice = :price, lastPriceTs = :ts, updatedAt = :now",
+                "SET netShares = :shares, currentPriceCents = :price, lastPriceTs = :ts, updatedAt = :now",
               ExpressionAttributeValues: {
                 ":shares": netShares,
-                ":price": quote.endPrice,
+                ":price": quote.endPriceCents,
                 ":ts": priceTs,
                 ":now": now
               }
@@ -317,7 +318,7 @@ export async function processTrade(projectId: string, tradeId: string) {
               Item: {
                 projectId,
                 ts: priceTs,
-                price: quote.endPrice,
+                priceCents: quote.endPriceCents,
                 source: "TRADE"
               }
             }

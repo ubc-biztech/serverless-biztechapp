@@ -42,7 +42,8 @@ can trade without joining a team and cannot trade their own company.
 - Use `GET /btx/market/snapshot` for the current phase, server time, and event cutoff
   (`eventEndsAt`). Trading closes at the cutoff.
 
-Admin grants take participant email addresses in `targets`. Reuse the same
+Admin grants take participant email addresses in `targets` and an integer
+`amountCents`. Reuse the same
 `requestId` for the same batch to avoid double credits. Grants increase available
 cash and total funding without counting as trading profit.
 
@@ -50,10 +51,10 @@ cash and total funding without counting as trading profit.
 
 1. Get a quote from `GET /btx/market/quote`. Use its price, fees, and `expiresAt`
    for the preview. The quote does not reserve cash, shares, or a price.
-2. Send `{projectId, tradeId, shares, limitPrice}` to `POST /btx/market/buy` or
+2. Send `{projectId, tradeId, shares, limitPriceCents}` to `POST /btx/market/buy` or
    `POST /btx/market/sell`. Use a positive whole-share quantity and generate one
-   UUIDv7 `tradeId` per order. `limitPrice` is the maximum per share on a buy or
-   minimum on a sell, excluding the 2% fee.
+   UUIDv7 `tradeId` per order. `limitPriceCents` is the maximum per share on a buy
+   or minimum on a sell, excluding the 2% fee. For example, send `10000` for $100.
 3. Treat `202 PENDING` as queued. Poll `GET /btx/trades/{projectId}/{tradeId}` for
    `FILLED` or `REJECTED`. If the submission response is lost or returns a duplicate
    ID conflict, look up the original ID before sending another order.
@@ -65,12 +66,16 @@ Rejected orders leave cash and holdings unchanged and include a `rejection.code`
 Seed orders still queued at IPO are rejected with `STALE_QUOTE`.
 
 WebSockets send public `MARKET_UPDATE` messages for prices and seed/IPO changes.
+Price updates include `data.priceCents`.
 Use `asOf` to ignore older prices for the same company and refresh the market
 snapshot after reconnect. Read private trade results and balances over HTTP.
 For `GET /btx/account/trades` and `GET /btx/price-history`, pass the returned
 `nextPageKey` as `prevPageKey`.
 
 ## Development
+
+BTX uses integer cents for calculations, storage, HTTP, and WebSockets.
+Monetary fields use a `Cents` suffix. Convert cents to dollars for display.
 
 ```sh
 ./node_modules/.bin/tsc --noEmit

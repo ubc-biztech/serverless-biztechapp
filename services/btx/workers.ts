@@ -1,7 +1,7 @@
 import { TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
 import docClient from "../../lib/docClient";
-import { MIN_PRICE, NOISE_MAX_PCT } from "./constants";
-import { eventEndsAtMs, getEventConfig, roundMoney } from "./helpers";
+import { MIN_PRICE_CENTS, NOISE_MAX_PCT } from "./constants";
+import { eventEndsAtMs, getEventConfig } from "./helpers";
 import { launchIpo } from "./market";
 import { getProject, listProjectsForEvent } from "./repos/projects";
 import { PRICES_TABLE, PROJECTS_TABLE } from "./repos/tables";
@@ -63,8 +63,8 @@ async function processCompanyTick(projectId: string, scheduledTickTs: number) {
   }
 
   const priceChangePct = (Math.random() * 2 - 1) * NOISE_MAX_PCT;
-  const currentPrice = roundMoney(
-    Math.max(MIN_PRICE, project.currentPrice! * (1 + priceChangePct))
+  const currentPriceCents = Math.round(
+    Math.max(MIN_PRICE_CENTS, project.currentPriceCents * (1 + priceChangePct))
   );
   const ts = Math.max(now, project.lastPriceTs! + 1);
   
@@ -76,9 +76,9 @@ async function processCompanyTick(projectId: string, scheduledTickTs: number) {
             TableName: PROJECTS_TABLE,
             Key: { projectId },
             UpdateExpression:
-              "SET currentPrice = :price, lastPriceTs = :ts, updatedAt = :now, lastScheduledTickTs = :tick",
+              "SET currentPriceCents = :price, lastPriceTs = :ts, updatedAt = :now, lastScheduledTickTs = :tick",
             ExpressionAttributeValues: {
-              ":price": currentPrice,
+              ":price": currentPriceCents,
               ":ts": ts,
               ":now": now,
               ":tick": scheduledTickTs
@@ -88,7 +88,7 @@ async function processCompanyTick(projectId: string, scheduledTickTs: number) {
         {
           Put: {
             TableName: PRICES_TABLE,
-            Item: { projectId, ts, price: currentPrice, source: "NOISE" },
+            Item: { projectId, ts, priceCents: currentPriceCents, source: "NOISE" },
             ConditionExpression: "attribute_not_exists(projectId)"
           }
         }
@@ -98,7 +98,7 @@ async function processCompanyTick(projectId: string, scheduledTickTs: number) {
   await publishMarketUpdate({
     projectId,
     eventId: project.eventId,
-    price: currentPrice,
+    priceCents: currentPriceCents,
     asOf: ts,
     ipoAt: config.ipoAt
   });

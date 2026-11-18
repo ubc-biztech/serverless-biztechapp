@@ -28,7 +28,7 @@ export interface BtxProject {
   ticker?: string;
   name?: string;
   description?: string;
-  currentPrice?: number;
+  currentPriceCents: number;
   netShares?: number;
   seedStartedAt?: number | null;
   seedEndsAt?: number | null;
@@ -44,8 +44,8 @@ export interface BtxProject {
 export interface BtxEventAccount {
   userId: string;
   eventId: string;
-  cashBalance: number;
-  totalAllocated: number;
+  cashBalanceCents: number;
+  totalAllocatedCents: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -54,8 +54,7 @@ export interface BtxHolding {
   userId: string;
   projectId: string;
   shares: number;
-  avgPrice?: number;
-  costBasis?: number;
+  costBasisCents: number;
 }
 
 export interface BtxTrade {
@@ -66,17 +65,21 @@ export interface BtxTrade {
   accountId: string;
   side: "BUY" | "SELL";
   shares: number;
-  price?: number;
+  priceCents?: number;
+  endPriceCents?: number; // Company price per share after the trade.
+  feeCents?: number;
+  cashDeltaCents?: number; // Cash change after fees. Negative for buys, positive for sells.
+  realizedPnlCents?: number;
   status: TradeStatus;
   createdAt: number;
   /** Market phase when submitted; null means pre-IPO. */
   acceptedIpoAt: number | null;
   /** BUY: maximum execution price per share. SELL: minimum. Fees are separate. */
-  limitPrice: number;
+  limitPriceCents: number;
   result?: {
-    cashBalance: number;
     shares: number;
-    costBasis: number;
+    cashBalanceCents: number;
+    costBasisCents: number;
   };
   rejection?: { code: BtxErrorCode; message: string };
   [key: string]: unknown;
@@ -85,7 +88,7 @@ export interface BtxTrade {
 export interface BtxPricePoint {
   projectId: string;
   ts: number;
-  price: number;
+  priceCents: number;
   source?: string;
 }
 

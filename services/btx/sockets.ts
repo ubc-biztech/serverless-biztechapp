@@ -17,7 +17,7 @@ export async function publishTrade(trade: BtxTrade) {
     await publishMarketUpdate({
       projectId: trade.projectId,
       eventId: trade.eventId,
-      price: trade.endPrice,
+      priceCents: trade.endPriceCents,
       asOf: trade.priceTs
     });
   }

@@ -5,17 +5,17 @@ import {
   type TransactWriteCommandInput
 } from "@aws-sdk/lib-dynamodb";
 import docClient from "../../lib/docClient";
-import { SEED_PRICE, SEED_WINDOW_MS, QUOTE_WINDOW_MS } from "./constants";
+import { SEED_PRICE_CENTS, SEED_WINDOW_MS, QUOTE_WINDOW_MS } from "./constants";
 import {
   BtxError,
   buildProjectId,
   configuredEvent,
   eventEndsAtMs,
   getEventConfig,
-  roundMoney
+  requireSafeCents
 } from "./helpers";
 import { currentTeamMember, eligibleRegistration } from "./eligibility";
-import { ipoStockPrice, tradeQuote, seedStatus } from "./pricing";
+import { ipoStockPriceCents, tradeQuote, seedStatus } from "./pricing";
 import { getProject, listProjectsForEvent } from "./repos/projects";
 import {
   EVENT_ACCOUNTS_TABLE,
@@ -74,7 +74,7 @@ export async function initializeMarketListing(input: {
     name: companyName,
     description: blurb,
     ticker: input.ticker,
-    currentPrice: SEED_PRICE,
+    currentPriceCents: SEED_PRICE_CENTS,
     netShares: 0,
     seedStartedAt: null,
     seedEndsAt: null,
@@ -101,7 +101,7 @@ export async function initializeMarketListing(input: {
             Item: {
               projectId,
               ts: now,
-              price: SEED_PRICE,
+              priceCents: SEED_PRICE_CENTS,
               source: "INITIAL"
             },
             ConditionExpression: "attribute_not_exists(projectId)"
@@ -216,17 +216,17 @@ export async function launchIpo() {
   ];
 
   for (const { projectId, netShares } of projects) {
-    const price = ipoStockPrice(netShares!);
+    const priceCents = ipoStockPriceCents(netShares!);
     items.push(
       {
         Update: {
           TableName: PROJECTS_TABLE,
           Key: { projectId },
           UpdateExpression:
-            "SET seedSharesAtIpo = :shares, currentPrice = :price, lastPriceTs = :ipoAt, updatedAt = :now",
+            "SET seedSharesAtIpo = :shares, currentPriceCents = :price, lastPriceTs = :ipoAt, updatedAt = :now",
           ExpressionAttributeValues: {
             ":shares": netShares,
-            ":price": price,
+            ":price": priceCents,
             ":ipoAt": ipoAt,
             ":now": now
           }
@@ -235,7 +235,7 @@ export async function launchIpo() {
       {
         Put: {
           TableName: PRICES_TABLE,
-          Item: { projectId, ts: ipoAt, price, source: "IPO" },
+          Item: { projectId, ts: ipoAt, priceCents, source: "IPO" },
           ConditionExpression: "attribute_not_exists(projectId)"
         }
       }
@@ -295,8 +295,8 @@ export async function getQuote(params: {
     ),
     side: params.side,
     shares: params.shares,
-    totalCost: params.side === "BUY" ? -quote.cashDelta : null,
-    proceeds: params.side === "SELL" ? quote.cashDelta : null,
+    totalCostCents: params.side === "BUY" ? -quote.cashDeltaCents : null,
+    proceedsCents: params.side === "SELL" ? quote.cashDeltaCents : null,
     seedStartedAt: project.seedStartedAt ?? null,
     seedEndsAt: project.seedEndsAt ?? null,
     seedStatus: seedStatus(project, config.ipoAt, now),
@@ -307,17 +307,14 @@ export async function getQuote(params: {
 /** One receipt per target: a partial batch is safely resumed with the same requestId. */
 export async function applyGrant(params: {
   requestId: string;
-  amount: number;
+  amountCents: number;
   targetEmails: string[];
 }) {
-  if (
-    !params.requestId ||
-    params.amount <= 0 ||
-    params.amount !== roundMoney(params.amount)
-  ) {
+  const amountCents = requireSafeCents(params.amountCents, "amountCents");
+  if (!params.requestId || amountCents <= 0) {
     throw new BtxError(
       400,
-      "requestId and a positive two-decimal amount required",
+      "requestId and a positive amount required",
       { code: "VALIDATION_ERROR" }
     );
   }
@@ -333,10 +330,9 @@ export async function applyGrant(params: {
     });
   }
   const eventId = configuredEvent();
-  const amount = params.amount;
   // A manifest binds the complete batch, including targets, to requestId.
   const manifestId = `grant:${eventId}:${params.requestId}`;
-  const manifest = { projectId: manifestId, amount, targets };
+  const manifest = { projectId: manifestId, amountCents, targets };
   const { Item: existingGrant } = await docClient.send(
     new GetCommand({
       TableName: PROJECTS_TABLE,
@@ -346,7 +342,7 @@ export async function applyGrant(params: {
   );
   if (existingGrant) {
     if (
-      existingGrant.amount !== amount ||
+      existingGrant.amountCents !== amountCents ||
       JSON.stringify(existingGrant.targets) !== JSON.stringify(targets)
     ) {
       throw new BtxError(409, "requestId reused with different grant details");
@@ -374,14 +370,14 @@ export async function applyGrant(params: {
       outcomes.push({
         userId,
         status: "APPLIED",
-        cashBalance: receipt.Item.cashBalance,
+        cashBalanceCents: receipt.Item.cashBalanceCents,
         repeated: true
       });
       continue;
     }
     try {
       const account = await ensureAccount(userId);
-      const balance = roundMoney(account.cashBalance + amount);
+      const balanceCents = account.cashBalanceCents + amountCents;
       await docClient.send(
         new TransactWriteCommand({
           TransactItems: [
@@ -398,8 +394,8 @@ export async function applyGrant(params: {
                 TableName: PROJECTS_TABLE,
                 Item: {
                   projectId: receiptId,
-                  amount,
-                  cashBalance: balance
+                  amountCents,
+                  cashBalanceCents: balanceCents
                 },
                 ConditionExpression: "attribute_not_exists(projectId)"
               }
@@ -409,9 +405,9 @@ export async function applyGrant(params: {
                 TableName: EVENT_ACCOUNTS_TABLE,
                 Key: { userId, eventId },
                 UpdateExpression:
-                  "SET updatedAt = :now ADD cashBalance :amount, totalAllocated :amount",
+                  "SET updatedAt = :now ADD cashBalanceCents :amount, totalAllocatedCents :amount",
                 ExpressionAttributeValues: {
-                  ":amount": amount,
+                  ":amount": amountCents,
                   ":now": Date.now()
                 }
               }
@@ -422,7 +418,7 @@ export async function applyGrant(params: {
       outcomes.push({
         userId,
         status: "APPLIED",
-        cashBalance: balance,
+        cashBalanceCents: balanceCents,
         repeated: false
       });
     } catch (error) {
@@ -430,5 +426,5 @@ export async function applyGrant(params: {
       outcomes.push({ userId, status: "REJECTED", message: error.message });
     }
   }
-  return { requestId: params.requestId, amount, outcomes };
+  return { requestId: params.requestId, amountCents, outcomes };
 }
