@@ -10,8 +10,7 @@ export const SEED_PRICE = 100;
 export const SEED_WINDOW_MS = 30 * 60 * 1000;
 
 /** How long a quote remains valid. */
-export const QUOTE_WINDOW_MINUTES = 0.5;
-export const QUOTE_WINDOW_MS = QUOTE_WINDOW_MINUTES * 60 * 1000;
+export const QUOTE_WINDOW_MS = 0.5 * 60 * 1000;
 
 /** Live-market price floor. */
 export const MIN_PRICE = 0.1;
