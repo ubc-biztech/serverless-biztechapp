@@ -19,7 +19,7 @@ export const MIN_PRICE = 0.1;
 /** 2% fee on BUY and SELL (basis points). */
 export const TRANSACTION_FEE_BPS = 200;
 
-/** Live demand impact: 2 bps of price per share traded. */
+/** Live demand impact: 5 bps of price per share traded. */
 export const LIVE_IMPACT_BPS_PER_SHARE = 5;
 
 /** Target seed float used for IPO opening-price calc. */
@@ -28,8 +28,5 @@ export const SEED_TARGET_SHARES = 5000;
 export const IPO_VALUATION_MIN = 1_000_000;
 export const IPO_VALUATION_MAX = 10_000_000;
 
-/** Scheduled minute noise bound (±1%). Wired in PR3. */
+/** Scheduled minute noise bound. */
 export const NOISE_MAX_PCT = 0.01;
-
-/** Max optimistic-concurrency retries on a trade/tick. */
-export const MAX_CONFLICT_RETRIES = 3;
