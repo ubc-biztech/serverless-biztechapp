@@ -112,11 +112,6 @@ export async function submitTrade(
       ConditionExpression: "attribute_not_exists(tradeId)"
     })
   );
-  await enqueueMarketCommand({
-    type: "TRADE",
-    projectId: trade.projectId,
-    tradeId
-  });
   return trade;
 }
 

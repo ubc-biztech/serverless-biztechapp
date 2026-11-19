@@ -9,6 +9,18 @@ import { enqueueMarketCommand, processTrade } from "./trades";
 import { publishMarketUpdate } from "./sockets";
 import type { MarketCommand } from "./types";
 
+interface PendingTradeStreamRecord {
+  eventName: string;
+  dynamodb: { Keys: { projectId: { S: string }; tradeId: { S: string } } };
+}
+
+export async function enqueuePendingTrades(event: { Records: PendingTradeStreamRecord[] }) {
+  const [record] = event.Records;
+  if (record.eventName !== "INSERT") return;
+  const { projectId, tradeId } = record.dynamodb.Keys;
+  await enqueueMarketCommand({ type: "TRADE", projectId: projectId.S, tradeId: tradeId.S });
+}
+
 export async function processMarketQueue(event: { Records: { body: string }[] }) {
   // One group, one consumer, one command per invocation.
   const command: MarketCommand = JSON.parse(event.Records[0].body);

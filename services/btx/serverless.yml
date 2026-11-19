@@ -273,6 +273,21 @@ functions:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
 
+  btxTradeDispatcher:
+    handler: workers.enqueuePendingTrades
+    events:
+      - stream:
+          type: dynamodb
+          arn:
+            Fn::GetAtt: [BizBtxTradesTable, StreamArn]
+          startingPosition: TRIM_HORIZON
+          batchSize: 1
+          filterPatterns:
+            - dynamodb:
+                NewImage:
+                  status:
+                    S: [PENDING]
+
   btxTradeProcessor:
     handler: workers.processMarketQueue
     reservedConcurrency: 1
@@ -407,6 +422,8 @@ resources:
       Properties:
         TableName: bizBtxTrades${self:provider.environment.ENVIRONMENT}
         BillingMode: PAY_PER_REQUEST
+        StreamSpecification:
+          StreamViewType: NEW_IMAGE
         AttributeDefinitions:
           - AttributeName: projectId
             AttributeType: S

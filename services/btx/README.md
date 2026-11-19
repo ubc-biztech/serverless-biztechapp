@@ -55,7 +55,7 @@ cash and total funding without counting as trading profit.
    `POST /btx/market/sell`. Use a positive whole-share quantity and generate one
    UUIDv7 `tradeId` per order. `limitPriceCents` is the maximum per share on a buy
    or minimum on a sell, excluding the 2% fee. For example, send `10000` for $100.
-3. Treat `202 PENDING` as queued. Poll `GET /btx/trades/{projectId}/{tradeId}` for
+3. Treat `202 PENDING` as accepted. The trade table stream queues the order. Poll `GET /btx/trades/{projectId}/{tradeId}` for
    `FILLED` or `REJECTED`. If the submission response is lost or returns a duplicate
    ID conflict, look up the original ID before sending another order.
 
