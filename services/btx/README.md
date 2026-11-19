@@ -59,8 +59,8 @@ cash and total funding without counting as trading profit.
    `FILLED` or `REJECTED`. If the submission response is lost or returns a duplicate
    ID conflict, look up the original ID before sending another order.
 
-All shares fill at the current price when the order runs. In live trading, the
-fill then moves the price up for a buy or down for a sell, with a $0.10 floor.
+Live orders fill at the average price across their price movement, rounded to
+the nearest cent per share. Shares trading at the $0.10 floor pay that price.
 Each minute also applies a random ±1% adjustment to the current price.
 Rejected orders leave cash and holdings unchanged and include a `rejection.code`.
 Seed orders still queued at IPO are rejected with `STALE_QUOTE`.

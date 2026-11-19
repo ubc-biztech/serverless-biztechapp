@@ -82,13 +82,20 @@ export function tradeQuote(
       ...costQuote(side, shares, SEED_PRICE_CENTS)
     };
   }
-  const priceCents = project.currentPriceCents;
-  const priceChange = (priceCents * shares * LIVE_IMPACT_BPS_PER_SHARE) / 10_000;
-  const end = side === "SELL" ? priceCents - priceChange : priceCents + priceChange;
-  // All shares execute at the current price; price impact applies after the order.
-  return {
-    priceCents,
-    endPriceCents: Math.round(Math.max(MIN_PRICE_CENTS, end)),
-    ...costQuote(side, shares, priceCents)
-  };
+  const { currentPriceCents, seedSharesAtIpo } = project;
+
+  if (seedSharesAtIpo == null) {
+    throw new BtxError(409, "Listing has no IPO snapshot", { code: "TRANSITION_UNAVAILABLE" });
+  }
+
+  const impactPerShare = ipoStockPriceCents(seedSharesAtIpo) * LIVE_IMPACT_BPS_PER_SHARE / 10_000;
+  const change = (side === "BUY" ? shares : -shares) * impactPerShare;
+  const end = currentPriceCents + change;
+  const endPriceCents = Math.round(Math.max(MIN_PRICE_CENTS, end));
+
+  const average = end < MIN_PRICE_CENTS
+    ? MIN_PRICE_CENTS + (currentPriceCents - MIN_PRICE_CENTS) ** 2 / (2 * -change)
+    : currentPriceCents + change / 2;
+  const priceCents = Math.round(average);
+  return { priceCents, endPriceCents, ...costQuote(side, shares, priceCents) };
 }
