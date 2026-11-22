@@ -36,7 +36,7 @@ export interface Team {
   team_code: string;
   team_name: string;
   leader_user_id: string;
-  /** Linked BTX company ID; included only for Kickstart 2027. */
+  /** Linked BTX company ID; included for events with btxEnabled set to true. */
   projectId?: string;
   members: {
     user_id: string;

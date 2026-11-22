@@ -1,7 +1,7 @@
 import { BTX_PRICES_TABLE, BTX_PROJECTS_TABLE } from "../../constants/tables";
 import db from "../../lib/db.js";
 import type { WriteBuilder } from "../../lib/db/build/WriteBuilder.js";
-import { SEED_PRICE_CENTS } from "./marketConstants";
+import { SEED_PRICE_CENTS } from "./constants";
 
 /** Company profile and initial market state stored in bizBtxProjects. */
 export interface BtxCompanyRecord {
@@ -11,10 +11,12 @@ export interface BtxCompanyRecord {
   companyName: string;
   blurb: string;
   youtubeURL: string;
+  currentPriceCents: number;
   netShares: number;
   seedSharesAtIpo: number | null;
-  seedStartedAt: string | null;
-  seedEndsAt: string | null;
+  /** Backend timestamps in Unix milliseconds, matching the market service. */
+  seedStartedAt: number | null;
+  seedEndsAt: number | null;
   version: number;
   /** Immutable key of the company's INITIAL history point (Unix milliseconds). */
   initialPriceTs: number;
@@ -40,6 +42,7 @@ export function buildInitialCompany(input: {
     companyName: input.companyName,
     blurb: "",
     youtubeURL: "",
+    currentPriceCents: SEED_PRICE_CENTS,
     netShares: 0,
     seedSharesAtIpo: null,
     seedStartedAt: null,
@@ -53,7 +56,7 @@ export function buildInitialCompany(input: {
     db.build.put(BTX_PRICES_TABLE, {
       projectId: company.projectId,
       ts: initialPriceTs,
-      price: SEED_PRICE_CENTS,
+      priceCents: SEED_PRICE_CENTS,
       source: "INITIAL",
     }).if("projectId").notExists(),
   ];

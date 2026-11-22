@@ -41,6 +41,7 @@ export interface EventPageConfig {
 export interface CreateEventBody {
   id: string;
   year: number;
+  btxEnabled?: boolean;
   capac: number;
   ename?: string;
   description?: string;
@@ -91,6 +92,7 @@ export interface CreateThumbnailPicUploadUrlBody {
 export interface EventRecord {
   id: string;
   year: number;
+  btxEnabled?: boolean;
   capac?: number;
   ename?: string;
   description?: string;

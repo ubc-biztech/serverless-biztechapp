@@ -1,10 +1,8 @@
-import { GetCommand } from "@aws-sdk/lib-dynamodb";
 import { BTX_PRICES_TABLE, BTX_PROJECTS_TABLE } from "../../constants/tables";
 import db, { field } from "../../lib/db.js";
-import docClient from "../../lib/docClient.js";
 import type { WriteBuilder } from "../../lib/db/build/WriteBuilder.js";
 import { getCompanyProjectId } from "./projects";
-import { SEED_PRICE_CENTS } from "./marketConstants";
+import { SEED_PRICE_CENTS } from "./constants";
 
 /** Workflow 3/event setup creates this item before team formation is enabled.
  * IPO_PREPARING closes formation before ipoAt is set. Missing config fails closed.
@@ -12,7 +10,8 @@ import { SEED_PRICE_CENTS } from "./marketConstants";
 export interface BtxEventConfigRecord {
   projectId: string;
   phase: "PRE_IPO" | "IPO_PREPARING" | "LIVE";
-  ipoAt: string | null;
+  /** IPO time in Unix milliseconds; null until IPO starts. */
+  ipoAt: number | null;
 }
 
 export class TeamFormationError extends Error {
@@ -39,11 +38,11 @@ const requireUnstartedCompany = (write: WriteBuilder, eventId: string, teamId: s
  */
 export async function getUnusedCompanyDeletes(eventId: string, teamId: string): Promise<WriteBuilder[]> {
   const projectId = getCompanyProjectId(eventId, teamId);
-  const { Item: company } = await docClient.send(new GetCommand({
+  const company = await db.getOneCustom({
     TableName: BTX_PROJECTS_TABLE + (process.env.ENVIRONMENT || ""),
     Key: { projectId },
     ConsistentRead: true,
-  }));
+  });
   if (!company || company.eventId !== eventId || company.teamId !== teamId ||
       !Number.isSafeInteger(company.initialPriceTs) || company.initialPriceTs < 0) {
     throw new TeamFormationError(503, "This team's company history is unavailable. Please contact an organizer.");
@@ -62,7 +61,7 @@ export async function getUnusedCompanyDeletes(eventId: string, teamId: string): 
     .anyOf(field("seedAmount").notExists(), field("seedAmount").equals(0));
   const initialPriceDelete = db.build.delete(BTX_PRICES_TABLE, { projectId, ts: initialPriceTs })
     .if("source").equals("INITIAL")
-    .if("price").equals(SEED_PRICE_CENTS);
+    .if("priceCents").equals(SEED_PRICE_CENTS);
   return [companyDelete, initialPriceDelete];
 }
 
@@ -70,13 +69,12 @@ export async function getUnusedCompanyDeletes(eventId: string, teamId: string): 
 export async function getTeamFormationChecks(eventId: string, teamId?: string): Promise<WriteBuilder[]> {
   const configId = getBtxEventConfigId(eventId);
   const table = BTX_PROJECTS_TABLE + (process.env.ENVIRONMENT || "");
-  const { Item } = await docClient.send(new GetCommand({
+  const config = (await db.getOneCustom({
     TableName: table,
     Key: { projectId: configId },
     ConsistentRead: true,
-  }));
-  const config = Item as Partial<BtxEventConfigRecord> | undefined;
-  if (!config || !Object.prototype.hasOwnProperty.call(config, "ipoAt") ||
+  })) as Partial<BtxEventConfigRecord> | null;
+  if (!config || config.ipoAt === undefined ||
       !["PRE_IPO", "IPO_PREPARING", "LIVE"].includes(config.phase ?? "")) {
     throw new TeamFormationError(503, "Team formation is not configured for this event. Please contact an organizer.");
   }
@@ -85,7 +83,7 @@ export async function getTeamFormationChecks(eventId: string, teamId?: string): 
   }
 
   const checks: WriteBuilder[] = [
-    db.build.conditionCheck(BTX_PROJECTS_TABLE, { projectId: configId })
+    db.build.check(BTX_PROJECTS_TABLE, { projectId: configId })
       .if("projectId").exists()
       .if("phase").equals("PRE_IPO")
       .if("ipoAt").equals(null),
@@ -93,14 +91,13 @@ export async function getTeamFormationChecks(eventId: string, teamId?: string): 
   if (teamId === undefined) return checks;
 
   const projectId = getCompanyProjectId(eventId, teamId);
-  const { Item: company } = await docClient.send(new GetCommand({
+  const company = await db.getOneCustom({
     TableName: table,
     Key: { projectId },
     ConsistentRead: true,
-  }));
+  });
   if (!company || company.eventId !== eventId || company.teamId !== teamId ||
-      !Object.prototype.hasOwnProperty.call(company, "seedStartedAt") ||
-      !Object.prototype.hasOwnProperty.call(company, "seedEndsAt")) {
+      company.seedStartedAt === undefined || company.seedEndsAt === undefined) {
     throw new TeamFormationError(503, "This team's company is unavailable. Please contact an organizer.");
   }
   if (company.seedStartedAt !== null || company.seedEndsAt !== null) {
@@ -108,7 +105,7 @@ export async function getTeamFormationChecks(eventId: string, teamId?: string): 
   }
 
   checks.push(
-    requireUnstartedCompany(db.build.conditionCheck(BTX_PROJECTS_TABLE, { projectId }), eventId, teamId),
+    requireUnstartedCompany(db.build.check(BTX_PROJECTS_TABLE, { projectId }), eventId, teamId),
   );
   return checks;
 }
