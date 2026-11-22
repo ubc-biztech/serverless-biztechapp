@@ -65,7 +65,7 @@ export async function getEventConfig(eventId = configuredEvent()): Promise<BtxEv
     ConsistentRead: true
   }) as BtxEventConfig | null;
   // The config row is provisioned before the event opens; without it the market stays closed
-  if (!item?.phase) {
+  if (!item?.phase || item.ipoAt === undefined) {
     throw new BtxError(503, "Market configuration is unavailable. Please contact an organizer.", {
       code: "TRANSITION_UNAVAILABLE"
     });
