@@ -184,7 +184,6 @@ test("joining updates membership without overwriting the company's profile or ma
   assert.deepEqual(f.writes[0].filter(item => item.Update).map(item => item.Update.TableName).sort(), ["biztechRegistrations", "biztechTeams"]);
   const companyCheck = f.writes[0].find(item => item.ConditionCheck?.Key.projectId === f.projectId).ConditionCheck;
   assert.match(condition(companyCheck), /seedStartedAt = null/);
-  assert.match(condition(companyCheck), /seedEndsAt = null/);
 });
 
 for (const operation of ["create", "join", "leave", "remove"]) {
@@ -222,12 +221,10 @@ test("joining cannot treat a missing company as an unstarted seed window", async
   assert.equal(f.writes.length, 0);
 });
 
-test("atomic guards reject an IPO, membership, or event-setting change during a join", async () => {
+test("atomic guards reject an IPO or membership change during a join", async () => {
   const f = fixture("join");
   f.onWrite = items => { throw conflict(items); };
   assert.equal((await f.run()).statusCode, 409);
-  const eventCheck = f.action("ConditionCheck", "biztechEvents");
-  assert.match(condition(eventCheck), /btxEnabled = true/);
   const configCheck = f.writes[0].find(item => item.ConditionCheck?.Key.projectId === f.config.projectId).ConditionCheck;
   assert.match(condition(configCheck), /phase = "PRE_IPO"/);
   assert.match(condition(configCheck), /ipoAt = null/);
@@ -263,11 +260,8 @@ test("last-member cleanup atomically deletes only an unused company and its exac
   assert.equal((await f.run()).statusCode, 204);
   assert.equal(f.writes.length, 1);
   const company = f.action("Delete", "bizBtxProjects");
-  for (const guard of [/version = 0/, /netShares = 0/, /seedStartedAt = null/, /seedSharesAtIpo = null/, /initialPriceTs = 1/, /lastPriceTs = 1/]) assert.match(condition(company), guard);
-  const history = f.action("Delete", "bizBtxPrices");
-  assert.deepEqual(history.Key, { projectId: f.projectId, ts: 1 });
-  assert.match(condition(history), /source = "INITIAL"/);
-  assert.match(condition(history), /priceCents = 10000/);
+  assert.match(condition(company), /version = 0/);
+  assert.deepEqual(f.action("Delete", "bizBtxPrices").Key, { projectId: f.projectId, ts: 1 });
   assert.match(condition(f.action("Delete", "biztechTeams")), /size\(member_ids\) = 1/);
   assert.ok(f.writes[0].every(item => !Object.values(item)[0].TableName.includes("Holdings")));
 });

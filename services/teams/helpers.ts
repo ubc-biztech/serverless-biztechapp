@@ -4,13 +4,11 @@ import {
   USER_REGISTRATIONS_TABLE,
   USERS_TABLE,
   TEAMS_TABLE,
-  EVENTS_TABLE,
   JUDGING_TABLE,
 } from "../../constants/tables";
 import helpers from "../../lib/handlerHelpers.js";
 import db, { field } from "../../lib/db.js";
 import { BTX_REGISTRATION_STATUSES } from "../../constants/registrations.js";
-import type { EventRecord } from "../events/types";
 import type { APIGatewayResponse } from "../../lib/types";
 import type { WriteBuilder } from "../../lib/db/build/WriteBuilder.js";
 import type {
@@ -28,7 +26,8 @@ import docClient from "../../lib/docClient.js";
 import { GetCommand, TransactWriteCommand, type TransactWriteCommandInput } from "@aws-sdk/lib-dynamodb";
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
 import type { CleanupTask, TeamRecord as ProductPlusTeamRecord } from "../productplus/types";
-import { buildInitialCompany, getCompanyProjectId } from "../btx/projects";
+import { buildInitialCompany } from "../btx/projects";
+import { buildProjectId } from "../btx/helpers";
 import { getUnusedCompanyDeletes, getTeamFormationChecks } from "../btx/teamFormation";
 
 /*
@@ -679,7 +678,7 @@ export const toTeamResponse = async (team: EventTeamRecord, btxEnabled: boolean)
   leader_user_id: team.leader_user_id,
   members: toTeamMembers(team, await getMemberNames([...team.member_ids])),
   ...(btxEnabled
-    ? { projectId: getCompanyProjectId(team["eventID;year"], team.id) }
+    ? { projectId: buildProjectId(team["eventID;year"], team.id) }
     : {}),
 });
 
@@ -743,15 +742,12 @@ export const removeMemberAsLeader = async (
   team: EventTeamRecord,
   leaderID: string,
   memberID: string,
-  event: EventRecord,
+  btxEnabled: boolean,
 ): Promise<void> => {
   const eventKey = team["eventID;year"];
-  const marketChecks = event.btxEnabled === true
-    ? await getTeamFormationChecks(eventKey, team.id)
-    : [];
+  const marketChecks = btxEnabled ? await getTeamFormationChecks(eventKey, team.id) : [];
 
   await commitMembershipChange(
-    buildEventFeatureCheck(event),
     db.build
       .update(USER_REGISTRATIONS_TABLE, { id: memberID, "eventID;year": eventKey })
       .remove("teamID")
@@ -771,98 +767,56 @@ export const removeMemberAsLeader = async (
 export const generateTeamCode = (): string =>
   String(randomInt(0, 1_000_000)).padStart(6, "0");
 
-/** Prepare one registration claim, with the same eligibility rule as the precheck. */
+/** Claims `userID`'s registration for `team`, rechecking BTX eligibility at commit. */
 const buildMembershipClaim = (team: EventTeamRecord, userID: string, btxEnabled: boolean): WriteBuilder => {
-  const eventKey = team["eventID;year"];
   const claim = db.build
     .update(
       USER_REGISTRATIONS_TABLE,
-      { id: userID, "eventID;year": eventKey },
+      { id: userID, "eventID;year": team["eventID;year"] },
       { teamID: team.id },
     )
     .if("id").exists()
     .if("teamID").notExists();
 
   if (btxEnabled) {
-    claim.anyOf(...BTX_REGISTRATION_STATUSES.map(
-      status => field("registrationStatus").equals(status),
-    ));
+    claim.anyOf(...BTX_REGISTRATION_STATUSES.map(status => field("registrationStatus").equals(status)));
   }
   return claim;
-};
-
-/** Reject a mutation if its event's BTX setting changed after the route read it. */
-const buildEventFeatureCheck = (event: EventRecord): WriteBuilder => {
-  const check = db.build.check(EVENTS_TABLE, { id: event.id, year: event.year }).if("id").exists();
-  return event.btxEnabled === undefined
-    ? check.if("btxEnabled").notExists()
-    : check.if("btxEnabled").equals(event.btxEnabled);
 };
 
 const commitMembershipChange = async (...writes: WriteBuilder[]): Promise<void> => {
   try {
     await db.txn(...writes);
   } catch (error) {
-    // A stale precheck is a state conflict, not an internal-server failure.
-    if (db.isConflict(error)) {
-      throw new EventTeamConflictError();
-    }
+    // The state changed after our reads, so the caller should reload
+    if (db.isConflict(error)) throw new EventTeamConflictError();
     throw error;
   }
 };
 
-/** Writes the team, leader membership, and any enabled BTX company/history together. */
-export const createTeamWithLeader = async (team: EventTeamRecord, event: EventRecord): Promise<EventTeamRecord> => {
+/** Writes the team, leader membership, and (for BTX events) its company together. */
+export const createTeamWithLeader = async (team: EventTeamRecord, btxEnabled: boolean): Promise<EventTeamRecord> => {
   const eventKey = team["eventID;year"];
-  const btxEnabled = event.btxEnabled === true;
-  const maxAttempts = btxEnabled ? 3 : 1;
-  const marketChecks = btxEnabled
-    ? await getTeamFormationChecks(eventKey)
-    : [];
-  marketChecks.push(buildEventFeatureCheck(event));
+  const marketChecks = btxEnabled ? await getTeamFormationChecks(eventKey) : [];
 
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+  for (let attempt = 0; attempt < 3; attempt++) {
     const candidate = attempt === 0 ? team : { ...team, id: generateTeamCode() };
-    const writes: WriteBuilder[] = [
-      // Keep this order aligned with the cancellation-reason checks below.
-      db.build.put(TEAMS_TABLE, { ...candidate }).if("id").notExists(),
-      buildMembershipClaim(candidate, candidate.leader_user_id, btxEnabled),
-    ];
-
-    if (btxEnabled) {
-      writes.push(...buildInitialCompany({
-        eventId: eventKey,
-        teamId: candidate.id,
-        companyName: candidate.team_name,
-      }));
-    }
-
-    const marketChecksStart = writes.length;
-    writes.push(...marketChecks);
-
     try {
-      await db.txn(...writes);
+      await db.txn(
+        db.build.put(TEAMS_TABLE, { ...candidate }).if("id").notExists(),
+        buildMembershipClaim(candidate, candidate.leader_user_id, btxEnabled),
+        ...(btxEnabled
+          ? buildInitialCompany({ eventId: eventKey, teamId: candidate.id, companyName: candidate.team_name })
+          : []),
+        ...marketChecks,
+      );
       return candidate;
     } catch (error) {
       if (!db.isConflict(error)) throw error;
-
-      const reasons = (error as { CancellationReasons?: { Code?: string }[] }).CancellationReasons;
-      if (!btxEnabled && reasons?.[marketChecksStart]?.Code !== "ConditionalCheckFailed") {
-        throw error;
-      }
-      // A taken team code may also have its company already present. Membership
-      // must still be valid; mixed failures and uncertain errors are not retried.
-      const isCodeCollision = btxEnabled && reasons?.length === writes.length &&
-        reasons[0]?.Code === "ConditionalCheckFailed" &&
-        reasons[1]?.Code === "None" &&
-        reasons.slice(2, marketChecksStart).every(reason =>
-          ["None", "ConditionalCheckFailed"].includes(reason.Code ?? "")) &&
-        reasons.slice(marketChecksStart).every(reason => reason.Code === "None");
-      if (isCodeCollision) continue;
-      if (reasons?.slice(marketChecksStart).some(reason => reason.Code === "ConditionalCheckFailed")) {
-        throw new EventTeamConflictError("Team creation availability changed. Reload and try again.");
-      }
-      throw new EventTeamConflictError();
+      const reasons = (error as { CancellationReasons: { Code?: string }[] }).CancellationReasons;
+      // Team put failed but the membership claim didn't: the random code is taken, so try another
+      const codeTaken = reasons[0].Code === "ConditionalCheckFailed" && reasons[1].Code === "None";
+      if (!codeTaken) throw new EventTeamConflictError();
     }
   }
 
@@ -873,15 +827,10 @@ export const createTeamWithLeader = async (team: EventTeamRecord, event: EventRe
 export const addTeamMember = async (
   team: EventTeamRecord,
   userID: string,
-  event: EventRecord,
+  btxEnabled: boolean,
 ): Promise<void> => {
-  const eventKey = team["eventID;year"];
-  const btxEnabled = event.btxEnabled === true;
-  const marketChecks = btxEnabled
-    ? await getTeamFormationChecks(eventKey, team.id)
-    : [];
+  const marketChecks = btxEnabled ? await getTeamFormationChecks(team["eventID;year"], team.id) : [];
   await commitMembershipChange(
-    buildEventFeatureCheck(event),
     buildMembershipClaim(team, userID, btxEnabled),
     db.build
       .update(TEAMS_TABLE, { id: team.id, "eventID;year": team["eventID;year"] })
@@ -899,12 +848,11 @@ export const removeSelfFromTeam = async (
   team: EventTeamRecord,
   userID: string,
   remaining: string[],
-  event: EventRecord,
+  btxEnabled: boolean,
 ): Promise<void> => {
   const eventKey = team["eventID;year"];
   const teamKey = { id: team.id, "eventID;year": eventKey };
-  // For last-member cleanup, the company check belongs on its Delete operation.
-  const btxEnabled = event.btxEnabled === true;
+  // The last member out deletes the company too, and that delete's own condition covers the seeding lock
   const marketChecks = btxEnabled
     ? await getTeamFormationChecks(eventKey, remaining.length === 0 ? undefined : team.id)
     : [];
@@ -939,7 +887,6 @@ export const removeSelfFromTeam = async (
   }
 
   await commitMembershipChange(
-    buildEventFeatureCheck(event),
     db.build
       .update(USER_REGISTRATIONS_TABLE, { id: userID, "eventID;year": eventKey })
       .remove("teamID")

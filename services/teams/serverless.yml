@@ -97,7 +97,6 @@ provider:
     - Effect: Allow
       Action:
         - dynamodb:GetItem
-        - dynamodb:ConditionCheckItem
       Resource:
         - "arn:aws:dynamodb:us-west-2:432714361962:table/biztechEvents${self:provider.environment.ENVIRONMENT}"
     - Effect: Allow

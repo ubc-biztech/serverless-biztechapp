@@ -163,7 +163,7 @@ export async function launchIpo() {
   let config = await getEventConfig();
   if (config.phase === "LIVE") return;
   if (config.phase === "PRE_IPO") {
-    // W1's conditional formation writes now fail before company discovery begins.
+    // Close team formation and trading before listing companies
     await docClient.send(new UpdateCommand({
       TableName: PROJECTS_TABLE, Key: { projectId: config.projectId },
       UpdateExpression: "SET phase = :preparing",
@@ -194,7 +194,6 @@ export async function launchIpo() {
       continue; // A previous invocation committed this company and its history together.
     }
     const priceCents = ipoStockPriceCents(netShares);
-    // Three actions per company: bounded for any event size and safe to resume.
     await docClient.send(new TransactWriteCommand({ TransactItems: [
       buildMarketPhaseCheck(config).build(),
       {
