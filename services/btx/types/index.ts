@@ -16,7 +16,10 @@ export type SeedStatus = "NOT_STARTED" | "ACTIVE" | "ENDED" | "LIVE";
 /** HLD config row — omit eventId so it stays off byEvent. */
 export interface BtxEventConfig {
   projectId: string;
+  phase: "PRE_IPO" | "IPO_PREPARING" | "LIVE";
   ipoAt: number | null;
+  /** Stable history timestamp while IPO is preparing; becomes ipoAt at completion. */
+  ipoPriceTs?: number;
 }
 
 export interface BtxProject {

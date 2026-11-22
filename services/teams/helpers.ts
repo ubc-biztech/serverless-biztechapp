@@ -9,7 +9,7 @@ import {
 } from "../../constants/tables";
 import helpers from "../../lib/handlerHelpers.js";
 import db, { field } from "../../lib/db.js";
-import { REGISTRATION_STATUS } from "../../constants/registrations.js";
+import { BTX_REGISTRATION_STATUSES } from "../../constants/registrations.js";
 import type { EventRecord } from "../events/types";
 import type { APIGatewayResponse } from "../../lib/types";
 import type { WriteBuilder } from "../../lib/db/build/WriteBuilder.js";
@@ -30,11 +30,6 @@ import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
 import type { CleanupTask, TeamRecord as ProductPlusTeamRecord } from "../productplus/types";
 import { buildInitialCompany, getCompanyProjectId } from "../btx/projects";
 import { getUnusedCompanyDeletes, getTeamFormationChecks } from "../btx/teamFormation";
-
-const BTX_TEAM_REGISTRATION_STATUSES = [
-  REGISTRATION_STATUS.ACCEPTED_COMPLETE,
-  REGISTRATION_STATUS.CHECKED_IN,
-] as const;
 
 /*
   Team Table Schema from DynamoDB:
@@ -720,7 +715,7 @@ export const requireTeamEligibility = async (
   }
   if (
     btxEnabled &&
-    !BTX_TEAM_REGISTRATION_STATUSES.some(
+    !BTX_REGISTRATION_STATUSES.some(
       status => status === registration.registrationStatus,
     )
   ) {
@@ -789,7 +784,7 @@ const buildMembershipClaim = (team: EventTeamRecord, userID: string, btxEnabled:
     .if("teamID").notExists();
 
   if (btxEnabled) {
-    claim.anyOf(...BTX_TEAM_REGISTRATION_STATUSES.map(
+    claim.anyOf(...BTX_REGISTRATION_STATUSES.map(
       status => field("registrationStatus").equals(status),
     ));
   }

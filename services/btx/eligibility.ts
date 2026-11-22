@@ -1,5 +1,8 @@
 import { GetCommand } from "@aws-sdk/lib-dynamodb";
 import docClient from "../../lib/docClient";
+import db, { field } from "../../lib/db.js";
+import { USER_REGISTRATIONS_TABLE } from "../../constants/tables";
+import { BTX_REGISTRATION_STATUSES } from "../../constants/registrations.js";
 import { BtxError, configuredEvent } from "./helpers";
 import { REGISTRATIONS_TABLE, TEAMS_TABLE } from "./repos/tables";
 
@@ -12,12 +15,20 @@ export async function eligibleRegistration(userId: string) {
       ConsistentRead: true
     })
   );
-  if (Item?.registrationStatus !== "acceptedComplete") {
-    throw new BtxError(403, "Accepted-complete event registration required", {
+  if (!Item || !BTX_REGISTRATION_STATUSES.some(status => status === Item.registrationStatus)) {
+    throw new BtxError(403, "Accepted-complete or checked-in event registration required", {
       code: "FORBIDDEN"
     });
   }
   return Item;
+}
+
+/** Match the read-time policy again when a seed, grant, or trade commits. */
+export function buildEligibilityCheck(userId: string, teamCode?: string) {
+  const check = db.build.check(USER_REGISTRATIONS_TABLE, { id: userId, "eventID;year": configuredEvent() })
+    .anyOf(...BTX_REGISTRATION_STATUSES.map(status => field("registrationStatus").equals(status)));
+  if (teamCode !== undefined) check.if("teamID").equals(teamCode);
+  return check;
 }
 
 export async function currentTeamMember(userId: string, projectId: string) {

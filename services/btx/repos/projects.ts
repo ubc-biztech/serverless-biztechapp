@@ -1,4 +1,4 @@
-import { GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { GetCommand, QueryCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
 import docClient from "../../../lib/docClient";
 import { BtxError, configuredEvent } from "../helpers";
 import { PRICES_TABLE, PROJECTS_TABLE } from "./tables";
@@ -31,6 +31,24 @@ export async function listProjectsForEvent() {
     })
   );
   return (Items || []) as BtxProject[];
+}
+
+/** Use only after the IPO gate closes creation/deletion; the GSI can lag new teams. */
+export async function listProjectsForIpo() {
+  const projects: BtxProject[] = [];
+  let start: Record<string, unknown> | undefined;
+  do {
+    const page = await docClient.send(new ScanCommand({
+      TableName: PROJECTS_TABLE,
+      ConsistentRead: true,
+      FilterExpression: "eventId = :event",
+      ExpressionAttributeValues: { ":event": configuredEvent() },
+      ExclusiveStartKey: start
+    }));
+    projects.push(...(page.Items || []) as BtxProject[]);
+    start = page.LastEvaluatedKey;
+  } while (start);
+  return projects;
 }
 
 export async function getPriceHistory(

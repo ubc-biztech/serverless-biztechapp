@@ -32,7 +32,7 @@ and BTX service running.
 
 ## Market
 
-Participants with a completed, accepted registration start with $50,000. They
+Participants with an `acceptedComplete` or `checkedIn` registration start with $50,000. They
 can trade without joining a team and cannot trade their own company.
 
 - A team member opens their company's 30-minute seed window with
@@ -73,6 +73,30 @@ For `GET /btx/account/trades` and `GET /btx/price-history`, pass the returned
 `nextPageKey` as `prevPageKey`.
 
 ## Development
+
+### Event setup and IPO state
+
+Before enabling `btxEnabled` on the `kickstart`, year `2026` event record,
+provision this item in the environment's `bizBtxProjects` table:
+
+```json
+{"projectId":"config:kickstart;2026","phase":"PRE_IPO","ipoAt":null}
+```
+
+Both team formation and the market reject missing or invalid configuration.
+For an existing ipoAt-only item, verify the market state before explicitly
+setting its phase; never reset IPO timestamps, company state, or balances.
+
+The stored lifecycle is `PRE_IPO -> IPO_PREPARING -> LIVE`. IPO closes formation
+and trading before scanning the base table consistently for all event companies.
+It initializes each company and its IPO history together, then opens live trading
+only after all companies are initialized. This avoids a single transaction's
+size limit. The `ipoPriceTs` config attribute preserves the history timestamp
+across retries; it becomes `ipoAt` when preparation completes. Queue retries
+resume preparation and skip companies already initialized by that transition.
+
+All timestamps are numeric Unix milliseconds. Market updates advance company
+`version`; `teamId`, `eventId`, and `initialPriceTs` remain unchanged.
 
 BTX uses integer cents for calculations, storage, HTTP, and WebSockets.
 Monetary fields use a `Cents` suffix. Convert cents to dollars for display.

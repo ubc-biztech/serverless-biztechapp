@@ -9,9 +9,12 @@ import { build } from "esbuild";
 const mocks = {
   "../../lib/db.js": "export const field = () => {}; export default globalThis.infrastructure.db;",
   "../../lib/docClient.js": "export default globalThis.infrastructure.docClient;",
+  "../../lib/docClient": "export default globalThis.infrastructure.docClient;",
   "@aws-sdk/lib-dynamodb": `
     export class QueryCommand { constructor(input) { this.input = input; } }
     export class GetCommand {}
+    export class PutCommand {}
+    export class DeleteCommand {}
     export class TransactWriteCommand {}
   `,
   "@aws-sdk/client-lambda": "export class LambdaClient {} export class InvokeCommand {}",

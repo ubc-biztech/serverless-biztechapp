@@ -58,7 +58,7 @@ async function processCompanyTick(projectId: string, scheduledTickTs: number) {
     getEventConfig()
   ]);
 
-  if (config.ipoAt == null) {
+  if (config.phase !== "LIVE") {
     return;
   }
 
@@ -88,12 +88,13 @@ async function processCompanyTick(projectId: string, scheduledTickTs: number) {
             TableName: PROJECTS_TABLE,
             Key: { projectId },
             UpdateExpression:
-              "SET currentPriceCents = :price, lastPriceTs = :ts, updatedAt = :now, lastScheduledTickTs = :tick",
+              "SET currentPriceCents = :price, lastPriceTs = :ts, updatedAt = :now, lastScheduledTickTs = :tick ADD version :one",
             ExpressionAttributeValues: {
               ":price": currentPriceCents,
               ":ts": ts,
               ":now": now,
-              ":tick": scheduledTickTs
+              ":tick": scheduledTickTs,
+              ":one": 1
             }
           }
         },

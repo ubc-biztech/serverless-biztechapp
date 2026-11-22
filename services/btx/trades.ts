@@ -16,9 +16,11 @@ import {
   configuredEvent,
   eventEndsAtMs,
   getEventConfig,
+  buildMarketPhaseCheck,
+  requireMarketOpen,
   requireSafeCents
 } from "./helpers";
-import { eligibleRegistration } from "./eligibility";
+import { buildEligibilityCheck, eligibleRegistration } from "./eligibility";
 import { getQuote } from "./market";
 import { ensureAccount } from "./repos/accounts";
 import { getProject } from "./repos/projects";
@@ -159,9 +161,10 @@ export async function processTrade(projectId: string, tradeId: string) {
       });
     }
 
-    const [project, config, account, holdingResponse] = await Promise.all([
+    const config = await getEventConfig();
+    requireMarketOpen(config);
+    const [project, account, holdingResponse] = await Promise.all([
       getProject(projectId),
-      getEventConfig(),
       ensureAccount(trade.userId),
       docClient.send(
         new GetCommand({
@@ -263,6 +266,8 @@ export async function processTrade(projectId: string, tradeId: string) {
     await docClient.send(
       new TransactWriteCommand({
         TransactItems: [
+          buildMarketPhaseCheck(config).build(),
+          buildEligibilityCheck(trade.userId).build(),
           {
             Update: {
               TableName: EVENT_ACCOUNTS_TABLE,
@@ -293,12 +298,13 @@ export async function processTrade(projectId: string, tradeId: string) {
               TableName: PROJECTS_TABLE,
               Key: { projectId },
               UpdateExpression:
-                "SET netShares = :shares, currentPriceCents = :price, lastPriceTs = :ts, updatedAt = :now",
+                "SET netShares = :shares, currentPriceCents = :price, lastPriceTs = :ts, updatedAt = :now ADD version :one",
               ExpressionAttributeValues: {
                 ":shares": netShares,
                 ":price": quote.endPriceCents,
                 ":ts": priceTs,
-                ":now": now
+                ":now": now,
+                ":one": 1
               }
             }
           },

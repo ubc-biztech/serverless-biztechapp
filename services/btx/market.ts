@@ -2,42 +2,37 @@ import {
   GetCommand,
   PutCommand,
   TransactWriteCommand,
-  type TransactWriteCommandInput
+  UpdateCommand
 } from "@aws-sdk/lib-dynamodb";
 import docClient from "../../lib/docClient";
-import { SEED_PRICE_CENTS, SEED_WINDOW_MS, QUOTE_WINDOW_MS } from "./constants";
+import { SEED_WINDOW_MS, QUOTE_WINDOW_MS } from "./constants";
 import {
   BtxError,
   buildProjectId,
   configuredEvent,
   eventEndsAtMs,
   getEventConfig,
+  buildMarketPhaseCheck,
+  requireMarketOpen,
   requireSafeCents
 } from "./helpers";
-import { currentTeamMember, eligibleRegistration } from "./eligibility";
+import { buildEligibilityCheck, currentTeamMember, eligibleRegistration } from "./eligibility";
 import { ipoStockPriceCents, tradeQuote, seedStatus } from "./pricing";
-import { getProject, listProjectsForEvent } from "./repos/projects";
+import { getProject, listProjectsForIpo } from "./repos/projects";
+import { buildInitialCompany } from "./projects";
 import {
   EVENT_ACCOUNTS_TABLE,
   PRICES_TABLE,
   PROJECTS_TABLE,
-  REGISTRATIONS_TABLE,
   TEAMS_TABLE
 } from "./repos/tables";
 import { ensureAccount } from "./repos/accounts";
-import type { BtxProject } from "./types";
+import type { BtxEventConfig, BtxProject } from "./types";
 import { publishMarketUpdate } from "./sockets";
 
-/** IPO creates the config row; missing or null ipoAt means pre-IPO. */
-function preIpoCheck(projectId: string) {
-  return {
-    ConditionCheck: {
-      TableName: PROJECTS_TABLE,
-      Key: { projectId },
-      ConditionExpression: "attribute_not_exists(ipoAt) OR ipoAt = :null",
-      ExpressionAttributeValues: { ":null": null }
-    }
-  };
+function requirePreIpo(config: BtxEventConfig) {
+  requireMarketOpen(config);
+  if (config.phase !== "PRE_IPO") throw new BtxError(409, "IPO has already started.");
 }
 
 export async function initializeMarketListing(input: {
@@ -60,53 +55,36 @@ export async function initializeMarketListing(input: {
   );
   if (existing) return { project: existing as BtxProject, created: false };
   const config = await getEventConfig();
+  requirePreIpo(config);
   const now = Date.now();
 
-  let companyName = input.companyName ?? input.name ?? input.ticker ?? input.teamCode;
-  let blurb = input.blurb ?? input.description ?? "";
-
-  const project: BtxProject = {
-    projectId,
-    eventId,
-    companyName,
+  const companyName = input.companyName ?? input.name ?? input.ticker ?? input.teamCode;
+  const blurb = input.blurb ?? input.description ?? "";
+  const [companyWrite, priceWrite] = buildInitialCompany({
+    eventId, teamId: input.teamCode, companyName
+  }).map(write => write.build());
+  const project = {
+    ...companyWrite.Put!.Item,
     blurb,
     youtubeURL: input.youtubeURL || "",
     name: companyName,
     description: blurb,
     ticker: input.ticker,
-    currentPriceCents: SEED_PRICE_CENTS,
-    netShares: 0,
-    seedStartedAt: null,
-    seedEndsAt: null,
-    seedSharesAtIpo: null,
-    lastPriceTs: now,
     isActive: true,
     createdAt: now,
     updatedAt: now
-  };
+  } as BtxProject;
   await docClient.send(
     new TransactWriteCommand({
       TransactItems: [
-        preIpoCheck(config.projectId),
+        buildMarketPhaseCheck(config).build(),
         {
           Put: {
-            TableName: PROJECTS_TABLE,
+            ...companyWrite.Put!,
             Item: project,
-            ConditionExpression: "attribute_not_exists(projectId)"
           }
         },
-        {
-          Put: {
-            TableName: PRICES_TABLE,
-            Item: {
-              projectId,
-              ts: now,
-              priceCents: SEED_PRICE_CENTS,
-              source: "INITIAL"
-            },
-            ConditionExpression: "attribute_not_exists(projectId)"
-          }
-        }
+        priceWrite
       ]
     })
   );
@@ -133,10 +111,13 @@ export async function startSeeding(userId: string, projectId: string) {
   const project = await getProject(projectId);
   const membership = await currentTeamMember(userId, projectId);
   const config = await getEventConfig();
+  requireMarketOpen(config);
   if (project.seedStartedAt != null && project.seedEndsAt != null)
     return seedResponse(project, config.ipoAt);
   if (project.isActive === false) throw new BtxError(409, "Inactive listing");
   const now = Date.now();
+  requirePreIpo(config);
+  if (now >= eventEndsAtMs()) throw new BtxError(409, "Event ended", { code: "EVENT_ENDED" });
   const updated = {
     ...project,
     seedStartedAt: now,
@@ -145,19 +126,8 @@ export async function startSeeding(userId: string, projectId: string) {
   await docClient.send(
     new TransactWriteCommand({
       TransactItems: [
-        preIpoCheck(config.projectId),
-        {
-          ConditionCheck: {
-            TableName: REGISTRATIONS_TABLE,
-            Key: { "id": userId, "eventID;year": configuredEvent() },
-            ConditionExpression:
-              "registrationStatus = :status AND teamID = :team",
-            ExpressionAttributeValues: {
-              ":status": "acceptedComplete",
-              ":team": membership.teamCode
-            }
-          }
-        },
+        buildMarketPhaseCheck(config).build(),
+        buildEligibilityCheck(userId, membership.teamCode).build(),
         {
           ConditionCheck: {
             TableName: TEAMS_TABLE,
@@ -171,13 +141,14 @@ export async function startSeeding(userId: string, projectId: string) {
             TableName: PROJECTS_TABLE,
             Key: { projectId },
             UpdateExpression:
-              "SET seedStartedAt = :s, seedEndsAt = :e, updatedAt = :s",
+              "SET seedStartedAt = :s, seedEndsAt = :e, updatedAt = :s ADD version :one",
             ConditionExpression:
               "(attribute_not_exists(seedStartedAt) OR seedStartedAt = :null) AND (attribute_not_exists(seedEndsAt) OR seedEndsAt = :null)",
             ExpressionAttributeValues: {
               ":s": now,
               ":e": updated.seedEndsAt,
-              ":null": null
+              ":null": null,
+              ":one": 1
             }
           }
         }
@@ -189,46 +160,58 @@ export async function startSeeding(userId: string, projectId: string) {
 }
 
 export async function launchIpo() {
-  const config = await getEventConfig();
-  if (config.ipoAt != null) return;
-
-  const listings = await listProjectsForEvent();
-  
-  // Read the share counts from the base table so the last seed trade is included.
-  const projects = await Promise.all(
-    listings.map(({ projectId }) => getProject(projectId))
-  );
-  const now = Date.now();
-  const ipoAt = Math.max(
-    now,
-    ...projects.map((project) => project.lastPriceTs + 1)
-  );
-  const items: NonNullable<TransactWriteCommandInput["TransactItems"]> = [
-    {
-      Update: {
-        TableName: PROJECTS_TABLE,
-        Key: { projectId: config.projectId },
-        UpdateExpression: "SET ipoAt = :ipoAt",
-        ConditionExpression: "attribute_not_exists(ipoAt) OR ipoAt = :null",
-        ExpressionAttributeValues: { ":ipoAt": ipoAt, ":null": null }
-      }
+  let config = await getEventConfig();
+  if (config.phase === "LIVE") return;
+  if (config.phase === "PRE_IPO") {
+    // W1's conditional formation writes now fail before company discovery begins.
+    await docClient.send(new UpdateCommand({
+      TableName: PROJECTS_TABLE, Key: { projectId: config.projectId },
+      UpdateExpression: "SET phase = :preparing",
+      ConditionExpression: "phase = :pre AND ipoAt = :null",
+      ExpressionAttributeValues: { ":preparing": "IPO_PREPARING", ":pre": "PRE_IPO", ":null": null }
+    }));
+    config = { ...config, phase: "IPO_PREPARING" };
+  }
+  const projects = await listProjectsForIpo();
+  if (config.ipoPriceTs === undefined) {
+    const priceTs = projects.reduce((ts, project) => Math.max(ts, project.lastPriceTs + 1), Date.now());
+    await docClient.send(new UpdateCommand({
+      TableName: PROJECTS_TABLE, Key: { projectId: config.projectId },
+      UpdateExpression: "SET ipoPriceTs = if_not_exists(ipoPriceTs, :ts)",
+      ConditionExpression: "phase = :preparing AND ipoAt = :null",
+      ExpressionAttributeValues: { ":ts": priceTs, ":preparing": "IPO_PREPARING", ":null": null }
+    }));
+    config = await getEventConfig();
+  }
+  const ipoAt = config.ipoPriceTs;
+  if (config.phase !== "IPO_PREPARING" || ipoAt === undefined) {
+    throw new BtxError(503, "IPO preparation state changed.", { code: "TRANSITION_UNAVAILABLE" });
+  }
+  for (const project of projects) {
+    const { projectId, netShares } = project;
+    if (project.seedSharesAtIpo != null) {
+      if (project.lastPriceTs !== ipoAt) throw new BtxError(503, "IPO snapshot needs reconciliation.");
+      continue; // A previous invocation committed this company and its history together.
     }
-  ];
-
-  for (const { projectId, netShares } of projects) {
     const priceCents = ipoStockPriceCents(netShares);
-    items.push(
+    // Three actions per company: bounded for any event size and safe to resume.
+    await docClient.send(new TransactWriteCommand({ TransactItems: [
+      buildMarketPhaseCheck(config).build(),
       {
         Update: {
           TableName: PROJECTS_TABLE,
           Key: { projectId },
           UpdateExpression:
-            "SET seedSharesAtIpo = :shares, currentPriceCents = :price, lastPriceTs = :ipoAt, updatedAt = :now",
+            "SET seedSharesAtIpo = :shares, currentPriceCents = :price, lastPriceTs = :ipoAt, updatedAt = :now ADD version :one",
+          ConditionExpression: "attribute_exists(projectId) AND netShares = :shares AND lastPriceTs = :before AND (attribute_not_exists(seedSharesAtIpo) OR seedSharesAtIpo = :null)",
           ExpressionAttributeValues: {
             ":shares": netShares,
             ":price": priceCents,
             ":ipoAt": ipoAt,
-            ":now": now
+            ":now": Date.now(),
+            ":before": project.lastPriceTs,
+            ":null": null,
+            ":one": 1
           }
         }
       },
@@ -239,14 +222,19 @@ export async function launchIpo() {
           ConditionExpression: "attribute_not_exists(projectId)"
         }
       }
-    );
+    ] }));
   }
-  await docClient.send(new TransactWriteCommand({ TransactItems: items }));
+  await docClient.send(new UpdateCommand({
+    TableName: PROJECTS_TABLE, Key: { projectId: config.projectId },
+    UpdateExpression: "SET phase = :live, ipoAt = :ipoAt",
+    ConditionExpression: "phase = :preparing AND ipoAt = :null AND ipoPriceTs = :ipoAt",
+    ExpressionAttributeValues: { ":live": "LIVE", ":ipoAt": ipoAt, ":preparing": "IPO_PREPARING", ":null": null }
+  }));
   await publishMarketUpdate({
     eventId: configuredEvent(),
     ipoAt,
     phase: "LIVE",
-    serverTime: now
+    serverTime: Date.now()
   });
 }
 
@@ -262,6 +250,7 @@ export async function getQuote(params: {
     getEventConfig()
   ]);
   const now = Date.now();
+  requireMarketOpen(config);
   if (project.isActive === false) throw new BtxError(409, "Inactive listing");
   if (
     registration.teamID &&
@@ -279,7 +268,7 @@ export async function getQuote(params: {
     params.side,
     params.shares
   );
-  const live = config.ipoAt != null;
+  const live = config.phase === "LIVE";
   return {
     ...quote,
     projectId: project.projectId,
@@ -381,14 +370,7 @@ export async function applyGrant(params: {
       await docClient.send(
         new TransactWriteCommand({
           TransactItems: [
-            {
-              ConditionCheck: {
-                TableName: REGISTRATIONS_TABLE,
-                Key: { "id": userId, "eventID;year": eventId },
-                ConditionExpression: "registrationStatus = :status",
-                ExpressionAttributeValues: { ":status": "acceptedComplete" }
-              }
-            },
+            buildEligibilityCheck(userId).build(),
             {
               Put: {
                 TableName: PROJECTS_TABLE,

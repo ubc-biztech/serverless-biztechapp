@@ -9,3 +9,8 @@ export const REGISTRATION_STATUS = Object.freeze({
   ACCEPTED_COMPLETE: "acceptedComplete",
   REJECTED: "rejected"
 });
+
+export const BTX_REGISTRATION_STATUSES = Object.freeze([
+  REGISTRATION_STATUS.ACCEPTED_COMPLETE,
+  REGISTRATION_STATUS.CHECKED_IN
+]);
