@@ -45,6 +45,9 @@ provider:
 
   iamRoleStatements:
     - Effect: Allow
+      Action: dynamodb:Scan
+      Resource: arn:aws:dynamodb:us-west-2:${aws:accountId}:table/bizBtxProjects${self:provider.environment.ENVIRONMENT}
+    - Effect: Allow
       Action:
         - dynamodb:GetItem
         - dynamodb:PutItem

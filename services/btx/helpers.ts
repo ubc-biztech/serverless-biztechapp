@@ -1,7 +1,9 @@
-import { PutCommand, DeleteCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
+import { PutCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
 import { validate as validateUuid, version as uuidVersion } from "uuid";
 
 import docClient from "../../lib/docClient";
+import db from "../../lib/db.js";
+import { BTX_PROJECTS_TABLE } from "../../constants/tables";
 import { PROJECTS_TABLE, SOCKETS_TABLE } from "./repos/tables";
 import type { BtxErrorCode, BtxEventConfig } from "./types";
 
@@ -55,19 +57,41 @@ export function assertUuidV7(tradeId: unknown): string {
   return tradeId;
 }
 
-export async function getEventConfig(): Promise<BtxEventConfig> {
-  const projectId = configProjectId();
-  const res = await docClient.send(
-    new GetCommand({
-      TableName: PROJECTS_TABLE,
-      Key: { projectId },
-      ConsistentRead: true
-    })
-  );
-  if (!res.Item) return { projectId, ipoAt: null };
-  let ipoAt = (res.Item as BtxEventConfig).ipoAt;
-  if (ipoAt == null) ipoAt = null;
-  return { projectId, ipoAt };
+export async function getEventConfig(eventId = configuredEvent()): Promise<BtxEventConfig> {
+  const projectId = configProjectId(eventId);
+  const item = await db.getOneCustom({
+    TableName: PROJECTS_TABLE,
+    Key: { projectId },
+    ConsistentRead: true
+  }) as Partial<BtxEventConfig> | null;
+  const phase = item?.phase;
+  const ipoAt = item?.ipoAt;
+  const validTime = (value: unknown): value is number => Number.isSafeInteger(value) && (value as number) >= 0;
+  if (!item || (phase !== "PRE_IPO" && phase !== "IPO_PREPARING" && phase !== "LIVE") ||
+      (phase === "LIVE" ? !validTime(ipoAt) : ipoAt !== null) ||
+      (phase === "PRE_IPO" && item.ipoPriceTs !== undefined) ||
+      (item.ipoPriceTs !== undefined && !validTime(item.ipoPriceTs))) {
+    throw new BtxError(503, "Market configuration is unavailable. Please contact an organizer.", {
+      code: "TRANSITION_UNAVAILABLE"
+    });
+  }
+  return { projectId, phase, ipoAt: ipoAt as number | null,
+    ...(item.ipoPriceTs === undefined ? {} : { ipoPriceTs: item.ipoPriceTs }) };
+}
+
+/** Reused by team formation and market writes to guard the same persisted state. */
+export const buildMarketPhaseCheck = (config: BtxEventConfig) => {
+  const check = db.build.check(BTX_PROJECTS_TABLE, { projectId: config.projectId })
+    .if("phase").equals(config.phase)
+    .if("ipoAt").equals(config.ipoAt);
+  if (config.ipoPriceTs !== undefined) check.if("ipoPriceTs").equals(config.ipoPriceTs);
+  return check;
+};
+
+export function requireMarketOpen(config: BtxEventConfig) {
+  if (config.phase === "IPO_PREPARING") {
+    throw new BtxError(503, "IPO is preparing. Please try again shortly.", { code: "TRANSITION_UNAVAILABLE" });
+  }
 }
 
 export async function saveSocketConnection(params: {

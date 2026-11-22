@@ -77,8 +77,8 @@ export const getMarketSnapshot = protect(Access.PUBLIC, async () => {
       data: {
         eventId,
         serverTime,
-        phase: config.ipoAt != null ? "LIVE" : "SEED",
-        live: config.ipoAt != null,
+        phase: config.phase === "PRE_IPO" ? "SEED" : config.phase,
+        live: config.phase === "LIVE",
         ipoAt: config.ipoAt,
         eventEndsAt: eventEndsAtMs(),
         projects: rows

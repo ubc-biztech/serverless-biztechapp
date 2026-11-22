@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { loadBtx } from "./load-btx.mjs";
 
-const { db, tables, getQuote, applyGrant, getPortfolioForUser, processTrade, submitTrade } = await loadBtx(`
+const { db, tables, getQuote, applyGrant, startSeeding, initializeMarketListing, getPortfolioForUser, processTrade, submitTrade } = await loadBtx(`
   export { default as db } from "../../lib/docClient.js";
   export * as tables from "./repos/tables";
-  export { getQuote, applyGrant } from "./market";
+  export { getQuote, applyGrant, startSeeding, initializeMarketListing } from "./market";
   export { getPortfolioForUser } from "./repos/accounts";
   export { processTrade, submitTrade } from "./trades";
 `);
@@ -24,7 +24,7 @@ function market(t) {
     projectId, eventId, seedSharesAtIpo: 0, currentPriceCents: 10_000,
     netShares: 10, lastPriceTs: 900, seedStartedAt: 100, seedEndsAt: 2000
   };
-  const config = { ipoAt: 500 };
+  const config = { phase: "LIVE", ipoAt: 500 };
   const registration = { registrationStatus: "acceptedComplete" };
   const account = { userId, eventId, cashBalanceCents: 100_000, totalAllocatedCents: 120_000 };
   const holding = { userId, projectId, shares: 10, costBasisCents: 80_000 };
@@ -58,12 +58,20 @@ function market(t) {
         assert.fail("Unexpected command " + command.constructor.name);
     }
   });
-  return { trade, config, registration, histories, projects, rows, writes };
+  return { trade, config, registration, histories, projects, project, rows, writes };
+}
+
+function registrationCheck(items) {
+  const check = items.find(item => item.ConditionCheck?.TableName === tables.REGISTRATIONS_TABLE).ConditionCheck;
+  assert.match(check.ConditionExpression, /OR/);
+  assert.ok(Object.values(check.ExpressionAttributeValues).includes("acceptedComplete"));
+  assert.ok(Object.values(check.ExpressionAttributeValues).includes("checkedIn"));
 }
 
 test("a seed quote expires with the listing window and reserves no cash", async t => {
   const { config, writes } = market(t);
   config.ipoAt = null;
+  config.phase = "PRE_IPO";
   const quote = await getQuote({ projectId, userId, side: "BUY", shares: 2 });
   assert.equal(quote.expiresAt, 2000);
   assert.equal(quote.totalCostCents, 20_400);
@@ -103,12 +111,72 @@ test("a partial sale commits net proceeds, remaining cost basis and realized pro
   assert.deepEqual(filled.result, { shares: 6, costBasisCents: 48_000, cashBalanceCents: 139_161 });
   assert.equal(writes.length, 1);
   const items = writes[0].TransactItems;
+  registrationCheck(items);
+  assert.ok(items.some(item => item.ConditionCheck?.Key.projectId === "config:" + eventId));
   const put = table => items.find(item => item.Put?.TableName === table).Put.Item;
   assert.deepEqual(put(tables.TRADES_TABLE), filled);
   assert.equal(put(tables.HOLDINGS_TABLE).costBasisCents, 48_000);
   assert.equal(put(tables.PRICES_TABLE).priceCents, 9980);
   const accountUpdate = items.find(item => item.Update?.TableName === tables.EVENT_ACCOUNTS_TABLE);
   assert.equal(accountUpdate.Update.ExpressionAttributeValues[":cashDelta"], filled.cashDeltaCents);
+});
+
+test("checked-in attendees can quote and receive a grant; commit checks preserve both eligible statuses", async t => {
+  const { registration, writes } = market(t);
+  registration.registrationStatus = "checkedIn";
+  await getQuote({ projectId, userId, side: "BUY", shares: 1 });
+  await applyGrant({ requestId: "checked-in", amountCents: 500, targetEmails: [userId] });
+  registrationCheck(writes.find(write => write.TransactItems).TransactItems);
+});
+
+test("pending registrations cannot quote or receive a grant", async t => {
+  const { registration, writes } = market(t);
+  registration.registrationStatus = "registered";
+  await assert.rejects(getQuote({ projectId, userId, side: "BUY", shares: 1 }), { statusCode: 403 });
+  const result = await applyGrant({ requestId: "ineligible", amountCents: 500, targetEmails: [userId] });
+  assert.equal(result.outcomes[0].status, "REJECTED");
+  assert.equal(writes.filter(write => write.TransactItems).length, 0);
+});
+
+test("seeding accepts checked-in team members and guards eligibility and phase in its transaction", async t => {
+  const { config, registration, project, rows, writes } = market(t);
+  Object.assign(config, { phase: "PRE_IPO", ipoAt: null });
+  Object.assign(project, { seedStartedAt: null, seedEndsAt: null });
+  Object.assign(registration, { registrationStatus: "checkedIn", teamID: "listing" });
+  rows[tables.TEAMS_TABLE] = { member_ids: [userId] };
+  await startSeeding(userId, projectId);
+  const items = writes[0].TransactItems;
+  registrationCheck(items);
+  assert.ok(items.some(item => item.ConditionCheck?.Key.projectId === "config:" + eventId));
+  assert.match(items.find(item => item.Update).Update.UpdateExpression, /ADD version/);
+});
+
+test("IPO preparation blocks new quotes, seed starts and queued fills", async t => {
+  const { config, registration, rows, writes } = market(t);
+  Object.assign(config, { phase: "IPO_PREPARING", ipoAt: null });
+  await assert.rejects(getQuote({ projectId, userId, side: "BUY", shares: 1 }), { statusCode: 503 });
+  registration.teamID = "listing";
+  rows[tables.TEAMS_TABLE] = { member_ids: [userId] };
+  await assert.rejects(startSeeding(userId, projectId), { statusCode: 503 });
+  delete registration.teamID;
+  const trade = await processTrade(projectId, tradeId);
+  assert.equal(trade.rejection.code, "TRANSITION_UNAVAILABLE");
+  assert.deepEqual(writes.map(write => write.TableName), [tables.TRADES_TABLE]);
+});
+
+test("standalone initialization retains W1 ownership and cleanup metadata with atomic initial history", async t => {
+  const { config, projects, writes } = market(t);
+  Object.assign(config, { phase: "PRE_IPO", ipoAt: null });
+  projects.delete(projectId);
+  const result = await initializeMarketListing({ teamCode: "listing", companyName: "Northstar" });
+  assert.equal(result.project.teamId, "listing");
+  assert.equal(result.project.version, 0);
+  assert.equal(result.project.initialPriceTs, result.project.lastPriceTs);
+  const items = writes[0].TransactItems;
+  assert.equal(items.length, 3);
+  const price = items.find(item => item.Put?.TableName === tables.PRICES_TABLE).Put.Item;
+  assert.equal(price.source, "INITIAL");
+  assert.equal(price.ts, result.project.initialPriceTs);
 });
 
 for (const [name, overrides, code] of [

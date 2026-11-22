@@ -190,6 +190,7 @@ test("joining updates membership without overwriting the company's profile or ma
 for (const operation of ["create", "join", "leave", "remove"]) {
   test(`${operation} is blocked at IPO`, async () => {
     const f = fixture(operation);
+    f.config.phase = "LIVE";
     f.config.ipoAt = Date.now();
     assert.equal((await f.run()).statusCode, 409);
     assert.equal(f.writes.length, 0);
@@ -279,6 +280,7 @@ test("cleanup returns a conflict if company activity or membership changes befor
 
 test("team lookup returns its linked company after IPO and rejects another user's lookup", async () => {
   const f = fixture("lookup");
+  f.config.phase = "LIVE";
   f.config.ipoAt = Date.now();
   assert.equal(JSON.parse((await f.run()).body).projectId, f.projectId);
   assert.equal((await f.run({ pathParameters: { eventID: "kickstart", year: "2026", user_id: other } })).statusCode, 403);

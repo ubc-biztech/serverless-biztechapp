@@ -3,16 +3,13 @@ import db, { field } from "../../lib/db.js";
 import type { WriteBuilder } from "../../lib/db/build/WriteBuilder.js";
 import { getCompanyProjectId } from "./projects";
 import { SEED_PRICE_CENTS } from "./constants";
+import { BtxError, buildMarketPhaseCheck, getEventConfig } from "./helpers";
+import type { BtxEventConfig } from "./types";
 
 /** Workflow 3/event setup creates this item before team formation is enabled.
  * IPO_PREPARING closes formation before ipoAt is set. Missing config fails closed.
  */
-export interface BtxEventConfigRecord {
-  projectId: string;
-  phase: "PRE_IPO" | "IPO_PREPARING" | "LIVE";
-  /** IPO time in Unix milliseconds; null until IPO starts. */
-  ipoAt: number | null;
-}
+export type BtxEventConfigRecord = BtxEventConfig;
 
 export class TeamFormationError extends Error {
   constructor(public statusCode: 409 | 503, message: string) {
@@ -67,26 +64,20 @@ export async function getUnusedCompanyDeletes(eventId: string, teamId: string): 
 
 /** Read current availability and prepare the same checks for the membership transaction. */
 export async function getTeamFormationChecks(eventId: string, teamId?: string): Promise<WriteBuilder[]> {
-  const configId = getBtxEventConfigId(eventId);
   const table = BTX_PROJECTS_TABLE + (process.env.ENVIRONMENT || "");
-  const config = (await db.getOneCustom({
-    TableName: table,
-    Key: { projectId: configId },
-    ConsistentRead: true,
-  })) as Partial<BtxEventConfigRecord> | null;
-  if (!config || config.ipoAt === undefined ||
-      !["PRE_IPO", "IPO_PREPARING", "LIVE"].includes(config.phase ?? "")) {
-    throw new TeamFormationError(503, "Team formation is not configured for this event. Please contact an organizer.");
+  let config: BtxEventConfig;
+  try {
+    config = await getEventConfig(eventId);
+  } catch (error) {
+    if (error instanceof BtxError) throw new TeamFormationError(503, error.message);
+    throw error;
   }
   if (config.phase !== "PRE_IPO" || config.ipoAt !== null) {
     throw new TeamFormationError(409, "Team membership changes are closed during and after IPO. Please contact an organizer.");
   }
 
   const checks: WriteBuilder[] = [
-    db.build.check(BTX_PROJECTS_TABLE, { projectId: configId })
-      .if("projectId").exists()
-      .if("phase").equals("PRE_IPO")
-      .if("ipoAt").equals(null),
+    buildMarketPhaseCheck(config),
   ];
   if (teamId === undefined) return checks;
 
