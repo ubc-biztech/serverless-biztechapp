@@ -20,7 +20,7 @@ export const build = {
   delete(table: string, key: Record<string, unknown>) {
     return new DeleteBuilder(table, key);
   },
-  conditionCheck(table: string, key: Record<string, unknown>) {
+  check(table: string, key: Record<string, unknown>) {
     return new ConditionCheckBuilder(table, key);
   }
 };

@@ -13,7 +13,6 @@ import {
 import SESEmailService from "./EmailService/SESEmailService";
 import awsConfig from "../../lib/config";
 import { REGISTRATION_STATUS, STATUS_FIELD } from "./constants";
-import { KICKSTART_EVENT_KEY } from "../../constants/kickstart";
 
 // const CHECKIN_COUNT_SANITY_CHECK = 500;
 
@@ -44,19 +43,19 @@ const summarizePartnerRegistrationResults = (results) => {
   );
 };
 
-// BatchWrite cannot enforce conditions. Keep each Kickstart deletion request atomic,
+// BatchWrite cannot enforce conditions. Keep each BTX deletion request atomic,
 // including the single-record route, so a concurrent team join cancels the deletion.
-async function deleteKickstartRegistrations(emails) {
+async function deleteBtxRegistrations(emails, eventKey) {
   const uniqueEmails = [...new Set(emails)];
   if (uniqueEmails.length === 0) return {};
   if (uniqueEmails.length > 100) {
-    throw helpers.createResponse(400, { message: "Delete up to 100 Kickstart registrations at a time." });
+    throw helpers.createResponse(400, { message: "Delete up to 100 BTX registrations at a time." });
   }
   try {
     return await db.txn(...uniqueEmails.map(id =>
       db.build.delete(USER_REGISTRATIONS_TABLE, {
         id,
-        "eventID;year": KICKSTART_EVENT_KEY
+        "eventID;year": eventKey
       })
         .if("teamID").notExists()
     ));
@@ -92,10 +91,6 @@ export async function updateHelper(
     applicationStatus
   } = data;
   const eventIDAndYear = eventID + ";" + year;
-
-  if (eventIDAndYear === KICKSTART_EVENT_KEY && Object.prototype.hasOwnProperty.call(data, "teamID")) {
-    throw helpers.createResponse(400, { message: "Team membership must be changed using the team endpoints." });
-  }
 
   // Normalize email to lowercase
   const normalizedEmail = email.toLowerCase();
@@ -133,6 +128,10 @@ export async function updateHelper(
   });
   if (isEmpty(existingEvent))
     throw helpers.notFoundResponse("Event", eventID, year);
+
+  if (existingEvent.btxEnabled === true && data.teamID !== undefined) {
+    throw helpers.createResponse(400, { message: "Team membership must be changed using the team endpoints." });
+  }
 
   const user = {
     id: normalizedEmail,
@@ -841,8 +840,16 @@ export const del = protect(Access.USER, async (event, ctx, callback) => {
 
     const eventIDAndYear = data.eventID + ";" + data.year;
 
-    const res = eventIDAndYear === KICKSTART_EVENT_KEY
-      ? await deleteKickstartRegistrations([email])
+    const eventRecord = await db.getOneCustom({
+      TableName: EVENTS_TABLE + (process.env.ENVIRONMENT || ""),
+      Key: {
+        id: data.eventID,
+        year: data.year
+      },
+      ConsistentRead: true
+    });
+    const res = eventRecord?.btxEnabled === true
+      ? await deleteBtxRegistrations([email], eventIDAndYear)
       : await db.deleteOne(email, USER_REGISTRATIONS_TABLE, {
         ["eventID;year"]: eventIDAndYear
       });
@@ -895,8 +902,16 @@ export const delMany = protect(Access.ADMIN, async (event, ctx, callback) => {
       ["eventID;year"]: `${eventIDAndYear}` // sort key
     }));
 
-    const res = eventIDAndYear === KICKSTART_EVENT_KEY
-      ? await deleteKickstartRegistrations(lowercaseEmails)
+    const eventRecord = await db.getOneCustom({
+      TableName: EVENTS_TABLE + (process.env.ENVIRONMENT || ""),
+      Key: {
+        id: data.eventID,
+        year: data.year
+      },
+      ConsistentRead: true
+    });
+    const res = eventRecord?.btxEnabled === true
+      ? await deleteBtxRegistrations(lowercaseEmails, eventIDAndYear)
       : await db.batchDelete(itemsToDelete, USER_REGISTRATIONS_TABLE);
 
     return helpers.createResponse(200, {

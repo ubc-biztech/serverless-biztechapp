@@ -4,14 +4,13 @@ import {
   USER_REGISTRATIONS_TABLE,
   USERS_TABLE,
   TEAMS_TABLE,
+  EVENTS_TABLE,
   JUDGING_TABLE,
 } from "../../constants/tables";
 import helpers from "../../lib/handlerHelpers.js";
 import db, { field } from "../../lib/db.js";
-import {
-  KICKSTART_EVENT_KEY,
-  KICKSTART_TEAM_REGISTRATION_STATUSES,
-} from "../../constants/kickstart";
+import { REGISTRATION_STATUS } from "../../constants/registrations.js";
+import type { EventRecord } from "../events/types";
 import type { APIGatewayResponse } from "../../lib/types";
 import type { WriteBuilder } from "../../lib/db/build/WriteBuilder.js";
 import type {
@@ -31,6 +30,11 @@ import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
 import type { CleanupTask, TeamRecord as ProductPlusTeamRecord } from "../productplus/types";
 import { buildInitialCompany, getCompanyProjectId } from "../btx/projects";
 import { getUnusedCompanyDeletes, getTeamFormationChecks } from "../btx/teamFormation";
+
+const BTX_TEAM_REGISTRATION_STATUSES = [
+  REGISTRATION_STATUS.ACCEPTED_COMPLETE,
+  REGISTRATION_STATUS.CHECKED_IN,
+] as const;
 
 /*
   Team Table Schema from DynamoDB:
@@ -90,8 +94,8 @@ export async function enqueueTeamDeletedCleanup(eventKey: string, teamCode: stri
   }
 }
 
-/** Legacy Product Plus leave retains its atomic writes, retries, and file cleanup. */
-async function leaveProductPlusTeam(memberID: string, eventKey: string) {
+/** Product Plus alone requires atomic membership writes and empty-team deletion. */
+async function updateProductPlusMembership(memberID: string, eventKey: string, action: "join" | "leave", requestedTeamID?: string) {
   const suffix = process.env.ENVIRONMENT || "";
   const teamsTable = TEAMS_TABLE + suffix;
   const registrationsTable = USER_REGISTRATIONS_TABLE + suffix;
@@ -102,16 +106,21 @@ async function leaveProductPlusTeam(memberID: string, eventKey: string) {
         TableName: registrationsTable, Key: registrationKey, ConsistentRead: true
       }))).Item as RegistrationRecord | undefined;
       if (!registration) throw new ProductPlusTeamError(404, "Event registration is required.");
-      const teamID = registration.teamID;
+      if (action === "join" && registration.registrationStatus?.toLowerCase() !== "checkedin") {
+        throw new ProductPlusTeamError(403, "Check in before joining a team.");
+      }
+      if (action === "join" && registration.teamID) throw new ProductPlusTeamError(400, "You are already on a team.");
+      const teamID = action === "leave" ? registration.teamID : requestedTeamID;
       if (!teamID) throw new ProductPlusTeamError(400, "Current team membership is required.");
       const teamKey = { id: teamID, "eventID;year": eventKey };
       const team = (await docClient.send(new GetCommand({
         TableName: teamsTable, Key: teamKey, ConsistentRead: true
       }))).Item as ProductPlusTeamRecord | undefined;
       if (!team || !(team.member_ids instanceof Set)) throw new ProductPlusTeamError(404, "Team does not exist.");
-      if (!team.member_ids.has(memberID)) throw new ProductPlusTeamError(403, "Current team membership is required.");
-      const members = new Set([...team.member_ids].filter(id => id !== memberID));
-      const removeTeam = members.size === 0;
+      if (action === "leave" && !team.member_ids.has(memberID)) throw new ProductPlusTeamError(403, "Current team membership is required.");
+      if (action === "join" && team.member_ids.has(memberID)) throw new ProductPlusTeamError(400, "You are already on this team.");
+      const members = action === "join" ? new Set([...team.member_ids, memberID]) : new Set([...team.member_ids].filter(id => id !== memberID));
+      const removeTeam = action === "leave" && members.size === 0;
       if (removeTeam && (typeof team.id !== "string" || !/^\d{6}$/.test(team.id))) {
         throw new ProductPlusTeamError(409, "The Product Plus team needs its six-digit code before deletion.");
       }
@@ -128,14 +137,20 @@ async function leaveProductPlusTeam(memberID: string, eventKey: string) {
         } },
         { Update: {
           TableName: registrationsTable, Key: registrationKey,
-          ConditionExpression: "attribute_exists(id) AND #team = :before",
-          UpdateExpression: "REMOVE #team",
+          ConditionExpression: "attribute_exists(id) AND " +
+            (registration.teamID === undefined ? "attribute_not_exists(#team)" : "#team = :before") +
+            (action === "join" ? " AND registrationStatus = :status" : ""),
+          UpdateExpression: action === "join" ? "SET #team = :after" : "REMOVE #team",
           ExpressionAttributeNames: { "#team": "teamID" },
-          ExpressionAttributeValues: { ":before": teamID }
+          ExpressionAttributeValues: {
+            ...(action === "join" ? { ":after": teamID } : {}),
+            ...(registration.teamID === undefined ? {} : { ":before": registration.teamID }),
+            ...(action === "join" ? { ":status": registration.registrationStatus } : {})
+          }
         } }
       ];
       try {
-        // The member-set condition rejects concurrent membership changes.
+        // Conditional Update prevents a stale join from putting a deleted team back.
         await docClient.send(new TransactWriteCommand({ TransactItems: transaction }));
       } catch (error) {
         if (error instanceof Error && (error.name === "TransactionConflictException" ||
@@ -147,7 +162,9 @@ async function leaveProductPlusTeam(memberID: string, eventKey: string) {
           docClient.send(new GetCommand({ TableName: teamsTable, Key: teamKey, ConsistentRead: true })),
           docClient.send(new GetCommand({ TableName: registrationsTable, Key: registrationKey, ConsistentRead: true }))
         ]);
-        const committed = savedRegistration.Item?.id === memberID && savedRegistration.Item.teamID === undefined && (removeTeam ? !savedTeam.Item :
+        const committed = action === "join"
+          ? savedRegistration.Item?.teamID === teamID && savedTeam.Item?.member_ids instanceof Set && savedTeam.Item.member_ids.has(memberID)
+          : savedRegistration.Item?.id === memberID && savedRegistration.Item.teamID === undefined && (removeTeam ? !savedTeam.Item :
             savedTeam.Item?.member_ids instanceof Set && !savedTeam.Item.member_ids.has(memberID));
         if (!committed) {
           console.error("Product Plus membership write needs recovery", {
@@ -158,7 +175,7 @@ async function leaveProductPlusTeam(memberID: string, eventKey: string) {
         }
       }
       if (removeTeam) await enqueueTeamDeletedCleanup(eventKey, team.id);
-      return { success: true, message: "Left team.", memberIDs: [...members], teamName: team.team_name };
+      return { success: true, message: action === "join" ? "Joined team." : "Left team.", memberIDs: [...members], teamName: team.team_name };
     }
     throw new ProductPlusTeamError(409, "Team membership changed. Try again.");
   } catch (error) {
@@ -295,7 +312,7 @@ const teamHelpers: TeamsHelpers = {
   async leaveTeam(memberID, eventID, year) {
     const eventID_year = eventID + ";" + year;
     if (eventID_year === process.env.PRODUCTPLUS_EVENT_KEY) {
-      return leaveProductPlusTeam(memberID, eventID_year);
+      return updateProductPlusMembership(memberID, eventID_year, "leave");
     }
 
     const registration = (await db.getOne(memberID, USER_REGISTRATIONS_TABLE, {
@@ -661,12 +678,12 @@ export const toTeamMembers = (team: EventTeamRecord, names: Map<string, string>)
     name: names.get(user_id) || "Participant",
   }));
 
-export const toTeamResponse = async (team: EventTeamRecord): Promise<Team> => ({
+export const toTeamResponse = async (team: EventTeamRecord, btxEnabled: boolean): Promise<Team> => ({
   team_code: team.id,
   team_name: team.team_name,
   leader_user_id: team.leader_user_id,
   members: toTeamMembers(team, await getMemberNames([...team.member_ids])),
-  ...(team["eventID;year"] === KICKSTART_EVENT_KEY
+  ...(btxEnabled
     ? { projectId: getCompanyProjectId(team["eventID;year"], team.id) }
     : {}),
 });
@@ -687,11 +704,12 @@ export const resolveTeamMembership = async (
 
 /**
  * Null when the caller may take a team slot for this event, otherwise the response
- * saying why not. Kickstart 2027 also requires an accepted/checked-in status.
+ * saying why not. BTX events also require an accepted/checked-in status.
  */
 export const requireTeamEligibility = async (
   userID: string,
   eventKey: string,
+  btxEnabled: boolean,
 ): Promise<APIGatewayResponse | null> => {
   const registration = await getEventRegistration(userID, eventKey);
 
@@ -701,13 +719,13 @@ export const requireTeamEligibility = async (
     });
   }
   if (
-    eventKey === KICKSTART_EVENT_KEY &&
-    !KICKSTART_TEAM_REGISTRATION_STATUSES.some(
+    btxEnabled &&
+    !BTX_TEAM_REGISTRATION_STATUSES.some(
       status => status === registration.registrationStatus,
     )
   ) {
     return helpers.createResponse(403, {
-      message: "Your Kickstart registration must be accepted or checked in to create or join a team",
+      message: "Your registration must be accepted or checked in to create or join a team for this event",
     });
   }
   if (registration.teamID) {
@@ -730,14 +748,15 @@ export const removeMemberAsLeader = async (
   team: EventTeamRecord,
   leaderID: string,
   memberID: string,
+  event: EventRecord,
 ): Promise<void> => {
   const eventKey = team["eventID;year"];
-  const marketChecks = eventKey === KICKSTART_EVENT_KEY
+  const marketChecks = event.btxEnabled === true
     ? await getTeamFormationChecks(eventKey, team.id)
     : [];
 
   await commitMembershipChange(
-    eventKey,
+    buildEventFeatureCheck(event),
     db.build
       .update(USER_REGISTRATIONS_TABLE, { id: memberID, "eventID;year": eventKey })
       .remove("teamID")
@@ -758,7 +777,7 @@ export const generateTeamCode = (): string =>
   String(randomInt(0, 1_000_000)).padStart(6, "0");
 
 /** Prepare one registration claim, with the same eligibility rule as the precheck. */
-const buildMembershipClaim = (team: EventTeamRecord, userID: string): WriteBuilder => {
+const buildMembershipClaim = (team: EventTeamRecord, userID: string, btxEnabled: boolean): WriteBuilder => {
   const eventKey = team["eventID;year"];
   const claim = db.build
     .update(
@@ -769,43 +788,53 @@ const buildMembershipClaim = (team: EventTeamRecord, userID: string): WriteBuild
     .if("id").exists()
     .if("teamID").notExists();
 
-  if (eventKey === KICKSTART_EVENT_KEY) {
-    claim.anyOf(...KICKSTART_TEAM_REGISTRATION_STATUSES.map(
+  if (btxEnabled) {
+    claim.anyOf(...BTX_TEAM_REGISTRATION_STATUSES.map(
       status => field("registrationStatus").equals(status),
     ));
   }
   return claim;
 };
 
-const commitMembershipChange = async (eventKey: string, ...writes: WriteBuilder[]): Promise<void> => {
+/** Reject a mutation if its event's BTX setting changed after the route read it. */
+const buildEventFeatureCheck = (event: EventRecord): WriteBuilder => {
+  const check = db.build.check(EVENTS_TABLE, { id: event.id, year: event.year }).if("id").exists();
+  return event.btxEnabled === undefined
+    ? check.if("btxEnabled").notExists()
+    : check.if("btxEnabled").equals(event.btxEnabled);
+};
+
+const commitMembershipChange = async (...writes: WriteBuilder[]): Promise<void> => {
   try {
     await db.txn(...writes);
   } catch (error) {
     // A stale precheck is a state conflict, not an internal-server failure.
-    if (eventKey === KICKSTART_EVENT_KEY && db.isConflict(error)) {
+    if (db.isConflict(error)) {
       throw new EventTeamConflictError();
     }
     throw error;
   }
 };
 
-/** Writes the team, leader membership, and Kickstart company/initial history together. */
-export const createTeamWithLeader = async (team: EventTeamRecord): Promise<EventTeamRecord> => {
+/** Writes the team, leader membership, and any enabled BTX company/history together. */
+export const createTeamWithLeader = async (team: EventTeamRecord, event: EventRecord): Promise<EventTeamRecord> => {
   const eventKey = team["eventID;year"];
-  const maxAttempts = eventKey === KICKSTART_EVENT_KEY ? 3 : 1;
-  const marketChecks = eventKey === KICKSTART_EVENT_KEY
+  const btxEnabled = event.btxEnabled === true;
+  const maxAttempts = btxEnabled ? 3 : 1;
+  const marketChecks = btxEnabled
     ? await getTeamFormationChecks(eventKey)
     : [];
+  marketChecks.push(buildEventFeatureCheck(event));
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const candidate = attempt === 0 ? team : { ...team, id: generateTeamCode() };
     const writes: WriteBuilder[] = [
       // Keep this order aligned with the cancellation-reason checks below.
       db.build.put(TEAMS_TABLE, { ...candidate }).if("id").notExists(),
-      buildMembershipClaim(candidate, candidate.leader_user_id),
+      buildMembershipClaim(candidate, candidate.leader_user_id, btxEnabled),
     ];
 
-    if (eventKey === KICKSTART_EVENT_KEY) {
+    if (btxEnabled) {
       writes.push(...buildInitialCompany({
         eventId: eventKey,
         teamId: candidate.id,
@@ -820,12 +849,15 @@ export const createTeamWithLeader = async (team: EventTeamRecord): Promise<Event
       await db.txn(...writes);
       return candidate;
     } catch (error) {
-      if (eventKey !== KICKSTART_EVENT_KEY || !db.isConflict(error)) throw error;
+      if (!db.isConflict(error)) throw error;
 
       const reasons = (error as { CancellationReasons?: { Code?: string }[] }).CancellationReasons;
+      if (!btxEnabled && reasons?.[marketChecksStart]?.Code !== "ConditionalCheckFailed") {
+        throw error;
+      }
       // A taken team code may also have its company already present. Membership
       // must still be valid; mixed failures and uncertain errors are not retried.
-      const isCodeCollision = reasons?.length === writes.length &&
+      const isCodeCollision = btxEnabled && reasons?.length === writes.length &&
         reasons[0]?.Code === "ConditionalCheckFailed" &&
         reasons[1]?.Code === "None" &&
         reasons.slice(2, marketChecksStart).every(reason =>
@@ -846,14 +878,16 @@ export const createTeamWithLeader = async (team: EventTeamRecord): Promise<Event
 export const addTeamMember = async (
   team: EventTeamRecord,
   userID: string,
+  event: EventRecord,
 ): Promise<void> => {
   const eventKey = team["eventID;year"];
-  const marketChecks = eventKey === KICKSTART_EVENT_KEY
+  const btxEnabled = event.btxEnabled === true;
+  const marketChecks = btxEnabled
     ? await getTeamFormationChecks(eventKey, team.id)
     : [];
   await commitMembershipChange(
-    eventKey,
-    buildMembershipClaim(team, userID),
+    buildEventFeatureCheck(event),
+    buildMembershipClaim(team, userID, btxEnabled),
     db.build
       .update(TEAMS_TABLE, { id: team.id, "eventID;year": team["eventID;year"] })
       .addToSet("member_ids", [userID])
@@ -870,14 +904,16 @@ export const removeSelfFromTeam = async (
   team: EventTeamRecord,
   userID: string,
   remaining: string[],
+  event: EventRecord,
 ): Promise<void> => {
   const eventKey = team["eventID;year"];
   const teamKey = { id: team.id, "eventID;year": eventKey };
   // For last-member cleanup, the company check belongs on its Delete operation.
-  const marketChecks = eventKey === KICKSTART_EVENT_KEY
+  const btxEnabled = event.btxEnabled === true;
+  const marketChecks = btxEnabled
     ? await getTeamFormationChecks(eventKey, remaining.length === 0 ? undefined : team.id)
     : [];
-  if (eventKey === KICKSTART_EVENT_KEY && remaining.length === 0) {
+  if (btxEnabled && remaining.length === 0) {
     marketChecks.push(...await getUnusedCompanyDeletes(eventKey, team.id));
   }
 
@@ -908,7 +944,7 @@ export const removeSelfFromTeam = async (
   }
 
   await commitMembershipChange(
-    eventKey,
+    buildEventFeatureCheck(event),
     db.build
       .update(USER_REGISTRATIONS_TABLE, { id: userID, "eventID;year": eventKey })
       .remove("teamID")

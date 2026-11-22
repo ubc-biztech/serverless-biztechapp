@@ -23,7 +23,7 @@ import {
 } from "../../constants/tables";
 import db from "../../lib/db.js";
 import { WEIGHTS, ROUND } from "./constants.js";
-import { LambdaHandler } from "../../lib/types";
+import type { APIGatewayResponse, LambdaHandler } from "../../lib/types";
 import { protect, Access, type AuthEvent } from "../../lib/auth";
 import {
   AddMultipleQuestionsBody,
@@ -49,11 +49,21 @@ import {
   UpdateTeamPointsBody,
 } from "./types";
 import { EventTeamConflictError, ProductPlusTeamError } from "./helpers";
-import { KICKSTART_EVENT_KEY } from "../../constants/kickstart";
+import type { EventRecord } from "../events/types";
 import { TeamFormationError } from "../btx/teamFormation";
 
 const errorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
+
+const teamErrorResponse = (error: unknown): APIGatewayResponse | null => {
+  if (error instanceof EventTeamConflictError) {
+    return helpers.createResponse(409, { message: error.message });
+  }
+  if (error instanceof TeamFormationError) {
+    return helpers.createResponse(error.statusCode, { message: error.message });
+  }
+  return null;
+};
 
 /*
   Team Table Schema from DynamoDB:
@@ -146,9 +156,14 @@ export const leaveTeam = protect(Access.USER, async (event) => {
     // Non-admins can only act on themselves; admins may target the body memberID.
     const memberID = event.auth?.isAdmin ? data.memberID : event.auth!.email;
 
-    if (`${data.eventID};${data.year}` === KICKSTART_EVENT_KEY) {
+    const eventRecord = await db.getOneCustom({
+      TableName: EVENTS_TABLE + (process.env.ENVIRONMENT || ""),
+      Key: { id: data.eventID, year: data.year },
+      ConsistentRead: true,
+    }) as EventRecord | null;
+    if (eventRecord?.btxEnabled === true) {
       return helpers.createResponse(400, {
-        message: "Use the event-scoped team leave endpoint for Kickstart 2027",
+        message: "Use the event-scoped team leave endpoint for BTX events",
       });
     }
 
@@ -196,9 +211,14 @@ export const makeTeam = protect(Access.USER, async (event) => {
     // full body memberIDs list.
     const memberIDs = event.auth?.isAdmin ? data.memberIDs : [event.auth!.email];
 
-    if (`${data.eventID};${data.year}` === KICKSTART_EVENT_KEY) {
+    const eventRecord = await db.getOneCustom({
+      TableName: EVENTS_TABLE + (process.env.ENVIRONMENT || ""),
+      Key: { id: data.eventID, year: data.year },
+      ConsistentRead: true,
+    }) as EventRecord | null;
+    if (eventRecord?.btxEnabled === true) {
       return helpers.createResponse(400, {
-        message: "Use the event-scoped team creation endpoint for Kickstart 2027",
+        message: "Use the event-scoped team creation endpoint for BTX events",
       });
     }
 
@@ -261,7 +281,8 @@ export const getTeamFromUserID = eventTeamRoute(async (event) => {
       return helpers.createResponse(403, { message: "You can only look up your own team" });
     }
 
-    if (!(await db.getOne(eventID, EVENTS_TABLE, { year }))) {
+    const eventRecord = await db.getOne(eventID, EVENTS_TABLE, { year }) as EventRecord | null;
+    if (!eventRecord) {
       return helpers.createResponse(404, { message: "Event not found" });
     }
 
@@ -289,7 +310,7 @@ export const getTeamFromUserID = eventTeamRoute(async (event) => {
       return helpers.createResponse(200, null);
     }
 
-    return helpers.createResponse(200, await toTeamResponse(team));
+    return helpers.createResponse(200, await toTeamResponse(team, eventRecord.btxEnabled === true));
   } catch (error) {
     console.error("Error retrieving team:", error);
 
@@ -321,7 +342,8 @@ export const removeTeamMember = eventTeamRoute(async (event) => {
       return helpers.createResponse(400, { message: "Use the leave endpoint to remove yourself" });
     }
 
-    if (!(await db.getOne(eventID, EVENTS_TABLE, { year }))) {
+    const eventRecord = await db.getOne(eventID, EVENTS_TABLE, { year }) as EventRecord | null;
+    if (!eventRecord) {
       return helpers.createResponse(404, { message: "Event not found" });
     }
 
@@ -340,15 +362,11 @@ export const removeTeamMember = eventTeamRoute(async (event) => {
       return helpers.createResponse(404, { message: "User is not on your team" });
     }
 
-    await removeMemberAsLeader(team, callerID, userIDParam);
+    await removeMemberAsLeader(team, callerID, userIDParam, eventRecord);
     return helpers.createResponse(204);
   } catch (error) {
-    if (error instanceof EventTeamConflictError) {
-      return helpers.createResponse(409, { message: error.message });
-    }
-    if (error instanceof TeamFormationError) {
-      return helpers.createResponse(error.statusCode, { message: error.message });
-    }
+    const response = teamErrorResponse(error);
+    if (response) return response;
     console.error("Error removing team member:", error);
 
     return helpers.createResponse(500, {
@@ -381,14 +399,20 @@ export const createEventTeam = eventTeamRoute(async (event) => {
       return helpers.createResponse(400, { message: "team_name is required" });
     }
 
-    if (!(await db.getOne(eventID, EVENTS_TABLE, { year }))) {
+    const eventRecord = await db.getOne(eventID, EVENTS_TABLE, { year }) as EventRecord | null;
+    if (!eventRecord) {
       return helpers.createResponse(404, { message: "Event not found" });
+    }
+
+    // The team name becomes the initial BTX company name.
+    if (eventRecord.btxEnabled === true && teamName.length > 100) {
+      return helpers.createResponse(400, { message: "Company name must be at most 100 characters" });
     }
 
     const eventKey = `${eventID};${year}`;
     const userID = event.auth!.email;
 
-    const ineligible = await requireTeamEligibility(userID, eventKey);
+    const ineligible = await requireTeamEligibility(userID, eventKey, eventRecord.btxEnabled === true);
     if (ineligible) return ineligible;
 
     const team: EventTeamRecord = {
@@ -399,16 +423,12 @@ export const createEventTeam = eventTeamRoute(async (event) => {
       member_ids: new Set([userID])
     };
 
-    const createdTeam = await createTeamWithLeader(team);
+    const createdTeam = await createTeamWithLeader(team, eventRecord);
 
-    return helpers.createResponse(201, await toTeamResponse(createdTeam));
+    return helpers.createResponse(201, await toTeamResponse(createdTeam, eventRecord.btxEnabled === true));
   } catch (error) {
-    if (error instanceof EventTeamConflictError) {
-      return helpers.createResponse(409, { message: error.message });
-    }
-    if (error instanceof TeamFormationError) {
-      return helpers.createResponse(error.statusCode, { message: error.message });
-    }
+    const response = teamErrorResponse(error);
+    if (response) return response;
     if (error instanceof SyntaxError) {
       return helpers.createResponse(400, { message: "Request body must be valid JSON" });
     }
@@ -444,7 +464,8 @@ export const joinEventTeam = eventTeamRoute(async (event) => {
       return helpers.createResponse(400, { message: "team_code must be 6 digits" });
     }
 
-    if (!(await db.getOne(eventID, EVENTS_TABLE, { year }))) {
+    const eventRecord = await db.getOne(eventID, EVENTS_TABLE, { year }) as EventRecord | null;
+    if (!eventRecord) {
       return helpers.createResponse(404, { message: "Event not found" });
     }
 
@@ -452,7 +473,7 @@ export const joinEventTeam = eventTeamRoute(async (event) => {
     const userID = event.auth!.email;
 
     const [ineligible, team] = await Promise.all([
-      requireTeamEligibility(userID, eventKey),
+      requireTeamEligibility(userID, eventKey, eventRecord.btxEnabled === true),
       getEventTeam(teamCode, eventKey)
     ]);
 
@@ -462,7 +483,7 @@ export const joinEventTeam = eventTeamRoute(async (event) => {
       return helpers.createResponse(404, { message: "Team not found" });
     }
 
-    await addTeamMember(team, userID);
+    await addTeamMember(team, userID, eventRecord);
 
     // Built locally, not re-read: getOne is eventually consistent, so a read this
     // soon after the write can come back without the caller in it
@@ -471,15 +492,11 @@ export const joinEventTeam = eventTeamRoute(async (event) => {
       await toTeamResponse({
         ...team,
         member_ids: new Set([...team.member_ids, userID])
-      })
+      }, eventRecord.btxEnabled === true)
     );
   } catch (error) {
-    if (error instanceof EventTeamConflictError) {
-      return helpers.createResponse(409, { message: error.message });
-    }
-    if (error instanceof TeamFormationError) {
-      return helpers.createResponse(error.statusCode, { message: error.message });
-    }
+    const response = teamErrorResponse(error);
+    if (response) return response;
     if (error instanceof SyntaxError) {
       return helpers.createResponse(400, { message: "Request body must be valid JSON" });
     }
@@ -509,7 +526,8 @@ export const leaveEventTeam = eventTeamRoute(async (event) => {
       return helpers.createResponse(400, { message: "Year path parameter must be a number" });
     }
 
-    if (!(await db.getOne(eventID, EVENTS_TABLE, { year }))) {
+    const eventRecord = await db.getOne(eventID, EVENTS_TABLE, { year }) as EventRecord | null;
+    if (!eventRecord) {
       return helpers.createResponse(404, { message: "Event not found" });
     }
 
@@ -527,7 +545,7 @@ export const leaveEventTeam = eventTeamRoute(async (event) => {
 
     const remaining = [...team.member_ids].filter((id) => id !== userID);
 
-    await removeSelfFromTeam(team, userID, remaining);
+    await removeSelfFromTeam(team, userID, remaining, eventRecord);
 
     // The last member out deleted the team; its Product Plus submission and files go too
     if (remaining.length === 0 && eventKey === process.env.PRODUCTPLUS_EVENT_KEY) {
@@ -535,12 +553,8 @@ export const leaveEventTeam = eventTeamRoute(async (event) => {
     }
     return helpers.createResponse(204);
   } catch (error) {
-    if (error instanceof EventTeamConflictError) {
-      return helpers.createResponse(409, { message: error.message });
-    }
-    if (error instanceof TeamFormationError) {
-      return helpers.createResponse(error.statusCode, { message: error.message });
-    }
+    const response = teamErrorResponse(error);
+    if (response) return response;
     console.error("Error leaving team:", error);
 
     return helpers.createResponse(500, {

@@ -79,6 +79,9 @@ export const create = protect(Access.ADMIN, async (event) => {
   try {
     const timestamp = new Date().getTime();
     const data = JSON.parse(event.body as string) as CreateEventBody;
+    if (data.btxEnabled !== undefined && typeof data.btxEnabled !== "boolean") {
+      return helpers.createResponse(400, { message: "btxEnabled must be a boolean." });
+    }
     if (data.hasOwnProperty("attendeeFeedbackQuestions") &&
       !Array.isArray(data.attendeeFeedbackQuestions)) {
       return helpers.createResponse(406, {
@@ -162,6 +165,7 @@ export const create = protect(Access.ADMIN, async (event) => {
       id: data.id,
       year: data.year,
       ename: data.ename,
+      btxEnabled: data.btxEnabled,
       description: data.description,
       partnerDescription: data.partnerDescription,
       startDate: data.startDate,
@@ -288,6 +292,9 @@ export const update = protect(Access.ADMIN, async (event) => {
     if (!existingEvent || isEmpty(existingEvent))
       throw helpers.notFoundResponse("event", id, year);
     const data = JSON.parse(event.body as string) as UpdateEventBody;
+    if (data.btxEnabled !== undefined && typeof data.btxEnabled !== "boolean") {
+      return helpers.createResponse(400, { message: "btxEnabled must be a boolean." });
+    }
     if (data.hasOwnProperty("attendeeFeedbackQuestions") &&
       !Array.isArray(data.attendeeFeedbackQuestions)) {
       return helpers.createResponse(406, {
