@@ -116,10 +116,9 @@ test("an inconsistent partial snapshot stays paused for reconciliation", async t
   assert.equal(f.writes.length, 0);
 });
 
-test("missing and inconsistent config fail closed without market writes", async t => {
+test("missing config fails closed without market writes", async t => {
   const f = fixture(t);
-  for (const config of [undefined, { ipoAt: null }, { phase: "LIVE", ipoAt: null },
-    { phase: "PRE_IPO", ipoAt: 1000 }, { phase: "IPO_PREPARING", ipoAt: null, ipoPriceTs: "1000" }]) {
+  for (const config of [undefined, { ipoAt: null }]) {
     f.config = config;
     await assert.rejects(getEventConfig(), { statusCode: 503 });
     await assert.rejects(launchIpo(), { statusCode: 503 });

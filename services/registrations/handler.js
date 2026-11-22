@@ -43,8 +43,7 @@ const summarizePartnerRegistrationResults = (results) => {
   );
 };
 
-// BatchWrite cannot enforce conditions. Keep each BTX deletion request atomic,
-// including the single-record route, so a concurrent team join cancels the deletion.
+// BatchWrite cannot do conditions, so a txn blocks deleting a registration that is on a team
 async function deleteBtxRegistrations(emails, eventKey) {
   const uniqueEmails = [...new Set(emails)];
   if (uniqueEmails.length === 0) return {};
@@ -840,14 +839,7 @@ export const del = protect(Access.USER, async (event, ctx, callback) => {
 
     const eventIDAndYear = data.eventID + ";" + data.year;
 
-    const eventRecord = await db.getOneCustom({
-      TableName: EVENTS_TABLE + (process.env.ENVIRONMENT || ""),
-      Key: {
-        id: data.eventID,
-        year: data.year
-      },
-      ConsistentRead: true
-    });
+    const eventRecord = await db.getOne(data.eventID, EVENTS_TABLE, { year: data.year });
     const res = eventRecord?.btxEnabled === true
       ? await deleteBtxRegistrations([email], eventIDAndYear)
       : await db.deleteOne(email, USER_REGISTRATIONS_TABLE, {
@@ -902,14 +894,7 @@ export const delMany = protect(Access.ADMIN, async (event, ctx, callback) => {
       ["eventID;year"]: `${eventIDAndYear}` // sort key
     }));
 
-    const eventRecord = await db.getOneCustom({
-      TableName: EVENTS_TABLE + (process.env.ENVIRONMENT || ""),
-      Key: {
-        id: data.eventID,
-        year: data.year
-      },
-      ConsistentRead: true
-    });
+    const eventRecord = await db.getOne(data.eventID, EVENTS_TABLE, { year: data.year });
     const res = eventRecord?.btxEnabled === true
       ? await deleteBtxRegistrations(lowercaseEmails, eventIDAndYear)
       : await db.batchDelete(itemsToDelete, USER_REGISTRATIONS_TABLE);

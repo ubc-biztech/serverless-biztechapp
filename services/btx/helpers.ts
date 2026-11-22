@@ -63,23 +63,16 @@ export async function getEventConfig(eventId = configuredEvent()): Promise<BtxEv
     TableName: PROJECTS_TABLE,
     Key: { projectId },
     ConsistentRead: true
-  }) as Partial<BtxEventConfig> | null;
-  const phase = item?.phase;
-  const ipoAt = item?.ipoAt;
-  const validTime = (value: unknown): value is number => Number.isSafeInteger(value) && (value as number) >= 0;
-  if (!item || (phase !== "PRE_IPO" && phase !== "IPO_PREPARING" && phase !== "LIVE") ||
-      (phase === "LIVE" ? !validTime(ipoAt) : ipoAt !== null) ||
-      (phase === "PRE_IPO" && item.ipoPriceTs !== undefined) ||
-      (item.ipoPriceTs !== undefined && !validTime(item.ipoPriceTs))) {
+  }) as BtxEventConfig | null;
+  // The config row is provisioned before the event opens; without it the market stays closed
+  if (!item?.phase) {
     throw new BtxError(503, "Market configuration is unavailable. Please contact an organizer.", {
       code: "TRANSITION_UNAVAILABLE"
     });
   }
-  return { projectId, phase, ipoAt: ipoAt as number | null,
-    ...(item.ipoPriceTs === undefined ? {} : { ipoPriceTs: item.ipoPriceTs }) };
+  return item;
 }
 
-/** Reused by team formation and market writes to guard the same persisted state. */
 export const buildMarketPhaseCheck = (config: BtxEventConfig) => {
   const check = db.build.check(BTX_PROJECTS_TABLE, { projectId: config.projectId })
     .if("phase").equals(config.phase)

@@ -23,7 +23,6 @@ export async function eligibleRegistration(userId: string) {
   return Item;
 }
 
-/** Match the read-time policy again when a seed, grant, or trade commits. */
 export function buildEligibilityCheck(userId: string, teamCode?: string) {
   const check = db.build.check(USER_REGISTRATIONS_TABLE, { id: userId, "eventID;year": configuredEvent() })
     .anyOf(...BTX_REGISTRATION_STATUSES.map(status => field("registrationStatus").equals(status)));

@@ -24,7 +24,7 @@ function market(t) {
     projectId, eventId, seedSharesAtIpo: 0, currentPriceCents: 10_000,
     netShares: 10, lastPriceTs: 900, seedStartedAt: 100, seedEndsAt: 2000
   };
-  const config = { phase: "LIVE", ipoAt: 500 };
+  const config = { projectId: "config:" + eventId, phase: "LIVE", ipoAt: 500 };
   const registration = { registrationStatus: "acceptedComplete" };
   const account = { userId, eventId, cashBalanceCents: 100_000, totalAllocatedCents: 120_000 };
   const holding = { userId, projectId, shares: 10, costBasisCents: 80_000 };
