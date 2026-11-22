@@ -7,7 +7,7 @@ import { build } from "esbuild";
 
 // Keep real auth, request validation, query mapping, and weighting; replace AWS only.
 const mocks = {
-  "../../lib/db.js": "export default globalThis.infrastructure.db;",
+  "../../lib/db.js": "export const field = () => {}; export default globalThis.infrastructure.db;",
   "../../lib/docClient.js": "export default globalThis.infrastructure.docClient;",
   "@aws-sdk/lib-dynamodb": `
     export class QueryCommand { constructor(input) { this.input = input; } }
