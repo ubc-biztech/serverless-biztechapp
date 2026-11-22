@@ -38,6 +38,8 @@ export const EVENT_QA_TABLE = "biztechEventQA";
 
 export const BTX_PROJECTS_TABLE = "bizBtxProjects";
 export const BTX_ACCOUNTS_TABLE = "bizBtxAccounts";
+export const BTX_EVENT_ACCOUNTS_TABLE = "bizBtxEventAccounts";
 export const BTX_HOLDINGS_TABLE = "bizBtxHoldings";
 export const BTX_TRADES_TABLE = "bizBtxTrades";
 export const BTX_SOCKETS_TABLE = "bizBtxSockets";
+export const BTX_PRICES_TABLE = "bizBtxPrices";
