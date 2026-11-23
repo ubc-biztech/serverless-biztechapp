@@ -18,7 +18,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import db from "../../lib/db.js";
 // Writes use the shared client directly so conditional errors remain available for retries.
 import docClient from "../../lib/docClient.js";
-import { isSupportedYouTubeURL } from "../../lib/youtube";
+import { isSupportedYouTubeURL } from "../../lib/urls";
 import type {
   Config,
   ConfigRecord,

@@ -53,30 +53,33 @@ const handlerHelpers: HandlerHelpers = {
   },
 
   /**
-   * Validate `payload` against `check`. Throws a 406 response (via
-   * `res.notAcceptable`) on the first violation; otherwise returns void.
-   *
-   * @param payload - the object
-   * @param check - object containing the criteria for each property keyed by
-   *   the property name. Accepts `{ required?: boolean, type?: string }`.
+   * Custom validators run after type checks for supplied fields and return an
+   * error message or undefined. Defaults to a 406 response unless makeError is supplied.
    */
   checkPayloadProps(
     payload: Record<string, unknown>,
     check: PayloadCheck,
+    makeError?: (message: string) => unknown,
   ): void {
-    try {
-      const criteria = Object.entries(check);
-
-      criteria.forEach(([key, crit]) => {
-        if (crit.required && !payload[key] && payload[key] !== false) {
-          throw `'${key}' is missing from the request body`;
-        }
-        if (crit.type && payload[key] && typeof payload[key] !== crit.type) {
-          throw `'${key}' in the request body is invalid, expected type '${crit.type}' but got '${typeof payload[key]}'`;
-        }
-      });
-    } catch (errMsg) {
-      throw res.notAcceptable(errMsg as string, payload);
+    const fail = (message: string): never => {
+      throw makeError ? makeError(message) : res.notAcceptable(message, payload);
+    };
+    if (payload === null || payload === undefined) fail("Provide a request body object.");
+    for (const [key, crit] of Object.entries(check)) {
+      const value = payload[key];
+      const supplied = Object.prototype.hasOwnProperty.call(payload, key);
+      if (crit.required && !value && value !== false) {
+        fail(`'${key}' is missing from the request body`);
+      }
+      // Preserve legacy schemas; custom rules type-check every supplied value, including false/null/0.
+      const checkType = crit.validate ? supplied : Boolean(value);
+      if (crit.type && checkType && typeof value !== crit.type) {
+        fail(`'${key}' in the request body is invalid, expected type '${crit.type}' but got '${typeof value}'`);
+      }
+      if (supplied && crit.validate) {
+        const message = crit.validate(value);
+        if (message !== undefined) fail(message);
+      }
     }
   },
 };
