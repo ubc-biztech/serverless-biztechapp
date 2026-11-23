@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { loadBtx } from "./load-btx.mjs";
 
-const { db, tables, getQuote, applyGrant, startSeeding, initializeMarketListing, getPortfolioForUser, processTrade, submitTrade } = await loadBtx(`
+const { db, tables, getQuote, applyGrant, startSeeding, initializeMarketListing, getPortfolioForUser, getTraderLeaderboard, getLeaderboard, processTrade, submitTrade } = await loadBtx(`
   export { default as db } from "../../lib/docClient.js";
   export * as tables from "./repos/tables";
   export { getQuote, applyGrant, startSeeding, initializeMarketListing } from "./market";
-  export { getPortfolioForUser } from "./repos/accounts";
+  export { getPortfolioForUser, getTraderLeaderboard } from "./repos/accounts";
+  export { getLeaderboard } from "./handler";
   export { processTrade, submitTrade } from "./trades";
 `);
 
@@ -26,6 +27,7 @@ function market(t) {
   };
   const config = { projectId: "config:" + eventId, phase: "LIVE", ipoAt: 500 };
   const registration = { registrationStatus: "acceptedComplete" };
+  const registrations = new Map([[userId, registration]]);
   const account = { userId, eventId, cashBalanceCents: 100_000, totalAllocatedCents: 120_000 };
   const holding = { userId, projectId, shares: 10, costBasisCents: 80_000 };
   const trade = {
@@ -34,7 +36,7 @@ function market(t) {
   };
   const projects = new Map([[projectId, project], ["config:" + eventId, config]]);
   const rows = {
-    [tables.REGISTRATIONS_TABLE]: registration, [tables.EVENT_ACCOUNTS_TABLE]: account,
+    [tables.EVENT_ACCOUNTS_TABLE]: account,
     [tables.HOLDINGS_TABLE]: holding, [tables.TRADES_TABLE]: trade
   };
   const histories = { [tables.HOLDINGS_TABLE]: [holding], [tables.TRADES_TABLE]: [], [tables.SOCKETS_TABLE]: [] };
@@ -44,6 +46,7 @@ function market(t) {
     switch (command.constructor.name) {
       case "GetCommand":
         if (TableName === tables.PROJECTS_TABLE) return { Item: projects.get(Key.projectId) };
+        if (TableName === tables.REGISTRATIONS_TABLE) return { Item: registrations.get(Key.id) };
         assert.ok(Object.hasOwn(rows, TableName), "unexpected read of " + TableName);
         return { Item: rows[TableName] };
       case "QueryCommand":
@@ -58,8 +61,54 @@ function market(t) {
         assert.fail("Unexpected command " + command.constructor.name);
     }
   });
-  return { trade, config, registration, histories, projects, project, rows, writes };
+  return { trade, config, registration, registrations, histories, projects, project, rows, writes };
 }
+
+test("leaderboard displays registration names without returning emails and excludes grants from profit", async t => {
+  const { histories, project, rows, registrations } = market(t);
+  const other = "other@example.org";
+  const tied = "zeta@example.org";
+  registrations.set(other, { basicInformation: { fname: " Jordan", lname: "Lee " } });
+  registrations.set(userId, { basicInformation: { fname: "Alex", lname: "Kim" } });
+  registrations.set(tied, { fname: "Legacy Name", basicInformation: { fname: " ", lname: "" } });
+  histories[tables.PROJECTS_TABLE] = [project];
+  const account = rows[tables.EVENT_ACCOUNTS_TABLE];
+  histories[tables.EVENT_ACCOUNTS_TABLE] = [
+    { ...account, userId: tied, cashBalanceCents: 300_000, totalAllocatedCents: 220_000 },
+    { ...account, userId: other, cashBalanceCents: 350_000, totalAllocatedCents: 220_000 },
+    { ...account, cashBalanceCents: 200_000, totalAllocatedCents: 220_000 }
+  ];
+  const unrankedBoard = await getTraderLeaderboard("unranked@example.org", 1, 1);
+  assert.equal(unrankedBoard.traders, 3);
+  assert.deepEqual(unrankedBoard.top, [{ index: 0, rank: 1, displayName: "Jordan Lee", totalPnlCents: 130_000 }]);
+  assert.deepEqual(unrankedBoard.bottom, [{ index: 2, rank: 3, displayName: "Participant", totalPnlCents: 80_000 }]);
+  assert.equal(unrankedBoard.own, null);
+
+  const privateBoard = await getTraderLeaderboard(userId, 10, 5);
+  assert.deepEqual(privateBoard.own, { index: 1, rank: 2, displayName: "Alex Kim", totalPnlCents: 80_000 });
+  assert.deepEqual(privateBoard.bottom.map(({ index }) => index), [2, 1, 0]);
+  const payload = JSON.stringify(privateBoard);
+  for (const address of [userId, other, tied]) assert.ok(!payload.includes(address));
+});
+
+test("leaderboard returns public rankings with an optional viewer position", async t => {
+  const { histories, project, rows } = market(t);
+  histories[tables.PROJECTS_TABLE] = [project];
+  const account = rows[tables.EVENT_ACCOUNTS_TABLE];
+  const other = "another-user@example.org";
+  histories[tables.EVENT_ACCOUNTS_TABLE] = [
+    account,
+    { ...account, userId: other, cashBalanceCents: 300_000 }
+  ];
+  for (const [viewerId, position] of [[undefined, null], [userId, 1], [` ${other.toUpperCase()} `, 0]]) {
+    const queryStringParameters = viewerId === undefined ? undefined : { viewerId };
+    const response = await getLeaderboard({ requestContext: {}, queryStringParameters });
+    assert.equal(response.statusCode, 200);
+    const { data } = JSON.parse(response.body);
+    assert.equal(data.top.length, 2);
+    assert.equal(data.own?.index ?? null, position);
+  }
+});
 
 function registrationCheck(items) {
   const check = items.find(item => item.ConditionCheck?.TableName === tables.REGISTRATIONS_TABLE).ConditionCheck;

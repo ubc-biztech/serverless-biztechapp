@@ -149,6 +149,7 @@ export const getLeaderboard = protect(Access.PUBLIC, async (event) => {
     return helpers.createResponse(200, {
       message: "BTX leaderboard",
       data: await getTraderLeaderboard(
+        qs.viewerId?.trim().toLowerCase(),
         Number(qs.limitTop || 5),
         Number(qs.limitBottom || 5)
       )
