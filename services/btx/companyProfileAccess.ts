@@ -1,7 +1,5 @@
-import { GetCommand } from "@aws-sdk/lib-dynamodb";
 import { BTX_PROJECTS_TABLE, TEAMS_TABLE, USER_REGISTRATIONS_TABLE } from "../../constants/tables";
 import db from "../../lib/db.js";
-import docClient from "../../lib/docClient.js";
 import type { WriteBuilder } from "../../lib/db/build/WriteBuilder.js";
 import { isCompanyProfileComplete, toCompanyProfile } from "./companyProfile";
 import type { CompanyProfile, CompanyProfilePatch } from "./companyProfile";
@@ -25,28 +23,29 @@ export interface CompanyProfileContext {
 /** The endpoint must first verify the signed-in identity. Viewing needs no event registration. */
 export async function loadCompanyProfileContext(projectId: string, userID: string): Promise<CompanyProfileContext> {
   const suffix = process.env.ENVIRONMENT || "";
-  const { Item } = await docClient.send(new GetCommand({
+  const item = await db.getOneCustom({
     TableName: BTX_PROJECTS_TABLE + suffix,
     Key: { projectId },
     ConsistentRead: true,
-  }));
-  if (!Item || Item.eventId !== configuredEvent() || typeof Item.teamId !== "string" ||
-      !/^\d{6}$/.test(Item.teamId) || projectId !== buildProjectId(Item.eventId, Item.teamId)) {
+  });
+  if (!item || item.eventId !== configuredEvent() || typeof item.teamId !== "string" ||
+      !/^\d{6}$/.test(item.teamId) || projectId !== buildProjectId(item.eventId, item.teamId)) {
     throw new CompanyProfileAccessError(404, "Company not found.");
   }
-  const company = Item as CompanyProfileContext["company"];
+  const company = item as CompanyProfileContext["company"];
   const [config, registration, team] = await Promise.all([
     { table: BTX_PROJECTS_TABLE, key: { projectId: configProjectId(company.eventId) } },
     { table: USER_REGISTRATIONS_TABLE, key: { id: userID, "eventID;year": company.eventId } },
     { table: TEAMS_TABLE, key: { id: company.teamId, "eventID;year": company.eventId } },
-  ].map(async ({ table, key }) => {
-    const result = await docClient.send(new GetCommand({ TableName: table + suffix, Key: key, ConsistentRead: true }));
-    return result.Item;
-  }));
+  ].map(({ table, key }) => db.getOneCustom({
+    TableName: table + suffix,
+    Key: key,
+    ConsistentRead: true,
+  })));
   return {
     userID,
     company,
-    config,
+    config: config ?? undefined,
     isMember: registration?.teamID === company.teamId &&
       team?.member_ids instanceof Set && team.member_ids.has(userID),
   };
