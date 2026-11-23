@@ -47,6 +47,29 @@ Admin grants take participant email addresses in `targets` and an integer
 `requestId` for the same batch to avoid double credits. Grants increase available
 cash and total funding without counting as trading profit.
 
+## Company profiles
+
+`GET /btx/projects/{projectId}` is available to verified, signed-in users and
+includes caller-specific editing permissions. Current team members can update
+company name, blurb, YouTube pitch link, and optional Twitter/X link with
+`PATCH /btx/projects/{projectId}`. Profile editing uses the same
+`KICKSTART_EVENT_ENDS_AT` cutoff as the market; `eventEndsAt` is returned in Unix
+milliseconds. No additional deadline attribute is required in DynamoDB.
+
+### Workflow 3 release blockers
+
+These market integrations are separate from the profile API review fixes and
+must be completed before releasing the full Kickstart event flow:
+
+- Enforce `isCompanyProfileComplete` before starting seeding or initializing a
+  company's IPO. Guard the profile values in the transaction so a concurrent
+  edit cannot invalidate a readiness check.
+- Support a company completing its profile after global IPO: initialize its
+  individual IPO state before allowing public trades. The global `LIVE` phase
+  alone must not make an uninitialized company investable.
+- Align existing market-listing responses with the verified, signed-in
+  company-profile viewing policy.
+
 ## Trading
 
 1. Get a quote from `GET /btx/market/quote`. Use its price, fees, and `expiresAt`

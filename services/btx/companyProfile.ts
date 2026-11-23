@@ -1,4 +1,6 @@
-import { isSupportedYouTubeURL } from "../../lib/youtube";
+import { isSupportedTwitterURL, isSupportedYouTubeURL } from "../../lib/urls";
+import helpers from "../../lib/handlerHelpers";
+import type { PayloadCheckRule } from "../../lib/types";
 
 /** Editable company attributes; older stored companies may lack twitterURL. */
 export interface CompanyProfile {
@@ -25,38 +27,31 @@ export class CompanyProfileValidationError extends Error {
   }
 }
 
-function isSupportedTwitterURL(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" && !url.username && !url.password && !url.port &&
-      ["x.com", "www.x.com", "twitter.com", "www.twitter.com", "m.twitter.com"].includes(url.hostname) &&
-      url.pathname !== "/";
-  } catch {
-    return false;
-  }
+function stringRule(
+  field: keyof CompanyProfile,
+  validate?: (value: string) => string | undefined,
+): PayloadCheckRule {
+  return {
+    type: "string",
+    validate: value => {
+      const text = value as string;
+      if (text.length > COMPANY_PROFILE_LIMITS[field]) {
+        return `${field} must be at most ${COMPANY_PROFILE_LIMITS[field]} characters.`;
+      }
+      return validate?.(text);
+    },
+  };
 }
 
-function validateField(field: keyof CompanyProfile, value: unknown): string {
-  if (typeof value !== "string") {
-    throw new CompanyProfileValidationError(`${field} must be a string.`);
-  }
-  const trimmed = value.trim();
-  if (trimmed.length > COMPANY_PROFILE_LIMITS[field]) {
-    throw new CompanyProfileValidationError(`${field} must be at most ${COMPANY_PROFILE_LIMITS[field]} characters.`);
-  }
-  if (field === "companyName" && !trimmed) {
-    throw new CompanyProfileValidationError("companyName must not be blank.");
-  }
-  if (field === "youtubeURL" && trimmed && !isSupportedYouTubeURL(trimmed)) {
-    throw new CompanyProfileValidationError("Provide a supported HTTPS YouTube video URL.");
-  }
-  if (field === "twitterURL" && trimmed && !isSupportedTwitterURL(trimmed)) {
-    throw new CompanyProfileValidationError("Provide an HTTPS Twitter/X link.");
-  }
-  return trimmed;
-}
+const COMPANY_PROFILE_RULES = {
+  companyName: stringRule("companyName", value => value ? undefined : "companyName must not be blank."),
+  blurb: stringRule("blurb"),
+  youtubeURL: stringRule("youtubeURL", value => value && !isSupportedYouTubeURL(value)
+    ? "Provide a supported HTTPS YouTube video URL." : undefined),
+  twitterURL: stringRule("twitterURL", value => value && !isSupportedTwitterURL(value)
+    ? "Provide an HTTPS Twitter/X link." : undefined),
+};
 
-/** Validate parsed request data. Authentication and lifecycle rules are separate. */
 export function validateCompanyProfilePatch(value: unknown): CompanyProfilePatch {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new CompanyProfileValidationError("Provide a company profile object.");
@@ -65,15 +60,16 @@ export function validateCompanyProfilePatch(value: unknown): CompanyProfilePatch
   if (fields.length === 0) {
     throw new CompanyProfileValidationError("Provide at least one company profile field.");
   }
-  const patch: CompanyProfilePatch = {};
+  const patch: Record<string, unknown> = {};
   for (const field of fields) {
-    if (!Object.prototype.hasOwnProperty.call(COMPANY_PROFILE_LIMITS, field)) {
+    if (!Object.prototype.hasOwnProperty.call(COMPANY_PROFILE_RULES, field)) {
       throw new CompanyProfileValidationError(`Unknown or protected company field: ${field}.`);
     }
-    const key = field as keyof CompanyProfile;
-    patch[key] = validateField(key, (value as Record<string, unknown>)[key]);
+    const input = (value as Record<string, unknown>)[field];
+    patch[field] = typeof input === "string" ? input.trim() : input;
   }
-  return patch;
+  helpers.checkPayloadProps(patch, COMPANY_PROFILE_RULES, message => new CompanyProfileValidationError(message));
+  return patch as CompanyProfilePatch;
 }
 
 /** Explicit projection keeps market/ownership fields out of the editable profile. */
@@ -91,10 +87,12 @@ export function isCompanyProfileComplete(value: unknown): boolean {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const profile = value as Record<string, unknown>;
   try {
-    for (const field of ["companyName", "blurb", "youtubeURL"] as const) {
-      if (!validateField(field, profile[field])) return false;
-    }
-    return true;
+    const required = validateCompanyProfilePatch({
+      companyName: profile.companyName,
+      blurb: profile.blurb,
+      youtubeURL: profile.youtubeURL,
+    });
+    return Boolean(required.companyName && required.blurb && required.youtubeURL);
   } catch (error) {
     if (error instanceof CompanyProfileValidationError) return false;
     throw error;

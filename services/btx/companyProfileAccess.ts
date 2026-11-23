@@ -3,9 +3,9 @@ import { BTX_PROJECTS_TABLE, TEAMS_TABLE, USER_REGISTRATIONS_TABLE } from "../..
 import db from "../../lib/db.js";
 import docClient from "../../lib/docClient.js";
 import type { WriteBuilder } from "../../lib/db/build/WriteBuilder.js";
-import { isCompanyProfileComplete, toCompanyProfile, validateCompanyProfilePatch } from "./companyProfile";
-import type { CompanyProfile } from "./companyProfile";
-import { buildProjectId, configuredEvent, configProjectId } from "./helpers";
+import { isCompanyProfileComplete, toCompanyProfile } from "./companyProfile";
+import type { CompanyProfile, CompanyProfilePatch } from "./companyProfile";
+import { buildProjectId, configuredEvent, configProjectId, eventEndsAtMs } from "./helpers";
 import type { BtxProject, BtxEventConfig } from "./types";
 
 export class CompanyProfileAccessError extends Error {
@@ -18,7 +18,7 @@ export class CompanyProfileAccessError extends Error {
 export interface CompanyProfileContext {
   userID: string;
   company: BtxProject & CompanyProfile & { teamId: string };
-  config: (Partial<BtxEventConfig> & { eventEndsAt?: string }) | undefined;
+  config: Partial<BtxEventConfig> | undefined;
   isMember: boolean;
 }
 
@@ -52,18 +52,15 @@ export async function loadCompanyProfileContext(projectId: string, userID: strin
   };
 }
 
-/** Accept exact UTC timestamps, rather than a date interpreted in the server's timezone. */
-function utcTime(value: unknown): number | null {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value)) return null;
-  const time = Date.parse(value);
-  return Number.isFinite(time) && new Date(time).toISOString().replace(".000Z", "Z") === value.replace(".000Z", "Z")
-    ? time : null;
-}
-
 function eventEnd(config: CompanyProfileContext["config"]): number | null {
   if (!config || !["PRE_IPO", "IPO_PREPARING", "LIVE"].includes(config.phase ?? "") ||
-      (config.ipoAt !== null && utcTime(config.ipoAt) === null)) return null;
-  return utcTime(config.eventEndsAt);
+      (config.ipoAt !== null && !Number.isFinite(config.ipoAt))) return null;
+  const end = eventEndsAtMs();
+  return Number.isFinite(end) ? end : null;
+}
+
+function hasCompanyMarketState(company: CompanyProfileContext["company"]): boolean {
+  return company.seedStartedAt !== undefined && company.seedSharesAtIpo !== undefined;
 }
 
 function nameIsLocked({ company, config }: CompanyProfileContext): boolean {
@@ -71,24 +68,34 @@ function nameIsLocked({ company, config }: CompanyProfileContext): boolean {
     config?.phase !== "PRE_IPO" || config.ipoAt !== null;
 }
 
-/** Missing configuration disables editing, but does not hide a visible company profile. */
+function requiresCompleteProfile(context: CompanyProfileContext): boolean {
+  const { company } = context;
+  // Unfinished companies may save partial progress after global IPO until seeding/IPO initialization.
+  return company.seedStartedAt !== null || company.seedSharesAtIpo !== null ||
+    (nameIsLocked(context) && isCompanyProfileComplete(company));
+}
+
+/** Missing configuration or market state disables editing; profiles remain viewable. */
 export function getCompanyProfilePermissions(context: CompanyProfileContext, now = Date.now()) {
   const end = eventEnd(context.config);
-  const canEdit = context.isMember && end !== null && now < end;
+  const canEdit = context.isMember && hasCompanyMarketState(context.company) && end !== null && now < end;
   return {
     canEdit,
     canEditName: canEdit && !nameIsLocked(context),
-    eventEndsAt: end === null ? null : context.config?.eventEndsAt ?? null,
+    eventEndsAt: end,
   };
 }
 
 /** Prepare, but do not execute, a targeted update and its transaction checks.
  * The caller must load fresh context and use backend time for every save attempt.
  */
-export function buildCompanyProfileSave(context: CompanyProfileContext, value: unknown, now = Date.now()): WriteBuilder[] {
+export function buildCompanyProfileSave(context: CompanyProfileContext, patch: CompanyProfilePatch, now = Date.now()): WriteBuilder[] {
   const { company, config, userID } = context;
   if (!context.isMember) {
     throw new CompanyProfileAccessError(403, "Current team membership is required.");
+  }
+  if (!hasCompanyMarketState(company)) {
+    throw new CompanyProfileAccessError(503, "Company state is unavailable. Please contact an organizer.");
   }
   const end = eventEnd(config);
   if (end === null || !config) {
@@ -97,16 +104,11 @@ export function buildCompanyProfileSave(context: CompanyProfileContext, value: u
   if (now >= end) {
     throw new CompanyProfileAccessError(409, "Company profile editing has closed for this event.");
   }
-  const patch = validateCompanyProfilePatch(value);
   if (patch.companyName !== undefined && patch.companyName !== company.companyName && nameIsLocked(context)) {
     throw new CompanyProfileAccessError(409, "The company name is locked once seeding or IPO begins.");
   }
   const profile = { ...toCompanyProfile(company), ...patch };
-  // Late unfinished companies can still complete their profile after global IPO.
-  // A seeded/initialized company, or an already complete post-IPO profile, cannot become incomplete.
-  const mustStayComplete = company.seedStartedAt !== null || company.seedSharesAtIpo !== null ||
-    (nameIsLocked(context) && isCompanyProfileComplete(company));
-  if (mustStayComplete && !isCompanyProfileComplete(profile)) {
+  if (requiresCompleteProfile(context) && !isCompanyProfileComplete(profile)) {
     throw new CompanyProfileAccessError(409, "Company name, blurb, and a valid YouTube link must remain complete.");
   }
 
@@ -129,8 +131,7 @@ export function buildCompanyProfileSave(context: CompanyProfileContext, value: u
       .if("member_ids").contains(userID),
     db.build.check(BTX_PROJECTS_TABLE, { projectId: configProjectId(company.eventId) })
       .if("phase").equals(config.phase)
-      .if("ipoAt").equals(config.ipoAt)
-      .if("eventEndsAt").equals(config.eventEndsAt),
+      .if("ipoAt").equals(config.ipoAt),
     update,
   ];
 }

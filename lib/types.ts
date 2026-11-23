@@ -77,6 +77,7 @@ export type LambdaHandler = (
 export interface PayloadCheckRule {
   required?: boolean;
   type?: "string" | "number" | "boolean" | "object";
+  validate?: (value: unknown) => string | undefined;
 }
 
 export type PayloadCheck = Record<string, PayloadCheckRule>;
@@ -98,7 +99,11 @@ export interface HandlerHelpers {
   notFoundResponse(type?: string | null, id?: string | null, secondaryKey?: string | number | null): APIGatewayResponse;
   duplicateResponse(prop: string, data: unknown): APIGatewayResponse;
   inputError(message: string, data?: unknown): APIGatewayResponse;
-  checkPayloadProps(payload: Record<string, unknown>, check: PayloadCheck): void;
+  checkPayloadProps(
+    payload: Record<string, unknown>,
+    check: PayloadCheck,
+    makeError?: (message: string) => unknown,
+  ): void;
 }
 
 export interface ResponseHelpers {

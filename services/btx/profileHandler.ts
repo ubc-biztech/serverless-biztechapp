@@ -1,7 +1,9 @@
 import { Access, protect } from "../../lib/auth";
 import response from "../../lib/responseHelpers";
+import helpers from "../../lib/handlerHelpers";
+import type { APIGatewayEvent } from "../../lib/types";
 import db from "../../lib/db.js";
-import { CompanyProfileValidationError, toCompanyProfile } from "./companyProfile";
+import { CompanyProfileValidationError, toCompanyProfile, validateCompanyProfilePatch } from "./companyProfile";
 import {
   CompanyProfileAccessError,
   buildCompanyProfileSave,
@@ -9,21 +11,34 @@ import {
   loadCompanyProfileContext,
 } from "./companyProfileAccess";
 
+function requireProjectId(parameters: APIGatewayEvent["pathParameters"]): string {
+  const message = "Provide a company projectId in the URL.";
+  helpers.checkPayloadProps(parameters ?? {}, {
+    projectId: {
+      required: true,
+      type: "string",
+      validate: value => (value as string).trim() ? undefined : message,
+    },
+  }, () => new CompanyProfileValidationError(message));
+  return parameters!.projectId!;
+}
+
 export const getCompanyProfile = protect(Access.USER, async (event) => {
   try {
-    const projectId = event.pathParameters?.projectId;
-    if (typeof projectId !== "string" || !projectId.trim()) {
-      return response.badRequest("Provide a company projectId in the URL.");
-    }
+    const projectId = requireProjectId(event.pathParameters);
     const context = await loadCompanyProfileContext(projectId, event.auth!.email);
     const result = response.ok({
       projectId: context.company.projectId,
       ...toCompanyProfile(context.company),
       ...getCompanyProfilePermissions(context),
     });
+    // Permission flags depend on the caller and current event state.
     result.headers = { ...result.headers, "Cache-Control": "private, no-store" };
     return result;
   } catch (error) {
+    if (error instanceof CompanyProfileValidationError) {
+      return response.badRequest(error.message);
+    }
     if (error instanceof CompanyProfileAccessError) {
       return response.send(error.statusCode, { message: error.message });
     }
@@ -34,18 +49,16 @@ export const getCompanyProfile = protect(Access.USER, async (event) => {
 
 export const patchCompanyProfile = protect(Access.USER, async (event) => {
   try {
-    const projectId = event.pathParameters?.projectId;
-    if (typeof projectId !== "string" || !projectId.trim()) {
-      return response.badRequest("Provide a company projectId in the URL.");
-    }
+    const projectId = requireProjectId(event.pathParameters);
     let value: unknown;
     try {
       value = JSON.parse(event.body ?? "");
     } catch {
       return response.badRequest("Provide a valid JSON company profile.");
     }
+    const patch = validateCompanyProfilePatch(value);
     const context = await loadCompanyProfileContext(projectId, event.auth!.email);
-    const operations = buildCompanyProfileSave(context, value);
+    const operations = buildCompanyProfileSave(context, patch);
     await db.txn(...operations);
     return response.noContent();
   } catch (error) {
