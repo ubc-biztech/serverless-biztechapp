@@ -26,8 +26,7 @@ provider:
     NODE_ENV: ${env:NODE_ENV}
     KICKSTART_EVENT_KEY: ${file(../../config.${self:provider.stage}.json):KICKSTART_EVENT_KEY}
     KICKSTART_EVENT_ENDS_AT: ${file(../../config.${self:provider.stage}.json):KICKSTART_EVENT_ENDS_AT}
-    BTX_TRADE_QUEUE_URL:
-      Ref: BtxTradeCommandsQueue
+    BTX_TRADE_QUEUE_URL: ${self:custom.${env:NODE_ENV, 'aws'}QueueUrl, self:custom.awsQueueUrl}
     WS_API_ENDPOINT:
       Fn::Join:
         - ""
@@ -94,6 +93,11 @@ provider:
         - arn:aws:execute-api:${self:provider.region}:${aws:accountId}:*/${self:provider.stage}/@connections/*
 
 custom:
+  # Offline cannot resolve a CloudFormation Ref. Use the same stage queue as the deployed worker.
+  awsQueueUrl: https://sqs.${self:provider.region}.amazonaws.com/${aws:accountId}/${self:resources.Resources.BtxTradeCommandsQueue.Properties.QueueName}
+  # NODE_ENV=development selects DynamoDB Local in lib/docClient.js.
+  developmentQueueUrl: ${env:BTX_LOCAL_QUEUE_URL, ''}
+
   esbuild:
     # Bundle the existing SDK's SQS client; Node 22 Lambda does not provide SDK v2.
     exclude: []
