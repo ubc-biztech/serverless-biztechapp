@@ -27,12 +27,14 @@ function fixture(t) {
     company: { projectId, eventId, teamId, companyName: "Northstar", blurb: "", youtubeURL: "",
       seedStartedAt: null, seedSharesAtIpo: null },
     registration: { teamID: teamId }, team: { member_ids: new Set([email]) }, writes: [], failWrite: false,
+    config: { projectId: "config:" + eventId, phase: "PRE_IPO", ipoAt: null },
   };
   t.mock.method(client, "send", async command => {
     const { Key, TableName } = command.input;
     if (command.constructor.name === "GetCommand") {
+      assert.equal(command.input.ConsistentRead, true);
       if (TableName === tables.PROJECTS_TABLE) return { Item: Key.projectId === "config:" + eventId
-        ? { projectId: Key.projectId, phase: "PRE_IPO", ipoAt: null } : f.company };
+        ? f.config : f.company };
       if (TableName === tables.REGISTRATIONS_TABLE) return { Item: f.registration };
       if (TableName === tables.TEAMS_TABLE) return { Item: f.team };
     }
@@ -88,12 +90,11 @@ test("PATCH normalizes a valid partial profile before the guarded save transacti
   assert.doesNotMatch(expression, /currentPriceCents|netShares|version|seedStartedAt|seedSharesAtIpo/);
 });
 
-test("profiles remain viewable with uncached caller-specific permissions and require both membership records to edit", async t => {
+test("profiles remain viewable with caller-specific permissions and require both membership records to edit", async t => {
   const f = fixture(t);
   const member = await getCompanyProfile(request(null));
   assert.equal(member.statusCode, 200);
   assert.equal(JSON.parse(member.body).canEdit, true);
-  assert.match(member.headers["Cache-Control"], /no-store/);
   for (const membership of ["registration", "team"]) {
     f.registration.teamID = membership === "registration" ? "999999" : teamId;
     f.team.member_ids = membership === "team" ? new Set() : new Set([email]);
@@ -102,6 +103,16 @@ test("profiles remain viewable with uncached caller-specific permissions and req
     assert.equal(JSON.parse(viewer.body).canEdit, false);
     assert.equal((await patchCompanyProfile(request(JSON.stringify({ blurb: "Updated" })))).statusCode, 403);
   }
+  assert.equal(f.writes.length, 0);
+});
+
+test("missing market config keeps a company profile viewable while disabling edits", async t => {
+  const f = fixture(t);
+  f.config = undefined;
+  const result = await getCompanyProfile(request(null));
+  assert.equal(result.statusCode, 200);
+  assert.equal(JSON.parse(result.body).canEdit, false);
+  assert.equal((await patchCompanyProfile(request(JSON.stringify({ blurb: "Updated" })))).statusCode, 503);
   assert.equal(f.writes.length, 0);
 });
 

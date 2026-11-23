@@ -27,14 +27,11 @@ export const getCompanyProfile = protect(Access.USER, async (event) => {
   try {
     const projectId = requireProjectId(event.pathParameters);
     const context = await loadCompanyProfileContext(projectId, event.auth!.email);
-    const result = response.ok({
+    return response.ok({
       projectId: context.company.projectId,
       ...toCompanyProfile(context.company),
       ...getCompanyProfilePermissions(context),
     });
-    // Permission flags depend on the caller and current event state.
-    result.headers = { ...result.headers, "Cache-Control": "private, no-store" };
-    return result;
   } catch (error) {
     if (error instanceof CompanyProfileValidationError) {
       return response.badRequest(error.message);
