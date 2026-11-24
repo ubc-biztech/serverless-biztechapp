@@ -11,7 +11,8 @@ import teamHelpers, {
   generateTeamCode,
   addTeamMember,
   removeSelfFromTeam,
-  enqueueTeamDeletedCleanup
+  enqueueTeamDeletedCleanup,
+  getMemberNames,
 } from "./helpers";
 import helpers from "../../lib/handlerHelpers";
 import {
@@ -582,9 +583,18 @@ export const get = eventTeamRoute(async (event) => {
     };
 
     const teams = (await db.scan(TEAMS_TABLE, filterExpression)) as TeamRecord[];
+    const names = await getMemberNames(
+      teams.flatMap((team) => team.memberIDs ?? []),
+    );
+    const teamsWithNames = teams.map((team) => ({
+      ...team,
+      memberNames: (team.memberIDs ?? []).map(
+        (id) => names.get(id) || "Participant",
+      ),
+    }));
     const responseTeams = obfuscateEmails
-      ? teams.map(({ memberIDs: _memberIDs, ...team }) => team)
-      : teams;
+      ? teamsWithNames.map(({ memberIDs: _memberIDs, ...team }) => team)
+      : teamsWithNames;
     return helpers.createResponse(200, responseTeams);
   } catch (error) {
     console.error(error);
