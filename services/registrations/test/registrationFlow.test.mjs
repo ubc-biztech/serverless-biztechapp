@@ -201,5 +201,8 @@ test("bulk registration accounts for each write when assigning the final slot", 
   const expected = ["registered", "waitlist", "registered"];
   const { results } = JSON.parse(response.body);
   assert.deepEqual(results.map(({ registrationStatus }) => registrationStatus), expected);
-  assert.deepEqual(writes.map(({ registrationStatus }) => registrationStatus), expected);
+  const writtenStatuses = new Map(writes.map(({ databaseKey, registrationStatus }) =>
+    [databaseKey.id, registrationStatus]
+  ));
+  assert.deepEqual(results.map(({ email }) => writtenStatuses.get(email)), expected);
 });

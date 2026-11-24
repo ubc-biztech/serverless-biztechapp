@@ -125,7 +125,14 @@ export default {
         });
       }
 
-      return includeRegistrationIds ? { registeredIds, partnerIds } : counts;
+      if (includeRegistrationIds) {
+        return {
+          capacity: event.capac,
+          registeredIds,
+          partnerIds
+        };
+      }
+      return counts;
     } catch (error) {
       console.error("Error in getEventCounts:", error);
       if (includeRegistrationIds) return null;

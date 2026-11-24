@@ -29,9 +29,7 @@ const validatePartnerRegistration = (partner) => {
   return null;
 };
 
-const registrationStatuses = new Set(
-  Object.values(REGISTRATION_STATUS).filter((status) => status !== REGISTRATION_STATUS.REJECTED)
-);
+const BULK_UPDATE_CHUNK_SIZE = 50;
 
 const summarizePartnerRegistrationResults = (results) => {
   return results.reduce(
@@ -165,9 +163,8 @@ export async function updateHelper(
   } else if (dynamicRegistrationStatus) {
     // Check if the event is full
     if (dynamicRegistrationStatus === REGISTRATION_STATUS.REGISTERED) {
-      const counts = batchCapacity === undefined
-        ? await registrationHelpers.getEventCounts(eventID, year)
-        : batchCapacity;
+      let counts = batchCapacity;
+      counts ??= await registrationHelpers.getEventCounts(eventID, year);
       if (!counts) {
         throw db.dynamoErrorResponse({
           code: "DYNAMODB ERROR",
@@ -175,9 +172,10 @@ export async function updateHelper(
         });
       }
 
-      const registeredCount = batchCapacity ? batchCapacity.registeredIds.size : counts.registeredCount;
-      const alreadyRegistered = batchCapacity?.registeredIds.has(normalizedEmail);
-      if (!alreadyRegistered && registeredCount >= existingEvent.capac)
+      const registeredCount = counts.registeredIds?.size ?? counts.registeredCount;
+      const alreadyRegistered = counts.registeredIds?.has(normalizedEmail);
+      const capacity = batchCapacity ? batchCapacity.capacity : existingEvent.capac;
+      if (!alreadyRegistered && registeredCount >= capacity)
         dynamicRegistrationStatus = REGISTRATION_STATUS.WAITLIST;
 
       // backend check if workshop is full. No longer needed for applicable.
@@ -593,6 +591,9 @@ async function updateExistingRegistration(data, email, fname, batchCapacity) {
       message: `Event with id '${data.eventID}' and year '${data.year}' could not be found.`
     });
   }
+  if (data.registrationStatus === REGISTRATION_STATUS.REGISTERED && batchCapacity === null) {
+    throw new Error("Could not check event capacity");
+  }
 
   if (data.registrationStatus === REGISTRATION_STATUS.ACCEPTED) {
     const member = await db.getOne(email, MEMBERS_TABLE);
@@ -682,67 +683,119 @@ export const put = async (event, ctx, callback) => {
   }
 };
 
+async function applyBulkRegistrationUpdate(update, eventID, year, batchCapacity) {
+  const { email, fname, registrationStatus, applicationStatus } = update ?? {};
+  try {
+    if (typeof email !== "string" || !isValidEmail(email)) {
+      throw new Error("Invalid email");
+    }
+    const updatesRegistration = registrationStatus !== undefined;
+    if (updatesRegistration && (
+      applicationStatus !== undefined ||
+      registrationStatus === REGISTRATION_STATUS.REJECTED ||
+      !Object.values(REGISTRATION_STATUS).includes(registrationStatus)
+    )) {
+      throw new Error("Provide a valid registrationStatus by itself");
+    }
+    if (!updatesRegistration && (typeof applicationStatus !== "string" || !applicationStatus)) {
+      throw new Error("Provide an applicationStatus or registrationStatus");
+    }
+    const updateData = {
+      eventID,
+      year,
+      email,
+      ...(updatesRegistration ? { registrationStatus } : { applicationStatus })
+    };
+    const response = await updateExistingRegistration(updateData, email.toLowerCase(), fname, batchCapacity);
+    if (!updatesRegistration) {
+      return {
+        success: true,
+        email,
+        response
+      };
+    }
+    const saved = JSON.parse(response.body);
+    return {
+      success: true,
+      email,
+      registrationStatus: saved.response?.Attributes?.registrationStatus ?? saved.registrationStatus,
+      response
+    };
+  } catch (error) {
+    const message = error.message || (error.body && JSON.parse(error.body).message);
+    return {
+      success: false,
+      email,
+      error: message || "Failed to update registration"
+    };
+  }
+}
+
+function nextBulkUpdateChunk(updates, offset, batchCapacity) {
+  const registering = updates[offset]?.registrationStatus === REGISTRATION_STATUS.REGISTERED;
+  const remainingSeats = batchCapacity && registering
+    ? Math.ceil(batchCapacity.capacity - batchCapacity.registeredIds.size)
+    : 0;
+  const limit = remainingSeats > 0
+    ? Math.min(remainingSeats, BULK_UPDATE_CHUNK_SIZE)
+    : BULK_UPDATE_CHUNK_SIZE;
+
+  const chunk = [];
+  const emails = new Set();
+  for (const update of updates.slice(offset, offset + limit)) {
+    const registers = update?.registrationStatus === REGISTRATION_STATUS.REGISTERED;
+    // Keep seat-consuming and seat-releasing updates in request order.
+    if (batchCapacity && registers !== registering) break;
+    const email = typeof update?.email === "string" ? update.email.toLowerCase() : "";
+    if (email && emails.has(email)) break;
+    emails.add(email);
+    chunk.push(update);
+  }
+  return chunk;
+}
+
 // Apply each administrative update independently, reporting per-row results.
 export const massUpdate = protect(Access.ADMIN, async (event) => {
   try {
-    const { eventID, eventYear, updates } = JSON.parse(event.body);
-
-    if (typeof eventID !== "string" || !eventID || !Number.isInteger(eventYear) || !Array.isArray(updates)) {
-      return helpers.createResponse(400, {
-        message: "Invalid request format."
-      });
+    const data = JSON.parse(event.body || "{}") ?? {};
+    helpers.checkPayloadProps(data, {
+      eventID: {
+        required: true,
+        type: "string"
+      },
+      eventYear: {
+        required: true,
+        type: "number"
+      },
+      updates: {
+        required: true,
+        type: "object"
+      }
+    });
+    const { eventID, eventYear, updates } = data;
+    if (!eventID || !Number.isInteger(eventYear) || !Array.isArray(updates)) {
+      throw helpers.inputError("Expected an event ID, integer event year, and array of updates");
     }
 
     const tracksCapacity = updates.some((update) => update?.registrationStatus === REGISTRATION_STATUS.REGISTERED);
     const batchCapacity = tracksCapacity
       ? await registrationHelpers.getEventCounts(eventID, eventYear, true)
       : undefined;
-    const applyUpdate = async (update) => {
-      const { email, fname, registrationStatus, applicationStatus } = update ?? {};
-      try {
-        if (typeof email !== "string" || !isValidEmail(email.toLowerCase())) {
-          throw new Error("Invalid email");
-        }
-        const updatesRegistration = registrationStatus !== undefined;
-        if (updatesRegistration && (!registrationStatuses.has(registrationStatus) || applicationStatus !== undefined)) {
-          throw new Error("Provide a valid registrationStatus by itself");
-        }
-        if (!updatesRegistration && (typeof applicationStatus !== "string" || !applicationStatus)) {
-          throw new Error("Provide an applicationStatus or registrationStatus");
-        }
-        const updateData = {
-          eventID,
-          year: eventYear,
-          email,
-          ...(updatesRegistration ? { registrationStatus } : { applicationStatus })
-        };
-        const response = await updateExistingRegistration(updateData, email.toLowerCase(), fname, batchCapacity);
-        if (!updatesRegistration) return { success: true, email, response };
-        const saved = JSON.parse(response.body);
-        return {
-          success: true,
-          email,
-          registrationStatus: saved.response?.Attributes?.registrationStatus ?? saved.registrationStatus,
-          response
-        };
-      } catch (error) {
-        const message = error.message || (error.body && JSON.parse(error.body).message);
-        return { success: false, email, error: message || "Failed to update registration" };
-      }
-    };
 
-    let results;
-    if (batchCapacity) {
-      // The event index can lag writes. Reuse one snapshot and account for each
-      // successful write before the next row competes for a registration slot.
-      results = [];
-      for (const update of updates) results.push(await applyUpdate(update));
-    } else {
-      results = await Promise.all(updates.map(applyUpdate));
+    const results = [];
+    let offset = 0;
+    while (offset < updates.length) {
+      const chunk = nextBulkUpdateChunk(updates, offset, batchCapacity);
+      const chunkResults = await Promise.all(chunk.map((update) =>
+        applyBulkRegistrationUpdate(update, eventID, eventYear, batchCapacity)
+      ));
+      results.push(...chunkResults);
+      offset += chunk.length;
     }
 
     return helpers.createResponse(200, { results });
   } catch (error) {
+    if (error?.statusCode && error.body) return error;
     console.error("Mass update failed", error);
     return helpers.createResponse(500, {
       error: "Internal server error"
