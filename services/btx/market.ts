@@ -17,7 +17,7 @@ import {
   requireSafeCents
 } from "./helpers";
 import { buildEligibilityCheck, currentTeamMember, eligibleRegistration } from "./eligibility";
-import { ipoStockPriceCents, tradeQuote, seedStatus } from "./pricing";
+import { ipoStockPriceCents, tradeQuote, seedStatus, stockPriceCents } from "./pricing";
 import { getProject, listProjectsForIpo } from "./repos/projects";
 import { buildInitialCompany } from "./projects";
 import {
@@ -270,6 +270,7 @@ export async function getQuote(params: {
   const live = config.phase === "LIVE";
   return {
     ...quote,
+    startPriceCents: stockPriceCents(project, config.ipoAt),
     projectId: project.projectId,
     eventId: project.eventId,
     phase: live ? "LIVE" : "SEED",
