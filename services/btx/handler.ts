@@ -143,12 +143,13 @@ export const getPriceHistoryHandler = protect(Access.PUBLIC, async (event) => {
   }
 });
 
-export const getLeaderboard = protect(Access.PUBLIC, async (event) => {
+export const getLeaderboard = protect(Access.USER, async (event) => {
   try {
     const qs = event.queryStringParameters || {};
     return helpers.createResponse(200, {
       message: "BTX leaderboard",
       data: await getTraderLeaderboard(
+        event.auth!.email,
         Number(qs.limitTop || 5),
         Number(qs.limitBottom || 5)
       )

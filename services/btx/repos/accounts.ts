@@ -1,4 +1,5 @@
 import { GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import db from "../../../lib/db.js";
 import docClient from "../../../lib/docClient";
 import { KICKSTART_INITIAL_CASH_CENTS } from "../constants";
 import {
@@ -7,9 +8,14 @@ import {
   getEventConfig
 } from "../helpers";
 import { stockPriceCents } from "../pricing";
-import { EVENT_ACCOUNTS_TABLE, HOLDINGS_TABLE, TRADES_TABLE } from "./tables";
+import {
+  EVENT_ACCOUNTS_TABLE,
+  HOLDINGS_TABLE,
+  REGISTRATIONS_TABLE,
+  TRADES_TABLE
+} from "./tables";
 import { getProject, listProjectsForEvent } from "./projects";
-import type { BtxEventAccount, BtxHolding, BtxTrade } from "../types";
+import type { BtxEventAccount, BtxHolding, BtxTrade, LeaderboardEntry } from "../types";
 import { TradeStatus } from "../types";
 import { eligibleRegistration } from "../eligibility";
 
@@ -152,7 +158,17 @@ export async function getRecentTrades(
   };
 }
 
-export async function getTraderLeaderboard(limitTop = 5, limitBottom = 5) {
+async function leaderboardDisplayName(userId: string, eventId: string) {
+  const registration = await db.getOneCustom({
+    TableName: REGISTRATIONS_TABLE,
+    Key: { id: userId, "eventID;year": eventId },
+    ProjectionExpression: "basicInformation.fname, basicInformation.lname"
+  });
+  const { fname, lname } = registration?.basicInformation ?? {};
+  return [fname, lname].join(" ").trim() || "Participant";
+}
+
+export async function getTraderLeaderboard(viewerId: string, limitTop = 5, limitBottom = 5) {
   const eventId = configuredEvent();
   const [projects, config, accounts] = await Promise.all([
     listProjectsForEvent(),
@@ -194,18 +210,30 @@ export async function getTraderLeaderboard(limitTop = 5, limitBottom = 5) {
 
   const ranked = ((accounts.Items || []) as BtxEventAccount[])
     .map((a) => ({
-      displayName: "Participant",
+      userId: a.userId,
       totalPnlCents: a.cashBalanceCents + (equity.get(a.userId) || 0) - a.totalAllocatedCents
     }))
-    .sort((a, b) => b.totalPnlCents - a.totalPnlCents);
+    .sort((a, b) => b.totalPnlCents - a.totalPnlCents || a.userId.localeCompare(b.userId));
+  const rows: LeaderboardEntry[] = ranked.map(({ totalPnlCents }, index) => ({
+    index,
+    rank: index + 1,
+    displayName: "Participant",
+    totalPnlCents
+  }));
+  const top = rows.slice(0, limitTop);
+  const bottom = limitBottom > 0 ? rows.slice(-limitBottom).reverse() : [];
+  const own = rows[ranked.findIndex(({ userId }) => userId === viewerId)] ?? null;
+  const visibleRows = new Set([...top, ...bottom]);
+  if (own) visibleRows.add(own);
+  await Promise.all(Array.from(visibleRows, async (row) => {
+    row.displayName = await leaderboardDisplayName(ranked[row.index].userId, eventId);
+  }));
 
   return {
-    traders: ranked.length,
-    top: ranked.slice(0, limitTop).map((r, i) => ({ rank: i + 1, ...r })),
-    bottom: ranked
-      .slice(-limitBottom)
-      .reverse()
-      .map((r, i) => ({ rank: ranked.length - i, ...r })),
+    traders: rows.length,
+    top,
+    bottom,
+    own,
     serverTime: now,
     live: config.ipoAt != null
   };

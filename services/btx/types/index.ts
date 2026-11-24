@@ -96,6 +96,13 @@ export interface BtxPricePoint {
   source?: string;
 }
 
+export interface LeaderboardEntry {
+  index: number;
+  rank: number;
+  displayName: string;
+  totalPnlCents: number;
+}
+
 export type BtxErrorCode =
   | "FORBIDDEN"
   | "SEED_NOT_STARTED"
