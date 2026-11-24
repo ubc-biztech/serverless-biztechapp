@@ -17,7 +17,7 @@ export default {
 	       * @param {String} eventIDAndYear
 	       * @return {registeredCount checkedInCount waitlistCount}
 	       */
-  getEventCounts: async function(eventID, year) {
+  getEventCounts: async function(eventID, year, includeRegistrationIds = false) {
     try {
       const event = await db.getOne(eventID, EVENTS_TABLE, {
         year: year
@@ -25,6 +25,7 @@ export default {
 
       if (!event) {
         console.error("Event not found:", eventID, year);
+        if (includeRegistrationIds) return null;
         return {
           registeredCount: 0,
           checkedInCount: 0,
@@ -86,13 +87,17 @@ export default {
           };
         })
       };
+      const registeredIds = new Set();
+      const partnerIds = new Set();
 
       if (Array.isArray(result)) {
         result.forEach((item) => {
+          if (includeRegistrationIds && item.isPartner) partnerIds.add(item.id);
           if (item.isPartner === undefined || !item.isPartner) {
             switch (item.registrationStatus) {
             case REGISTRATION_STATUS.REGISTERED:
               counts.registeredCount++;
+              if (includeRegistrationIds) registeredIds.add(item.id);
               break;
             case REGISTRATION_STATUS.CHECKED_IN:
               counts.checkedInCount++;
@@ -120,9 +125,10 @@ export default {
         });
       }
 
-      return counts;
+      return includeRegistrationIds ? { registeredIds, partnerIds } : counts;
     } catch (error) {
       console.error("Error in getEventCounts:", error);
+      if (includeRegistrationIds) return null;
       return {
         registeredCount: 0,
         checkedInCount: 0,
