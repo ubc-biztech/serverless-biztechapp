@@ -91,7 +91,7 @@ test("leaderboard displays registration names without returning emails and exclu
   for (const address of [userId, other, tied]) assert.ok(!payload.includes(address));
 });
 
-test("leaderboard returns public rankings with an optional viewer position", async t => {
+test("leaderboard uses the verified caller for their position", async t => {
   const { histories, project, rows } = market(t);
   histories[tables.PROJECTS_TABLE] = [project];
   const account = rows[tables.EVENT_ACCOUNTS_TABLE];
@@ -100,13 +100,22 @@ test("leaderboard returns public rankings with an optional viewer position", asy
     account,
     { ...account, userId: other, cashBalanceCents: 300_000 }
   ];
-  for (const [viewerId, position] of [[undefined, null], [userId, 1], [` ${other.toUpperCase()} `, 0]]) {
-    const queryStringParameters = viewerId === undefined ? undefined : { viewerId };
-    const response = await getLeaderboard({ requestContext: {}, queryStringParameters });
+  const queryStringParameters = { viewerId: other };
+  const anonymous = await getLeaderboard({ requestContext: {}, queryStringParameters });
+  assert.equal(anonymous.statusCode, 401);
+
+  for (const [email, position] of [[userId.toUpperCase(), 1], ["unranked@example.org", null]]) {
+    const claims = { email, email_verified: "true" };
+    db.send.mock.resetCalls();
+    const response = await getLeaderboard({ requestContext: { authorizer: { claims } }, queryStringParameters });
     assert.equal(response.statusCode, 200);
     const { data } = JSON.parse(response.body);
-    assert.equal(data.top.length, 2);
+    assert.deepEqual(data.top.map(row => row.index), [0, 1]);
+    assert.deepEqual(data.bottom.map(row => row.index), [1, 0]);
     assert.equal(data.own?.index ?? null, position);
+    const reads = db.send.mock.calls.map(call => call.arguments[0].input)
+      .filter(input => input.TableName === tables.REGISTRATIONS_TABLE);
+    assert.deepEqual(reads.map(input => input.Key.id).sort(), [other, userId]);
   }
 });
 

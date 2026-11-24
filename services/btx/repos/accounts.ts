@@ -1,4 +1,5 @@
 import { GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import db from "../../../lib/db.js";
 import docClient from "../../../lib/docClient";
 import { KICKSTART_INITIAL_CASH_CENTS } from "../constants";
 import {
@@ -158,18 +159,16 @@ export async function getRecentTrades(
 }
 
 async function leaderboardDisplayName(userId: string, eventId: string) {
-  const { Item } = await docClient.send(
-    new GetCommand({
-      TableName: REGISTRATIONS_TABLE,
-      Key: { id: userId, "eventID;year": eventId },
-      ProjectionExpression: "basicInformation.fname, basicInformation.lname"
-    })
-  );
-  const { fname, lname } = Item?.basicInformation ?? {};
+  const registration = await db.getOneCustom({
+    TableName: REGISTRATIONS_TABLE,
+    Key: { id: userId, "eventID;year": eventId },
+    ProjectionExpression: "basicInformation.fname, basicInformation.lname"
+  });
+  const { fname, lname } = registration?.basicInformation ?? {};
   return [fname, lname].join(" ").trim() || "Participant";
 }
 
-export async function getTraderLeaderboard(viewerId: string | undefined, limitTop = 5, limitBottom = 5) {
+export async function getTraderLeaderboard(viewerId: string, limitTop = 5, limitBottom = 5) {
   const eventId = configuredEvent();
   const [projects, config, accounts] = await Promise.all([
     listProjectsForEvent(),
