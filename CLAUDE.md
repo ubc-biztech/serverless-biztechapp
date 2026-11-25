@@ -10,6 +10,7 @@ Serverless Framework backend for UBC BizTech. Frontend lives in the sibling repo
 Specs and workflow docs live in Notion. Read them with the Notion MCP server (`.mcp.json`) — fetch the page, don't guess from memory.
 
 <!-- Add backend-relevant pages here. Pages covering both repos go in both CLAUDE.md files. -->
+
 - Product+ 2026 workflow specs: <notion-url>
 - Dev onboarding / env setup: <notion-url>
 
