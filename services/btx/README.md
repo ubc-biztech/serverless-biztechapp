@@ -39,12 +39,9 @@ can trade without joining a team and cannot trade their own company.
   `POST /btx/projects/{projectId}/seed/start`. Seed orders are buys at $100 per share.
 - `POST /btx/admin/ipo` returns `202` when queued. Buying and selling go live for
   all companies once IPO completes. The seed timer alone does not start live trading.
-- To undo an accidental launch, call `POST /btx/admin/ipo/reset` as an admin with
-  `{"ipoAt": 1795550400000}`, substituting the timestamp from the market snapshot.
-  A successful reset returns `200`, restores seed prices and keeps the original seed windows.
-  A settled live trade or a stale timestamp returns `409`. Noise ticks alone allow a reset.
-  If interrupted in `IPO_RESETTING`, repeat the request with the same timestamp.
-  When ready, call `POST /btx/admin/ipo` to launch again with a new timestamp.
+- To undo an accidental launch, open **BTX Admin** and choose **Reset IPO**.
+  This restores the original seed windows if no live trade has settled. Choose
+  **Launch IPO** when you're ready to reopen live trading.
 - Use `GET /btx/market/snapshot` for the current phase, server time, and event cutoff
   (`eventEndsAt`). Trading closes at the cutoff.
 
