@@ -250,6 +250,17 @@ functions:
             type: COGNITO_USER_POOLS
             authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
 
+  btxResetIpo:
+    handler: handler.postResetIpo
+    events:
+      - http:
+          path: btx/admin/ipo/reset
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
   btxGrant:
     handler: handler.postGrant
     events:

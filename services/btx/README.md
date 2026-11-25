@@ -39,6 +39,9 @@ can trade without joining a team and cannot trade their own company.
   `POST /btx/projects/{projectId}/seed/start`. Seed orders are buys at $100 per share.
 - `POST /btx/admin/ipo` returns `202` when queued. Buying and selling go live for
   all companies once IPO completes. The seed timer alone does not start live trading.
+- To undo an accidental launch, open **BTX Admin** and choose **Reset IPO**.
+  This restores the original seed windows if no live trade has settled. Choose
+  **Launch IPO** when you're ready to reopen live trading.
 - Use `GET /btx/market/snapshot` for the current phase, server time, and event cutoff
   (`eventEndsAt`). Trading closes at the cutoff.
 
@@ -108,7 +111,7 @@ provision this item in the environment's `bizBtxProjects` table:
 
 Both team formation and the market reject missing or invalid configuration.
 For an existing ipoAt-only item, verify the market state before explicitly
-setting its phase; never reset IPO timestamps, company state, or balances.
+setting its phase. Use the admin reset endpoint for a completed IPO.
 
 The stored lifecycle is `PRE_IPO -> IPO_PREPARING -> LIVE`. IPO closes formation
 and trading before scanning the base table consistently for all event companies.

@@ -159,22 +159,24 @@ export async function startSeeding(userId: string, projectId: string) {
   return seedResponse(updated, null, now);
 }
 
-export async function launchIpo() {
+export async function launchIpo(previousIpoAt?: number) {
   let config = await getEventConfig();
-  if (config.phase === "LIVE") return;
+  if (config.previousIpoAt !== previousIpoAt || config.phase === "LIVE" || config.phase === "IPO_RESETTING") return;
   if (config.phase === "PRE_IPO") {
     // Close team formation and trading before listing companies
     await docClient.send(new UpdateCommand({
       TableName: PROJECTS_TABLE, Key: { projectId: config.projectId },
       UpdateExpression: "SET phase = :preparing",
-      ConditionExpression: "phase = :pre AND ipoAt = :null",
-      ExpressionAttributeValues: { ":preparing": "IPO_PREPARING", ":pre": "PRE_IPO", ":null": null }
+      ConditionExpression: "phase = :pre AND ipoAt = :null AND " +
+        (previousIpoAt === undefined ? "attribute_not_exists(previousIpoAt)" : "previousIpoAt = :previous"),
+      ExpressionAttributeValues: { ":preparing": "IPO_PREPARING", ":pre": "PRE_IPO", ":null": null,
+        ...(previousIpoAt === undefined ? {} : { ":previous": previousIpoAt }) }
     }));
     config = { ...config, phase: "IPO_PREPARING" };
   }
   const projects = await listProjectsForIpo();
   if (config.ipoPriceTs === undefined) {
-    const priceTs = projects.reduce((ts, project) => Math.max(ts, project.lastPriceTs + 1), Date.now());
+    const priceTs = projects.reduce((ts, project) => Math.max(ts, project.lastPriceTs + 1), Math.max(Date.now(), (previousIpoAt ?? 0) + 1));
     await docClient.send(new UpdateCommand({
       TableName: PROJECTS_TABLE, Key: { projectId: config.projectId },
       UpdateExpression: "SET ipoPriceTs = if_not_exists(ipoPriceTs, :ts)",
@@ -276,6 +278,7 @@ export async function getQuote(params: {
     phase: live ? "LIVE" : "SEED",
     live,
     ipoAt: config.ipoAt,
+    previousIpoAt: config.previousIpoAt,
     serverTime: now,
     expiresAt: Math.min(
       now + QUOTE_WINDOW_MS,

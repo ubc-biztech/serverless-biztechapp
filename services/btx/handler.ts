@@ -80,6 +80,7 @@ export const getMarketSnapshot = protect(Access.PUBLIC, async () => {
         phase: config.phase === "PRE_IPO" ? "SEED" : config.phase,
         live: config.phase === "LIVE",
         ipoAt: config.ipoAt,
+        lastReset: config.lastReset,
         eventEndsAt: eventEndsAtMs(),
         projects: rows
       }
@@ -197,12 +198,36 @@ export const postStartSeeding = protect(Access.USER, async (event) => {
 
 export const postIpo = protect(Access.ADMIN, async () => {
   try {
-    await enqueueMarketCommand({ type: "IPO" });
+    const config = await getEventConfig();
+    if (config.phase === "IPO_RESETTING") throw new BtxError(409, "IPO reset is in progress.");
+    await enqueueMarketCommand({ type: "IPO", previousIpoAt: config.previousIpoAt });
     return helpers.createResponse(202, {
       message: "BTX IPO queued"
     });
   } catch (err) {
     return clientError(err, "BTX IPO failed");
+  }
+});
+
+export const postResetIpo = protect(Access.ADMIN, async (event) => {
+  try {
+    let body;
+    try {
+      body = JSON.parse(event.body || "{}");
+    } catch {
+      throw new BtxError(400, "Expected a JSON body containing ipoAt.");
+    }
+    if (!Number.isSafeInteger(body?.ipoAt) || body.ipoAt <= 0) {
+      throw new BtxError(400, "Provide the current ipoAt in epoch milliseconds.");
+    }
+    const config = await getEventConfig();
+    if (config.ipoAt !== body.ipoAt || (config.phase !== "LIVE" && config.phase !== "IPO_RESETTING")) {
+      throw new BtxError(409, "The requested IPO is no longer live.");
+    }
+    await enqueueMarketCommand({ type: "RESET_IPO", ipoAt: body.ipoAt });
+    return helpers.createResponse(202, { message: "BTX IPO reset queued", data: { ipoAt: body.ipoAt } });
+  } catch (err) {
+    return clientError(err, "BTX IPO reset failed");
   }
 });
 

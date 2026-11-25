@@ -78,12 +78,14 @@ export const buildMarketPhaseCheck = (config: BtxEventConfig) => {
     .if("phase").equals(config.phase)
     .if("ipoAt").equals(config.ipoAt);
   if (config.ipoPriceTs !== undefined) check.if("ipoPriceTs").equals(config.ipoPriceTs);
+  if (config.previousIpoAt === undefined) check.if("previousIpoAt").notExists();
+  else check.if("previousIpoAt").equals(config.previousIpoAt);
   return check;
 };
 
 export function requireMarketOpen(config: BtxEventConfig) {
-  if (config.phase === "IPO_PREPARING") {
-    throw new BtxError(503, "IPO is preparing. Please try again shortly.", { code: "TRANSITION_UNAVAILABLE" });
+  if (config.phase === "IPO_PREPARING" || config.phase === "IPO_RESETTING") {
+    throw new BtxError(503, "Market phase is changing. Please try again shortly.", { code: "TRANSITION_UNAVAILABLE" });
   }
 }
 

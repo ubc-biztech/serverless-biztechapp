@@ -1,7 +1,8 @@
 import { TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
 import docClient from "../../lib/docClient";
 import { MIN_PRICE_CENTS, NOISE_MAX_PCT } from "./constants";
-import { eventEndsAtMs, getEventConfig } from "./helpers";
+import { buildMarketPhaseCheck, eventEndsAtMs, getEventConfig } from "./helpers";
+import { resetIpo } from "./resetIpo";
 import { launchIpo } from "./market";
 import { getProject, listProjectsForEvent } from "./repos/projects";
 import { PRICES_TABLE, PROJECTS_TABLE } from "./repos/tables";
@@ -31,8 +32,11 @@ export async function processMarketQueue(event: { Records: { body: string }[] })
     case "TICK":
       await processCompanyTick(command.projectId, command.scheduledTickTs);
       break;
+    case "RESET_IPO":
+      await resetIpo(command.ipoAt);
+      break;
     case "IPO":
-      await launchIpo();
+      await launchIpo(command.previousIpoAt);
       break;
   }
 }
@@ -83,6 +87,7 @@ async function processCompanyTick(projectId: string, scheduledTickTs: number) {
   await docClient.send(
     new TransactWriteCommand({
       TransactItems: [
+        buildMarketPhaseCheck(config).build(),
         {
           Update: {
             TableName: PROJECTS_TABLE,
