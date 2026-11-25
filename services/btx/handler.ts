@@ -10,6 +10,7 @@ import {
   removeSocketConnection,
   saveSocketConnection
 } from "./helpers";
+import { resetIpo } from "./resetIpo";
 import { applyGrant, getQuote, startSeeding } from "./market";
 import { stockPriceCents, seedStatus } from "./pricing";
 import {
@@ -197,12 +198,32 @@ export const postStartSeeding = protect(Access.USER, async (event) => {
 
 export const postIpo = protect(Access.ADMIN, async () => {
   try {
-    await enqueueMarketCommand({ type: "IPO" });
+    const config = await getEventConfig();
+    if (config.phase === "IPO_RESETTING") throw new BtxError(409, "IPO reset is in progress.");
+    await enqueueMarketCommand({ type: "IPO", previousIpoAt: config.previousIpoAt });
     return helpers.createResponse(202, {
       message: "BTX IPO queued"
     });
   } catch (err) {
     return clientError(err, "BTX IPO failed");
+  }
+});
+
+export const postResetIpo = protect(Access.ADMIN, async (event) => {
+  try {
+    let body;
+    try {
+      body = JSON.parse(event.body || "{}");
+    } catch {
+      throw new BtxError(400, "Expected a JSON body containing ipoAt.");
+    }
+    if (!Number.isSafeInteger(body?.ipoAt) || body.ipoAt <= 0) {
+      throw new BtxError(400, "Provide the current ipoAt in epoch milliseconds.");
+    }
+    await resetIpo(body.ipoAt);
+    return helpers.createResponse(200, { message: "BTX IPO reset", data: { phase: "SEED", ipoAt: null } });
+  } catch (err) {
+    return clientError(err, "BTX IPO reset failed");
   }
 });
 

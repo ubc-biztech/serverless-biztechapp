@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { loadBtx } from "./load-btx.mjs";
 
-const { client, tables, launchIpo, getEventConfig } = await loadBtx(`
+const { client, tables, launchIpo, resetIpo, getEventConfig } = await loadBtx(`
   export { default as client } from "../../lib/docClient.js";
   export * as tables from "./repos/tables";
+  export { resetIpo } from "./resetIpo";
   export { launchIpo } from "./market";
   export { getEventConfig } from "./helpers";
 `);
@@ -29,8 +30,8 @@ function fixture(t, count = 2) {
         assert.equal(input.ConsistentRead, true);
         return { Item: state.config && structuredClone(state.config) };
       case "ScanCommand": {
-        assert.equal(config.phase, "IPO_PREPARING", "close formation before discovering companies");
-        assert.equal(config.ipoAt, null, "do not expose public trading during preparation");
+        assert.ok(["IPO_PREPARING", "IPO_RESETTING"].includes(config.phase));
+        if (config.phase === "IPO_PREPARING") assert.equal(config.ipoAt, null);
         assert.equal(input.ConsistentRead, true);
         assert.equal(input.ExpressionAttributeValues[":event"], eventId);
         state.scans.push(input);
@@ -44,7 +45,16 @@ function fixture(t, count = 2) {
         const values = input.ExpressionAttributeValues;
         assert.equal(input.Key.projectId, configId);
         assert.ok(input.ConditionExpression);
-        if (values[":live"]) Object.assign(config, { phase: "LIVE", ipoAt: values[":ipoAt"] });
+        if (values[":phase"]) {
+          assert.equal(config.phase, values[":old"]);
+          assert.equal(config.ipoAt, values[":ipo"]);
+          config.phase = values[":phase"];
+          if (config.phase === "PRE_IPO") {
+            config.previousIpoAt = config.ipoAt;
+            config.ipoAt = null;
+            delete config.ipoPriceTs;
+          }
+        } else if (values[":live"]) Object.assign(config, { phase: "LIVE", ipoAt: values[":ipoAt"] });
         else if (values[":ts"]) config.ipoPriceTs ??= values[":ts"];
         else config.phase = "IPO_PREPARING";
         return {};
@@ -52,6 +62,22 @@ function fixture(t, count = 2) {
       case "TransactWriteCommand": {
         state.writes.push(input);
         const [check, update, put] = input.TransactItems;
+        if (config.phase === "IPO_RESETTING") {
+          assert.ok(Object.values(check.ConditionCheck.ExpressionAttributeValues).includes("IPO_RESETTING"));
+          for (const item of input.TransactItems.slice(1)) {
+            if (item.Delete) {
+              const { projectId, ts } = item.Delete.Key;
+              state.history.delete(projectId + ":" + ts);
+            } else {
+              const row = projects.find(p => p.projectId === item.Update.Key.projectId);
+              if (state.failCompany === row.projectId) throw new Error("simulated transient failure");
+              const values = item.Update.ExpressionAttributeValues;
+              assert.equal(values[":last"], row.lastPriceTs);
+              Object.assign(row, { lastPriceTs: values[":ts"], currentPriceCents: values[":price"], seedSharesAtIpo: null });
+            }
+          }
+          return {};
+        }
         assert.equal(input.TransactItems.length, 3);
         assert.equal(check.ConditionCheck.Key.projectId, configId);
         assert.ok(Object.values(check.ConditionCheck.ExpressionAttributeValues).includes("IPO_PREPARING"));
@@ -69,6 +95,12 @@ function fixture(t, count = 2) {
         return {};
       }
       case "QueryCommand":
+        if (input.TableName === tables.PRICES_TABLE) {
+          assert.equal(input.ConsistentRead, true);
+          const id = input.ExpressionAttributeValues[":id"];
+          if (input.Limit === 1) return { Items: [{ projectId: id, ts: 100, priceCents: 10000 }] };
+          return { Items: Array.from(state.history.values()).filter(p => p.projectId === id) };
+        }
         assert.equal(input.TableName, tables.SOCKETS_TABLE);
         return { Items: [] };
       default:
@@ -124,4 +156,52 @@ test("missing config fails closed without market writes", async t => {
     await assert.rejects(launchIpo(), { statusCode: 503 });
   }
   assert.equal(f.writes.length, 0);
+});
+
+test("reset removes IPO and noise, ignores stale launches, and permits a later manual IPO", async t => {
+  const f = fixture(t);
+  await launchIpo();
+  const original = f.config.ipoAt;
+  const project = f.projects[0];
+  project.lastPriceTs++;
+  f.history.set(project.projectId + ":" + project.lastPriceTs, {
+    projectId: project.projectId, ts: project.lastPriceTs, source: "NOISE"
+  });
+  await resetIpo(original);
+  assert.equal(f.config.phase, "PRE_IPO");
+  assert.equal(f.config.ipoAt, null);
+  assert.equal(f.history.size, 0);
+  assert.ok(f.projects.every(p => p.lastPriceTs === 100 && p.currentPriceCents === 10000));
+  await resetIpo(original);
+  await launchIpo();
+  assert.equal(f.config.phase, "PRE_IPO");
+  await launchIpo(original);
+  assert.ok(f.config.ipoAt > original);
+  await assert.rejects(resetIpo(original), { statusCode: 409 });
+});
+
+test("a settled live trade on the last listing leaves every company live", async t => {
+  const f = fixture(t);
+  await launchIpo();
+  const project = f.projects.at(-1);
+  const point = { projectId: project.projectId, ts: ++project.lastPriceTs, source: "TRADE" };
+  f.history.set(project.projectId + ":" + point.ts, point);
+  await assert.rejects(resetIpo(f.config.ipoAt), { statusCode: 409 });
+  assert.equal(f.config.phase, "LIVE");
+  assert.equal(f.history.size, 3);
+  assert.ok(f.projects.every(p => p.seedSharesAtIpo === p.netShares));
+});
+
+test("retry finishes an interrupted reset before opening the seed phase", async t => {
+  const f = fixture(t);
+  await launchIpo();
+  const ipoAt = f.config.ipoAt;
+  f.failCompany = f.projects[1].projectId;
+  await assert.rejects(resetIpo(ipoAt), /simulated transient failure/);
+  assert.equal(f.config.phase, "IPO_RESETTING");
+  assert.equal(f.history.size, 1);
+  f.failCompany = undefined;
+  await resetIpo(ipoAt);
+  assert.equal(f.config.phase, "PRE_IPO");
+  assert.equal(f.history.size, 0);
 });

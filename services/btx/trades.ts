@@ -103,6 +103,7 @@ export async function submitTrade(
     shares: input.shares,
     limitPriceCents,
     acceptedIpoAt: quote.ipoAt,
+    ...(quote.previousIpoAt !== undefined && { previousIpoAt: quote.previousIpoAt }),
     status: TradeStatus.PENDING,
     createdAt: Date.now()
   };
@@ -162,6 +163,8 @@ export async function processTrade(projectId: string, tradeId: string) {
     }
 
     const config = await getEventConfig();
+    // Let the queue retry after the admin reset commits or restores LIVE.
+    if (config.phase === "IPO_RESETTING") throw new Error("IPO reset in progress");
     requireMarketOpen(config);
     const [project, account, holdingResponse] = await Promise.all([
       getProject(projectId),
@@ -175,7 +178,7 @@ export async function processTrade(projectId: string, tradeId: string) {
       )
     ]);
 
-    if (config.ipoAt !== trade.acceptedIpoAt) {
+    if (config.ipoAt !== trade.acceptedIpoAt || config.previousIpoAt !== trade.previousIpoAt) {
       throw new BtxError(409, "Market phase changed; request a new quote", {
         code: "STALE_QUOTE"
       });
