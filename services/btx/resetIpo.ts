@@ -55,24 +55,25 @@ async function restoreCompany(config: BtxEventConfig, project: BtxProject, point
   ] }));
 }
 
-async function changePhase(config: BtxEventConfig, phase: BtxEventConfig["phase"]) {
+async function changePhase(config: BtxEventConfig, phase: BtxEventConfig["phase"], lastReset?: BtxEventConfig["lastReset"]) {
   const reopen = phase === "PRE_IPO";
   await docClient.send(new UpdateCommand({
     TableName: PROJECTS_TABLE, Key: { projectId: config.projectId },
     UpdateExpression: reopen
-      ? "SET phase = :phase, previousIpoAt = :ipo, ipoAt = :null REMOVE ipoPriceTs"
-      : "SET phase = :phase",
+      ? "SET phase = :phase, previousIpoAt = :ipo, ipoAt = :null, lastReset = :result REMOVE ipoPriceTs"
+      : lastReset ? "SET phase = :phase, lastReset = :result" : "SET phase = :phase",
     ConditionExpression: "phase = :old AND ipoAt = :ipo",
     ExpressionAttributeValues: { ":phase": phase, ":old": config.phase, ":ipo": config.ipoAt,
+      ...(lastReset ? { ":result": lastReset } : {}),
       ...(reopen ? { ":null": null } : {}) }
   }));
 }
 
 export async function resetIpo(ipoAt: number) {
   let config = await getEventConfig();
-  if (config.phase === "PRE_IPO" && config.previousIpoAt === ipoAt) return;
+  if (config.lastReset?.ipoAt === ipoAt) return;
   if (config.ipoAt !== ipoAt || (config.phase !== "LIVE" && config.phase !== "IPO_RESETTING")) {
-    throw new BtxError(409, "The requested IPO is no longer live.");
+    return; // An earlier FIFO command already superseded this IPO.
   }
   if (config.phase === "LIVE") {
     await changePhase(config, "IPO_RESETTING");
@@ -86,9 +87,13 @@ export async function resetIpo(ipoAt: number) {
     companies.push(...await Promise.all(projects.slice(i, i + 8).map(p => inspectCompany(p, ipoAt))));
   }
   for (const { points } of companies) {
-    if (points.some(p => p.source !== (p.ts === ipoAt ? "IPO" : "NOISE"))) {
-      await changePhase(config, "LIVE");
-      throw new BtxError(409, "Cannot reset an IPO with settled live trades or unrecognized price history.");
+    const conflict = points.find(p => p.source !== (p.ts === ipoAt ? "IPO" : "NOISE"));
+    if (conflict) {
+      const message = conflict.source === "TRADE"
+        ? "Reset declined because a live trade settled."
+        : "Reset declined because the price history needs reconciliation.";
+      await changePhase(config, "LIVE", { ipoAt, status: "DECLINED", message });
+      return;
     }
   }
   for (let i = 0; i < companies.length; i += 8) {
@@ -96,6 +101,6 @@ export async function resetIpo(ipoAt: number) {
       .filter(({ project }) => project.seedSharesAtIpo != null)
       .map(({ project, points }) => restoreCompany(config, project, points)));
   }
-  await changePhase(config, "PRE_IPO");
+  await changePhase(config, "PRE_IPO", { ipoAt, status: "SUCCEEDED" });
   await publishMarketUpdate({ eventId: configuredEvent(), phase: "SEED", ipoAt: null, serverTime: Date.now() });
 }

@@ -2,9 +2,13 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { loadBtx } from "./load-btx.mjs";
 
-const { client, tables, launchIpo, resetIpo, getEventConfig } = await loadBtx(`
+import SQS from "aws-sdk/clients/sqs.js";
+
+const { client, tables, launchIpo, resetIpo, getEventConfig, postResetIpo, processMarketQueue } = await loadBtx(`
   export { default as client } from "../../lib/docClient.js";
   export * as tables from "./repos/tables";
+  export { postResetIpo } from "./handler";
+  export { processMarketQueue } from "./workers";
   export { resetIpo } from "./resetIpo";
   export { launchIpo } from "./market";
   export { getEventConfig } from "./helpers";
@@ -49,6 +53,7 @@ function fixture(t, count = 2) {
           assert.equal(config.phase, values[":old"]);
           assert.equal(config.ipoAt, values[":ipo"]);
           config.phase = values[":phase"];
+          if (values[":result"]) config.lastReset = values[":result"];
           if (config.phase === "PRE_IPO") {
             config.previousIpoAt = config.ipoAt;
             config.ipoAt = null;
@@ -177,7 +182,9 @@ test("reset removes IPO and noise, ignores stale launches, and permits a later m
   assert.equal(f.config.phase, "PRE_IPO");
   await launchIpo(original);
   assert.ok(f.config.ipoAt > original);
-  await assert.rejects(resetIpo(original), { statusCode: 409 });
+  await resetIpo(original);
+  assert.equal(f.config.phase, "LIVE");
+  assert.deepEqual(f.config.lastReset, { ipoAt: original, status: "SUCCEEDED" });
 });
 
 test("a settled live trade on the last listing leaves every company live", async t => {
@@ -186,7 +193,9 @@ test("a settled live trade on the last listing leaves every company live", async
   const project = f.projects.at(-1);
   const point = { projectId: project.projectId, ts: ++project.lastPriceTs, source: "TRADE" };
   f.history.set(project.projectId + ":" + point.ts, point);
-  await assert.rejects(resetIpo(f.config.ipoAt), { statusCode: 409 });
+  await resetIpo(f.config.ipoAt);
+  assert.equal(f.config.lastReset.status, "DECLINED");
+  assert.match(f.config.lastReset.message, /trade settled/);
   assert.equal(f.config.phase, "LIVE");
   assert.equal(f.history.size, 3);
   assert.ok(f.projects.every(p => p.seedSharesAtIpo === p.netShares));
@@ -204,4 +213,20 @@ test("retry finishes an interrupted reset before opening the seed phase", async 
   await resetIpo(ipoAt);
   assert.equal(f.config.phase, "PRE_IPO");
   assert.equal(f.history.size, 0);
+});
+
+test("admin reset returns 202 before any market write and dispatches in the trade FIFO", async t => {
+  const f = fixture(t);
+  await launchIpo();
+  const writes = f.writes.length;
+  const send = t.mock.method(SQS.prototype, "makeRequest", () => ({ promise: async () => ({}) }));
+  const claims = { email: "admin@example.org", email_verified: "true", "cognito:groups": "admin" };
+  const response = await postResetIpo({ requestContext: { authorizer: { claims } }, body: JSON.stringify({ ipoAt: f.config.ipoAt }) });
+  assert.equal(response.statusCode, 202);
+  assert.equal(f.writes.length, writes);
+  const [, message] = send.mock.calls[0].arguments;
+  assert.equal(message.MessageGroupId, "btx-trades");
+  assert.deepEqual(JSON.parse(message.MessageBody), { type: "RESET_IPO", ipoAt: f.config.ipoAt });
+  await processMarketQueue({ Records: [{ body: message.MessageBody }] });
+  assert.equal(f.config.lastReset.status, "SUCCEEDED");
 });

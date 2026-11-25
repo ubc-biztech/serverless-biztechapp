@@ -9,6 +9,7 @@ export type TradeStatus = (typeof TradeStatus)[keyof typeof TradeStatus];
 export type MarketCommand =
   | { type: "TRADE"; projectId: string; tradeId: string }
   | { type: "TICK"; projectId: string; scheduledTickTs: number }
+  | { type: "RESET_IPO"; ipoAt: number }
   | { type: "IPO"; previousIpoAt?: number };
 
 export type SeedStatus = "NOT_STARTED" | "ACTIVE" | "ENDED" | "LIVE";
@@ -18,6 +19,7 @@ export interface BtxEventConfig {
   projectId: string;
   phase: "PRE_IPO" | "IPO_PREPARING" | "IPO_RESETTING" | "LIVE";
   previousIpoAt?: number;
+  lastReset?: { ipoAt: number; status: "SUCCEEDED" | "DECLINED"; message?: string };
   ipoAt: number | null;
   /** Stable history timestamp while IPO is preparing; becomes ipoAt at completion. */
   ipoPriceTs?: number;
