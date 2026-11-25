@@ -34,6 +34,17 @@ export function buildProjectId(eventId: string, teamCode: string) {
   return `${eventId}:${teamCode}`;
 }
 
+export function projectIdFromPath(value: unknown): string | undefined {
+  if (typeof value !== "string") return;
+  try {
+    // API Gateway can forward the URL-encoded path value to the Lambda.
+    const projectId = decodeURIComponent(value);
+    if (projectId.trim()) return projectId;
+  } catch (error) {
+    if (!(error instanceof URIError)) throw error;
+  }
+}
+
 export function accountId(eventId: string, userId: string) {
   return `${eventId}#${userId}`;
 }

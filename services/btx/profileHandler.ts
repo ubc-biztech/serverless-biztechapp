@@ -1,8 +1,8 @@
 import { Access, protect } from "../../lib/auth";
 import response from "../../lib/responseHelpers";
-import helpers from "../../lib/handlerHelpers";
 import type { APIGatewayEvent } from "../../lib/types";
 import db from "../../lib/db.js";
+import { projectIdFromPath } from "./helpers";
 import { CompanyProfileValidationError, toCompanyProfile, validateCompanyProfilePatch } from "./companyProfile";
 import {
   CompanyProfileAccessError,
@@ -12,15 +12,9 @@ import {
 } from "./companyProfileAccess";
 
 function requireProjectId(parameters: APIGatewayEvent["pathParameters"]): string {
-  const message = "Provide a company projectId in the URL.";
-  helpers.checkPayloadProps(parameters ?? {}, {
-    projectId: {
-      required: true,
-      type: "string",
-      validate: value => (value as string).trim() ? undefined : message,
-    },
-  }, () => new CompanyProfileValidationError(message));
-  return parameters!.projectId!;
+  const projectId = projectIdFromPath(parameters?.projectId);
+  if (!projectId) throw new CompanyProfileValidationError("Provide a company projectId in the URL.");
+  return projectId;
 }
 
 export const getCompanyProfile = protect(Access.USER, async (event) => {

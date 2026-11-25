@@ -7,6 +7,7 @@ import {
   configuredEvent,
   eventEndsAtMs,
   getEventConfig,
+  projectIdFromPath,
   removeSocketConnection,
   saveSocketConnection
 } from "./helpers";
@@ -181,7 +182,7 @@ export const getQuoteHandler = protect(Access.USER, async (event) => {
 
 export const postStartSeeding = protect(Access.USER, async (event) => {
   try {
-    const projectId = event.pathParameters?.projectId;
+    const projectId = projectIdFromPath(event.pathParameters?.projectId);
     if (!projectId) {
       throw new BtxError(400, "Missing projectId", {
         code: "VALIDATION_ERROR"

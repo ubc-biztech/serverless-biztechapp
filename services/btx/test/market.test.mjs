@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { loadBtx } from "./load-btx.mjs";
+import { claims } from "../../../test/helpers.mjs";
 
-const { db, tables, getQuote, applyGrant, startSeeding, initializeMarketListing, getPortfolioForUser, getTraderLeaderboard, getLeaderboard, processTrade, submitTrade } = await loadBtx(`
+const { db, tables, getQuote, applyGrant, startSeeding, initializeMarketListing, getPortfolioForUser, getTraderLeaderboard, getLeaderboard, postStartSeeding, processTrade, submitTrade } = await loadBtx(`
   export { default as db } from "../../lib/docClient.js";
   export * as tables from "./repos/tables";
   export { getQuote, applyGrant, startSeeding, initializeMarketListing } from "./market";
   export { getPortfolioForUser, getTraderLeaderboard } from "./repos/accounts";
-  export { getLeaderboard } from "./handler";
+  export { getLeaderboard, postStartSeeding } from "./handler";
   export { processTrade, submitTrade } from "./trades";
 `);
 
@@ -196,13 +197,18 @@ test("pending registrations cannot quote or receive a grant", async t => {
   assert.equal(writes.filter(write => write.TransactItems).length, 0);
 });
 
-test("seeding accepts checked-in team members and guards eligibility and phase in its transaction", async t => {
+test("seeding accepts an encoded project ID and guards eligibility and phase in its transaction", async t => {
   const { config, registration, project, rows, writes } = market(t);
   Object.assign(config, { phase: "PRE_IPO", ipoAt: null });
   Object.assign(project, { seedStartedAt: null, seedEndsAt: null });
   Object.assign(registration, { registrationStatus: "checkedIn", teamID: "listing" });
   rows[tables.TEAMS_TABLE] = { member_ids: [userId] };
-  await startSeeding(userId, projectId);
+  const response = await postStartSeeding({
+    pathParameters: { projectId: encodeURIComponent(projectId) },
+    requestContext: claims(userId),
+  });
+  assert.equal(response.statusCode, 200);
+  assert.equal(JSON.parse(response.body).data.projectId, projectId);
   const items = writes[0].TransactItems;
   registrationCheck(items);
   assert.ok(items.some(item => item.ConditionCheck?.Key.projectId === "config:" + eventId));
