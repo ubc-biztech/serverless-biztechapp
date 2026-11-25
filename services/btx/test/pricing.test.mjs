@@ -4,17 +4,20 @@ import { loadBtx } from "./load-btx.mjs";
 
 const { ipoStockPriceCents, tradeQuote } = await loadBtx('export * from "./pricing"');
 
+const eventEndsAt = 3_600_100;
+process.env.KICKSTART_EVENT_ENDS_AT = new Date(eventEndsAt).toISOString();
 const listing = {
-  currentPriceCents: 10_000, seedSharesAtIpo: 0, seedStartedAt: 100, seedEndsAt: 200
+  currentPriceCents: 10_000, seedSharesAtIpo: 0, seedStartedAt: 100, seedEndsAt: 1_800_100
 };
 
-test("seed buys open at the start time and close at the end time", () => {
+test("seed buys keep their fixed price after a legacy timer expires", () => {
   const buy = now => tradeQuote(listing, null, now, "BUY", 2);
   assert.throws(() => buy(99), { data: { code: "SEED_NOT_STARTED" } });
   assert.deepEqual(buy(100), {
     priceCents: 10_000, endPriceCents: 10_000, feeCents: 400, cashDeltaCents: -20_400
   });
-  assert.throws(() => buy(200), { data: { code: "SEED_WINDOW_ENDED" } });
+  assert.deepEqual(buy(listing.seedEndsAt + 1), buy(100));
+  assert.throws(() => buy(eventEndsAt), { data: { code: "SEED_WINDOW_ENDED" } });
 });
 
 test("participants cannot sell during the seed window", () => {

@@ -3,11 +3,8 @@
 /** Fresh event-account allocation. */
 export const KICKSTART_INITIAL_CASH_CENTS = 50_000 * 100;
 
-/** Fixed BUY price during the seed window. */
+/** Fixed BUY price during seeding. */
 export const SEED_PRICE_CENTS = 100 * 100;
-
-/** Backend-timed seed window length. */
-export const SEED_WINDOW_MS = 30 * 60 * 1000;
 
 /** How long a quote remains valid. */
 export const QUOTE_WINDOW_MS = 0.5 * 60 * 1000;

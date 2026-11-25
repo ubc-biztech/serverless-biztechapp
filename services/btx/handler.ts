@@ -57,14 +57,18 @@ export const getMarketSnapshot = protect(Access.PUBLIC, async () => {
       listProjectsForEvent(),
       getEventConfig()
     ]);
+    const eventEndsAt = eventEndsAtMs();
+    const seedClosesAt = config.phase === "IPO_PREPARING" ? serverTime : eventEndsAt;
 
     const rows = projects
       .map((p) => {
-        const status = seedStatus(p, config.ipoAt, serverTime);
+        const status = seedStatus(p, config.ipoAt, serverTime, seedClosesAt);
         const priceCents = stockPriceCents(p, config.ipoAt);
         const netShares = p.netShares;
         return {
           ...p,
+          // Older rows can still carry a per-company deadline.
+          seedEndsAt: p.seedStartedAt == null ? null : eventEndsAt,
           seedStatus: status,
           currentPriceCents: priceCents,
           asOf: serverTime,
@@ -82,7 +86,7 @@ export const getMarketSnapshot = protect(Access.PUBLIC, async () => {
         live: config.phase === "LIVE",
         ipoAt: config.ipoAt,
         lastReset: config.lastReset,
-        eventEndsAt: eventEndsAtMs(),
+        eventEndsAt,
         projects: rows
       }
     });

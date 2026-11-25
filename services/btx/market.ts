@@ -5,7 +5,7 @@ import {
   UpdateCommand
 } from "@aws-sdk/lib-dynamodb";
 import docClient from "../../lib/docClient";
-import { SEED_WINDOW_MS, QUOTE_WINDOW_MS } from "./constants";
+import { QUOTE_WINDOW_MS } from "./constants";
 import {
   BtxError,
   buildProjectId,
@@ -100,7 +100,7 @@ function seedResponse(
     projectId: project.projectId,
     eventId: project.eventId,
     seedStartedAt: project.seedStartedAt,
-    seedEndsAt: project.seedEndsAt,
+    seedEndsAt: eventEndsAtMs(),
     seedStatus: seedStatus(project, ipoAt, now),
     serverTime: now,
     ipoAt
@@ -112,16 +112,17 @@ export async function startSeeding(userId: string, projectId: string) {
   const membership = await currentTeamMember(userId, projectId);
   const config = await getEventConfig();
   requireMarketOpen(config);
-  if (project.seedStartedAt != null && project.seedEndsAt != null)
+  if (project.seedStartedAt != null)
     return seedResponse(project, config.ipoAt);
   if (project.isActive === false) throw new BtxError(409, "Inactive listing");
   const now = Date.now();
   requirePreIpo(config);
-  if (now >= eventEndsAtMs()) throw new BtxError(409, "Event ended", { code: "EVENT_ENDED" });
+  const eventEndsAt = eventEndsAtMs();
+  if (now >= eventEndsAt) throw new BtxError(409, "Event ended", { code: "EVENT_ENDED" });
   const updated = {
     ...project,
     seedStartedAt: now,
-    seedEndsAt: now + SEED_WINDOW_MS
+    seedEndsAt: eventEndsAt
   };
   await docClient.send(
     new TransactWriteCommand({
@@ -143,7 +144,7 @@ export async function startSeeding(userId: string, projectId: string) {
             UpdateExpression:
               "SET seedStartedAt = :s, seedEndsAt = :e, updatedAt = :s ADD version :one",
             ConditionExpression:
-              "(attribute_not_exists(seedStartedAt) OR seedStartedAt = :null) AND (attribute_not_exists(seedEndsAt) OR seedEndsAt = :null)",
+              "attribute_not_exists(seedStartedAt) OR seedStartedAt = :null",
             ExpressionAttributeValues: {
               ":s": now,
               ":e": updated.seedEndsAt,
@@ -260,7 +261,8 @@ export async function getQuote(params: {
     throw new BtxError(403, "Cannot trade your own company", {
       code: "FORBIDDEN"
     });
-  if (now >= eventEndsAtMs())
+  const eventEndsAt = eventEndsAtMs();
+  if (now >= eventEndsAt)
     throw new BtxError(409, "Event ended", { code: "EVENT_ENDED" });
   const quote = tradeQuote(
     project,
@@ -280,18 +282,14 @@ export async function getQuote(params: {
     ipoAt: config.ipoAt,
     previousIpoAt: config.previousIpoAt,
     serverTime: now,
-    expiresAt: Math.min(
-      now + QUOTE_WINDOW_MS,
-      eventEndsAtMs(),
-      live ? Infinity : project.seedEndsAt!
-    ),
+    expiresAt: Math.min(now + QUOTE_WINDOW_MS, eventEndsAt),
     side: params.side,
     shares: params.shares,
     totalCostCents: params.side === "BUY" ? -quote.cashDeltaCents : null,
     proceedsCents: params.side === "SELL" ? quote.cashDeltaCents : null,
     seedStartedAt: project.seedStartedAt ?? null,
-    seedEndsAt: project.seedEndsAt ?? null,
-    seedStatus: seedStatus(project, config.ipoAt, now),
+    seedEndsAt: project.seedStartedAt == null ? null : eventEndsAt,
+    seedStatus: seedStatus(project, config.ipoAt, now, eventEndsAt),
     allowedSides: live ? ["BUY", "SELL"] : ["BUY"]
   };
 }

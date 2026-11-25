@@ -7,7 +7,7 @@ import {
   SEED_TARGET_SHARES,
   TRANSACTION_FEE_BPS
 } from "./constants";
-import { BtxError } from "./helpers";
+import { BtxError, eventEndsAtMs } from "./helpers";
 import type { BtxProject, SeedStatus } from "./types";
 
 export function ipoStockPriceCents(seedShares: number) {
@@ -20,18 +20,14 @@ export function ipoStockPriceCents(seedShares: number) {
 }
 
 export function seedStatus(
-  project: Pick<BtxProject, "seedStartedAt" | "seedEndsAt">,
+  project: Pick<BtxProject, "seedStartedAt">,
   ipoAt: number | null,
-  now: number
+  now: number,
+  closesAt = eventEndsAtMs()
 ): SeedStatus {
   if (ipoAt != null) return "LIVE";
-  if (
-    project.seedStartedAt == null ||
-    project.seedEndsAt == null ||
-    now < project.seedStartedAt
-  )
-    return "NOT_STARTED";
-  return now < project.seedEndsAt ? "ACTIVE" : "ENDED";
+  if (project.seedStartedAt == null || now < project.seedStartedAt) return "NOT_STARTED";
+  return now < closesAt ? "ACTIVE" : "ENDED";
 }
 
 export function stockPriceCents(project: BtxProject, ipoAt: number | null): number {
@@ -72,7 +68,7 @@ export function tradeQuote(
         code: "SELL_NOT_AVAILABLE_BEFORE_IPO"
       });
     if (status !== "ACTIVE")
-      throw new BtxError(409, "Seed window is not active", {
+      throw new BtxError(409, "Seed round is not open", {
         code:
           status === "NOT_STARTED" ? "SEED_NOT_STARTED" : "SEED_WINDOW_ENDED"
       });

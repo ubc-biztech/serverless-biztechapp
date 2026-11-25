@@ -3,12 +3,12 @@ import { test } from "node:test";
 import { loadBtx } from "./load-btx.mjs";
 import { claims } from "../../../test/helpers.mjs";
 
-const { db, tables, getQuote, applyGrant, startSeeding, initializeMarketListing, getPortfolioForUser, getTraderLeaderboard, getLeaderboard, postStartSeeding, processTrade, submitTrade } = await loadBtx(`
+const { db, tables, getQuote, applyGrant, startSeeding, initializeMarketListing, getPortfolioForUser, getTraderLeaderboard, getLeaderboard, getMarketSnapshot, postStartSeeding, processTrade, submitTrade } = await loadBtx(`
   export { default as db } from "../../lib/docClient.js";
   export * as tables from "./repos/tables";
   export { getQuote, applyGrant, startSeeding, initializeMarketListing } from "./market";
   export { getPortfolioForUser, getTraderLeaderboard } from "./repos/accounts";
-  export { getLeaderboard, postStartSeeding } from "./handler";
+  export { getLeaderboard, getMarketSnapshot, postStartSeeding } from "./handler";
   export { processTrade, submitTrade } from "./trades";
 `);
 
@@ -16,8 +16,9 @@ const eventId = "test-event";
 const projectId = eventId + ":listing";
 const userId = "participant@example.org";
 const tradeId = "order";
+const eventEndsAt = 100_000;
 process.env.KICKSTART_EVENT_KEY = eventId;
-process.env.KICKSTART_EVENT_ENDS_AT = new Date(100_000).toISOString();
+process.env.KICKSTART_EVENT_ENDS_AT = new Date(eventEndsAt).toISOString();
 
 // Supply rows at the DynamoDB boundary and capture the writes requested by each unit.
 function market(t) {
@@ -127,14 +128,39 @@ function registrationCheck(items) {
   assert.ok(Object.values(check.ExpressionAttributeValues).includes("checkedIn"));
 }
 
-test("a seed quote expires with the listing window and reserves no cash", async t => {
-  const { config, writes } = market(t);
+test("seed quotes and snapshots ignore the old timer and honor the event cutoff", async t => {
+  const { config, project, histories, writes } = market(t);
   config.ipoAt = null;
   config.phase = "PRE_IPO";
-  const quote = await getQuote({ projectId, userId, side: "BUY", shares: 2 });
-  assert.equal(quote.expiresAt, 2000);
+  histories[tables.PROJECTS_TABLE] = [project];
+  Date.now.mock.mockImplementation(() => project.seedEndsAt + 1);
+  const buy = () => getQuote({ projectId, userId, side: "BUY", shares: 2 });
+  const quote = await buy();
+  assert.equal(quote.expiresAt, Date.now() + 30_000);
   assert.equal(quote.totalCostCents, 20_400);
+  const snapshot = JSON.parse((await getMarketSnapshot({})).body).data;
+  assert.equal(snapshot.projects[0].seedStatus, "ACTIVE");
+  assert.equal(snapshot.projects[0].seedEndsAt, eventEndsAt);
+  config.phase = "IPO_PREPARING";
+  assert.equal(JSON.parse((await getMarketSnapshot({})).body).data.projects[0].seedStatus, "ENDED");
+  config.phase = "PRE_IPO";
+  Date.now.mock.mockImplementation(() => eventEndsAt - 1);
+  assert.equal((await buy()).expiresAt, eventEndsAt);
+  Date.now.mock.mockImplementation(() => eventEndsAt);
+  await assert.rejects(buy(), { data: { code: "EVENT_ENDED" } });
   assert.deepEqual(writes, []);
+});
+
+test("a queued seed buy still fills after the legacy deadline", async t => {
+  const { config, project, trade } = market(t);
+  Object.assign(config, { phase: "PRE_IPO", ipoAt: null });
+  Object.assign(trade, { side: "BUY", acceptedIpoAt: null, limitPriceCents: 10_000 });
+  Date.now.mock.mockImplementation(() => project.seedEndsAt + 1);
+  const result = await processTrade(projectId, tradeId);
+  assert.equal(result.status, "FILLED");
+  assert.equal(result.priceCents, 10_000);
+  assert.equal(result.feeCents, 800);
+  assert.equal(result.result.shares, 14);
 });
 
 test("a participant cannot quote an order for their own team", async t => {
@@ -208,7 +234,9 @@ test("seeding accepts an encoded project ID and guards eligibility and phase in 
     requestContext: claims(userId),
   });
   assert.equal(response.statusCode, 200);
-  assert.equal(JSON.parse(response.body).data.projectId, projectId);
+  const { data } = JSON.parse(response.body);
+  assert.equal(data.projectId, projectId);
+  assert.equal(data.seedEndsAt, eventEndsAt);
   const items = writes[0].TransactItems;
   registrationCheck(items);
   assert.ok(items.some(item => item.ConditionCheck?.Key.projectId === "config:" + eventId));
