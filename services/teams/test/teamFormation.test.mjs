@@ -33,7 +33,7 @@ function fixture(operation = "create", options = {}) {
     save("biztechRegistrations", { id: other, "eventID;year": eventKey, teamID: code });
     save("bizBtxProjects", company);
   }
-  if (btxEnabled) save("bizBtxProjects", config);
+  if (btxEnabled || options.marketConfigured) save("bizBtxProjects", config);
   const f = { rows, writes, registration, team, company, config, eventRecord, projectId, codeCalls: 0 };
   const handler = load({
     randomInt: (min, max) => max === 1_000_000 ? (options.codes ?? [4218])[f.codeCalls++] : min,
@@ -49,7 +49,7 @@ function fixture(operation = "create", options = {}) {
       }
       throw Error(`Unexpected AWS command: ${command.constructor.name}`);
     } },
-  }, { ENVIRONMENT: suffix, PRODUCTPLUS_EVENT_KEY: "product+;2026" });
+  }, { ENVIRONMENT: suffix, KICKSTART_EVENT_KEY: "kickstart;2026", PRODUCTPLUS_EVENT_KEY: "product+;2026" });
   f.run = (overrides = {}, route = routes[operation]) => handler[route]({
     requestContext: claims(),
     pathParameters: { eventID: encodeURIComponent(eventID), year: String(year), user_id: encodeURIComponent(operation === "remove" ? other : user) },
@@ -146,6 +146,24 @@ for (const btxEnabled of [false, undefined]) {
     assert.ok(!f.writes[0].some(item => Object.values(item)[0].TableName.startsWith("bizBtx")));
   });
 }
+
+test("an IPO reset can reopen BTX company creation only with the event flag enabled", async () => {
+  for (const btxEnabled of [undefined, false, true]) {
+    const f = fixture("create", { btxEnabled, marketConfigured: true });
+    Object.assign(f.config, { previousIpoAt: 1000, lastReset: { ipoAt: 1000, status: "SUCCEEDED" } });
+    const result = await f.run();
+    if (btxEnabled === true) {
+      assert.equal(result.statusCode, 201);
+      assert.equal(JSON.parse(result.body).projectId, f.projectId);
+      assert.equal(f.action("Put", "bizBtxProjects").Item.projectId, f.projectId);
+      assert.match(condition(f.action("ConditionCheck", "bizBtxProjects")), /previousIpoAt = 1000/);
+    } else {
+      assert.equal(result.statusCode, 503);
+      assert.match(JSON.parse(result.body).message, /BTX team formation is not enabled/);
+      assert.equal(f.writes.length, 0);
+    }
+  }
+});
 
 test("another event/year can opt into BTX without hardcoded Kickstart identifiers", async () => {
   const f = fixture("create", { eventID: "future-event", year: 2030 });
@@ -290,8 +308,10 @@ test("team lookup returns null when the caller has no membership", async () => {
 
 for (const route of ["makeTeam", "leaveTeam"]) {
   test(`legacy ${route} cannot bypass BTX membership rules`, async () => {
-    const f = fixture();
-    assert.equal((await f.run({ body: JSON.stringify({ eventID: "kickstart", year: 2026, memberID: user, memberIDs: [user], team_name: "Northstar" }) }, route)).statusCode, 400);
-    assert.equal(f.writes.length, 0);
+    for (const btxEnabled of [true, undefined]) {
+      const f = fixture("create", { btxEnabled });
+      assert.equal((await f.run({ body: JSON.stringify({ eventID: "kickstart", year: 2026, memberID: user, memberIDs: [user], team_name: "Northstar" }) }, route)).statusCode, 400);
+      assert.equal(f.writes.length, 0);
+    }
   });
 }

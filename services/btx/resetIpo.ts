@@ -46,10 +46,10 @@ async function restoreCompany(config: BtxEventConfig, project: BtxProject, point
     buildMarketPhaseCheck(config).build(),
     { Update: {
       TableName: PROJECTS_TABLE, Key: { projectId },
-      UpdateExpression: "SET currentPriceCents = :price, lastPriceTs = :ts, updatedAt = :now REMOVE seedSharesAtIpo, lastScheduledTickTs ADD version :one",
+      UpdateExpression: "SET currentPriceCents = :price, lastPriceTs = :ts, updatedAt = :now, seedSharesAtIpo = :null REMOVE lastScheduledTickTs ADD version :one",
       ConditionExpression: "lastPriceTs = :last",
       ExpressionAttributeValues: { ":price": seed.priceCents, ":ts": seed.ts, ":now": Date.now(),
-        ":last": project.lastPriceTs, ":one": 1 }
+        ":last": project.lastPriceTs, ":null": null, ":one": 1 }
     } },
     ...deletes
   ] }));

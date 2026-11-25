@@ -78,7 +78,11 @@ function fixture(t, count = 2) {
               if (state.failCompany === row.projectId) throw new Error("simulated transient failure");
               const values = item.Update.ExpressionAttributeValues;
               assert.equal(values[":last"], row.lastPriceTs);
-              Object.assign(row, { lastPriceTs: values[":ts"], currentPriceCents: values[":price"], seedSharesAtIpo: null });
+              assert.match(item.Update.UpdateExpression, /seedSharesAtIpo = :null\b/);
+              assert.equal(values[":null"], null);
+              Object.assign(row, {
+                lastPriceTs: values[":ts"], currentPriceCents: values[":price"], seedSharesAtIpo: values[":null"]
+              });
             }
           }
           return {};

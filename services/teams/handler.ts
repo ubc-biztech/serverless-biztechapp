@@ -51,6 +51,7 @@ import {
 } from "./types";
 import { EventTeamConflictError, ProductPlusTeamError } from "./helpers";
 import type { EventRecord } from "../events/types";
+import { configuredEvent } from "../btx/helpers";
 import { TeamFormationError } from "../btx/teamFormation";
 
 const errorMessage = (error: unknown): string =>
@@ -65,6 +66,21 @@ const teamErrorResponse = (error: unknown): APIGatewayResponse | null => {
   }
   return null;
 };
+
+const getTeamEvent = (eventID: string, year: number): Promise<Pick<EventRecord, "btxEnabled"> | null> =>
+  db.getOneCustom({
+    TableName: EVENTS_TABLE + (process.env.ENVIRONMENT || ""),
+    Key: { id: eventID, year },
+    ProjectionExpression: "id, btxEnabled",
+    ConsistentRead: true,
+  });
+
+function btxEnabledForTeamWrite(eventKey: string, btxEnabled: boolean | undefined): boolean {
+  if (eventKey === configuredEvent() && btxEnabled !== true) {
+    throw new TeamFormationError(503, "BTX team formation is not enabled for this event. Please contact an organizer.");
+  }
+  return btxEnabled === true;
+}
 
 /*
   Team Table Schema from DynamoDB:
@@ -157,8 +173,8 @@ export const leaveTeam = protect(Access.USER, async (event) => {
     // Non-admins can only act on themselves; admins may target the body memberID.
     const memberID = event.auth?.isAdmin ? data.memberID : event.auth!.email;
 
-    const eventRecord = await db.getOne(data.eventID, EVENTS_TABLE, { year: data.year }) as EventRecord | null;
-    if (eventRecord?.btxEnabled === true) {
+    if (`${data.eventID};${data.year}` === configuredEvent() ||
+        (await getTeamEvent(data.eventID, data.year))?.btxEnabled === true) {
       return helpers.createResponse(400, {
         message: "Use the event-scoped team leave endpoint for BTX events",
       });
@@ -208,8 +224,8 @@ export const makeTeam = protect(Access.USER, async (event) => {
     // full body memberIDs list.
     const memberIDs = event.auth?.isAdmin ? data.memberIDs : [event.auth!.email];
 
-    const eventRecord = await db.getOne(data.eventID, EVENTS_TABLE, { year: data.year }) as EventRecord | null;
-    if (eventRecord?.btxEnabled === true) {
+    if (`${data.eventID};${data.year}` === configuredEvent() ||
+        (await getTeamEvent(data.eventID, data.year))?.btxEnabled === true) {
       return helpers.createResponse(400, {
         message: "Use the event-scoped team creation endpoint for BTX events",
       });
@@ -274,7 +290,7 @@ export const getTeamFromUserID = eventTeamRoute(async (event) => {
       return helpers.createResponse(403, { message: "You can only look up your own team" });
     }
 
-    const eventRecord = await db.getOne(eventID, EVENTS_TABLE, { year }) as EventRecord | null;
+    const eventRecord = await getTeamEvent(eventID, year);
     if (!eventRecord) {
       return helpers.createResponse(404, { message: "Event not found" });
     }
@@ -335,12 +351,13 @@ export const removeTeamMember = eventTeamRoute(async (event) => {
       return helpers.createResponse(400, { message: "Use the leave endpoint to remove yourself" });
     }
 
-    const eventRecord = await db.getOne(eventID, EVENTS_TABLE, { year }) as EventRecord | null;
+    const eventRecord = await getTeamEvent(eventID, year);
     if (!eventRecord) {
       return helpers.createResponse(404, { message: "Event not found" });
     }
 
     const eventKey = `${eventID};${year}`;
+    const btxEnabled = btxEnabledForTeamWrite(eventKey, eventRecord.btxEnabled);
 
     const [callerTeamCode, targetTeamCode] = await Promise.all([
       resolveTeamMembership(callerID, eventKey),
@@ -355,7 +372,7 @@ export const removeTeamMember = eventTeamRoute(async (event) => {
       return helpers.createResponse(404, { message: "User is not on your team" });
     }
 
-    await removeMemberAsLeader(team, callerID, userIDParam, eventRecord.btxEnabled === true);
+    await removeMemberAsLeader(team, callerID, userIDParam, btxEnabled);
     return helpers.createResponse(204);
   } catch (error) {
     const response = teamErrorResponse(error);
@@ -392,20 +409,21 @@ export const createEventTeam = eventTeamRoute(async (event) => {
       return helpers.createResponse(400, { message: "team_name is required" });
     }
 
-    const eventRecord = await db.getOne(eventID, EVENTS_TABLE, { year }) as EventRecord | null;
+    const eventRecord = await getTeamEvent(eventID, year);
     if (!eventRecord) {
       return helpers.createResponse(404, { message: "Event not found" });
     }
 
+    const eventKey = `${eventID};${year}`;
+    const btxEnabled = btxEnabledForTeamWrite(eventKey, eventRecord.btxEnabled);
     // The team name becomes the initial BTX company name.
-    if (eventRecord.btxEnabled === true && teamName.length > 100) {
+    if (btxEnabled && teamName.length > 100) {
       return helpers.createResponse(400, { message: "Company name must be at most 100 characters" });
     }
 
-    const eventKey = `${eventID};${year}`;
     const userID = event.auth!.email;
 
-    const ineligible = await requireTeamEligibility(userID, eventKey, eventRecord.btxEnabled === true);
+    const ineligible = await requireTeamEligibility(userID, eventKey, btxEnabled);
     if (ineligible) return ineligible;
 
     const team: EventTeamRecord = {
@@ -416,9 +434,9 @@ export const createEventTeam = eventTeamRoute(async (event) => {
       member_ids: new Set([userID])
     };
 
-    const createdTeam = await createTeamWithLeader(team, eventRecord.btxEnabled === true);
+    const createdTeam = await createTeamWithLeader(team, btxEnabled);
 
-    return helpers.createResponse(201, await toTeamResponse(createdTeam, eventRecord.btxEnabled === true));
+    return helpers.createResponse(201, await toTeamResponse(createdTeam, btxEnabled));
   } catch (error) {
     const response = teamErrorResponse(error);
     if (response) return response;
@@ -457,16 +475,17 @@ export const joinEventTeam = eventTeamRoute(async (event) => {
       return helpers.createResponse(400, { message: "team_code must be 6 digits" });
     }
 
-    const eventRecord = await db.getOne(eventID, EVENTS_TABLE, { year }) as EventRecord | null;
+    const eventRecord = await getTeamEvent(eventID, year);
     if (!eventRecord) {
       return helpers.createResponse(404, { message: "Event not found" });
     }
 
     const eventKey = `${eventID};${year}`;
+    const btxEnabled = btxEnabledForTeamWrite(eventKey, eventRecord.btxEnabled);
     const userID = event.auth!.email;
 
     const [ineligible, team] = await Promise.all([
-      requireTeamEligibility(userID, eventKey, eventRecord.btxEnabled === true),
+      requireTeamEligibility(userID, eventKey, btxEnabled),
       getEventTeam(teamCode, eventKey)
     ]);
 
@@ -476,7 +495,7 @@ export const joinEventTeam = eventTeamRoute(async (event) => {
       return helpers.createResponse(404, { message: "Team not found" });
     }
 
-    await addTeamMember(team, userID, eventRecord.btxEnabled === true);
+    await addTeamMember(team, userID, btxEnabled);
 
     // Built locally, not re-read: getOne is eventually consistent, so a read this
     // soon after the write can come back without the caller in it
@@ -485,7 +504,7 @@ export const joinEventTeam = eventTeamRoute(async (event) => {
       await toTeamResponse({
         ...team,
         member_ids: new Set([...team.member_ids, userID])
-      }, eventRecord.btxEnabled === true)
+      }, btxEnabled)
     );
   } catch (error) {
     const response = teamErrorResponse(error);
@@ -519,12 +538,13 @@ export const leaveEventTeam = eventTeamRoute(async (event) => {
       return helpers.createResponse(400, { message: "Year path parameter must be a number" });
     }
 
-    const eventRecord = await db.getOne(eventID, EVENTS_TABLE, { year }) as EventRecord | null;
+    const eventRecord = await getTeamEvent(eventID, year);
     if (!eventRecord) {
       return helpers.createResponse(404, { message: "Event not found" });
     }
 
     const eventKey = `${eventID};${year}`;
+    const btxEnabled = btxEnabledForTeamWrite(eventKey, eventRecord.btxEnabled);
     const userID = event.auth!.email;
 
     const teamCode = await resolveTeamMembership(userID, eventKey);
@@ -538,7 +558,7 @@ export const leaveEventTeam = eventTeamRoute(async (event) => {
 
     const remaining = [...team.member_ids].filter((id) => id !== userID);
 
-    await removeSelfFromTeam(team, userID, remaining, eventRecord.btxEnabled === true);
+    await removeSelfFromTeam(team, userID, remaining, btxEnabled);
 
     // The last member out deleted the team; its Product Plus submission and files go too
     if (remaining.length === 0 && eventKey === process.env.PRODUCTPLUS_EVENT_KEY) {

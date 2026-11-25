@@ -22,6 +22,7 @@ provider:
   environment:
     ENVIRONMENT: ${file(../../config.${self:provider.stage}.json):ENVIRONMENT}
     NODE_ENV: ${env:NODE_ENV}
+    KICKSTART_EVENT_KEY: ${file(../../config.${self:provider.stage}.json):KICKSTART_EVENT_KEY}
     PRODUCTPLUS_EVENT_KEY: ${file(../../config.${self:provider.stage}.json):PRODUCTPLUS_EVENT_KEY}
     PRODUCTPLUS_SUBMISSIONS_TABLE: biztechPPSubmissions${self:provider.environment.ENVIRONMENT}
     PRODUCTPLUS_PRD_BUCKET: ${file(../../config.${self:provider.stage}.json):PRODUCTPLUS_PRD_BUCKET}

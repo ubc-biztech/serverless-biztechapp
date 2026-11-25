@@ -58,26 +58,32 @@ function eventEnd(config: CompanyProfileContext["config"]): number | null {
   return Number.isFinite(end) ? end : null;
 }
 
-function hasCompanyMarketState(company: CompanyProfileContext["company"]): boolean {
-  return company.seedStartedAt !== undefined && company.seedSharesAtIpo !== undefined;
+function hasCompanyMarketState({ company, config }: CompanyProfileContext): boolean {
+  if (company.seedStartedAt === undefined) return false;
+  if (company.seedSharesAtIpo !== undefined) return true;
+
+  // Earlier resets removed the IPO snapshot field when they reopened the market.
+  const reset = config?.lastReset;
+  return config?.phase === "PRE_IPO" && config.ipoAt === null && reset?.status === "SUCCEEDED" &&
+    Number.isSafeInteger(reset.ipoAt) && reset.ipoAt === config.previousIpoAt;
 }
 
 function nameIsLocked({ company, config }: CompanyProfileContext): boolean {
-  return company.seedStartedAt !== null || company.seedSharesAtIpo !== null ||
+  return company.seedStartedAt !== null || company.seedSharesAtIpo != null ||
     config?.phase !== "PRE_IPO" || config.ipoAt !== null;
 }
 
 function requiresCompleteProfile(context: CompanyProfileContext): boolean {
   const { company } = context;
   // Unfinished companies may save partial progress after global IPO until seeding/IPO initialization.
-  return company.seedStartedAt !== null || company.seedSharesAtIpo !== null ||
+  return company.seedStartedAt !== null || company.seedSharesAtIpo != null ||
     (nameIsLocked(context) && isCompanyProfileComplete(company));
 }
 
 /** Missing configuration or market state disables editing; profiles remain viewable. */
 export function getCompanyProfilePermissions(context: CompanyProfileContext, now = Date.now()) {
   const end = eventEnd(context.config);
-  const canEdit = context.isMember && hasCompanyMarketState(context.company) && end !== null && now < end;
+  const canEdit = context.isMember && hasCompanyMarketState(context) && end !== null && now < end;
   return {
     canEdit,
     canEditName: canEdit && !nameIsLocked(context),
@@ -93,7 +99,7 @@ export function buildCompanyProfileSave(context: CompanyProfileContext, patch: C
   if (!context.isMember) {
     throw new CompanyProfileAccessError(403, "Current team membership is required.");
   }
-  if (!hasCompanyMarketState(company)) {
+  if (!hasCompanyMarketState(context)) {
     throw new CompanyProfileAccessError(503, "Company state is unavailable. Please contact an organizer.");
   }
   const end = eventEnd(config);
@@ -111,12 +117,22 @@ export function buildCompanyProfileSave(context: CompanyProfileContext, patch: C
     throw new CompanyProfileAccessError(409, "Company name, blurb, and a valid YouTube link must remain complete.");
   }
 
-  const update = db.build.update(BTX_PROJECTS_TABLE, { projectId: company.projectId }, patch)
+  const configCheck = db.build.check(BTX_PROJECTS_TABLE, { projectId: configProjectId(company.eventId) })
+    .if("phase").equals(config.phase)
+    .if("ipoAt").equals(config.ipoAt);
+  const restoreMissingSnapshot = company.seedSharesAtIpo === undefined;
+  const update = db.build.update(BTX_PROJECTS_TABLE, { projectId: company.projectId },
+    restoreMissingSnapshot ? { ...patch, seedSharesAtIpo: null } : patch)
     .if("projectId").exists()
     .if("eventId").equals(company.eventId)
     .if("teamId").equals(company.teamId)
-    .if("seedStartedAt").equals(company.seedStartedAt)
-    .if("seedSharesAtIpo").equals(company.seedSharesAtIpo);
+    .if("seedStartedAt").equals(company.seedStartedAt);
+  if (restoreMissingSnapshot) {
+    configCheck.if("previousIpoAt").equals(config.previousIpoAt);
+    update.if("seedSharesAtIpo").notExists();
+  } else {
+    update.if("seedSharesAtIpo").equals(company.seedSharesAtIpo);
+  }
   // Compare the profile we validated to prevent concurrent edits from invalidating the merged result.
   // Market version is deliberately independent; a price change alone need not reject this edit.
   for (const field of ["companyName", "blurb", "youtubeURL", "twitterURL"] as const) {
@@ -128,9 +144,7 @@ export function buildCompanyProfileSave(context: CompanyProfileContext, patch: C
       .if("teamID").equals(company.teamId),
     db.build.check(TEAMS_TABLE, { id: company.teamId, "eventID;year": company.eventId })
       .if("member_ids").contains(userID),
-    db.build.check(BTX_PROJECTS_TABLE, { projectId: configProjectId(company.eventId) })
-      .if("phase").equals(config.phase)
-      .if("ipoAt").equals(config.ipoAt),
+    configCheck,
     update,
   ];
 }
