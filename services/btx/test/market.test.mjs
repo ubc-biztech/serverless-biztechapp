@@ -141,10 +141,11 @@ test("snapshots clear the old settled-trade decline so admins can retry the rese
   assert.deepEqual(await readReset(), config.lastReset);
 });
 
-test("seed quotes and snapshots ignore the old timer and honor the event cutoff", async t => {
+test("seed quotes and snapshots ignore company activation and use the event cutoff", async t => {
   const { config, project, histories, writes } = market(t);
   config.ipoAt = null;
   config.phase = "PRE_IPO";
+  project.seedStartedAt = null;
   histories[tables.PROJECTS_TABLE] = [project];
   Date.now.mock.mockImplementation(() => project.seedEndsAt + 1);
   const buy = () => getQuote({ projectId, userId, side: "BUY", shares: 2 });
@@ -164,16 +165,22 @@ test("seed quotes and snapshots ignore the old timer and honor the event cutoff"
   assert.deepEqual(writes, []);
 });
 
-test("a queued seed buy still fills after the legacy deadline", async t => {
-  const { config, project, trade } = market(t);
+test("a queued seed buy fills for an unstarted company after its legacy deadline", async t => {
+  const { config, project, trade, writes } = market(t);
   Object.assign(config, { phase: "PRE_IPO", ipoAt: null });
   Object.assign(trade, { side: "BUY", acceptedIpoAt: null, limitPriceCents: 10_000 });
+  project.seedStartedAt = null;
   Date.now.mock.mockImplementation(() => project.seedEndsAt + 1);
   const result = await processTrade(projectId, tradeId);
   assert.equal(result.status, "FILLED");
   assert.equal(result.priceCents, 10_000);
   assert.equal(result.feeCents, 800);
   assert.equal(result.result.shares, 14);
+  const items = writes.find(write => write.TransactItems).TransactItems;
+  const companyWrite = items.find(item => item.Update?.TableName === tables.PROJECTS_TABLE).Update;
+  assert.match(companyWrite.ConditionExpression, /attribute_exists\(projectId\)/);
+  const investorCheck = items.find(item => item.ConditionCheck?.Key.id === userId).ConditionCheck;
+  assert.ok(Object.values(investorCheck.ExpressionAttributeNames).includes("teamID"));
 });
 
 test("a participant cannot quote an order for their own team", async t => {
@@ -236,7 +243,7 @@ test("pending registrations cannot quote or receive a grant", async t => {
   assert.equal(writes.filter(write => write.TransactItems).length, 0);
 });
 
-test("seeding accepts an encoded project ID and guards eligibility and phase in its transaction", async t => {
+test("the legacy seed start route accepts encoded IDs and reports funding without writing", async t => {
   const { config, registration, project, rows, writes } = market(t);
   Object.assign(config, { phase: "PRE_IPO", ipoAt: null });
   Object.assign(project, { seedStartedAt: null, seedEndsAt: null });
@@ -249,11 +256,10 @@ test("seeding accepts an encoded project ID and guards eligibility and phase in 
   assert.equal(response.statusCode, 200);
   const { data } = JSON.parse(response.body);
   assert.equal(data.projectId, projectId);
+  assert.equal(data.seedStatus, "ACTIVE");
+  assert.equal(data.seedStartedAt, null);
   assert.equal(data.seedEndsAt, eventEndsAt);
-  const items = writes[0].TransactItems;
-  registrationCheck(items);
-  assert.ok(items.some(item => item.ConditionCheck?.Key.projectId === "config:" + eventId));
-  assert.match(items.find(item => item.Update).Update.UpdateExpression, /ADD version/);
+  assert.deepEqual(writes, []);
 });
 
 test("IPO preparation blocks new quotes, seed starts and queued fills", async t => {

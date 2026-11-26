@@ -20,13 +20,11 @@ export function ipoStockPriceCents(seedShares: number) {
 }
 
 export function seedStatus(
-  project: Pick<BtxProject, "seedStartedAt">,
   ipoAt: number | null,
   now: number,
   closesAt = eventEndsAtMs()
 ): SeedStatus {
   if (ipoAt != null) return "LIVE";
-  if (project.seedStartedAt == null || now < project.seedStartedAt) return "NOT_STARTED";
   return now < closesAt ? "ACTIVE" : "ENDED";
 }
 
@@ -62,15 +60,13 @@ export function tradeQuote(
 ) {
   validateShares(shares);
   if (ipoAt == null) {
-    const status = seedStatus(project, ipoAt, now);
     if (side === "SELL")
       throw new BtxError(409, "Selling blocked before IPO", {
         code: "SELL_NOT_AVAILABLE_BEFORE_IPO"
       });
-    if (status !== "ACTIVE")
+    if (seedStatus(ipoAt, now) !== "ACTIVE")
       throw new BtxError(409, "Seed round is not open", {
-        code:
-          status === "NOT_STARTED" ? "SEED_NOT_STARTED" : "SEED_WINDOW_ENDED"
+        code: "SEED_WINDOW_ENDED"
       });
     return {
       priceCents: SEED_PRICE_CENTS,

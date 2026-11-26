@@ -183,6 +183,7 @@ export async function processTrade(projectId: string, tradeId: string) {
         code: "STALE_QUOTE"
       });
     }
+    if (project.isActive === false) throw new BtxError(409, "Inactive listing");
 
     const holding = holdingResponse.Item as BtxHolding | undefined;
     let ownedShares = 0;
@@ -266,11 +267,14 @@ export async function processTrade(projectId: string, tradeId: string) {
       }
     };
 
+    const eligibility = buildEligibilityCheck(trade.userId);
+    if (registration.teamID === undefined) eligibility.if("teamID").notExists();
+    else eligibility.if("teamID").equals(registration.teamID);
     await docClient.send(
       new TransactWriteCommand({
         TransactItems: [
           buildMarketPhaseCheck(config).build(),
-          buildEligibilityCheck(trade.userId).build(),
+          eligibility.build(),
           {
             Update: {
               TableName: EVENT_ACCOUNTS_TABLE,
@@ -302,12 +306,14 @@ export async function processTrade(projectId: string, tradeId: string) {
               Key: { projectId },
               UpdateExpression:
                 "SET netShares = :shares, currentPriceCents = :price, lastPriceTs = :ts, updatedAt = :now ADD version :one",
+              ConditionExpression: "attribute_exists(projectId) AND (attribute_not_exists(isActive) OR isActive <> :inactive)",
               ExpressionAttributeValues: {
                 ":shares": netShares,
                 ":price": quote.endPriceCents,
                 ":ts": priceTs,
                 ":now": now,
-                ":one": 1
+                ":one": 1,
+                ":inactive": false
               }
             }
           },

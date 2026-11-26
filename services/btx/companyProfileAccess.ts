@@ -1,5 +1,5 @@
 import { BTX_PROJECTS_TABLE, TEAMS_TABLE, USER_REGISTRATIONS_TABLE } from "../../constants/tables";
-import db from "../../lib/db.js";
+import db, { field } from "../../lib/db.js";
 import type { WriteBuilder } from "../../lib/db/build/WriteBuilder.js";
 import { isCompanyProfileComplete, toCompanyProfile } from "./companyProfile";
 import type { CompanyProfile, CompanyProfilePatch } from "./companyProfile";
@@ -69,7 +69,7 @@ function hasCompanyMarketState({ company, config }: CompanyProfileContext): bool
 }
 
 function nameIsLocked({ company, config }: CompanyProfileContext): boolean {
-  return company.seedStartedAt !== null || company.seedSharesAtIpo != null ||
+  return company.seedStartedAt !== null || company.netShares > 0 || company.seedSharesAtIpo != null ||
     config?.phase !== "PRE_IPO" || config.ipoAt !== null;
 }
 
@@ -109,8 +109,9 @@ export function buildCompanyProfileSave(context: CompanyProfileContext, patch: C
   if (now >= end) {
     throw new CompanyProfileAccessError(409, "Company profile editing has closed for this event.");
   }
-  if (patch.companyName !== undefined && patch.companyName !== company.companyName && nameIsLocked(context)) {
-    throw new CompanyProfileAccessError(409, "The company name is locked once seeding or IPO begins.");
+  const nameLocked = nameIsLocked(context);
+  if (patch.companyName !== undefined && patch.companyName !== company.companyName && nameLocked) {
+    throw new CompanyProfileAccessError(409, "The company name is locked once it receives funding or IPO begins.");
   }
   const profile = { ...toCompanyProfile(company), ...patch };
   if (requiresCompleteProfile(context) && !isCompanyProfileComplete(profile)) {
@@ -127,6 +128,9 @@ export function buildCompanyProfileSave(context: CompanyProfileContext, patch: C
     .if("eventId").equals(company.eventId)
     .if("teamId").equals(company.teamId)
     .if("seedStartedAt").equals(company.seedStartedAt);
+  if (!nameLocked) {
+    update.anyOf(field("netShares").notExists(), field("netShares").equals(0));
+  }
   if (restoreMissingSnapshot) {
     configCheck.if("previousIpoAt").equals(config.previousIpoAt);
     update.if("seedSharesAtIpo").notExists();

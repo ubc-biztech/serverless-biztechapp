@@ -97,10 +97,9 @@ export async function resetIpo(ipoAt: number) {
     }
   }
   // Restore the price series while carrying netShares and the trade ledger into seed.
-  for (let i = 0; i < companies.length; i += 8) {
-    await Promise.all(companies.slice(i, i + 8)
-      .filter(({ project }) => project.seedSharesAtIpo != null)
-      .map(({ project, points }) => restoreCompany(config, project, points)));
+  // Restore transactions all check the same market row, so run them in sequence.
+  for (const { project, points } of companies) {
+    if (project.seedSharesAtIpo != null) await restoreCompany(config, project, points);
   }
   await changePhase(config, "PRE_IPO", { ipoAt, status: "SUCCEEDED" });
   await publishMarketUpdate({ eventId: configuredEvent(), phase: "SEED", ipoAt: null, serverTime: Date.now() });

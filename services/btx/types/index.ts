@@ -12,7 +12,7 @@ export type MarketCommand =
   | { type: "RESET_IPO"; ipoAt: number }
   | { type: "IPO"; previousIpoAt?: number };
 
-export type SeedStatus = "NOT_STARTED" | "ACTIVE" | "ENDED" | "LIVE";
+export type SeedStatus = "ACTIVE" | "ENDED" | "LIVE";
 
 /** HLD config row — omit eventId so it stays off byEvent. */
 export interface BtxEventConfig {
@@ -37,6 +37,7 @@ export interface BtxProject {
   // Listing creation sets the seed price before seeding opens. IPO replaces it.
   currentPriceCents: number;
   netShares: number;
+  /** Historical team activation, retained for existing membership locks. */
   seedStartedAt?: number | null;
   seedEndsAt?: number | null;
   seedSharesAtIpo?: number | null;
@@ -109,7 +110,6 @@ export interface LeaderboardEntry {
 
 export type BtxErrorCode =
   | "FORBIDDEN"
-  | "SEED_NOT_STARTED"
   | "SEED_WINDOW_ENDED"
   | "SELL_NOT_AVAILABLE_BEFORE_IPO"
   | "INSUFFICIENT_FUNDS"

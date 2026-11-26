@@ -23,11 +23,9 @@ export async function eligibleRegistration(userId: string) {
   return Item;
 }
 
-export function buildEligibilityCheck(userId: string, teamCode?: string) {
-  const check = db.build.check(USER_REGISTRATIONS_TABLE, { id: userId, "eventID;year": configuredEvent() })
+export function buildEligibilityCheck(userId: string) {
+  return db.build.check(USER_REGISTRATIONS_TABLE, { id: userId, "eventID;year": configuredEvent() })
     .anyOf(...BTX_REGISTRATION_STATUSES.map(status => field("registrationStatus").equals(status)));
-  if (teamCode !== undefined) check.if("teamID").equals(teamCode);
-  return check;
 }
 
 export async function currentTeamMember(userId: string, projectId: string) {

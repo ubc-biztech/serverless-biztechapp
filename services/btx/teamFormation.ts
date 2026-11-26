@@ -1,5 +1,5 @@
 import { BTX_PRICES_TABLE, BTX_PROJECTS_TABLE } from "../../constants/tables";
-import db from "../../lib/db.js";
+import db, { field } from "../../lib/db.js";
 import type { WriteBuilder } from "../../lib/db/build/WriteBuilder.js";
 import { BtxError, buildMarketPhaseCheck, buildProjectId, getEventConfig } from "./helpers";
 import type { BtxEventConfig } from "./types";
@@ -28,7 +28,7 @@ export async function getUnusedCompanyDeletes(eventId: string, teamId: string): 
   ];
 }
 
-/** Membership changes are open only before IPO, and for a team only until it starts seeding. */
+/** Membership changes close when a company receives funding or the IPO begins. */
 export async function getTeamFormationChecks(eventId: string, teamId?: string): Promise<WriteBuilder[]> {
   let config: BtxEventConfig;
   try {
@@ -47,9 +47,11 @@ export async function getTeamFormationChecks(eventId: string, teamId?: string): 
   const projectId = buildProjectId(eventId, teamId);
   const company = await getCompany(projectId);
   if (!company) throw new TeamFormationError(503, "This team's company is unavailable. Please contact an organizer.");
-  if (company.seedStartedAt !== null) {
-    throw new TeamFormationError(409, "Team membership is locked once a company starts seeding.");
+  if (company.seedStartedAt !== null || company.netShares > 0) {
+    throw new TeamFormationError(409, "Team membership is locked for this company.");
   }
-  checks.push(db.build.check(BTX_PROJECTS_TABLE, { projectId }).if("seedStartedAt").equals(null));
+  checks.push(db.build.check(BTX_PROJECTS_TABLE, { projectId })
+    .if("seedStartedAt").equals(null)
+    .anyOf(field("netShares").notExists(), field("netShares").equals(0)));
   return checks;
 }
