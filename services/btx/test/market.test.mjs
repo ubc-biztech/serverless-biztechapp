@@ -128,6 +128,19 @@ function registrationCheck(items) {
   assert.ok(Object.values(check.ExpressionAttributeValues).includes("checkedIn"));
 }
 
+test("snapshots clear the old settled-trade decline so admins can retry the reset", async t => {
+  const { histories, project, config } = market(t);
+  histories[tables.PROJECTS_TABLE] = [project];
+  config.lastReset = {
+    ipoAt: config.ipoAt, status: "DECLINED", message: "Reset declined because a live trade settled."
+  };
+  const readReset = async () => JSON.parse((await getMarketSnapshot({})).body).data.lastReset;
+  assert.equal(await readReset(), undefined);
+
+  config.lastReset.message = "Reset declined because the price history needs reconciliation.";
+  assert.deepEqual(await readReset(), config.lastReset);
+});
+
 test("seed quotes and snapshots ignore the old timer and honor the event cutoff", async t => {
   const { config, project, histories, writes } = market(t);
   config.ipoAt = null;

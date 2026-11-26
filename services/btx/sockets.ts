@@ -18,7 +18,8 @@ export async function publishTrade(trade: BtxTrade) {
       projectId: trade.projectId,
       eventId: trade.eventId,
       priceCents: trade.endPriceCents,
-      asOf: trade.priceTs
+      asOf: trade.priceTs,
+      ipoAt: trade.acceptedIpoAt
     });
   }
 }

@@ -71,7 +71,6 @@ async function changePhase(config: BtxEventConfig, phase: BtxEventConfig["phase"
 
 export async function resetIpo(ipoAt: number) {
   let config = await getEventConfig();
-  if (config.lastReset?.ipoAt === ipoAt) return;
   if (config.ipoAt !== ipoAt || (config.phase !== "LIVE" && config.phase !== "IPO_RESETTING")) {
     return; // An earlier FIFO command already superseded this IPO.
   }
@@ -87,15 +86,17 @@ export async function resetIpo(ipoAt: number) {
     companies.push(...await Promise.all(projects.slice(i, i + 8).map(p => inspectCompany(p, ipoAt))));
   }
   for (const { points } of companies) {
-    const conflict = points.find(p => p.source !== (p.ts === ipoAt ? "IPO" : "NOISE"));
+    const conflict = points.some(({ ts, source }) =>
+      ts === ipoAt ? source !== "IPO" : source !== "NOISE" && source !== "TRADE"
+    );
     if (conflict) {
-      const message = conflict.source === "TRADE"
-        ? "Reset declined because a live trade settled."
-        : "Reset declined because the price history needs reconciliation.";
-      await changePhase(config, "LIVE", { ipoAt, status: "DECLINED", message });
+      await changePhase(config, "LIVE", {
+        ipoAt, status: "DECLINED", message: "Reset declined because the price history needs reconciliation."
+      });
       return;
     }
   }
+  // Restore the price series while carrying netShares and the trade ledger into seed.
   for (let i = 0; i < companies.length; i += 8) {
     await Promise.all(companies.slice(i, i + 8)
       .filter(({ project }) => project.seedSharesAtIpo != null)

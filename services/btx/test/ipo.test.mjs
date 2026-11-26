@@ -71,9 +71,11 @@ function fixture(t, count = 2) {
           assert.ok(Object.values(check.ConditionCheck.ExpressionAttributeValues).includes("IPO_RESETTING"));
           for (const item of input.TransactItems.slice(1)) {
             if (item.Delete) {
+              assert.equal(item.Delete.TableName, tables.PRICES_TABLE);
               const { projectId, ts } = item.Delete.Key;
               state.history.delete(projectId + ":" + ts);
             } else {
+              assert.equal(item.Update.TableName, tables.PROJECTS_TABLE);
               const row = projects.find(p => p.projectId === item.Update.Key.projectId);
               if (state.failCompany === row.projectId) throw new Error("simulated transient failure");
               const values = item.Update.ExpressionAttributeValues;
@@ -191,15 +193,39 @@ test("reset removes IPO and noise, ignores stale launches, and permits a later m
   assert.deepEqual(f.config.lastReset, { ipoAt: original, status: "SUCCEEDED" });
 });
 
-test("a settled live trade on the last listing leaves every company live", async t => {
+test("retrying a settled-trade decline keeps held shares and carries them into the next IPO", async t => {
+  const f = fixture(t);
+  await launchIpo();
+  const ipoAt = f.config.ipoAt;
+  const project = f.projects.at(-1);
+  Object.assign(project, { netShares: 12, currentPriceCents: 12500, lastPriceTs: ipoAt + 1 });
+  const point = { projectId: project.projectId, ts: project.lastPriceTs, source: "TRADE" };
+  f.history.set(project.projectId + ":" + point.ts, point);
+  f.config.lastReset = { ipoAt, status: "DECLINED", message: "Reset declined because a live trade settled." };
+
+  await resetIpo(ipoAt);
+  assert.equal(f.config.phase, "PRE_IPO");
+  assert.deepEqual(f.config.lastReset, { ipoAt, status: "SUCCEEDED" });
+  assert.equal(project.netShares, 12);
+  assert.equal(project.currentPriceCents, 10000);
+  assert.equal(project.seedSharesAtIpo, null);
+  assert.equal(f.history.size, 0);
+
+  await launchIpo(ipoAt);
+  assert.equal(f.config.phase, "LIVE");
+  assert.equal(project.seedSharesAtIpo, 12);
+  assert.ok(project.currentPriceCents > 10000);
+});
+
+test("unexpected post-IPO history leaves every company live", async t => {
   const f = fixture(t);
   await launchIpo();
   const project = f.projects.at(-1);
-  const point = { projectId: project.projectId, ts: ++project.lastPriceTs, source: "TRADE" };
+  const point = { projectId: project.projectId, ts: ++project.lastPriceTs, source: "INITIAL" };
   f.history.set(project.projectId + ":" + point.ts, point);
   await resetIpo(f.config.ipoAt);
   assert.equal(f.config.lastReset.status, "DECLINED");
-  assert.match(f.config.lastReset.message, /trade settled/);
+  assert.match(f.config.lastReset.message, /price history needs reconciliation/);
   assert.equal(f.config.phase, "LIVE");
   assert.equal(f.history.size, 3);
   assert.ok(f.projects.every(p => p.seedSharesAtIpo === p.netShares));

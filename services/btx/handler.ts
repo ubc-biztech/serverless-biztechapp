@@ -57,6 +57,10 @@ export const getMarketSnapshot = protect(Access.PUBLIC, async () => {
       listProjectsForEvent(),
       getEventConfig()
     ]);
+    const { lastReset } = config;
+    // An IPO declined by the former settled-trade restriction can now be retried.
+    const retryableReset = lastReset?.status === "DECLINED" &&
+      lastReset.message === "Reset declined because a live trade settled.";
     const eventEndsAt = eventEndsAtMs();
     const seedClosesAt = config.phase === "IPO_PREPARING" ? serverTime : eventEndsAt;
 
@@ -85,7 +89,7 @@ export const getMarketSnapshot = protect(Access.PUBLIC, async () => {
         phase: config.phase === "PRE_IPO" ? "SEED" : config.phase,
         live: config.phase === "LIVE",
         ipoAt: config.ipoAt,
-        lastReset: config.lastReset,
+        lastReset: retryableReset ? undefined : lastReset,
         eventEndsAt,
         projects: rows
       }
