@@ -26,6 +26,7 @@ function fixture(t, count = 2) {
     seedSharesAtIpo: null, version: 0
   }));
   const state = { config, projects, scans: [], writes: [], history: new Map(), failCompany: undefined };
+  let resetWritePending = false;
   t.mock.method(client, "send", async command => {
     const input = command.input;
     switch (command.constructor.name) {
@@ -68,6 +69,10 @@ function fixture(t, count = 2) {
         state.writes.push(input);
         const [check, update, put] = input.TransactItems;
         if (config.phase === "IPO_RESETTING") {
+          assert.equal(resetWritePending, false, "restore transactions must not overlap on the market row");
+          resetWritePending = true;
+          await Promise.resolve();
+          resetWritePending = false;
           assert.ok(Object.values(check.ConditionCheck.ExpressionAttributeValues).includes("IPO_RESETTING"));
           for (const item of input.TransactItems.slice(1)) {
             if (item.Delete) {

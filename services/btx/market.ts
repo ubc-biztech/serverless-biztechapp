@@ -23,8 +23,7 @@ import { buildInitialCompany } from "./projects";
 import {
   EVENT_ACCOUNTS_TABLE,
   PRICES_TABLE,
-  PROJECTS_TABLE,
-  TEAMS_TABLE
+  PROJECTS_TABLE
 } from "./repos/tables";
 import { ensureAccount } from "./repos/accounts";
 import type { BtxEventConfig, BtxProject } from "./types";
@@ -91,73 +90,23 @@ export async function initializeMarketListing(input: {
   return { project, created: true };
 }
 
-function seedResponse(
-  project: BtxProject,
-  ipoAt: number | null,
-  now = Date.now()
-) {
-  return {
-    projectId: project.projectId,
-    eventId: project.eventId,
-    seedStartedAt: project.seedStartedAt,
-    seedEndsAt: eventEndsAtMs(),
-    seedStatus: seedStatus(project, ipoAt, now),
-    serverTime: now,
-    ipoAt
-  };
-}
-
+/** Compatibility for clients with an old Start seeding control. */
 export async function startSeeding(userId: string, projectId: string) {
   const project = await getProject(projectId);
-  const membership = await currentTeamMember(userId, projectId);
+  await currentTeamMember(userId, projectId);
   const config = await getEventConfig();
   requireMarketOpen(config);
-  if (project.seedStartedAt != null)
-    return seedResponse(project, config.ipoAt);
   if (project.isActive === false) throw new BtxError(409, "Inactive listing");
   const now = Date.now();
-  requirePreIpo(config);
-  const eventEndsAt = eventEndsAtMs();
-  if (now >= eventEndsAt) throw new BtxError(409, "Event ended", { code: "EVENT_ENDED" });
-  const updated = {
-    ...project,
-    seedStartedAt: now,
-    seedEndsAt: eventEndsAt
+  return {
+    projectId,
+    eventId: project.eventId,
+    seedStartedAt: project.seedStartedAt ?? null,
+    seedEndsAt: eventEndsAtMs(),
+    seedStatus: seedStatus(config.ipoAt, now),
+    serverTime: now,
+    ipoAt: config.ipoAt
   };
-  await docClient.send(
-    new TransactWriteCommand({
-      TransactItems: [
-        buildMarketPhaseCheck(config).build(),
-        buildEligibilityCheck(userId, membership.teamCode).build(),
-        {
-          ConditionCheck: {
-            TableName: TEAMS_TABLE,
-            Key: membership.key,
-            ConditionExpression: "contains(member_ids, :user)",
-            ExpressionAttributeValues: { ":user": userId }
-          }
-        },
-        {
-          Update: {
-            TableName: PROJECTS_TABLE,
-            Key: { projectId },
-            UpdateExpression:
-              "SET seedStartedAt = :s, seedEndsAt = :e, updatedAt = :s ADD version :one",
-            ConditionExpression:
-              "attribute_not_exists(seedStartedAt) OR seedStartedAt = :null",
-            ExpressionAttributeValues: {
-              ":s": now,
-              ":e": updated.seedEndsAt,
-              ":null": null,
-              ":one": 1
-            }
-          }
-        }
-      ]
-    })
-  );
-  await publishMarketUpdate(seedResponse(updated, null, now));
-  return seedResponse(updated, null, now);
 }
 
 export async function launchIpo(previousIpoAt?: number) {
@@ -288,8 +237,8 @@ export async function getQuote(params: {
     totalCostCents: params.side === "BUY" ? -quote.cashDeltaCents : null,
     proceedsCents: params.side === "SELL" ? quote.cashDeltaCents : null,
     seedStartedAt: project.seedStartedAt ?? null,
-    seedEndsAt: project.seedStartedAt == null ? null : eventEndsAt,
-    seedStatus: seedStatus(project, config.ipoAt, now, eventEndsAt),
+    seedEndsAt: eventEndsAt,
+    seedStatus: seedStatus(config.ipoAt, now, eventEndsAt),
     allowedSides: live ? ["BUY", "SELL"] : ["BUY"]
   };
 }

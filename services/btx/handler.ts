@@ -63,17 +63,16 @@ export const getMarketSnapshot = protect(Access.PUBLIC, async () => {
       lastReset.message === "Reset declined because a live trade settled.";
     const eventEndsAt = eventEndsAtMs();
     const seedClosesAt = config.phase === "IPO_PREPARING" ? serverTime : eventEndsAt;
+    const status = seedStatus(config.ipoAt, serverTime, seedClosesAt);
 
     const rows = projects
       .map((p) => {
-        const status = seedStatus(p, config.ipoAt, serverTime, seedClosesAt);
         const priceCents = stockPriceCents(p, config.ipoAt);
         const netShares = p.netShares;
         return {
           ...p,
-          // Older rows can still carry a per-company deadline.
-          seedEndsAt: p.seedStartedAt == null ? null : eventEndsAt,
-          seedStatus: status,
+          seedEndsAt: eventEndsAt,
+          seedStatus: p.isActive === false ? "ENDED" : status,
           currentPriceCents: priceCents,
           asOf: serverTime,
           marketCapCents: priceCents * netShares
@@ -197,7 +196,7 @@ export const postStartSeeding = protect(Access.USER, async (event) => {
       });
     }
     return helpers.createResponse(200, {
-      message: "Seed window started",
+      message: "BTX funding status",
       data: await startSeeding(event.auth!.email, projectId)
     });
   } catch (err) {

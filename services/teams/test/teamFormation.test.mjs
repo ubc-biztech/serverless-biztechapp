@@ -202,6 +202,7 @@ test("joining updates membership without overwriting the company's profile or ma
   assert.deepEqual(f.writes[0].filter(item => item.Update).map(item => item.Update.TableName).sort(), ["biztechRegistrations", "biztechTeams"]);
   const companyCheck = f.writes[0].find(item => item.ConditionCheck?.Key.projectId === f.projectId).ConditionCheck;
   assert.match(condition(companyCheck), /seedStartedAt = null/);
+  assert.match(condition(companyCheck), /netShares = 0/);
 });
 
 for (const operation of ["create", "join", "leave", "remove"]) {
@@ -214,10 +215,16 @@ for (const operation of ["create", "join", "leave", "remove"]) {
   });
 }
 for (const operation of ["join", "leave", "remove"]) {
-  test(`${operation} remains locked after the company's seed window ends`, async () => {
+  test(`${operation} remains locked for a company that used the old start control`, async () => {
     const f = fixture(operation);
     f.company.seedStartedAt = 1;
     f.company.seedEndsAt = 1_800_001;
+    assert.equal((await f.run()).statusCode, 409);
+    assert.equal(f.writes.length, 0);
+  });
+  test(`${operation} is locked once a company has funded shares`, async () => {
+    const f = fixture(operation);
+    f.company.netShares = 1;
     assert.equal((await f.run()).statusCode, 409);
     assert.equal(f.writes.length, 0);
   });

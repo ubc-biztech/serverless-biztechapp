@@ -10,17 +10,17 @@ const listing = {
   currentPriceCents: 10_000, seedSharesAtIpo: 0, seedStartedAt: 100, seedEndsAt: 1_800_100
 };
 
-test("seed buys keep their fixed price after a legacy timer expires", () => {
+test("seed buys use the fixed price without a team start or a company deadline", () => {
   const buy = now => tradeQuote(listing, null, now, "BUY", 2);
-  assert.throws(() => buy(99), { data: { code: "SEED_NOT_STARTED" } });
-  assert.deepEqual(buy(100), {
+  assert.deepEqual(buy(99), {
     priceCents: 10_000, endPriceCents: 10_000, feeCents: 400, cashDeltaCents: -20_400
   });
-  assert.deepEqual(buy(listing.seedEndsAt + 1), buy(100));
+  assert.deepEqual(buy(listing.seedEndsAt + 1), buy(99));
+  assert.deepEqual(tradeQuote({ ...listing, seedStartedAt: null }, null, 99, "BUY", 2), buy(99));
   assert.throws(() => buy(eventEndsAt), { data: { code: "SEED_WINDOW_ENDED" } });
 });
 
-test("participants cannot sell during the seed window", () => {
+test("participants cannot sell during the seed round", () => {
   assert.throws(() => tradeQuote(listing, null, 150, "SELL", 1), {
     statusCode: 409, data: { code: "SELL_NOT_AVAILABLE_BEFORE_IPO" }
   });

@@ -35,13 +35,13 @@ and BTX service running.
 Participants with an `acceptedComplete` or `checkedIn` registration start with $50,000. They
 can trade without joining a team and cannot trade their own company.
 
-- A team member starts seeding with `POST /btx/projects/{projectId}/seed/start`.
-  Investors can buy at $100 per share until IPO preparation or the event cutoff.
+- Listed companies accept seed buys at $100 per share until IPO preparation or
+  the event cutoff. The legacy start endpoint returns the current funding status.
 - `POST /btx/admin/ipo` returns `202` when queued. Buying and selling go live for
-  all companies once IPO completes. The seed timer alone does not start live trading.
+  all companies once IPO completes.
 - To undo an accidental launch, open **BTX Admin** and choose **Reset IPO**.
-  A successful reset reopens seeding for companies that already started while
-  the event is open. Choose **Launch IPO** when you're ready to reopen live trading.
+  A successful reset reopens seed buys for listed companies while the event is
+  open. Choose **Launch IPO** when you're ready to reopen live trading.
 - Use `GET /btx/market/snapshot` for the current phase, server time, and event cutoff
   (`eventEndsAt`). Trading closes at the cutoff.
 
