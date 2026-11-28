@@ -75,9 +75,11 @@ test("profile string limits accept the boundary and reject one character beyond 
   }
 });
 
-test("profile completeness reuses the required-field rules and ignores unrelated company attributes", () => {
+test("profile completeness requires name and blurb and allows an optional pitch link", () => {
   assert.equal(isCompanyProfileComplete({ ...complete, twitterURL: "", logo: "", demoURL: "", currentPriceCents: 10000 }), true);
-  for (const value of [null, {}, { ...complete, blurb: " " }, { ...complete, youtubeURL: "" },
+  assert.equal(isCompanyProfileComplete({ companyName: complete.companyName, blurb: complete.blurb }), true);
+  assert.equal(isCompanyProfileComplete({ ...complete, youtubeURL: "" }), true);
+  for (const value of [null, {}, { ...complete, blurb: " " },
     { ...complete, youtubeURL: "https://example.com/video" }, { ...complete, companyName: "a".repeat(101) }]) {
     assert.equal(isCompanyProfileComplete(value), false);
   }

@@ -60,12 +60,14 @@ test("completeness rules distinguish the stored company from the edited profile"
   const context = fixture(t);
   assert.equal(buildCompanyProfileSave(context, { youtubeURL: "" }, 1500).length, 4);
   Object.assign(context.config, { phase: "LIVE", ipoAt: 1000 });
-  assert.throws(() => buildCompanyProfileSave(context, { youtubeURL: "" }, 1500), { statusCode: 409 });
+  assert.equal(buildCompanyProfileSave(context, { youtubeURL: "" }, 1500).length, 4);
   context.company.youtubeURL = "";
-  assert.equal(buildCompanyProfileSave(context, { blurb: "Partial progress" }, 1500).length, 4);
-  assert.equal(buildCompanyProfileSave(context, { youtubeURL: "https://youtu.be/dQw4w9WgXcQ" }, 1500).length, 4);
+  assert.throws(() => buildCompanyProfileSave(context, { blurb: "" }, 1500), { statusCode: 409 });
+  context.company.blurb = "";
+  const pitch = { youtubeURL: "https://youtu.be/dQw4w9WgXcQ" };
+  assert.equal(buildCompanyProfileSave(context, pitch, 1500).length, 4);
   context.company.seedStartedAt = 500;
-  assert.throws(() => buildCompanyProfileSave(context, { blurb: "Partial progress" }, 1500), { statusCode: 409 });
+  assert.throws(() => buildCompanyProfileSave(context, pitch, 1500), { statusCode: 409 });
 });
 
 test("missing company state disables editing while null and zero remain valid", t => {
@@ -109,7 +111,7 @@ test("a legacy reset restores editing and repairs the missing snapshot on the ne
 
   context.company.seedStartedAt = 500;
   assert.equal(getCompanyProfilePermissions(context, 1500).canEditName, false);
-  assert.throws(() => buildCompanyProfileSave(context, { youtubeURL: "" }, 1500), { statusCode: 409 });
+  assert.equal(buildCompanyProfileSave(context, { youtubeURL: "" }, 1500).length, 4);
   context.config.phase = "IPO_PREPARING";
   assert.equal(getCompanyProfilePermissions(context, 1500).canEdit, false);
 });

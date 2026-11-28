@@ -6,7 +6,7 @@ import type { PayloadCheckRule } from "../../lib/types";
 export interface CompanyProfile {
   companyName: string;
   blurb: string;
-  youtubeURL: string;
+  youtubeURL?: string;
   twitterURL?: string;
   logo?: string;
   demoURL?: string;
@@ -95,24 +95,24 @@ export function toCompanyProfile(company: CompanyProfile): Required<CompanyProfi
   return {
     companyName: company.companyName,
     blurb: company.blurb,
-    youtubeURL: company.youtubeURL,
+    youtubeURL: company.youtubeURL ?? "",
     twitterURL: company.twitterURL ?? "",
     logo: company.logo ?? "",
     demoURL: company.demoURL ?? "",
   };
 }
 
-/** Checks only the required profile fields. */
+/** Requires a name and blurb and validates the pitch link if present. */
 export function isCompanyProfileComplete(value: unknown): boolean {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const profile = value as Record<string, unknown>;
   try {
-    const required = validateCompanyProfilePatch({
+    const validated = validateCompanyProfilePatch({
       companyName: profile.companyName,
       blurb: profile.blurb,
-      youtubeURL: profile.youtubeURL,
+      youtubeURL: profile.youtubeURL ?? "",
     });
-    return Boolean(required.companyName && required.blurb && required.youtubeURL);
+    return Boolean(validated.companyName && validated.blurb);
   } catch (error) {
     if (error instanceof CompanyProfileValidationError) return false;
     throw error;

@@ -54,7 +54,7 @@ cash and total funding without counting as trading profit.
 
 `GET /btx/projects/{projectId}` is available to verified, signed-in users and
 includes caller-specific editing permissions. Current team members can update
-company name, blurb, YouTube pitch link, optional Twitter/X and live demo links,
+company name, blurb, optional YouTube pitch, Twitter/X and live demo links,
 and optional thumbnail with
 `PATCH /btx/projects/{projectId}`. Profile editing uses the same
 `KICKSTART_EVENT_ENDS_AT` cutoff as the market; `eventEndsAt` is returned in Unix

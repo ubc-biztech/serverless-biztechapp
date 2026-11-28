@@ -119,7 +119,7 @@ export function buildCompanyProfileSave(context: CompanyProfileContext, patch: C
   }
   const profile = { ...toCompanyProfile(company), ...patch };
   if (requiresCompleteProfile(context) && !isCompanyProfileComplete(profile)) {
-    throw new CompanyProfileAccessError(409, "Company name, blurb, and a valid YouTube link must remain complete.");
+    throw new CompanyProfileAccessError(409, "Keep a company name and blurb. Use a valid YouTube link or leave it blank.");
   }
 
   const configCheck = db.build.check(BTX_PROJECTS_TABLE, { projectId: configProjectId(company.eventId) })

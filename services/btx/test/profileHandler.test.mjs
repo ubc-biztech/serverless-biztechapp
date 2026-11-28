@@ -73,12 +73,14 @@ test("GET and PATCH reject missing, blank or invalid project IDs with 400 before
 });
 
 test("GET and PATCH use the stored project ID when the gateway forwards an encoded path", async t => {
-  const { writes } = fixture(t);
+  const { company, writes } = fixture(t);
+  delete company.youtubeURL;
   const encoded = encodeURIComponent(projectId);
   const result = await getCompanyProfile(request(null, encoded));
   assert.equal(result.statusCode, 200);
   assert.equal(JSON.parse(result.body).projectId, projectId);
   assert.equal(JSON.parse(result.body).canEdit, true);
+  assert.equal(JSON.parse(result.body).youtubeURL, "");
 
   const saved = await patchCompanyProfile(request(JSON.stringify({ blurb: "Updated" }), encoded));
   assert.equal(saved.statusCode, 204);
