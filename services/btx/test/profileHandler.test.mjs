@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { HeadObjectCommand, S3Client, S3ServiceException } from "@aws-sdk/client-s3";
 import { loadBtx } from "./load-btx.mjs";
 import { claims, condition, conflict } from "../../../test/helpers.mjs";
 
-const { client, tables, getCompanyProfile, patchCompanyProfile } = await loadBtx(`
+const { client, tables, getCompanyProfile, patchCompanyProfile, postCompanyThumbnailUploadUrl } = await loadBtx(`
   export { default as client } from "../../lib/docClient.js";
   export * as tables from "./repos/tables";
-  export { getCompanyProfile, patchCompanyProfile } from "./profileHandler";
+  export { getCompanyProfile, patchCompanyProfile, postCompanyThumbnailUploadUrl } from "./profileHandler";
 `);
 const eventId = "kickstart;2026", teamId = "004218", projectId = eventId + ":" + teamId;
 const email = "alice@example.com";
@@ -50,9 +51,9 @@ function fixture(t) {
   return f;
 }
 
-test("both profile endpoints require a verified signed-in caller before database access", async t => {
+test("profile endpoints require a verified signed-in caller before database access", async t => {
   t.mock.method(client, "send", async () => assert.fail("Unverified caller must not reach DynamoDB"));
-  for (const handler of [getCompanyProfile, patchCompanyProfile]) {
+  for (const handler of [getCompanyProfile, patchCompanyProfile, postCompanyThumbnailUploadUrl]) {
     for (const requestContext of [{}, { authorizer: { claims: { email, email_verified: "false" } } }]) {
       assert.equal((await handler({ ...request("{}"), requestContext })).statusCode, 401);
     }
@@ -141,4 +142,98 @@ test("a conditional save conflict returns 409 without retrying the transaction",
   f.failWrite = true;
   assert.equal((await patchCompanyProfile(request(JSON.stringify({ blurb: "Updated" })))).statusCode, 409);
   assert.equal(f.writes.length, 1);
+});
+
+const uploadBody = JSON.stringify({ contentType: "image/png", size: 2 * 1024 * 1024 });
+const bucket = "biztech-event-images";
+const keyPrefix = `event-thumbnails/btx/dev/${eventId}/${teamId}/`;
+const publicPrefix = `https://${bucket}.s3.us-west-2.amazonaws.com/${keyPrefix.replace(";", "%3B")}`;
+
+function configureThumbnailStorage(t) {
+  const values = {
+    BTX_THUMBNAIL_BUCKET: bucket,
+    BTX_THUMBNAIL_STAGE: "dev",
+    AWS_ACCESS_KEY_ID: "test-access-key",
+    AWS_SECRET_ACCESS_KEY: "test-secret-key",
+    AWS_SESSION_TOKEN: "test-session-token",
+  };
+  const previous = Object.keys(values).map(key => [key, process.env[key]]);
+  Object.assign(process.env, values);
+  t.after(() => {
+    for (const [key, value] of previous) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  });
+}
+
+test("thumbnail upload signs only a bounded raster file for a current team member before cutoff", async t => {
+  const f = fixture(t);
+  configureThumbnailStorage(t);
+  for (const body of ["{", JSON.stringify({ contentType: "image/svg+xml", size: 100 }),
+    JSON.stringify({ contentType: "image/png", size: 2 * 1024 * 1024 + 1 }),
+    JSON.stringify({ contentType: "image/png", size: 0 })]) {
+    assert.equal((await postCompanyThumbnailUploadUrl(request(body))).statusCode, 400);
+  }
+  f.registration.teamID = "999999";
+  assert.equal((await postCompanyThumbnailUploadUrl(request(uploadBody))).statusCode, 403);
+  f.registration.teamID = teamId;
+  const result = await postCompanyThumbnailUploadUrl(request(uploadBody));
+  assert.equal(result.statusCode, 200);
+  const { uploadUrl, publicUrl, headers } = JSON.parse(result.body);
+  const url = new URL(uploadUrl);
+  assert.ok(publicUrl.startsWith(publicPrefix));
+  assert.match(publicUrl, /\.png$/);
+  assert.equal(decodeURIComponent(new URL(publicUrl).pathname), decodeURIComponent(url.pathname));
+  assert.equal(url.searchParams.get("X-Amz-Expires"), "1");
+  assert.equal(url.searchParams.get("X-Amz-SignedHeaders"), "content-length;content-type;host;if-none-match");
+  assert.equal(url.searchParams.has("x-amz-checksum-crc32"), false);
+  assert.deepEqual(headers, { "Content-Type": "image/png", "If-None-Match": "*" });
+  process.env.KICKSTART_EVENT_ENDS_AT = new Date(1000).toISOString();
+  assert.equal((await postCompanyThumbnailUploadUrl(request(uploadBody))).statusCode, 409);
+  assert.equal(f.writes.length, 0);
+});
+
+test("only an uploaded thumbnail for this company can be attached, and optional fields can be cleared", async t => {
+  const f = fixture(t);
+  configureThumbnailStorage(t);
+  const filename = "d89ee7bf-3cbf-49ab-9068-c6fca0102c26.png";
+  const logo = publicPrefix + filename;
+  const demoURL = "https://demo.example.com/project";
+  let object;
+  const readObject = t.mock.method(S3Client.prototype, "send", async command => {
+    assert.ok(command instanceof HeadObjectCommand);
+    assert.deepEqual(command.input, { Bucket: bucket, Key: keyPrefix + filename });
+    if (object) return object;
+    throw new S3ServiceException({ name: "NotFound", $fault: "client", $metadata: { httpStatusCode: 404 } });
+  });
+
+  const before = JSON.parse((await getCompanyProfile(request(null))).body);
+  assert.equal(before.logo, "");
+  assert.equal(before.demoURL, "");
+  for (const invalid of [logo.replace(teamId, "999999"), "https://example.com/" + filename]) {
+    assert.equal((await patchCompanyProfile(request(JSON.stringify({ logo: invalid })))).statusCode, 400);
+  }
+  assert.equal(readObject.mock.callCount(), 0);
+  assert.equal((await patchCompanyProfile(request(JSON.stringify({ logo })))).statusCode, 400);
+  object = { ContentType: "image/jpeg", ContentLength: 10_000 };
+  assert.equal((await patchCompanyProfile(request(JSON.stringify({ logo })))).statusCode, 400);
+  object = { ContentType: "image/png", ContentLength: 2 * 1024 * 1024 + 1 };
+  assert.equal((await patchCompanyProfile(request(JSON.stringify({ logo })))).statusCode, 400);
+  assert.equal(f.writes.length, 0);
+
+  object = { ContentType: "image/png", ContentLength: 10_000 };
+  assert.equal((await patchCompanyProfile(request(JSON.stringify({ logo, demoURL })))).statusCode, 204);
+  const update = f.writes[0].find(write => write.Update).Update;
+  assert.ok(Object.values(update.ExpressionAttributeValues).includes(logo));
+  assert.ok(Object.values(update.ExpressionAttributeValues).includes(demoURL));
+  assert.match(condition(update), /attribute_not_exists\(logo\)/);
+  assert.match(condition(update), /attribute_not_exists\(demoURL\)/);
+
+  Object.assign(f.company, { logo, demoURL });
+  const saved = JSON.parse((await getCompanyProfile(request(null))).body);
+  assert.equal(saved.logo, logo);
+  assert.equal(saved.demoURL, demoURL);
+  assert.equal((await patchCompanyProfile(request(JSON.stringify({ logo: "", demoURL: "" })))).statusCode, 204);
+  assert.equal(readObject.mock.callCount(), 4);
 });

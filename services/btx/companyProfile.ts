@@ -2,12 +2,14 @@ import { isSupportedTwitterURL, isSupportedYouTubeURL } from "../../lib/urls";
 import helpers from "../../lib/handlerHelpers";
 import type { PayloadCheckRule } from "../../lib/types";
 
-/** Editable company attributes; older stored companies may lack twitterURL. */
+/** Editable company attributes, including optional fields on older records. */
 export interface CompanyProfile {
   companyName: string;
   blurb: string;
   youtubeURL: string;
   twitterURL?: string;
+  logo?: string;
+  demoURL?: string;
 }
 
 /** PATCH supplies only changed fields, rather than replacing the entire profile. */
@@ -18,6 +20,8 @@ export const COMPANY_PROFILE_LIMITS = {
   blurb: 2_000,
   youtubeURL: 2_048,
   twitterURL: 2_048,
+  logo: 2_048,
+  demoURL: 2_048,
 } as const;
 
 export class CompanyProfileValidationError extends Error {
@@ -43,6 +47,16 @@ function stringRule(
   };
 }
 
+function isHttpsUrl(value: string): boolean {
+  if (!/^https:\/\//i.test(value)) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && Boolean(url.hostname) && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+}
+
 const COMPANY_PROFILE_RULES = {
   companyName: stringRule("companyName", value => value ? undefined : "companyName must not be blank."),
   blurb: stringRule("blurb"),
@@ -50,6 +64,10 @@ const COMPANY_PROFILE_RULES = {
     ? "Provide a supported HTTPS YouTube video URL." : undefined),
   twitterURL: stringRule("twitterURL", value => value && !isSupportedTwitterURL(value)
     ? "Provide an HTTPS Twitter/X link." : undefined),
+  logo: stringRule("logo", value => value && !isHttpsUrl(value)
+    ? "Upload a company thumbnail." : undefined),
+  demoURL: stringRule("demoURL", value => value && !isHttpsUrl(value)
+    ? "Provide an HTTPS live demo link." : undefined),
 };
 
 export function validateCompanyProfilePatch(value: unknown): CompanyProfilePatch {
@@ -79,10 +97,12 @@ export function toCompanyProfile(company: CompanyProfile): Required<CompanyProfi
     blurb: company.blurb,
     youtubeURL: company.youtubeURL,
     twitterURL: company.twitterURL ?? "",
+    logo: company.logo ?? "",
+    demoURL: company.demoURL ?? "",
   };
 }
 
-/** Checks the required fields, not IPO readiness or the optional Twitter link. */
+/** Checks only the required profile fields. */
 export function isCompanyProfileComplete(value: unknown): boolean {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const profile = value as Record<string, unknown>;

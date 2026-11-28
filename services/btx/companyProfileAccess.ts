@@ -91,11 +91,8 @@ export function getCompanyProfilePermissions(context: CompanyProfileContext, now
   };
 }
 
-/** Prepare, but do not execute, a targeted update and its transaction checks.
- * The caller must load fresh context and use backend time for every save attempt.
- */
-export function buildCompanyProfileSave(context: CompanyProfileContext, patch: CompanyProfilePatch, now = Date.now()): WriteBuilder[] {
-  const { company, config, userID } = context;
+export function requireCompanyProfileEdit(context: CompanyProfileContext, now = Date.now()) {
+  const { config } = context;
   if (!context.isMember) {
     throw new CompanyProfileAccessError(403, "Current team membership is required.");
   }
@@ -109,6 +106,13 @@ export function buildCompanyProfileSave(context: CompanyProfileContext, patch: C
   if (now >= end) {
     throw new CompanyProfileAccessError(409, "Company profile editing has closed for this event.");
   }
+  return { config, end };
+}
+
+/** Prepare a targeted update and its transaction checks using fresh context and backend time. */
+export function buildCompanyProfileSave(context: CompanyProfileContext, patch: CompanyProfilePatch, now = Date.now()): WriteBuilder[] {
+  const { company, userID } = context;
+  const { config } = requireCompanyProfileEdit(context, now);
   const nameLocked = nameIsLocked(context);
   if (patch.companyName !== undefined && patch.companyName !== company.companyName && nameLocked) {
     throw new CompanyProfileAccessError(409, "The company name is locked once it receives funding or IPO begins.");
@@ -139,7 +143,7 @@ export function buildCompanyProfileSave(context: CompanyProfileContext, patch: C
   }
   // Compare the profile we validated to prevent concurrent edits from invalidating the merged result.
   // Market version is deliberately independent; a price change alone need not reject this edit.
-  for (const field of ["companyName", "blurb", "youtubeURL", "twitterURL"] as const) {
+  for (const field of ["companyName", "blurb", "youtubeURL", "twitterURL", "logo", "demoURL"] as const) {
     if (company[field] === undefined) update.if(field).notExists();
     else update.if(field).equals(company[field]);
   }

@@ -9,7 +9,9 @@ import {
   buildCompanyProfileSave,
   getCompanyProfilePermissions,
   loadCompanyProfileContext,
+  requireCompanyProfileEdit,
 } from "./companyProfileAccess";
+import { readThumbnailUpload, signThumbnailUpload, verifyCompanyThumbnail } from "./companyThumbnail";
 
 function requireProjectId(parameters: APIGatewayEvent["pathParameters"]): string {
   const projectId = projectIdFromPath(parameters?.projectId);
@@ -49,6 +51,10 @@ export const patchCompanyProfile = protect(Access.USER, async (event) => {
     }
     const patch = validateCompanyProfilePatch(value);
     const context = await loadCompanyProfileContext(projectId, event.auth!.email);
+    if (patch.logo && patch.logo !== context.company.logo) {
+      requireCompanyProfileEdit(context);
+      await verifyCompanyThumbnail(context.company, patch.logo);
+    }
     const operations = buildCompanyProfileSave(context, patch);
     await db.txn(...operations);
     return response.noContent();
@@ -64,5 +70,24 @@ export const patchCompanyProfile = protect(Access.USER, async (event) => {
     }
     console.error("Failed to save BTX company profile:", error instanceof Error ? error.name : "UnknownError");
     return response.send(500, { message: "Unable to save the company profile." });
+  }
+});
+
+export const postCompanyThumbnailUploadUrl = protect(Access.USER, async (event) => {
+  try {
+    const projectId = requireProjectId(event.pathParameters);
+    const upload = readThumbnailUpload(event.body);
+    const context = await loadCompanyProfileContext(projectId, event.auth!.email);
+    const { end } = requireCompanyProfileEdit(context);
+    return response.ok(await signThumbnailUpload(context.company, upload, end));
+  } catch (error) {
+    if (error instanceof CompanyProfileValidationError) {
+      return response.badRequest(error.message);
+    }
+    if (error instanceof CompanyProfileAccessError) {
+      return response.send(error.statusCode, { message: error.message });
+    }
+    console.error("Failed to authorize BTX thumbnail upload:", error instanceof Error ? error.name : "UnknownError");
+    return response.send(500, { message: "Unable to start the company thumbnail upload." });
   }
 });

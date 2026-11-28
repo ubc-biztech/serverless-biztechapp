@@ -56,7 +56,9 @@ test("profile PATCH trims supplied strings, preserves omissions and allows unfin
 test("profile PATCH rejects invalid bodies, protected fields, wrong types and invalid supplied links", () => {
   for (const value of [null, [], {}, "profile", { currentPriceCents: 1 }, { companyName: " " },
     { blurb: false }, { youtubeURL: null }, { youtubeURL: "https://youtube.com/@company" },
-    { twitterURL: "https://example.com/company" }]) {
+    { twitterURL: "https://example.com/company" }, { logo: "data:image/png;base64,123" },
+    { demoURL: "http://example.com" }, { demoURL: "javascript:alert(1)" },
+    { demoURL: "https://user@example.com" }, { demoURL: "https:example.com" }]) {
     assert.throws(() => validateCompanyProfilePatch(value), CompanyProfileValidationError);
   }
 });
@@ -66,6 +68,7 @@ test("profile string limits accept the boundary and reject one character beyond 
     ["companyName", "a".repeat(100)], ["blurb", "a".repeat(2000)],
     ["youtubeURL", youtubeURL + "?t=" + "1".repeat(2048 - youtubeURL.length - 3)],
     ["twitterURL", "https://x.com/" + "a".repeat(2048 - "https://x.com/".length)],
+    ["demoURL", "https://example.com/" + "a".repeat(2048 - "https://example.com/".length)],
   ]) {
     assert.equal(validateCompanyProfilePatch({ [field]: value })[field], value);
     assert.throws(() => validateCompanyProfilePatch({ [field]: value + "a" }), CompanyProfileValidationError);
@@ -73,7 +76,7 @@ test("profile string limits accept the boundary and reject one character beyond 
 });
 
 test("profile completeness reuses the required-field rules and ignores unrelated company attributes", () => {
-  assert.equal(isCompanyProfileComplete({ ...complete, twitterURL: "", currentPriceCents: 10000 }), true);
+  assert.equal(isCompanyProfileComplete({ ...complete, twitterURL: "", logo: "", demoURL: "", currentPriceCents: 10000 }), true);
   for (const value of [null, {}, { ...complete, blurb: " " }, { ...complete, youtubeURL: "" },
     { ...complete, youtubeURL: "https://example.com/video" }, { ...complete, companyName: "a".repeat(101) }]) {
     assert.equal(isCompanyProfileComplete(value), false);

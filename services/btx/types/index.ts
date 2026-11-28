@@ -31,6 +31,8 @@ export interface BtxProject {
   companyName?: string;
   blurb?: string;
   youtubeURL?: string;
+  logo?: string;
+  demoURL?: string;
   ticker?: string;
   name?: string;
   description?: string;

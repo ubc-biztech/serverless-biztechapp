@@ -26,6 +26,8 @@ provider:
     NODE_ENV: ${env:NODE_ENV}
     KICKSTART_EVENT_KEY: ${file(../../config.${self:provider.stage}.json):KICKSTART_EVENT_KEY}
     KICKSTART_EVENT_ENDS_AT: ${file(../../config.${self:provider.stage}.json):KICKSTART_EVENT_ENDS_AT}
+    BTX_THUMBNAIL_BUCKET: biztech-event-images
+    BTX_THUMBNAIL_STAGE: ${self:provider.stage}
     BTX_TRADE_QUEUE_URL: ${self:custom.${env:NODE_ENV, 'aws'}QueueUrl, self:custom.awsQueueUrl}
     WS_API_ENDPOINT:
       Fn::Join:
@@ -76,6 +78,12 @@ provider:
       Resource:
         - arn:aws:dynamodb:us-west-2:${aws:accountId}:table/biztechTeams${self:provider.environment.ENVIRONMENT}
         - arn:aws:dynamodb:us-west-2:${aws:accountId}:table/biztechRegistrations${self:provider.environment.ENVIRONMENT}
+
+    - Effect: Allow
+      Action:
+        - s3:PutObject
+        - s3:GetObject
+      Resource: arn:aws:s3:::${self:provider.environment.BTX_THUMBNAIL_BUCKET}/event-thumbnails/btx/${self:provider.stage}/*
 
     - Effect: Allow
       Action:
@@ -158,6 +166,17 @@ functions:
       - http:
           path: btx/projects/{projectId}
           method: patch
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: ${cf:biztechApi-${file(../../serverless.common.yml):provider.stage}.CognitoAuthorizer}
+
+  btxPostCompanyThumbnailUploadUrl:
+    handler: profileHandler.postCompanyThumbnailUploadUrl
+    events:
+      - http:
+          path: btx/projects/{projectId}/thumbnail-upload-url
+          method: post
           cors: true
           authorizer:
             type: COGNITO_USER_POOLS
